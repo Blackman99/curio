@@ -1,5 +1,14 @@
 [
  {
+  "slug": "latent-quicksilver",
+  "title": "Latent Quicksilver",
+  "no": "004",
+  "date": "2026-10-12",
+  "kind": "Implicit fields · WebGL",
+  "blurb": "A liquid-metal isosurface of a random Fourier-feature field. Move to warp the latent; click to re-roll a new creature.",
+  "color": "#7ee0ff"
+ },
+ {
   "slug": "diffusion-bloom",
   "title": "Diffusion Bloom",
   "no": "003",
