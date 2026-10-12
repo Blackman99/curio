@@ -36,6 +36,24 @@ body.flat{overflow:auto}body.flat #list{display:block}body.flat .hud,body.flat c
 #list li b{font:700 11px "Courier New",monospace;letter-spacing:.2em;color:var(--red)}#list li h3{margin:6px 0}#list li p{margin:0}
 #list .note{font:13px "Courier New",monospace;margin-top:24px}#list .note a{color:var(--red)}
 @media(max-width:640px){#index{display:none}#brand img{width:48px}#hint{font-size:9px}}
+
+/* exhibit viewer */
+#flood{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,#fff6e0 0,#ffd9a0 35%,rgba(255,190,110,0) 75%)}
+#viewer{position:fixed;inset:0;z-index:7;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,#2a1a0e 0,#0b0806 70%);opacity:0;transition:opacity .45s}
+#viewer.on{display:flex}#viewer.show{opacity:1}
+#viewer::before{content:"";position:absolute;left:50%;top:-10%;width:70vw;height:60vh;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 0,rgba(255,220,160,.22),transparent 70%);pointer-events:none}
+#viewer::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 180px 60px #000;pointer-events:none}
+.vframe{position:relative;width:min(92vw,calc((100vh - 150px)*16/9));aspect-ratio:16/9;padding:14px;background:linear-gradient(135deg,#5a3418,#2a160a 40%,#4a2a12);border-radius:4px;box-shadow:0 30px 80px #000,inset 0 0 0 3px #c9963f,inset 0 0 0 7px #2a160a,inset 0 0 0 9px #d9a74a;transform:scale(.92);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+#viewer.show .vframe{transform:none}
+.vframe iframe,#vslot{width:100%;height:100%;border:0;display:block;background:#000;box-shadow:inset 0 0 0 2px #000}
+.vlabel{position:absolute;top:18px;left:24px;font:700 11px "Courier New",monospace;letter-spacing:.3em;text-transform:uppercase;color:var(--brass);z-index:2}
+.vlabel::before{content:"● ";color:var(--red)}
+#vclose{position:absolute;top:12px;right:18px;z-index:2;width:44px;height:44px;border-radius:50%;border:2px solid var(--brass);background:#1d1a16;color:var(--paper);font:28px/38px Georgia,serif;cursor:pointer}
+#vclose:hover{background:var(--red)}
+.vplac{position:absolute;left:50%;bottom:-62px;transform:translateX(-50%);background:var(--paper);color:var(--ink);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--red);padding:8px 16px;white-space:nowrap;display:flex;gap:14px;align-items:baseline;font-size:15px}
+.vplac b{font:700 11px "Courier New",monospace;letter-spacing:.2em;color:var(--red)}.vplac h2{margin:0;font-size:20px}.vplac i{font:12px "Courier New",monospace;color:#6b3f22;font-style:normal}
+.vplac a{font:700 12px "Courier New",monospace;color:var(--red)}
+@media(max-width:640px){.vframe{width:96vw;aspect-ratio:auto;height:calc(100vh - 170px);padding:8px}.vplac{white-space:normal;flex-wrap:wrap;width:90vw;bottom:-78px}.vplac i{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
 <canvas id="c" aria-hidden="true"></canvas>
@@ -47,14 +65,41 @@ body.flat{overflow:auto}body.flat #list{display:block}body.flat .hud,body.flat c
 <div class="hud" id="src"><a href="https://github.com/Blackman99/ai-demos">Source</a> · <a href="?list">List view</a></div>
 <main id="list"><header><img src="assets/logo.svg" alt="Cabinet seal logo"><div><div class="kicker" style="color:var(--red)">Specimens of machine thought</div><h1>The Cabinet of <em>AI&nbsp;Curiosities</em></h1><p>Small, hands-on experiments that run entirely in your browser.</p></div></header>
 <ul id="ul"></ul><p class="note">Built by <a href="https://github.com/Blackman99">Blackman99</a> · Source on <a href="https://github.com/Blackman99/ai-demos">GitHub</a> · Toys, not benchmarks: each demo explains its simplifications. · <a href="./">3D archive</a></p></main>
+<div id="flood"></div>
+<div id="viewer" role="dialog" aria-modal="true" aria-label="Exhibit viewer"><div class="vlabel">Now viewing</div><button id="vclose" aria-label="Close exhibit">×</button>
+<div class="vframe"><div id="vslot" style="width:100%;height:100%"></div>
+<div class="vplac"><b id="vno"></b><h2 id="vtitle"></h2><i id="vkind"></i><a id="vnew" target="_blank" rel="noopener">Open in new tab ↗</a></div></div></div>
 <script type="module">
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const list=(await fetch('demos.json').then(r=>r.json()).catch(()=>[])).sort((a,b)=>(b.no||'').localeCompare(a.no||'')||b.date.localeCompare(a.date));
 document.getElementById('ul').innerHTML=list.map(d=>`<li><a href="${esc(d.slug)}/"><b>No. ${esc(d.no)} · ${esc(d.kind)}</b><h3>${esc(d.title)}</h3><p>${esc(d.blurb)}</p></a></li>`).join('');
+
+const V={el:document.getElementById('viewer'),if:null,open:-1,pushed:false,enter:null,exit:null};
+const slugIdx=sl=>list.findIndex(d=>d.slug===sl);
+const baseURL=()=>{const u=new URL(location.href);u.searchParams.delete('exhibit');return u.pathname+u.search};
+function showViewer(i){const d=list[i];if(!d)return;V.open=i;const src='./'+encodeURIComponent(d.slug)+'/';
+ const f=document.createElement('iframe');f.id='vif';f.title=d.title;f.allow='autoplay; fullscreen; microphone; camera; accelerometer; gyroscope';f.allowFullscreen=true;f.src=src;
+ f.addEventListener('load',()=>{try{f.contentWindow.addEventListener('keydown',e=>{if(e.key==='Escape'&&V.open>=0){e.preventDefault();closeExhibit()}})}catch(_){}});
+ const slot=document.getElementById('vslot');slot.replaceChildren(f);V.if=f;document.getElementById('vno').textContent='No. '+d.no;document.getElementById('vtitle').textContent=d.title;
+ document.getElementById('vkind').textContent=d.kind||'';document.getElementById('vnew').href=src;
+ V.el.classList.add('on');void V.el.offsetWidth;setTimeout(()=>V.el.classList.add('show'),20);setTimeout(()=>{try{V.if.focus()}catch(_){}},400);document.title=d.title+' · The Cabinet of AI Curiosities'}
+function hideViewer(cb){if(V.open<0){cb&&cb();return}const i=V.open;V.open=-1;V.el.classList.remove('show');document.title='The Cabinet of AI Curiosities';
+ setTimeout(()=>{V.el.classList.remove('on');document.getElementById('vslot').replaceChildren();V.if=null;cb&&cb(i)},450)}
+function openExhibit(i,{push=true,instant=false}={}){if(i<0||!list[i]||V.open>=0||V.busy)return;
+ if(push){history.pushState({exhibit:list[i].slug},'',(()=>{const u=new URL(location.href);u.searchParams.set('exhibit',list[i].slug);return u.pathname+u.search})());V.pushed=true}
+ if(V.enter&&!instant){V.busy=true;V.enter(i,()=>{V.busy=false;showViewer(i)})}else{V.enter&&V.enter(i,null,true);showViewer(i)}}
+function closeExhibit(){if(V.open<0)return;if(V.pushed&&history.state&&history.state.exhibit){history.back()}else{history.replaceState(null,'',baseURL());doClose()}}
+function doClose(){hideViewer(i=>{if(V.exit&&i>=0){V.busy=true;V.exit(i,()=>V.busy=false)}})}
+addEventListener('popstate',()=>{const sl=new URLSearchParams(location.search).get('exhibit');if(sl){const i=slugIdx(sl);if(i>=0&&V.open!==i){V.pushed=false;openExhibit(i,{push:false})}}else if(V.open>=0)doClose()});
+document.getElementById('vclose').onclick=closeExhibit;
+addEventListener('keydown',e=>{if(e.key==='Escape'&&V.open>=0){e.preventDefault();closeExhibit()}});
+document.getElementById('ul').addEventListener('click',e=>{const a=e.target.closest('a');if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.button)return;const i=[...document.querySelectorAll('#ul a')].indexOf(a);if(i>=0){e.preventDefault();openExhibit(i)}});
+window.__viewer=V;
 const q=new URLSearchParams(location.search);
 const hasGL=(()=>{try{const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch(e){return false}})();
 const lowPower=(navigator.connection&&navigator.connection.saveData)||(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=2);
-if(q.has('list')||!hasGL||lowPower){document.body.classList.add('flat')}else{run()}
+if(q.has('list')||!hasGL||lowPower){document.body.classList.add('flat')}else{await run()}
+{const sl=q.get('exhibit'),i=sl?slugIdx(sl):-1;if(i>=0){history.replaceState(null,'',baseURL());history.pushState({exhibit:sl},'',location.pathname+location.search+(location.search?'&':'?')+'exhibit='+encodeURIComponent(sl));V.pushed=true;openExhibit(i,{push:false,instant:true})}}
 
 async function run(){
 const THREE=await import('./assets/vendor/three.module.min.js');
@@ -117,12 +162,14 @@ list.forEach((d,i)=>{const side=i%2?1:-1,z=-i*GAP-4,G=new THREE.Group();G.positi
  const cap=new THREE.Mesh(new THREE.BoxGeometry(1.62,.08,1.62),brass);cap.position.y=1.14;G.add(cap);
  const box=new THREE.Mesh(new THREE.BoxGeometry(1.36,1.5,1.36),glass);box.position.y=1.93;G.add(box);
  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry),new THREE.LineBasicMaterial({color:0xd9a74a,transparent:true,opacity:.8}));edges.position.copy(box.position);G.add(edges);
+ const door=new THREE.Group();door.position.set(-.68,1.93,.69);const dp2=new THREE.Mesh(new THREE.PlaneGeometry(1.36,1.5),new THREE.MeshStandardMaterial({color:0xfff2dc,transparent:true,opacity:.16,roughness:.05,metalness:.2,depthWrite:false,side:THREE.DoubleSide}));dp2.position.x=.68;door.add(dp2);
+ const dfr=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.36,1.5)),new THREE.LineBasicMaterial({color:0xd9a74a}));dfr.position.x=.68;door.add(dfr);const knob=new THREE.Mesh(new THREE.SphereGeometry(.04,12,8),brass);knob.position.set(1.25,0,.03);door.add(knob);G.add(door);
  const top=new THREE.Mesh(new THREE.BoxGeometry(1.5,.08,1.5),brass);top.position.y=2.72;G.add(top);
  const spec=new THREE.Mesh(forms[i%forms.length](),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:.4,metalness:.6,roughness:.25}));spec.position.y=1.95;G.add(spec);
  const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:dotT,color:col,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:.55}));halo.scale.setScalar(2.4);halo.position.y=1.95;G.add(halo);
  const pl=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.65),new THREE.MeshStandardMaterial({map:plaque(d),roughness:.8}));pl.position.set(0,.6,.76);G.add(pl);
  const hit=new THREE.Mesh(new THREE.BoxGeometry(1.7,2.8,1.7),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=1.4;hit.userData.i=i;G.add(hit);hits.push(hit);
- S.add(G);ex.push({d,G,spec,halo,edges,z,col,h:0})});
+ S.add(G);ex.push({d,G,spec,halo,edges,door,z,col,h:0})});
 // sealed future cases
 for(let j=0;j<3;j++){const i=N+j,side=i%2?1:-1,G=new THREE.Group();G.position.set(side*2.7,0,-i*GAP-4);G.rotation.y=-side*.5;
  const ped=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.1,1.5),beamM);ped.position.y=.55;G.add(ped);
@@ -136,18 +183,23 @@ const href=d=>'./'+encodeURIComponent(d.slug)+'/';
 const nav=document.getElementById('index');nav.innerHTML=list.map((d,i)=>`<a href="${esc(href(d))}" data-i="${i}">No. ${esc(d.no)} ${esc(d.title)}</a>`).join('');
 
 
+// enter-exhibit animation
+const A={i:-1,t:0,dir:0,cb:null,dur:1.6};const flood=document.getElementById('flood');
+const fromP=new THREE.Vector3(),fromQ=new THREE.Quaternion(),toP=new THREE.Vector3(),toQ=new THREE.Quaternion(),tmpM=new THREE.Matrix4(),lookAt=new THREE.Vector3();
+V.enter=(i,cb,instant)=>{A.i=i;A.dir=instant?0:1;A.t=instant?1:0;A.cb=cb;A.snap=!!instant;if(instant){camZ=target=Math.min(ZMAX,ex[i].z+3.4);t0=performance.now()-5000}};
+V.exit=(i,cb)=>{A.i=i;A.dir=-1;A.t=1;A.cb=cb};
 // travel
-const ZMAX=9,ZMIN=Math.min(-4,-(N-1)*GAP-4+3.4);let target=1.5,camZ=RM?1.5:30,t0=performance.now();
+let ZMAX=9;const ZMIN=Math.min(-4,-(N-1)*GAP-4+3.4);let target=1.5,camZ=RM?1.5:30,t0=performance.now();
 const ray=new THREE.Raycaster();const clampT=()=>target=Math.max(ZMIN-GAP,Math.min(ZMAX,target));
-addEventListener('wheel',e=>{target-=e.deltaY*.012;clampT();e.preventDefault()},{passive:false});
+addEventListener('wheel',e=>{if(A.i>=0||V.open>=0)return;target-=e.deltaY*.012;clampT();e.preventDefault()},{passive:false});
 // look: mouse/drag only rotate the camera; position moves only via wheel / keys / two-finger touch
 const mouse=new THREE.Vector2(9,9),look={yaw:0,pitch:0},glance={x:0,y:0};let yawT=0,pitchT=0;
 const YAWMAX=1.25,PMAX=.55,PMIN=-.45;const clampL=()=>{yawT=Math.max(-YAWMAX,Math.min(YAWMAX,yawT));pitchT=Math.max(PMIN,Math.min(PMAX,pitchT))};
 let drag=null;const touches=new Map();let pinchY=null;
 const setMouse=e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
 const pick=()=>{ray.setFromCamera(mouse,cam);const h=ray.intersectObjects(hits,false)[0];return (h&&h.distance<16)?h.object.userData.i:-1};
-const go=i=>{if(i>=0&&list[i])location.href=href(list[i])};
-cv.addEventListener('pointerdown',e=>{if(e.button>0)return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+const go=i=>{if(i>=0&&list[i])openExhibit(i)};
+cv.addEventListener('pointerdown',e=>{if(e.button>0||A.i>=0)return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(touches.size===2){drag=null;pinchY=[...touches.values()].reduce((a,t)=>a+t.y,0)/2;return}
  drag={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,moved:0};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
 cv.addEventListener('pointermove',e=>{setMouse(e);if(touches.has(e.pointerId))touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -159,7 +211,7 @@ const end=e=>{touches.delete(e.pointerId);if(touches.size<2)pinchY=null;const wa
  if(e.type==='pointerup'&&was&&was.moved<=5){setMouse(e);go(pick())}};
 cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
 cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!drag){glance.x=glance.y=0;mouse.set(9,9)}});
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='arrowup'||k==='w')target-=GAP/2;if(k==='arrowdown'||k==='s')target+=GAP/2;
+addEventListener('keydown',e=>{if(A.i>=0||V.open>=0)return;const k=e.key.toLowerCase();if(k==='arrowup'||k==='w')target-=GAP/2;if(k==='arrowdown'||k==='s')target+=GAP/2;
  if(k==='arrowleft'||k==='a')yawT+=.2;if(k==='arrowright'||k==='d')yawT-=.2;clampT();clampL();if(e.key==='Enter'&&hover>=0)go(hover)});
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 
@@ -167,18 +219,31 @@ const card=document.getElementById('card');let hover=-1,shown=-1;
 const showCard=i=>{if(i===shown)return;shown=i;if(i<0){card.classList.remove('on');return}const d=list[i];
  card.innerHTML=`<a href="${esc(href(d))}"><b>No. ${esc(d.no)} · ${esc(d.kind)}</b><h2>${esc(d.title)}</h2><p>${esc(d.blurb)}</p><span>Open the exhibit →</span></a>`;card.classList.add('on')};
 document.getElementById('veil').style.opacity=0;
-window.__archive={cam,ex,THREE,get target(){return target}};
+const plain=e=>!(e.metaKey||e.ctrlKey||e.shiftKey||e.button);
+nav.addEventListener('click',e=>{const a=e.target.closest('a');if(a&&plain(e)){e.preventDefault();openExhibit(+a.dataset.i)}});
+card.addEventListener('click',e=>{if(shown>=0&&plain(e)&&e.target.closest('a')){e.preventDefault();openExhibit(shown)}});
+window.__archive={cam,ex,THREE,A,get target(){return target}};
 let last=performance.now();
-R.setAnimationLoop(()=>{const now=performance.now(),dt=Math.min(.05,(now-last)/1000),T=(now-t0)/1000;last=now;
+R.setAnimationLoop(()=>{const now=performance.now(),rdt=(now-last)/1000,dt=Math.min(.05,rdt),T=(now-t0)/1000;last=now;
  const intro=RM?1:Math.min(1,T/3.2),ease=1-Math.pow(1-intro,3);
  if(intro<1)camZ=30+(target-30)*ease;else camZ+=(target-camZ)*(RM?1:Math.min(1,dt*3.5));
  const camY=1.75+(1-ease)*9+Math.sin(T*1.3)*.02*(RM?0:1);
  const k=RM?1:Math.min(1,dt*6);look.yaw+=(yawT-glance.x*.35-look.yaw)*k;look.pitch+=(pitchT+glance.y*.2-look.pitch)*k;
  cam.position.set(0,camY,camZ);cam.rotation.set(0,0,0,'YXZ');cam.rotation.y=look.yaw;cam.rotation.x=look.pitch-(1-ease)*.9+.0;cam.rotation.z=(1-ease)*.15;
+ if(A.i>=0){const e=ex[A.i];if(A.dir)A.t=Math.max(0,Math.min(1,A.t+A.dir*Math.min(.25,rdt)/(RM?.3:A.dur)));
+  fromP.copy(cam.position);fromQ.copy(cam.quaternion);e.G.updateMatrixWorld();toP.set(0,1.95,1.25).applyMatrix4(e.G.matrixWorld);lookAt.set(0,1.95,0).applyMatrix4(e.G.matrixWorld);
+  tmpM.lookAt(toP,lookAt,cam.up);toQ.setFromRotationMatrix(tmpM);
+  const u=A.t,ec=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2,cm=Math.min(1,ec*1.15);
+  cam.position.lerpVectors(fromP,toP,cm);cam.quaternion.slerpQuaternions(fromQ,toQ,cm);
+  const dOpen=Math.max(0,Math.min(1,(u-.35)/.4));e.door.rotation.y=-(1-Math.pow(1-dOpen,3))*1.95;
+  const fl=Math.max(0,(u-.6)/.4);flood.style.opacity=(fl*fl).toFixed(3);e.h=Math.max(e.h,u);spot.intensity=Math.max(spot.intensity,60*u);
+  if(A.dir===1&&A.t>=1){A.dir=0;const c=A.cb;A.cb=null;c&&c();setTimeout(()=>{if(V.open>=0)flood.style.opacity=0},500)}
+  else if(A.dir===-1&&A.t<=0){A.dir=0;e.door.rotation.y=0;flood.style.opacity=0;A.i=-1;const c=A.cb;A.cb=null;c&&c()}
+  else if(!A.dir&&V.open>=0)flood.style.opacity=0}
  lantern.position.set(0,3.2,camZ-3);
- cam.updateMatrixWorld();hover=(drag&&drag.moved>5)?-1:pick();cv.classList.toggle('hot',hover>=0);
+ cam.updateMatrixWorld();hover=(A.i>=0||(drag&&drag.moved>5))?-1:pick();cv.classList.toggle('hot',hover>=0);
  let near=-1,nd=1e9;ex.forEach((e,i)=>{const dd=Math.abs(e.z-(camZ-3.4));if(dd<nd){nd=dd;near=i}});
- const focus=hover>=0?hover:(nd<2.2?near:-1);showCard(focus);
+ const focus=A.i>=0?A.i:hover>=0?hover:(nd<2.2?near:-1);showCard(A.i>=0?-1:focus);
  nav.querySelectorAll('a').forEach((a,i)=>a.classList.toggle('cur',i===near));
  ex.forEach((e,i)=>{e.h+=((i===focus?1:0)-e.h)*Math.min(1,dt*6);if(!RM){e.spec.rotation.y+=dt*(.4+e.h*1.6);e.spec.rotation.x=Math.sin(T*.7+i)*.3}
   e.spec.position.y=1.95+(RM?0:Math.sin(T*1.5+i)*.06)+e.h*.08;e.spec.material.emissiveIntensity=.35+e.h*1.3;e.halo.material.opacity=.35+e.h*.6;e.halo.scale.setScalar(2.2+e.h*1.2);e.edges.material.opacity=.5+e.h*.5});
