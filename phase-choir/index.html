@@ -1,0 +1,301 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phase Choir — Kuramoto lattice with neural coupling</title>
+<meta name="description" content="A Kuramoto oscillator lattice whose coupling is a tiny random neural map. Move to entrain neighbors; click to re-roll the score. Spiral waves and chimera states, in your browser.">
+<meta property="og:title" content="Phase Choir"><meta property="og:description" content="Kuramoto lattice with a tiny random neural coupling map. Move to entrain; click to re-roll. Spiral waves and chimera states.">
+<meta property="og:image" content="https://blackman99.github.io/curio/phase-choir/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/favicon.svg">
+<style>
+html,body{margin:0;height:100%;background:#07040f;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#e8d8ff;touch-action:none}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#hud{position:fixed;left:20px;top:18px;pointer-events:none;text-shadow:0 1px 10px #000c}
+#hud h1{margin:0;font:800 32px/1 system-ui,sans-serif;letter-spacing:.14em;color:#f3e9ff;text-shadow:0 2px 0 #3a2858,0 0 22px #c9a0ff66}
+#hud .eq{margin:10px 0 0;font-size:13px;color:#dcc6ff;opacity:.94}
+#hud p{margin:6px 0 0;font-size:11.5px;opacity:.72;max-width:62ch;line-height:1.5}
+#rbar{position:fixed;right:18px;top:18px;width:220px;pointer-events:none}
+#rbar .lab{font-size:11px;opacity:.8;margin-bottom:6px;letter-spacing:.08em}
+#rbar .track{height:10px;background:#120a22cc;border:1px solid #c9a0ff55;border-radius:5px;overflow:hidden;box-shadow:0 0 18px #c9a0ff22}
+#rbar .fill{height:100%;width:0%;background:linear-gradient(90deg,#6b3cff,#c9a0ff,#ffe9ff);box-shadow:0 0 14px #c9a0ffaa}
+#rbar .val{margin-top:5px;font-size:11px;opacity:.75}
+#bar{position:fixed;left:20px;bottom:16px;font-size:12px;opacity:.88;max-width:min(92vw,860px);line-height:1.9}
+#bar button{background:#10081bcc;color:#e8d8ff;border:1px solid #c9a0ff77;border-radius:4px;padding:5px 10px;font:inherit;cursor:pointer;margin-right:4px}
+#bar button:hover{background:#c9a0ff26}
+#fps{position:fixed;right:16px;bottom:16px;font-size:11px;opacity:.5}
+a{color:#c9a0ff}
+#err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:20px;background:#07040f}
+@media (max-width:640px){#hud h1{font-size:22px}#rbar{width:150px;top:auto;bottom:110px}#hud p{display:none}}
+</style></head><body>
+<canvas id="gl"></canvas>
+<div id="hud"><h1>PHASE CHOIR</h1>
+<div class="eq">dθ<sub>i</sub>/dt = ω<sub>i</sub> + Σ<sub>j</sub> K<sub>ij</sub>(z)·sin(θ<sub>j</sub> − θ<sub>i</sub>)</div>
+<p>a Kuramoto lattice whose coupling is a tiny random neural map — spiral waves, chimera states, global sync<br>
+move = entrain neighbors · hold = frequency lock / whirlpool · click / space = re-roll coupling · P = palette · T = trails</p></div>
+<div id="rbar"><div class="lab">ORDER PARAMETER R</div><div class="track"><div class="fill" id="rfill"></div></div><div class="val" id="rval">R = — · sync —</div></div>
+<div id="bar"><button id="roll">Re-roll (space)</button><button id="pal">Palette (P)</button><button id="trail">Trails (T)</button>
+<a href="../">← cabinet</a> · random coupling / random natural frequencies — not a trained model · fully client-side · no API keys</div>
+<div id="fps"></div><div id="err">WebGL2 with float render targets is required for this demo.</div>
+<script>
+(()=>{
+const Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv=document.getElementById('gl');
+const gl=cv.getContext('webgl2',{antialias:false,preserveDrawingBuffer:true,alpha:false});
+if(!gl||!gl.getExtension('EXT_color_buffer_float')){document.getElementById('err').style.display='grid';return}
+gl.getExtension('OES_texture_float_linear');
+const S=Math.max(32,Math.min(192,+(Q.get('s')||96)|0));
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o}
+function prog(vs,fs){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));p.u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);p.u[a.name.replace('[0]','')]=gl.getUniformLocation(p,a.name)}return p}
+const VS=`#version 300 es
+void main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);gl_Position=vec4(p,0,1);}`;
+const H=6;
+const NET=`
+uniform float W1[30],B1[6],W2[18],B2[3];
+vec3 net(vec2 uv,vec2 m){
+  float x0=uv.x*2.-1.,x1=uv.y*2.-1.,x2=length(vec2(x0,x1)),x3=x0-m.x,x4=x1-m.y;
+  float h0=tanh(B1[0]+W1[0]*x0+W1[1]*x1+W1[2]*x2+W1[3]*x3+W1[4]*x4);
+  float h1=tanh(B1[1]+W1[5]*x0+W1[6]*x1+W1[7]*x2+W1[8]*x3+W1[9]*x4);
+  float h2=tanh(B1[2]+W1[10]*x0+W1[11]*x1+W1[12]*x2+W1[13]*x3+W1[14]*x4);
+  float h3=tanh(B1[3]+W1[15]*x0+W1[16]*x1+W1[17]*x2+W1[18]*x3+W1[19]*x4);
+  float h4=tanh(B1[4]+W1[20]*x0+W1[21]*x1+W1[22]*x2+W1[23]*x3+W1[24]*x4);
+  float h5=tanh(B1[5]+W1[25]*x0+W1[26]*x1+W1[27]*x2+W1[28]*x3+W1[29]*x4);
+  vec3 o=vec3(B2[0],B2[1],B2[2]);
+  o.x+=W2[0]*h0+W2[1]*h1+W2[2]*h2+W2[3]*h3+W2[4]*h4+W2[5]*h5;
+  o.y+=W2[6]*h0+W2[7]*h1+W2[8]*h2+W2[9]*h3+W2[10]*h4+W2[11]*h5;
+  o.z+=W2[12]*h0+W2[13]*h1+W2[14]*h2+W2[15]*h3+W2[16]*h4+W2[17]*h5;
+  o.x=.55+1.45*(.5+.5*tanh(o.x)); o.yz=tanh(o.yz); return o;
+}`;
+const sim=prog(VS,`#version 300 es
+precision highp float;
+uniform sampler2D Ph;uniform float dt,t,hold,S;uniform vec2 m;
+${NET}
+out vec4 o;
+float hash(vec2 c){return fract(sin(dot(c,vec2(127.1,311.7)))*43758.5453);}
+void main(){
+  ivec2 c=ivec2(gl_FragCoord.xy); int Si=int(S+.5);
+  vec4 s=texelFetch(Ph,c,0); float th=s.r,om=s.g;
+  vec2 uv=(vec2(c)+.5)/S; vec3 nk=net(uv,m); float K=nk.x*(1.+hold*1.35);
+  float coup=0.;
+  ivec2 ns[8]=ivec2[8](ivec2(1,0),ivec2(-1,0),ivec2(0,1),ivec2(0,-1),ivec2(1,1),ivec2(1,-1),ivec2(-1,1),ivec2(-1,-1));
+  for(int i=0;i<8;i++){
+    ivec2 q=c+ns[i]; q=ivec2((q.x+Si)%Si,(q.y+Si)%Si);
+    float tj=texelFetch(Ph,q,0).r; float w=i<4?1.:.42;
+    float an=1.+.55*dot(normalize(vec2(ns[i])),nk.yz);
+    coup+=w*an*sin(tj-th+nk.z*.35);
+  }
+  vec2 d=uv-vec2(m.x*.5+.5,m.y*.5+.5); float r=length(d); float env=exp(-r*r*52.);
+  float ang=atan(d.y,d.x); float tgt=ang*(1.15+hold*2.6)+t*(.65+hold*1.9);
+  float pull=env*(1.9+hold*5.8)*sin(tgt-th);
+  float whirl=hold*env*2.4*sin(ang*2.+t*1.5-th);
+  th=mod(th+(om*.55+K*coup*.52+pull+whirl)*dt+50.26548,6.2831853);
+  if(hash(vec2(c)+floor(t*3.)*.17)<.00007*(1.-hold)) th=mod(th+hash(vec2(c)*3.1-t)*6.2831853,6.2831853);
+  o=vec4(th,om,K,env);
+}`);
+const reduce=prog(VS,`#version 300 es
+precision highp float;uniform sampler2D Ph;uniform float S;uniform int stride;out vec4 o;
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);float cs=0.,sn=0.,n=0.;
+for(int dy=0;dy<16;dy++){if(dy>=stride)break;for(int dx=0;dx<16;dx++){if(dx>=stride)break;
+ivec2 q=c*stride+ivec2(dx,dy);if(q.x>=int(S)||q.y>=int(S))continue;float th=texelFetch(Ph,q,0).r;cs+=cos(th);sn+=sin(th);n+=1.;}}
+o=vec4(cs/max(n,1.),sn/max(n,1.),n,1.);}`);
+const reduce2=prog(VS,`#version 300 es
+precision highp float;uniform sampler2D Ph;uniform int srcS,stride;out vec4 o;
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);float cs=0.,sn=0.,n=0.;
+for(int dy=0;dy<16;dy++){if(dy>=stride)break;for(int dx=0;dx<16;dx++){if(dx>=stride)break;
+ivec2 q=c*stride+ivec2(dx,dy);if(q.x>=srcS||q.y>=srcS)continue;vec4 v=texelFetch(Ph,q,0);cs+=v.x*v.z;sn+=v.y*v.z;n+=v.z;}}
+o=vec4(cs/max(n,1.),sn/max(n,1.),n,1.);}`);
+const draw=prog(VS,`#version 300 es
+precision highp float;
+uniform sampler2D Ph,Prev;uniform vec2 uRes;uniform float t,trail,flash,pal,S,R;
+uniform vec3 cA,cB,cC;out vec4 o;
+void main(){
+  vec2 uv=gl_FragCoord.xy/uRes; vec4 s=texture(Ph,uv);
+  float th=s.r,K=s.b,env=s.a; vec2 px=1./vec2(S);
+  float tR=texture(Ph,uv+vec2(px.x,0)).r,tL=texture(Ph,uv-vec2(px.x,0)).r;
+  float tU=texture(Ph,uv+vec2(0,px.y)).r,tD=texture(Ph,uv-vec2(0,px.y)).r;
+  float sync=.5+.5*(cos(tR-th)+cos(tL-th)+cos(tU-th)+cos(tD-th))*.25;
+  float hue=fract(th/6.2831853+pal*.17+t*.008);
+  vec3 col=cA+cB*cos(6.2831853*(cC*hue+vec3(0.,.33,.67))); col=clamp(col,0.,1.6);
+  float sat=.55+.35*clamp(K/2.,0.,1.)+.25*env;
+  float val=.16+.72*pow(max(sync,0.),1.35)+.4*env+flash*.45+R*.12;
+  col=mix(vec3(val*.15),col*val,sat);
+  float grad=length(vec2(sin(tR-th)-sin(tL-th),sin(tU-th)-sin(tD-th)));
+  col+=cB*grad*.5+cA*env*(.2+.5*env);
+  vec2 cell=fract(uv*S); col+=cB*smoothstep(.02,0.,min(cell.x,cell.y))*.04*(.4+sync);
+  vec2 q=uv*2.-1.; col*=1.-.3*dot(q*.7,q*.7); col*=1.+flash*.6; col*=.85+.35*R;
+  col=col*(2.51*col+.03)/(col*(2.43*col+.59)+.14);
+  col=pow(clamp(col,0.,1.),vec3(1./2.2));
+  vec3 prev=texture(Prev,uv).rgb; col=mix(col,max(col,prev*.93),trail*.6);
+  col+=(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)-.5)/255.;
+  o=vec4(col,1);
+}`);
+const blit=prog(VS,`#version 300 es
+precision highp float;uniform sampler2D Src;uniform vec2 uRes;out vec4 o;
+void main(){o=texture(Src,gl_FragCoord.xy/uRes);}`);
+
+function maketex(w,h,data,filter){
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,data);
+  const fm=filter?gl.LINEAR:gl.NEAREST;
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,fm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,fm);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+  return{t,f,w,h};
+}
+function screenTex(w,h){
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+  return{t,f,w,h};
+}
+
+let seed=(+(Q.get('seed'))|0)||(Date.now()%100000)||11;const seed0=seed;
+function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+function gauss(){const u=Math.max(rnd(),1e-9),v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2831853*v)}
+
+const init=new Float32Array(S*S*4);
+for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+  const i=(y*S+x)*4,u=x/S,v=y/S;
+  const ang=Math.atan2(v-.5,u-.5),rad=Math.hypot(u-.5,v-.5);
+  init[i]=((ang*2.2+rad*14+rnd()*1.2)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+  init[i+1]=gauss()*.35+Math.sin(u*9.1)*.08+Math.cos(v*7.3)*.08;
+  init[i+2]=1;init[i+3]=0;
+}
+let A=maketex(S,S,init,false),B=maketex(S,S,null,false);
+/* filtered view of phases for display */
+const Af=maketex(S,S,null,true);
+const R1S=Math.ceil(S/4),R2S=Math.max(1,Math.ceil(R1S/4));
+let R1=maketex(R1S,R1S,null,false),R2=maketex(R2S,R2S,null,false),R3=maketex(1,1,null,false);
+gl.bindVertexArray(gl.createVertexArray());
+
+function genW(){
+  const o={W1:new Float32Array(30),B1:new Float32Array(6),W2:new Float32Array(18),B2:new Float32Array(3)};
+  for(let i=0;i<30;i++)o.W1[i]=gauss()*1.1;
+  for(let i=0;i<6;i++)o.B1[i]=gauss()*.4;
+  for(let i=0;i<18;i++)o.W2[i]=gauss()*.7;
+  for(let i=0;i<3;i++)o.B2[i]=gauss()*.3;
+  return o;
+}
+function copyW(src){const o={};for(const k in src)o[k]=src[k].slice?src[k].slice():new Float32Array(src[k]);return o}
+let Wprev=genW(),Wnext=copyW(Wprev),Wcur=copyW(Wprev),mixT=1,rolls=0,flash=0;
+function reroll(){Wprev=copyW(Wcur);Wnext=genW();mixT=0;flash=1;rolls++}
+function setW(dst,a,b,e){for(const k in a)for(let i=0;i<a[k].length;i++)dst[k][i]=a[k][i]+(b[k][i]-a[k][i])*e}
+
+const PAL=[
+  {n:'violet aurora',A:[.55,.35,.75],B:[.55,.45,.55],C:[.9,.7,1.1]},
+  {n:'gold',A:[.7,.45,.15],B:[.55,.4,.2],C:[1,.8,.4]},
+  {n:'cyan-magenta',A:[.3,.55,.7],B:[.5,.4,.55],C:[.2,.9,1]},
+  {n:'ember',A:[.65,.2,.12],B:[.55,.3,.15],C:[1.1,.55,.25]}
+];
+let palI=0;const pc={A:PAL[0].A.slice(),B:PAL[0].B.slice(),C:PAL[0].C.slice()};
+function lerpPal(k){const t=PAL[palI];for(const key of['A','B','C'])for(let i=0;i<3;i++)pc[key][i]+=(t[key][i]-pc[key][i])*k}
+
+let ptr=[0,0],ptrS=[0,0],hold=0,holdT=0,auto=true,lastIn=-99,downAt=0,downX=0,downY=0,trails=true,orderR=0;
+const now=()=>performance.now();
+function setPtr(x,y){ptr=[x/innerWidth*2-1,1-y/innerHeight*2];lastIn=t;auto=false}
+cv.addEventListener('pointermove',e=>setPtr(e.clientX,e.clientY));
+cv.addEventListener('pointerdown',e=>{holdT=1;downAt=now();downX=e.clientX;downY=e.clientY;setPtr(e.clientX,e.clientY);try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointerup',e=>{holdT=0;if(now()-downAt<280&&Math.hypot(e.clientX-downX,e.clientY-downY)<10)reroll()});
+cv.addEventListener('pointercancel',()=>holdT=0);
+const cycle=()=>{palI=(palI+1)%PAL.length};
+addEventListener('keydown',e=>{if(e.code==='Space'){reroll();e.preventDefault()}else if(e.key==='p'||e.key==='P')cycle();else if(e.key==='t'||e.key==='T')trails=!trails});
+document.getElementById('roll').onclick=e=>{e.stopPropagation();reroll()};
+document.getElementById('pal').onclick=e=>{e.stopPropagation();cycle()};
+document.getElementById('trail').onclick=e=>{e.stopPropagation();trails=!trails};
+
+let scale=Math.min(devicePixelRatio||1,1.5),scrA=null,scrB=null;
+function resize(){
+  cv.width=Math.max(2,Math.round(innerWidth*scale));cv.height=Math.max(2,Math.round(innerHeight*scale));
+  scrA=screenTex(cv.width,cv.height);scrB=screenTex(cv.width,cv.height);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,scrA.f);gl.clearColor(.03,.015,.06,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,scrB.f);gl.clear(gl.COLOR_BUFFER_BIT);
+}
+addEventListener('resize',resize);resize();
+
+let t=0,last=now(),fr=0,fa=0,nextAuto=5.5;window.__frame=0;
+const rfill=document.getElementById('rfill'),rval=document.getElementById('rval'),fpsEl=document.getElementById('fps');
+const rPix=new Float32Array(4);
+const ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+
+function uploadW(p){
+  gl.uniform1fv(p.u.W1,Wcur.W1);gl.uniform1fv(p.u.B1,Wcur.B1);
+  gl.uniform1fv(p.u.W2,Wcur.W2);gl.uniform1fv(p.u.B2,Wcur.B2);
+}
+function copyPhaseToFiltered(){
+  /* blit NEAREST A -> LINEAR Af via simple draw */
+  gl.bindFramebuffer(gl.FRAMEBUFFER,Af.f);gl.viewport(0,0,S,S);gl.disable(gl.BLEND);
+  gl.useProgram(blit);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,A.t);
+  gl.uniform1i(blit.u.Src,0);gl.uniform2f(blit.u.uRes,S,S);gl.drawArrays(gl.TRIANGLES,0,3);
+}
+
+function frame(ts){
+  const n=FIXED?last+1000/60:(ts||now());let dt=FIXED?1/60:Math.min(.05,(n-last)/1000);last=n;
+  const ts_=RM?.35:1;t+=dt*ts_;window.__frame++;
+  fa+=dt;fr++;if(fa>1){fpsEl.textContent=fr+' fps · '+S+'×'+S+' · '+cv.width+'×'+cv.height+(auto?' · autopilot':'');fr=0;fa=0}
+
+  if(t-lastIn>3.5)auto=true;
+  if(auto){
+    ptr=[Math.sin(t*.41)*.7+Math.sin(t*1.13)*.18,Math.cos(t*.33)*.5+Math.sin(t*.87)*.16];
+    holdT=Math.sin(t*.55)>.82?1:0;
+    if(!RM&&t>nextAuto){reroll();nextAuto=t+6.8+rnd()*2}
+  }
+  const k=1-Math.exp(-dt*7);
+  ptrS[0]+=(ptr[0]-ptrS[0])*k;ptrS[1]+=(ptr[1]-ptrS[1])*k;
+  hold+=(holdT-hold)*(1-Math.exp(-dt*8));
+  flash*=Math.exp(-dt*3.2);lerpPal(1-Math.exp(-dt*3.5));
+  if(mixT<1)mixT=Math.min(1,mixT+dt*1.15);
+  setW(Wcur,Wprev,Wnext,ease(mixT));
+
+  /* simulate */
+  gl.disable(gl.BLEND);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,B.f);gl.viewport(0,0,S,S);
+  gl.useProgram(sim);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,A.t);
+  gl.uniform1i(sim.u.Ph,0);gl.uniform1f(sim.u.dt,dt*ts_);gl.uniform1f(sim.u.t,t);
+  gl.uniform1f(sim.u.hold,hold);gl.uniform1f(sim.u.S,S);gl.uniform2f(sim.u.m,ptrS[0],ptrS[1]);
+  uploadW(sim);gl.drawArrays(gl.TRIANGLES,0,3);
+  [A,B]=[B,A];
+
+  /* order parameter reduce every few frames */
+  if(window.__frame%4===0){
+    gl.useProgram(reduce);gl.bindFramebuffer(gl.FRAMEBUFFER,R1.f);gl.viewport(0,0,R1S,R1S);
+    gl.bindTexture(gl.TEXTURE_2D,A.t);gl.uniform1i(reduce.u.Ph,0);gl.uniform1f(reduce.u.S,S);gl.uniform1i(reduce.u.stride,4);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.useProgram(reduce2);gl.bindFramebuffer(gl.FRAMEBUFFER,R2.f);gl.viewport(0,0,R2S,R2S);
+    gl.bindTexture(gl.TEXTURE_2D,R1.t);gl.uniform1i(reduce2.u.Ph,0);gl.uniform1i(reduce2.u.srcS,R1S);gl.uniform1i(reduce2.u.stride,4);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,R3.f);gl.viewport(0,0,1,1);
+    gl.bindTexture(gl.TEXTURE_2D,R2.t);gl.uniform1i(reduce2.u.srcS,R2S);gl.uniform1i(reduce2.u.stride,R2S);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.readPixels(0,0,1,1,gl.RGBA,gl.FLOAT,rPix);
+    orderR=Math.min(1,Math.hypot(rPix[0],rPix[1]));
+    rfill.style.width=(orderR*100).toFixed(1)+'%';
+    const label=orderR>.85?'locked':orderR>.55?'partial':orderR>.25?'chimera':'incoherent';
+    rval.textContent='R = '+orderR.toFixed(3)+' · '+label+' · '+PAL[palI].n+(rolls?' · +'+rolls:'');
+  }
+
+  copyPhaseToFiltered();
+
+  /* draw to scrA using previous scrB as trail buffer */
+  gl.bindFramebuffer(gl.FRAMEBUFFER,scrA.f);gl.viewport(0,0,cv.width,cv.height);
+  gl.useProgram(draw);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,Af.t);gl.uniform1i(draw.u.Ph,0);
+  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,scrB.t);gl.uniform1i(draw.u.Prev,1);
+  gl.uniform2f(draw.u.uRes,cv.width,cv.height);gl.uniform1f(draw.u.t,t);
+  gl.uniform1f(draw.u.trail,trails?.85:0);gl.uniform1f(draw.u.flash,flash);
+  gl.uniform1f(draw.u.pal,palI);gl.uniform1f(draw.u.S,S);gl.uniform1f(draw.u.R,orderR);
+  gl.uniform3fv(draw.u.cA,pc.A);gl.uniform3fv(draw.u.cB,pc.B);gl.uniform3fv(draw.u.cC,pc.C);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+
+  /* blit to screen */
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);
+  gl.useProgram(blit);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,scrA.t);
+  gl.uniform1i(blit.u.Src,0);gl.uniform2f(blit.u.uRes,cv.width,cv.height);gl.drawArrays(gl.TRIANGLES,0,3);
+  [scrA,scrB]=[scrB,scrA];
+
+  if(!FIXED)requestAnimationFrame(frame);
+}
+if(FIXED){window.step=n=>{for(let i=0;i<(n||1);i++)frame()};frame()}else requestAnimationFrame(frame);
+})();
+</script></body></html>

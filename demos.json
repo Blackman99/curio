@@ -1,10 +1,19 @@
 [
  {
+  "slug": "phase-choir",
+  "title": "Phase Choir",
+  "no": "005",
+  "date": "2026-10-12",
+  "kind": "Sync \u00b7 WebGL",
+  "blurb": "Kuramoto lattice whose coupling is a tiny random neural map. Move to entrain; click to re-roll the score.",
+  "color": "#c9a0ff"
+ },
+ {
   "slug": "latent-quicksilver",
   "title": "Latent Quicksilver",
   "no": "004",
   "date": "2026-10-12",
-  "kind": "Implicit fields · WebGL",
+  "kind": "Implicit fields \u00b7 WebGL",
   "blurb": "A liquid-metal isosurface of a random Fourier-feature field. Move to warp the latent; click to re-roll a new creature.",
   "color": "#7ee0ff"
  },
@@ -13,7 +22,7 @@
   "title": "Diffusion Bloom",
   "no": "003",
   "date": "2026-10-12",
-  "kind": "Diffusion · WebGL",
+  "kind": "Diffusion \u00b7 WebGL",
   "blurb": "Particles reverse-diffuse from noise into form. Move to condition the score field; click to re-noise and bloom again.",
   "color": "#ff6b9d"
  },
@@ -22,7 +31,7 @@
   "title": "Neural Storm",
   "no": "002",
   "date": "2026-10-12",
-  "kind": "Neural nets · WebGL",
+  "kind": "Neural nets \u00b7 WebGL",
   "blurb": "262,144 GPU particles ride the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.",
   "color": "#00b8d4"
  },
