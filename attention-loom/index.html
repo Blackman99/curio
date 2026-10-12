@@ -20,7 +20,7 @@ function hash(w){let h=2166136261;for(const ch of w.toLowerCase())h=Math.imul(h^
 function emb(w,i){const r=rng(hash(w));return Array.from({length:D},(_,k)=>r()+0.6*Math.sin(i/(1+k)))}
 function proj(seed){const r=rng(seed);return Array.from({length:D},()=>Array.from({length:D},r))}
 const mul=(M,v)=>M.map(row=>row.reduce((s,x,j)=>s+x*v[j],0));
-function compute(){toks=t.value.trim().split(/\s+/).slice(0,18);const hd=+h.value,T=+temp.value;
+function compute(){toks=t.value.trim().split(/\s+/).filter(Boolean).slice(0,18);if(hover>=toks.length)hover=toks.length-1;const hd=+h.value,T=+temp.value;
 const Q=proj(11+hd*7),K=proj(97+hd*13),E=toks.map(emb);const q=E.map(e=>mul(Q,e)),k=E.map(e=>mul(K,e));
 A=q.map(qi=>{const s=k.map(kj=>qi.reduce((a,x,d)=>a+x*kj[d],0)/Math.sqrt(D)/T/4);const m=Math.max(...s),ex=s.map(x=>Math.exp(x-m)),z=ex.reduce((a,b)=>a+b);return ex.map(x=>x/z)});draw()}
 function pos(i){return 40+(cv.clientWidth-80)*(toks.length<2?.5:i/(toks.length-1))}
