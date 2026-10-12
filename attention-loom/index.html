@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Attention Loom — a toy self-attention you can touch</title>
+<style>
+body{margin:0;background:#f3ead8;color:#2a1d14;font-family:Georgia,"Times New Roman",serif}
+header{padding:28px 6vw 8px}h1{font-size:44px;margin:0;letter-spacing:-1px}h1 em{color:#c0392b}
+p.sub{max-width:640px;font-style:italic;margin:6px 0 0}
+.ctl{padding:10px 6vw;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-family:"Courier New",monospace;font-size:14px}
+input[type=text]{flex:1;min-width:260px;font:18px Georgia;padding:8px;border:2px solid #2a1d14;background:#fffaf0}
+canvas{display:block;width:100%;height:440px}
+footer{padding:8px 6vw 30px;font-size:13px;font-family:"Courier New",monospace}
+</style></head><body>
+<header><h1>Attention <em>Loom</em></h1><p class="sub">Hover a word to see which other words it "attends" to. Each thread is weighted by a softmax over toy query·key scores — the same shape of math a transformer uses, at the size of a single sentence.</p></header>
+<div class="ctl"><input id="t" type="text" value="The cat sat on the mat because it was tired"><label>temperature <input id="temp" type="range" min="0.2" max="3" step="0.1" value="1"></label><label>head <select id="h"><option>0</option><option>1</option><option>2</option><option>3</option></select></label></div>
+<canvas id="c"></canvas>
+<footer>Toy model: embeddings are hashed from letters + position, not learned. Each head mixes them with a different random projection. Runs entirely in your browser. · <a href="https://github.com/Blackman99/ai-demos">source</a></footer>
+<script>
+const D=16,cv=c,ctx=cv.getContext('2d');let hover=-1,toks=[],A=[];
+function rng(s){return()=>(s=Math.imul(s^s>>>15,2246822507)+1013904223|0,((s>>>0)%10000)/5000-1)}
+function hash(w){let h=2166136261;for(const ch of w.toLowerCase())h=Math.imul(h^ch.charCodeAt(0),16777619);return h}
+function emb(w,i){const r=rng(hash(w));return Array.from({length:D},(_,k)=>r()+0.6*Math.sin(i/(1+k)))}
+function proj(seed){const r=rng(seed);return Array.from({length:D},()=>Array.from({length:D},r))}
+const mul=(M,v)=>M.map(row=>row.reduce((s,x,j)=>s+x*v[j],0));
+function compute(){toks=t.value.trim().split(/\s+/).slice(0,18);const hd=+h.value,T=+temp.value;
+const Q=proj(11+hd*7),K=proj(97+hd*13),E=toks.map(emb);const q=E.map(e=>mul(Q,e)),k=E.map(e=>mul(K,e));
+A=q.map(qi=>{const s=k.map(kj=>qi.reduce((a,x,d)=>a+x*kj[d],0)/Math.sqrt(D)/T/4);const m=Math.max(...s),ex=s.map(x=>Math.exp(x-m)),z=ex.reduce((a,b)=>a+b);return ex.map(x=>x/z)});draw()}
+function pos(i){return 40+(cv.clientWidth-80)*(toks.length<2?.5:i/(toks.length-1))}
+function draw(){const W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=440*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio);const y=300;
+const pal=['#c0392b','#1f5f8b','#2e7d32','#b9770e'];
+toks.forEach((_,i)=>{if(hover>=0&&i!==hover)return;A[i].forEach((w,j)=>{if(i===j)return;const x1=pos(i),x2=pos(j),mx=(x1+x2)/2,hgt=Math.abs(x2-x1)*.55;
+ctx.strokeStyle=pal[+h.value];ctx.globalAlpha=hover>=0?Math.min(1,w*2.2):w*.6;ctx.lineWidth=hover>=0?1+w*14:.5+w*4;ctx.beginPath();ctx.moveTo(x1,y);ctx.quadraticCurveTo(mx,y-hgt,x2,y);ctx.stroke()})});
+ctx.globalAlpha=1;ctx.textAlign='center';toks.forEach((w,i)=>{ctx.font=(i===hover?'bold ':'')+'18px Georgia';ctx.fillStyle='#2a1d14';ctx.save();ctx.translate(pos(i),y+18);ctx.rotate(.5);ctx.textAlign='left';ctx.fillText(w,0,0);ctx.restore();
+if(hover>=0){ctx.font='12px Courier New';ctx.fillStyle='#7a5c3e';ctx.fillText((A[hover][i]*100).toFixed(0)+'%',pos(i),y-6)}});}
+cv.onmousemove=e=>{const r=cv.getBoundingClientRect(),x=e.clientX-r.left;let b=-1,bd=1e9;toks.forEach((_,i)=>{const d=Math.abs(pos(i)-x);if(d<bd){bd=d;b=i}});hover=b;draw()};
+cv.onmouseleave=()=>{hover=-1;draw()};[t,temp,h].forEach(el=>el.oninput=compute);onresize=draw;
+hover=6;compute();
+</script></body></html>
