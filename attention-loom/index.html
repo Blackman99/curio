@@ -12,7 +12,7 @@ footer{padding:8px 6vw 30px;font-size:13px;font-family:"Courier New",monospace}
 <header><h1>Attention <em>Loom</em></h1><p class="sub">Hover a word to see which other words it "attends" to. Each thread is weighted by a softmax over toy query·key scores — the same shape of math a transformer uses, at the size of a single sentence.</p></header>
 <div class="ctl"><input id="t" type="text" value="The cat sat on the mat because it was tired"><label>temperature <input id="temp" type="range" min="0.2" max="3" step="0.1" value="1"></label><label>head <select id="h"><option>0</option><option>1</option><option>2</option><option>3</option></select></label></div>
 <canvas id="c"></canvas>
-<footer>Toy model: embeddings are hashed from letters + position, not learned. Each head mixes them with a different random projection. Runs entirely in your browser. · <a href="https://github.com/Blackman99/ai-demos">source</a></footer>
+<footer>Toy model: embeddings are hashed from letters + position, not learned. Each head mixes them with a different random projection. Runs entirely in your browser. · <a href="https://github.com/Blackman99/curio">source</a></footer>
 <script>
 const D=16,cv=c,ctx=cv.getContext('2d');let hover=-1,toks=[],A=[];
 function rng(s){return()=>(s=Math.imul(s^s>>>15,2246822507)+1013904223|0,((s>>>0)%10000)/5000-1)}
