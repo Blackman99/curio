@@ -1,1 +1,51 @@
-<!doctype html><meta charset="utf-8"><title>AI demos</title><body style="font-family:Georgia;background:#f3ead8;padding:40px"><h1>AI demos</h1><ul><li><a href="attention-loom/">Attention Loom</a> — a toy self-attention you can touch</li></ul>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Cabinet of AI Curiosities</title>
+<meta name="description" content="A growing cabinet of small, hands-on AI experiments that run in your browser. Open a drawer.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website"><meta property="og:title" content="The Cabinet of AI Curiosities">
+<meta property="og:description" content="Small, hands-on AI experiments that run in your browser. Open a drawer.">
+<meta property="og:url" content="https://blackman99.github.io/ai-demos/">
+<meta property="og:image" content="https://blackman99.github.io/ai-demos/assets/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="The Cabinet of AI Curiosities">
+<meta name="twitter:description" content="Small, hands-on AI experiments that run in your browser. Open a drawer."><meta name="twitter:image" content="https://blackman99.github.io/ai-demos/assets/og.png">
+<style>
+:root{--paper:#efe4cc;--ink:#1d1a16;--red:#c8321e;--wood:#6b3f22}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+background-image:radial-gradient(#0000 60%,#6b3f2222),repeating-linear-gradient(0deg,#0000 0 3px,#1d1a1606 3px 4px)}
+header{padding:56px 6vw 24px;border-bottom:6px double var(--ink);display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center}
+header img{width:120px;animation:spin 40s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.kicker{font:700 13px/1 "Courier New",monospace;letter-spacing:.3em;color:var(--red);text-transform:uppercase}
+h1{font-size:clamp(40px,7vw,96px);line-height:.92;margin:10px 0;font-weight:900;letter-spacing:-.02em}
+h1 em{font-style:italic;color:var(--red)}
+.lede{font-size:20px;max-width:46ch;margin:0}
+.cabinet{margin:48px 6vw;padding:22px;background:var(--wood);border-radius:4px;box-shadow:inset 0 0 0 6px #4a2a16,0 18px 0 -6px #3a2010;
+display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.drawer{position:relative;background:#d9c8a4;border:3px solid #3a2010;height:230px;perspective:900px;color:inherit;text-decoration:none;overflow:hidden}
+.front{position:absolute;inset:0;background:linear-gradient(#e6d6b2,#cdb88f);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+transition:transform .6s cubic-bezier(.3,1.4,.5,1);z-index:2}
+.label{background:var(--paper);border:2px solid var(--ink);padding:8px 16px;font-weight:800;font-size:20px;text-align:center;box-shadow:3px 3px 0 var(--ink)}
+.label small{display:block;font:700 11px "Courier New",monospace;letter-spacing:.2em;color:var(--red)}
+.knob{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e9c27a,#8a5a1c);border:2px solid #3a2010}
+.inside{position:absolute;inset:0;padding:22px;background:var(--paper);display:flex;flex-direction:column;justify-content:space-between}
+.inside p{margin:0;font-size:16px}.inside b{font:700 12px "Courier New",monospace;letter-spacing:.2em;color:var(--red)}
+.inside span{font-weight:800;border-bottom:3px solid var(--red);align-self:flex-start}
+.drawer:hover .front,.drawer:focus .front{transform:translateY(78%) }
+.empty .front{background:repeating-linear-gradient(45deg,#cdb88f 0 10px,#c4ae84 10px 20px)}.empty .label{opacity:.55}
+.drawer{animation:slidein .7s both}@keyframes slidein{from{transform:translateY(30px);opacity:0}}
+footer{padding:20px 6vw 60px;font:13px "Courier New",monospace;border-top:2px solid var(--ink);margin:0 6vw}
+a{color:var(--red)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<header><img src="assets/logo.svg" alt="Cabinet seal logo"><div><div class="kicker">Est. 2026 · Specimens of machine thought</div>
+<h1>The Cabinet of <em>AI&nbsp;Curiosities</em></h1><p class="lede">Small, hands-on experiments that run entirely in your browser. Hover a drawer to pull it open. New specimens arrive often.</p></div></header>
+<main class="cabinet" id="cab" aria-label="Demo gallery"></main>
+<footer>Built by <a href="https://github.com/Blackman99">Blackman99</a> · Source on <a href="https://github.com/Blackman99/ai-demos">GitHub</a> · Toys, not benchmarks: each demo explains its simplifications.</footer>
+<script>
+fetch('demos.json').then(r=>r.json()).then(list=>{
+ const cab=document.getElementById('cab');const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ list.sort((a,b)=>b.date.localeCompare(a.date)).forEach((d,i)=>{const a=document.createElement('a');a.className='drawer';a.href=d.slug+'/';a.style.animationDelay=i*90+'ms';
+ a.innerHTML=`<div class="inside"><b>No. ${esc(d.no)} · ${esc(d.kind)}</b><p>${esc(d.blurb)}</p><span>Open specimen →</span></div><div class="front"><div class="label"><small>No. ${esc(d.no)}</small>${esc(d.title)}</div><div class="knob"></div></div>`;cab.appendChild(a)});
+ const n=Math.max(0,8-list.length);for(let i=0;i<n;i++){const e=document.createElement('div');e.className='drawer empty';e.style.animationDelay=(list.length+i)*90+'ms';
+ e.innerHTML=`<div class="inside"><p>Specimen in preparation.</p></div><div class="front"><div class="label"><small>No. ${String(list.length+i+1).padStart(3,'0')}</small>Coming soon</div><div class="knob"></div></div>`;cab.appendChild(e)}
+});
+</script></body></html>
