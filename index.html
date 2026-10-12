@@ -82,7 +82,7 @@ function showViewer(i){const d=list[i];if(!d)return;V.open=i;const src='./'+enco
  f.addEventListener('load',()=>{try{f.contentWindow.addEventListener('keydown',e=>{if(e.key==='Escape'&&V.open>=0){e.preventDefault();closeExhibit()}})}catch(_){}});
  const slot=document.getElementById('vslot');slot.replaceChildren(f);V.if=f;document.getElementById('vno').textContent='No. '+d.no;document.getElementById('vtitle').textContent=d.title;
  document.getElementById('vkind').textContent=d.kind||'';document.getElementById('vnew').href=src;
- V.el.classList.add('on');void V.el.offsetWidth;setTimeout(()=>V.el.classList.add('show'),20);setTimeout(()=>{try{V.if.focus()}catch(_){}},400);document.title=d.title+' · The Cabinet of AI Curiosities'}
+ V.el.classList.add('on');void V.el.offsetWidth;setTimeout(()=>{if(V.open===i)V.el.classList.add('show')},20);setTimeout(()=>{try{V.if.focus()}catch(_){}},400);document.title=d.title+' · The Cabinet of AI Curiosities'}
 function hideViewer(cb){if(V.open<0){cb&&cb();return}const i=V.open;V.open=-1;V.el.classList.remove('show');document.title='The Cabinet of AI Curiosities';
  setTimeout(()=>{V.el.classList.remove('on');document.getElementById('vslot').replaceChildren();V.if=null;cb&&cb(i)},450)}
 function openExhibit(i,{push=true,instant=false}={}){if(i<0||!list[i]||V.open>=0||V.busy)return;
