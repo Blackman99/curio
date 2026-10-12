@@ -11,7 +11,7 @@
 <style>
 :root{--paper:#efe4cc;--ink:#1d1a16;--red:#c8321e;--brass:#d9a74a}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:#0b0806;color:var(--paper);font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;overflow:hidden}
-canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}canvas#c.hot{cursor:pointer}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}canvas#c.drag{cursor:grabbing}canvas#c.hot{cursor:pointer}
 .hud{position:fixed;pointer-events:none;z-index:3}
 #brand{top:22px;left:26px;display:flex;gap:16px;align-items:center}
 #brand img{width:66px;animation:spin 40s linear infinite;filter:drop-shadow(0 0 12px #c8321e66)}@keyframes spin{to{transform:rotate(360deg)}}
@@ -20,7 +20,7 @@ h1{margin:6px 0 0;font-size:clamp(24px,3.4vw,46px);line-height:.95;font-weight:9
 h1 em{color:var(--red);font-style:italic}
 #hint{bottom:22px;left:50%;transform:translateX(-50%);font:700 11px "Courier New",monospace;letter-spacing:.25em;text-transform:uppercase;color:#efe4cc99;white-space:nowrap}
 #card{left:50%;bottom:64px;transform:translate(-50%,12px);opacity:0;transition:.35s;max-width:min(520px,90vw);background:var(--paper);color:var(--ink);border:2px solid var(--ink);box-shadow:6px 6px 0 var(--red);padding:16px 20px}
-#card.on{opacity:1;transform:translate(-50%,0)}#card b{font:700 11px "Courier New",monospace;letter-spacing:.2em;color:var(--red)}
+#card.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}#card a{color:inherit;text-decoration:none;display:block}#card b{font:700 11px "Courier New",monospace;letter-spacing:.2em;color:var(--red)}
 #card h2{margin:4px 0 6px;font-size:26px}#card p{margin:0;font-size:16px}#card span{display:inline-block;margin-top:8px;font-weight:800;border-bottom:3px solid var(--red)}
 #index{top:24px;right:24px;display:flex;flex-direction:column;gap:6px;pointer-events:auto;text-align:right}
 #index a{font:700 11px "Courier New",monospace;letter-spacing:.18em;color:#efe4cc88;text-decoration:none}#index a:hover,#index a.cur{color:var(--brass)}
@@ -43,7 +43,7 @@ body.flat{overflow:auto}body.flat #list{display:block}body.flat .hud,body.flat c
 <div class="hud" id="brand"><img src="assets/logo.svg" alt="Cabinet seal logo"><div><div class="kicker">The Archive · Est. 2026</div><h1>The Cabinet of <em>AI&nbsp;Curiosities</em></h1></div></div>
 <nav class="hud" id="index" aria-label="Specimen index"></nav>
 <div class="hud" id="card" role="status" aria-live="polite"></div>
-<div class="hud" id="hint">Scroll or drag to walk the aisle · Click a case to open</div>
+<div class="hud" id="hint">Scroll to walk · Drag to look around · Click a case to open</div>
 <div class="hud" id="src"><a href="https://github.com/Blackman99/ai-demos">Source</a> · <a href="?list">List view</a></div>
 <main id="list"><header><img src="assets/logo.svg" alt="Cabinet seal logo"><div><div class="kicker" style="color:var(--red)">Specimens of machine thought</div><h1>The Cabinet of <em>AI&nbsp;Curiosities</em></h1><p>Small, hands-on experiments that run entirely in your browser.</p></div></header>
 <ul id="ul"></ul><p class="note">Built by <a href="https://github.com/Blackman99">Blackman99</a> · Source on <a href="https://github.com/Blackman99/ai-demos">GitHub</a> · Toys, not benchmarks: each demo explains its simplifications. · <a href="./">3D archive</a></p></main>
@@ -132,33 +132,51 @@ const spot=new THREE.PointLight(0xffd8a0,0,9,1.6);S.add(spot);
 const lantern=new THREE.PointLight(0xffb060,14,16,1.4);S.add(lantern);
 
 // index nav
-const nav=document.getElementById('index');nav.innerHTML=list.map((d,i)=>`<a href="${esc(d.slug)}/" data-i="${i}">No. ${esc(d.no)} ${esc(d.title)}</a>`).join('');
-nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();target=-(+a.dataset.i)*GAP-4+3.4}));
+const href=d=>'./'+encodeURIComponent(d.slug)+'/';
+const nav=document.getElementById('index');nav.innerHTML=list.map((d,i)=>`<a href="${esc(href(d))}" data-i="${i}">No. ${esc(d.no)} ${esc(d.title)}</a>`).join('');
+
 
 // travel
 const ZMAX=9,ZMIN=Math.min(-4,-(N-1)*GAP-4+3.4);let target=1.5,camZ=RM?1.5:30,t0=performance.now();
-const clampT=()=>target=Math.max(ZMIN-GAP,Math.min(ZMAX,target));
+const ray=new THREE.Raycaster();const clampT=()=>target=Math.max(ZMIN-GAP,Math.min(ZMAX,target));
 addEventListener('wheel',e=>{target-=e.deltaY*.012;clampT();e.preventDefault()},{passive:false});
-let drag=null,moved=0;const mouse=new THREE.Vector2(9,9),par={x:0,y:0};
-cv.addEventListener('pointerdown',e=>{drag={y:e.clientY,x:e.clientX,t:target};moved=0;cv.setPointerCapture(e.pointerId)});
-cv.addEventListener('pointermove',e=>{mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);par.x=mouse.x;par.y=mouse.y;
- if(drag){const dy=e.clientY-drag.y,dx=e.clientX-drag.x;moved=Math.max(moved,Math.hypot(dx,dy));target=drag.t+dy*.03;clampT()}});
-cv.addEventListener('pointerup',()=>{const was=drag;drag=null;if(was&&moved<6&&hover>=0)location.href=list[hover].slug+'/'});
-addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='w')target-=GAP/2;if(e.key==='ArrowDown'||e.key==='s')target+=GAP/2;clampT();if(e.key==='Enter'&&hover>=0)location.href=list[hover].slug+'/'});
+// look: mouse/drag only rotate the camera; position moves only via wheel / keys / two-finger touch
+const mouse=new THREE.Vector2(9,9),look={yaw:0,pitch:0},glance={x:0,y:0};let yawT=0,pitchT=0;
+const YAWMAX=1.25,PMAX=.55,PMIN=-.45;const clampL=()=>{yawT=Math.max(-YAWMAX,Math.min(YAWMAX,yawT));pitchT=Math.max(PMIN,Math.min(PMAX,pitchT))};
+let drag=null;const touches=new Map();let pinchY=null;
+const setMouse=e=>mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+const pick=()=>{ray.setFromCamera(mouse,cam);const h=ray.intersectObjects(hits,false)[0];return (h&&h.distance<16)?h.object.userData.i:-1};
+const go=i=>{if(i>=0&&list[i])location.href=href(list[i])};
+cv.addEventListener('pointerdown',e=>{if(e.button>0)return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(touches.size===2){drag=null;pinchY=[...touches.values()].reduce((a,t)=>a+t.y,0)/2;return}
+ drag={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,moved:0};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{setMouse(e);if(touches.has(e.pointerId))touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(touches.size===2&&pinchY!=null){const y=[...touches.values()].reduce((a,t)=>a+t.y,0)/2;target-=(y-pinchY)*.04;pinchY=y;clampT();return}
+ if(drag){const dx=e.clientX-drag.lx,dy=e.clientY-drag.ly;drag.lx=e.clientX;drag.ly=e.clientY;drag.moved=Math.max(drag.moved,Math.hypot(e.clientX-drag.x,e.clientY-drag.y));
+  if(drag.moved>5){yawT-=dx*.004;pitchT-=dy*.004;clampL();cv.classList.add('drag')}}
+ else if(e.pointerType==='mouse'){glance.x=mouse.x;glance.y=mouse.y}});
+const end=e=>{touches.delete(e.pointerId);if(touches.size<2)pinchY=null;const was=drag;drag=null;cv.classList.remove('drag');
+ if(e.type==='pointerup'&&was&&was.moved<=5){setMouse(e);go(pick())}};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!drag){glance.x=glance.y=0;mouse.set(9,9)}});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='arrowup'||k==='w')target-=GAP/2;if(k==='arrowdown'||k==='s')target+=GAP/2;
+ if(k==='arrowleft'||k==='a')yawT+=.2;if(k==='arrowright'||k==='d')yawT-=.2;clampT();clampL();if(e.key==='Enter'&&hover>=0)go(hover)});
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 
-const ray=new THREE.Raycaster(),card=document.getElementById('card');let hover=-1,shown=-1;
+const card=document.getElementById('card');let hover=-1,shown=-1;
 const showCard=i=>{if(i===shown)return;shown=i;if(i<0){card.classList.remove('on');return}const d=list[i];
- card.innerHTML=`<b>No. ${esc(d.no)} · ${esc(d.kind)}</b><h2>${esc(d.title)}</h2><p>${esc(d.blurb)}</p><span>Click the case to open →</span>`;card.classList.add('on')};
+ card.innerHTML=`<a href="${esc(href(d))}"><b>No. ${esc(d.no)} · ${esc(d.kind)}</b><h2>${esc(d.title)}</h2><p>${esc(d.blurb)}</p><span>Open the exhibit →</span></a>`;card.classList.add('on')};
 document.getElementById('veil').style.opacity=0;
+window.__archive={cam,ex,THREE,get target(){return target}};
 let last=performance.now();
 R.setAnimationLoop(()=>{const now=performance.now(),dt=Math.min(.05,(now-last)/1000),T=(now-t0)/1000;last=now;
  const intro=RM?1:Math.min(1,T/3.2),ease=1-Math.pow(1-intro,3);
  if(intro<1)camZ=30+(target-30)*ease;else camZ+=(target-camZ)*(RM?1:Math.min(1,dt*3.5));
  const camY=1.75+(1-ease)*9+Math.sin(T*1.3)*.02*(RM?0:1);
- cam.position.set(par.x*.4,camY+par.y*.2,camZ);cam.lookAt(par.x*1.2,1.6+(1-ease)*-1,camZ-8);cam.rotation.z+=(1-ease)*.15;
+ const k=RM?1:Math.min(1,dt*6);look.yaw+=(yawT-glance.x*.35-look.yaw)*k;look.pitch+=(pitchT+glance.y*.2-look.pitch)*k;
+ cam.position.set(0,camY,camZ);cam.rotation.set(0,0,0,'YXZ');cam.rotation.y=look.yaw;cam.rotation.x=look.pitch-(1-ease)*.9+.0;cam.rotation.z=(1-ease)*.15;
  lantern.position.set(0,3.2,camZ-3);
- ray.setFromCamera(mouse,cam);const h=ray.intersectObjects(hits)[0];hover=(h&&h.distance<14&&!drag)?h.object.userData.i:-1;cv.classList.toggle('hot',hover>=0);
+ cam.updateMatrixWorld();hover=(drag&&drag.moved>5)?-1:pick();cv.classList.toggle('hot',hover>=0);
  let near=-1,nd=1e9;ex.forEach((e,i)=>{const dd=Math.abs(e.z-(camZ-3.4));if(dd<nd){nd=dd;near=i}});
  const focus=hover>=0?hover:(nd<2.2?near:-1);showCard(focus);
  nav.querySelectorAll('a').forEach((a,i)=>a.classList.toggle('cur',i===near));
