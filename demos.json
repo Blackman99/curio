@@ -1,10 +1,19 @@
 [
  {
+  "slug": "diffusion-bloom",
+  "title": "Diffusion Bloom",
+  "no": "003",
+  "date": "2026-10-12",
+  "kind": "Diffusion · WebGL",
+  "blurb": "Particles reverse-diffuse from noise into form. Move to condition the score field; click to re-noise and bloom again.",
+  "color": "#ff6b9d"
+ },
+ {
   "slug": "neural-storm",
   "title": "Neural Storm",
   "no": "002",
   "date": "2026-10-12",
-  "kind": "Neural nets \u00b7 WebGL",
+  "kind": "Neural nets · WebGL",
   "blurb": "262,144 GPU particles ride the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.",
   "color": "#00b8d4"
  },

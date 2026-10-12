@@ -1,0 +1,168 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diffusion Bloom — reverse-diffusion from noise into form</title>
+<meta name="description" content="GPU particles reverse-diffuse from pure noise into coherent shapes. Move to condition the score field; click to re-noise and bloom again.">
+<meta property="og:title" content="Diffusion Bloom"><meta property="og:description" content="Particles reverse-diffuse from noise into form. Move to condition the score; click to re-bloom.">
+<meta property="og:image" content="https://blackman99.github.io/ai-demos/diffusion-bloom/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/favicon.svg">
+<style>
+html,body{margin:0;height:100%;background:#050208;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#fad}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{position:fixed;left:20px;top:18px;pointer-events:none;text-shadow:0 0 12px #f6a8,0 0 28px #f0c}
+#hud h1{margin:0;font:800 34px/1 system-ui,sans-serif;letter-spacing:.1em;background:linear-gradient(100deg,#ff6b9d,#ffc46b,#c86bff,#6bfff0);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px #ff6b9d88)}
+#hud p{margin:8px 0 0;font-size:12px;opacity:.78;max-width:52ch;line-height:1.45}
+#meter{position:fixed;left:20px;top:110px;width:180px;height:8px;background:#fff1;border:1px solid #ff6b9d55;border-radius:4px;overflow:hidden;pointer-events:none}
+#meter>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff6b9d,#ffc46b,#6bfff0);box-shadow:0 0 12px #ff6b9d;transition:width .05s linear}
+#ml{position:fixed;left:20px;top:122px;font-size:10px;opacity:.55;pointer-events:none;letter-spacing:.08em}
+#bar{position:fixed;left:20px;bottom:16px;font-size:12px;opacity:.85;max-width:min(90vw,720px);line-height:1.5}
+#bar button{background:#1a0812aa;color:#fad;border:1px solid #ff6b9d88;border-radius:4px;padding:5px 10px;font:inherit;cursor:pointer;margin-right:6px}
+#bar button:hover{background:#ff6b9d33}
+#fps{position:fixed;right:16px;bottom:16px;font-size:11px;opacity:.5}
+a{color:#ff9ec0}
+#err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:20px;background:#050208;color:#fad}
+</style></head><body>
+<canvas id="gl"></canvas>
+<div id="hud"><h1>DIFFUSION BLOOM</h1><p><span id="count"></span> particles reverse-diffusing from noise into form<br>move = condition score · hold = stronger attractor · click / space = re-noise &amp; bloom</p></div>
+<div id="meter"><i id="tbar"></i></div><div id="ml">noise level t · <span id="tv">1.00</span></div>
+<div id="bar"><button id="bloom">Re-bloom (space)</button><button id="pal">Palette (P)</button><button id="trail">Trails (T)</button>
+<a href="../">← cabinet</a> · toy score network with random weights — not a trained diffusion model · fully client-side · no API keys</div>
+<div id="fps"></div><div id="err">WebGL2 with float render targets is required.</div>
+<script>
+const Q=new URLSearchParams(location.search);
+const cv=document.getElementById('gl'),gl=cv.getContext('webgl2',{antialias:false,preserveDrawingBuffer:true});
+if(!gl||!gl.getExtension('EXT_color_buffer_float')){document.getElementById('err').style.display='grid';throw 0}
+const S=Math.max(64,Math.min(1024,+(Q.get('s')||512)|0)),N=S*S;
+document.getElementById('count').textContent=N.toLocaleString('en-US');
+const FIXED=Q.has('fixed');
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o}
+function prog(v,f){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));p.u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);p.u[a.name.replace('[0]','')]=gl.getUniformLocation(p,a.name)}return p}
+const H=8;
+/* Score MLP: inputs = pos(2), noise t, mouse delta(2), sin/cos phase → residual score */
+const SCORE=`uniform float W1[${7*H}],B1[${H}],W2[${H*H}],B2[${H}],W3[${2*H}];
+vec2 scoreMLP(vec2 p,float nt,vec2 m){
+  float x[7];x[0]=p.x;x[1]=p.y;x[2]=nt;x[3]=p.x-m.x;x[4]=p.y-m.y;x[5]=sin(nt*6.283+length(p)*3.);x[6]=cos(nt*4.+atan(p.y,p.x));
+  float h[${H}];for(int j=0;j<${H};j++){float s=B1[j];for(int i=0;i<7;i++)s+=W1[j*7+i]*x[i];h[j]=tanh(s);}
+  float g[${H}];for(int j=0;j<${H};j++){float s=B2[j];for(int i=0;i<${H};i++)s+=W2[j*${H}+i]*h[i];g[j]=tanh(s);}
+  vec2 o=vec2(0);for(int i=0;i<${H};i++){o.x+=W3[i]*g[i];o.y+=W3[${H}+i]*g[i];}return o;}
+/* Analytic score: pull toward soft flower / spiral structure around mouse, stronger as nt↓ */
+vec2 scoreAnalytic(vec2 p,float nt,vec2 m,float hold){
+  vec2 d=p-m;float r=length(d)+1e-4;float ang=atan(d.y,d.x);
+  float petals=sin(ang*5.+nt*2.)*0.35;
+  float targetR=mix(0.55+petals*0.25,0.12,hold*0.7);
+  vec2 radial=normalize(d)*(targetR-r);
+  vec2 tang=vec2(-d.y,d.x)/r*(0.35+hold*0.9);
+  /* soft multi-lobe attractors that bloom as noise drops */
+  float bloom=1.-nt;
+  vec2 lobes=vec2(0);
+  for(int k=0;k<5;k++){
+    float a=float(k)*1.2566+nt*0.8;
+    vec2 c=m+vec2(cos(a),sin(a))*(0.28+0.18*bloom);
+    vec2 dd=c-p;float rr=dot(dd,dd)+0.02;
+    lobes+=dd/rr*0.08*bloom;
+  }
+  return (radial*1.4+tang+lobes)*(0.4+bloom*1.6);
+}`;
+const QV=`#version 300 es
+void main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);gl_Position=vec4(p,0,1);}`;
+const sim=prog(QV,`#version 300 es
+precision highp float;uniform sampler2D P;uniform float nt,dt,hold,aspect,reseed;uniform vec2 m;
+${SCORE}
+layout(location=0) out vec4 o;
+float h1(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}
+vec2 gauss(vec2 c){float u=max(h1(c),1e-6),v=h1(c+19.19);float r=sqrt(-2.*log(u));float a=6.2831853*v;return vec2(cos(a),sin(a))*r;}
+void main(){
+  ivec2 c=ivec2(gl_FragCoord.xy);vec4 s=texelFetch(P,c,0);vec2 p=s.xy;vec2 v=s.zw;
+  if(reseed>0.5){p=gauss(vec2(c)+reseed*17.)*1.15;v=vec2(0);o=vec4(p,v);return;}
+  /* reverse-diffusion ODE: dx = [score_analytic + MLP residual] * sigma(t) dt  +  mild noise */
+  vec2 scA=scoreAnalytic(p,nt,m,hold);
+  vec2 scM=scoreMLP(p*1.2,nt,m*1.2)*0.55;
+  vec2 score=scA+scM;
+  float sigma=0.15+nt*1.1; /* larger steps early (noisy), finer near structure */
+  v=v*mix(0.88,0.96,1.-nt)+score*dt*sigma*(1.2+hold*0.8);
+  /* Brownian kick fades with t */
+  v+=gauss(vec2(c)+nt*100.+p)*nt*0.55*dt*12.;
+  p+=v*dt;
+  /* soft wrap / respawn outliers */
+  float k=h1(vec2(c)*0.7+nt*3.);
+  if(abs(p.x)>1.45||abs(p.y)>1.45){p=gauss(vec2(c)+nt)*mix(0.9,0.25,1.-nt);v*=0.2;}
+  o=vec4(p,v);
+}`);
+const draw=prog(`#version 300 es
+precision highp float;uniform sampler2D P;uniform int S;uniform float pal,sz,nt,bloom;
+out vec3 col;
+vec3 palFun(float h){
+  /* vivid bloom palettes */
+  vec3 a=vec3(.5),b=vec3(.5),c=vec3(1.),d=vec3(0.,.33,.67);
+  if(pal<1.){a=vec3(.5);b=vec3(.5);c=vec3(1.,.7,.4);d=vec3(.0,.15,.6);}
+  else if(pal<2.){a=vec3(.5);b=vec3(.5);c=vec3(1.,1.,1.);d=vec3(.3,.2,.2);}
+  else if(pal<3.){a=vec3(.5);b=vec3(.5);c=vec3(1.,.8,1.);d=vec3(.0,.5,.5);}
+  else{a=vec3(.55);b=vec3(.45);c=vec3(1.,.9,.5);d=vec3(.15,.35,.55);}
+  return a+b*cos(6.28318*(c*h+d));
+}
+void main(){
+  ivec2 c=ivec2(gl_VertexID%S,gl_VertexID/S);vec4 s=texelFetch(P,c,0);
+  gl_Position=vec4(s.x,s.y,0,1);
+  float sp=length(s.zw);
+  float glow=mix(1.6,0.7,nt)+bloom*2.;
+  gl_PointSize=sz*glow*(0.7+sp*0.4);
+  float h=pal*.17+atan(s.y,s.x)/6.283+.5+sp*.08+nt*.2;
+  col=palFun(h)*(.15+sp*1.4+ (1.-nt)*.35);
+}`,
+`#version 300 es
+precision highp float;in vec3 col;out vec4 o;
+void main(){
+  vec2 uv=gl_PointCoord*2.-1.;float r=dot(uv,uv);
+  if(r>1.)discard;
+  float soft=exp(-r*2.8)*(1.-r);
+  o=vec4(col*soft,1);
+}`);
+const fade=prog(QV,`#version 300 es
+precision highp float;uniform float a;out vec4 o;void main(){o=vec4(0.02,0.01,0.03,a);}`);
+function tex(d){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,S,S,0,gl.RGBA,gl.FLOAT,d);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,f}}
+function gaussNoise(i){const u=Math.max(Math.random(),1e-6),v=Math.random();const r=Math.sqrt(-2*Math.log(u));const a=6.2831853*v;return[Math.cos(a)*r,Math.sin(a)*r]}
+const init=new Float32Array(N*4);for(let i=0;i<N;i++){const[gx,gy]=gaussNoise(i);init[i*4]=gx*1.1;init[i*4+1]=gy*1.1;init[i*4+2]=0;init[i*4+3]=0}
+let A=tex(init),B=tex(null);gl.bindVertexArray(gl.createVertexArray());
+let seed=+(Q.get('seed')||(Date.now()%100000));function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+function g(){return(rnd()+rnd()+rnd()-1.5)*1.4}
+function gen(){const o={W1:[],B1:[],W2:[],B2:[],W3:[]};for(let i=0;i<7*H;i++)o.W1.push(g()*1.2);for(let i=0;i<H;i++)o.B1.push(g()*.4),o.B2.push(g()*.4);for(let i=0;i<H*H;i++)o.W2.push(g()*.8);for(let i=0;i<2*H;i++)o.W3.push(g()*.55);return o}
+let W=gen();
+let noiseT=1,reseed=0,flash=0,palette=0,trails=true;
+function rebloom(){noiseT=1;reseed=1;flash=1;W=gen()}
+let mouse=[0,0],tm=[0,0],hold=0,holdT=0,downAt=0,auto=!Q.has('noauto');
+function mv(x,y){tm=[x/innerWidth*2-1,1-y/innerHeight*2];auto=false}
+addEventListener('pointermove',e=>mv(e.clientX,e.clientY));
+addEventListener('pointerdown',e=>{mv(e.clientX,e.clientY);holdT=1;downAt=performance.now()});
+addEventListener('pointerup',e=>{holdT=0;if(performance.now()-downAt<250&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='A')rebloom()});
+addEventListener('keydown',e=>{if(e.code==='Space'){rebloom();e.preventDefault()}if(e.key==='p'||e.key==='P')palette=(palette+1)%4;if(e.key==='t'||e.key==='T')trails=!trails});
+document.getElementById('bloom').onclick=e=>{e.stopPropagation();rebloom()};
+document.getElementById('pal').onclick=()=>palette=(palette+1)%4;
+document.getElementById('trail').onclick=()=>trails=!trails;
+function resize(){const d=Math.min(devicePixelRatio||1,2);cv.width=innerWidth*d;cv.height=innerHeight*d}addEventListener('resize',resize);resize();
+const tbar=document.getElementById('tbar'),tv=document.getElementById('tv'),fpsEl=document.getElementById('fps');
+let t=0,last=performance.now(),fr=0,fa=0;window.__frame=0;
+function frame(now){
+  const dt=FIXED?1/60:Math.min(.033,(now-last)/1000);last=now;t+=dt;window.__frame++;
+  fa+=dt;fr++;if(fa>1){fpsEl.textContent=fr+' fps';fr=0;fa=0}
+  if(auto){tm=[Math.sin(t*.55)*.5+Math.sin(t*1.3)*.15,Math.cos(t*.7)*.4+Math.sin(t*.9)*.12];holdT=(Math.sin(t*.65)>.55)?1:0;if(Math.floor(t/5.5)!=Math.floor((t-dt)/5.5))rebloom()}
+  mouse[0]+=(tm[0]-mouse[0])*.12;mouse[1]+=(tm[1]-mouse[1])*.12;hold+=(holdT-hold)*.12;
+  /* noise schedule: exponential decay toward structure */
+  noiseT=Math.max(0.02,noiseT*Math.exp(-dt*0.55));
+  flash*=.9;
+  tbar.style.width=(noiseT*100)+'%';tv.textContent=noiseT.toFixed(2);
+  const asp=cv.width/cv.height;
+  gl.useProgram(sim);gl.bindFramebuffer(gl.FRAMEBUFFER,B.f);gl.viewport(0,0,S,S);gl.disable(gl.BLEND);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,A.t);
+  gl.uniform1i(sim.u.P,0);gl.uniform1f(sim.u.nt,noiseT);gl.uniform1f(sim.u.dt,dt);gl.uniform1f(sim.u.hold,hold);
+  gl.uniform1f(sim.u.aspect,asp);gl.uniform1f(sim.u.reseed,reseed);gl.uniform2f(sim.u.m,mouse[0],mouse[1]);
+  for(const k in W)gl.uniform1fv(sim.u[k],W[k]);
+  gl.drawArrays(gl.TRIANGLES,0,3);[A,B]=[B,A];reseed=0;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.useProgram(fade);gl.uniform1f(fade.u.a,trails?.14:1);gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(draw);gl.bindTexture(gl.TEXTURE_2D,A.t);
+  gl.uniform1i(draw.u.P,0);gl.uniform1i(draw.u.S,S);gl.uniform1f(draw.u.pal,palette+t*.015);
+  gl.uniform1f(draw.u.sz,(devicePixelRatio>1?2.2:1.8)*(1+flash*0.8));
+  gl.uniform1f(draw.u.nt,noiseT);gl.uniform1f(draw.u.bloom,flash);
+  gl.drawArrays(gl.POINTS,0,N);
+  if(!FIXED)requestAnimationFrame(frame);
+}
+if(FIXED)window.step=n=>{for(let i=0;i<n;i++)frame(performance.now())};else requestAnimationFrame(frame);
+</script></body></html>
