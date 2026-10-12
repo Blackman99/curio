@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neural Storm — 262,144 particles riding a neural network</title>
+<meta name="description" content="262,144 GPU particles flowing through the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.">
+<meta property="og:title" content="Neural Storm"><meta property="og:description" content="262k GPU particles riding the output of a live neural network. Move, click, hold.">
+<meta property="og:image" content="https://blackman99.github.io/ai-demos/neural-storm/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/favicon.svg">
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#cfe}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#net{pointer-events:none}
+#hud{position:fixed;left:20px;top:18px;pointer-events:none;text-shadow:0 0 8px #0ff8}
+#hud h1{margin:0;font:700 34px/1 system-ui,sans-serif;letter-spacing:.12em;background:linear-gradient(90deg,#0ff,#f0f,#ff0);-webkit-background-clip:text;background-clip:text;color:transparent}
+#hud p{margin:6px 0 0;font-size:12px;opacity:.75}
+#bar{position:fixed;left:20px;bottom:16px;font-size:12px;opacity:.8}
+#bar button{background:#0008;color:#cfe;border:1px solid #0ff6;border-radius:4px;padding:5px 10px;font:inherit;cursor:pointer;margin-right:6px}
+#bar button:hover{background:#0ff3}
+#fps{position:fixed;right:16px;bottom:16px;font-size:11px;opacity:.5}
+a{color:#0ff}
+#err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:20px}
+</style></head><body>
+<canvas id="gl"></canvas><canvas id="net"></canvas>
+<div id="hud"><h1>NEURAL STORM</h1><p><span id="count"></span> particles riding the vector field of a live neural network<br>move = bend its inputs · click = mutate weights · hold = gravity well</p></div>
+<div id="bar"><button id="mut">Mutate (space)</button><button id="pal">Palette (P)</button><button id="trail">Trails (T)</button><a href="../">← cabinet</a> · random weights, not trained: a CPPN-style 6→8→8→2 MLP evaluated per particle on the GPU</div>
+<div id="fps"></div><div id="err">WebGL2 with float render targets is required.</div>
+<script>
+const Q=new URLSearchParams(location.search);
+const cv=document.getElementById('gl'),gl=cv.getContext('webgl2',{antialias:false,preserveDrawingBuffer:true});
+if(!gl||!gl.getExtension('EXT_color_buffer_float')){document.getElementById('err').style.display='grid';throw 0}
+const S=+(Q.get('s')||512),N=S*S;document.getElementById('count').textContent=N.toLocaleString('en-US');
+const FIXED=Q.has('fixed');
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o}
+function prog(v,f){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw gl.getProgramInfoLog(p);p.u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);p.u[a.name.replace('[0]','')]=gl.getUniformLocation(p,a.name)}return p}
+const H=8;
+const NET=`uniform float W1[${6*H}],B1[${H}],W2[${H*H}],B2[${H}],W3[${2*H}];
+vec2 net(vec2 p,float t,vec2 m){float x[6];x[0]=p.x;x[1]=p.y;x[2]=length(p);x[3]=sin(t*.3);x[4]=p.x-m.x;x[5]=p.y-m.y;
+float h[${H}];for(int j=0;j<${H};j++){float s=B1[j];for(int i=0;i<6;i++)s+=W1[j*6+i]*x[i];h[j]=tanh(s);}
+float g[${H}];for(int j=0;j<${H};j++){float s=B2[j];for(int i=0;i<${H};i++)s+=W2[j*${H}+i]*h[i];g[j]=sin(s*1.6);}
+vec2 o=vec2(0);for(int i=0;i<${H};i++){o.x+=W3[i]*g[i];o.y+=W3[${H}+i]*g[i];}return o;}`;
+const QV=`#version 300 es
+void main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);gl_Position=vec4(p,0,1);}`;
+const sim=prog(QV,`#version 300 es
+precision highp float;uniform sampler2D P;uniform float t,dt,hold,aspect;uniform vec2 m;${NET}
+layout(location=0) out vec4 o;
+float h1(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}
+void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec4 s=texelFetch(P,c,0);vec2 p=s.xy;vec2 v=s.zw;
+vec2 f=net(p*1.3,t,m*1.3);
+vec2 d=m-p;d.x*=aspect;float r=length(d)+.03;
+v=v*.94+f*dt*1.6;
+v+=normalize(d)*dt*(hold*1.8/r - .25/(r*r*40.+1.))/1.0;
+v+=vec2(-d.y,d.x)*dt*hold*3.;
+p+=v*dt;
+float k=h1(vec2(c)+t);if(abs(p.x)>1.25||abs(p.y)>1.25||k<.0015){p=vec2(h1(vec2(c)*1.3+t),h1(vec2(c)*.7-t))*2.-1.;v=vec2(0);}
+o=vec4(p,v);}`);
+const draw=prog(`#version 300 es
+precision highp float;uniform sampler2D P;uniform int S;uniform float aspect,pal,sz;out vec3 col;
+vec3 hsv(float h){return clamp(abs(fract(h+vec3(0,2,1)/3.)*6.-3.)-1.,0.,1.);}
+void main(){ivec2 c=ivec2(gl_VertexID%S,gl_VertexID/S);vec4 s=texelFetch(P,c,0);
+gl_Position=vec4(s.x/max(aspect,1.)*max(1.,1.),s.y*min(aspect,1.),0,1);gl_Position.x=s.x;gl_Position.y=s.y;
+float sp=length(s.zw);gl_PointSize=sz;
+col=mix(hsv(pal+atan(s.w,s.z)/6.283*.35),vec3(1),clamp(sp*.6-.2,0.,.8))*(.25+sp*1.2);}`,
+`#version 300 es
+precision highp float;in vec3 col;out vec4 o;void main(){o=vec4(col*.09,1);}`);
+const fade=prog(QV,`#version 300 es
+precision highp float;uniform float a;out vec4 o;void main(){o=vec4(0,0,0,a);}`);
+function tex(d){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,S,S,0,gl.RGBA,gl.FLOAT,d);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,f}}
+const init=new Float32Array(N*4);for(let i=0;i<N;i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*.15;init[i*4]=Math.cos(a)*r;init[i*4+1]=Math.sin(a)*r;init[i*4+2]=Math.cos(a)*2*Math.random();init[i*4+3]=Math.sin(a)*2*Math.random();}
+let A=tex(init),B=tex(null);gl.bindVertexArray(gl.createVertexArray());
+// network weights
+let seed=+(Q.get('seed')||Date.now()%100000);function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+function g(){return (rnd()+rnd()+rnd()-1.5)*1.6}
+let W={},Wt={};function gen(){const o={W1:[],B1:[],W2:[],B2:[],W3:[]};for(let i=0;i<6*H;i++)o.W1.push(g()*1.6);for(let i=0;i<H;i++)o.B1.push(g()*.5),o.B2.push(g()*.5);for(let i=0;i<H*H;i++)o.W2.push(g()*.9);for(let i=0;i<2*H;i++)o.W3.push(g()*.5);return o}
+W=gen();Wt=gen();
+function mutate(){Wt=gen();flash=1}
+let flash=0,palette=Math.random(),trails=true;
+// CPU copy of the net, for the activation overlay
+function cpuNet(px,py,t,mx,my){const x=[px,py,Math.hypot(px,py),Math.sin(t*.3),px-mx,py-my],h=[],gg=[];for(let j=0;j<H;j++){let s=W.B1[j];for(let i=0;i<6;i++)s+=W.W1[j*6+i]*x[i];h.push(Math.tanh(s))}for(let j=0;j<H;j++){let s=W.B2[j];for(let i=0;i<H;i++)s+=W.W2[j*H+i]*h[i];gg.push(Math.sin(s*1.6))}let ox=0,oy=0;for(let i=0;i<H;i++){ox+=W.W3[i]*gg[i];oy+=W.W3[H+i]*gg[i]}return[x,h,gg,[Math.tanh(ox),Math.tanh(oy)]]}
+const nc=document.getElementById('net'),nx=nc.getContext('2d');
+function drawNet(t){const w=nc.width,h=nc.height,dpr=devicePixelRatio||1;nx.clearRect(0,0,w,h);const L=cpuNet(mouse[0]*1.3,mouse[1]*1.3,t,mouse[0]*1.3,mouse[1]*1.3);
+const bw=230*dpr,bh=190*dpr,x0=w-bw-20*dpr,y0=20*dpr;nx.fillStyle='rgba(0,10,20,.45)';nx.fillRect(x0-10*dpr,y0-10*dpr,bw+20*dpr,bh+30*dpr);
+const pos=L.map((l,k)=>l.map((_,i)=>[x0+k*bw/3,y0+(i+.5)*bh/l.length]));
+const Ws=[W.W1,W.W2,W.W3],ins=[6,H,H];nx.lineWidth=dpr;
+for(let k=0;k<3;k++)for(let j=0;j<L[k+1].length;j++)for(let i=0;i<L[k].length;i++){const wv=Ws[k][j*ins[k]+i],a=Math.min(1,Math.abs(wv*L[k][i])*.6);nx.strokeStyle=wv>0?`rgba(0,255,255,${a})`:`rgba(255,0,200,${a})`;nx.beginPath();nx.moveTo(...pos[k][i]);nx.lineTo(...pos[k+1][j]);nx.stroke()}
+L.forEach((l,k)=>l.forEach((v,i)=>{const[x,y]=pos[k][i],c=Math.max(-1,Math.min(1,v));nx.shadowBlur=14*dpr*Math.abs(c);nx.shadowColor=c>0?'#0ff':'#f0c';nx.fillStyle=c>0?`rgba(0,255,255,${.25+.75*c})`:`rgba(255,0,200,${.25-.75*c})`;nx.beginPath();nx.arc(x,y,5*dpr,0,7);nx.fill()}));nx.shadowBlur=0;
+nx.fillStyle='#9cc';nx.font=`${10*dpr}px monospace`;nx.fillText('live activations at cursor',x0,y0+bh+12*dpr)}
+let mouse=[0,0],tm=[0,0],hold=0,holdT=0;
+function mv(x,y){tm=[x/innerWidth*2-1,1-y/innerHeight*2];auto=false}
+addEventListener('pointermove',e=>mv(e.clientX,e.clientY));
+addEventListener('pointerdown',e=>{mv(e.clientX,e.clientY);holdT=1;downAt=performance.now()});
+addEventListener('pointerup',e=>{holdT=0;if(performance.now()-downAt<250&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='A')mutate()});
+let downAt=0,auto=!Q.has('noauto');
+addEventListener('keydown',e=>{if(e.code==='Space'){mutate();e.preventDefault()}if(e.key=='p'||e.key=='P')palette=Math.random();if(e.key=='t'||e.key=='T')trails=!trails});
+document.getElementById('mut').onclick=e=>{e.stopPropagation();mutate()};document.getElementById('pal').onclick=()=>palette=Math.random();document.getElementById('trail').onclick=()=>trails=!trails;
+function resize(){const d=Math.min(devicePixelRatio||1,2);cv.width=innerWidth*d;cv.height=innerHeight*d;nc.width=innerWidth*d;nc.height=innerHeight*d}addEventListener('resize',resize);resize();
+let t=0,last=performance.now(),fr=0,fa=0;const fpsEl=document.getElementById('fps');
+window.__frame=0;
+function frame(now){const dt=FIXED?1/60:Math.min(.033,(now-last)/1000);last=now;t+=dt;window.__frame++;
+fa+=dt;fr++;if(fa>1){fpsEl.textContent=fr+' fps';fr=0;fa=0}
+if(auto){tm=[Math.sin(t*.7)*.55,Math.sin(t*1.1)*.4];holdT=(Math.sin(t*.9)>.75)?1:0;if(Math.floor(t/3.2)!=Math.floor((t-dt)/3.2))mutate()}
+mouse[0]+=(tm[0]-mouse[0])*.15;mouse[1]+=(tm[1]-mouse[1])*.15;hold+=(holdT-hold)*.1;
+for(const k in W)for(let i=0;i<W[k].length;i++)W[k][i]+=(Wt[k][i]-W[k][i])*.03;flash*=.92;
+const asp=cv.width/cv.height;
+gl.useProgram(sim);gl.bindFramebuffer(gl.FRAMEBUFFER,B.f);gl.viewport(0,0,S,S);gl.disable(gl.BLEND);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,A.t);
+gl.uniform1i(sim.u.P,0);gl.uniform1f(sim.u.t,t);gl.uniform1f(sim.u.dt,dt);gl.uniform1f(sim.u.hold,hold);gl.uniform1f(sim.u.aspect,asp);gl.uniform2f(sim.u.m,mouse[0],mouse[1]);
+for(const k in W)gl.uniform1fv(sim.u[k],W[k]);gl.drawArrays(gl.TRIANGLES,0,3);[A,B]=[B,A];
+gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.useProgram(fade);gl.uniform1f(fade.u.a,trails?.16:1);gl.drawArrays(gl.TRIANGLES,0,3);
+gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(draw);gl.bindTexture(gl.TEXTURE_2D,A.t);gl.uniform1i(draw.u.P,0);gl.uniform1i(draw.u.S,S);gl.uniform1f(draw.u.aspect,asp);gl.uniform1f(draw.u.pal,palette+t*.02);gl.uniform1f(draw.u.sz,(devicePixelRatio>1?2:1.5)*(1+flash));
+gl.drawArrays(gl.POINTS,0,N);drawNet(t);if(!FIXED)requestAnimationFrame(frame)}
+if(FIXED)window.step=n=>{for(let i=0;i<n;i++)frame(performance.now())};else requestAnimationFrame(frame);
+</script></body></html>
