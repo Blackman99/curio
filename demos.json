@@ -1,5 +1,14 @@
 [
  {
+  "slug": "snowflake-net",
+  "title": "Snowflake Net",
+  "no": "006",
+  "date": "2026-10-13",
+  "kind": "Geometry \u00b7 WebGL",
+  "blurb": "Fold paper like a ReLU net folds space, make one cut, unfold a decision boundary.",
+  "color": "#d9c39a"
+ },
+ {
   "slug": "phase-choir",
   "title": "Phase Choir",
   "no": "005",
