@@ -1,5 +1,15 @@
 [
  {
+  "slug": "expert-post",
+  "title": "Expert Post",
+  "no": "008",
+  "date": "2026-10-13",
+  "kind": "MoE routing · SVG mailroom",
+  "blurb": "A 1920s brass pneumatic-tube mailroom: each token is sealed in a capsule and whooshed to specialist desks by a toy Mixture-of-Experts router.",
+  "color": "#c9a24a",
+  "exhibit": "tubes"
+ },
+ {
   "slug": "token-departures",
   "title": "Token Departures",
   "no": "007",
