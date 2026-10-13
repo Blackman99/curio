@@ -1,0 +1,562 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Byte Pair Forge — BPE tokenization as a blacksmith forge</title>
+<meta name="description" content="A blacksmith forge for Byte-Pair Encoding: hammer the hottest letter pairs until words become tokens. Toy BPE over an embedded corpus — fully client-side, no API keys.">
+<meta property="og:title" content="Byte Pair Forge"><meta property="og:description" content="Hammer the hottest letter pairs until words become tokens. A forge for Byte-Pair Encoding — toy tokenizer, in your browser.">
+<meta property="og:image" content="https://blackman99.github.io/curio/byte-pair-forge/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=Russo+One&display=swap" rel="stylesheet">
+<style>
+:root{--ember:#e8843a;--hot:#ffd6a0;--iron:#1a1612;--soot:#0c0a08;--brass:#c9a06a;--ash:#8a7a68;--brick:#4a2a22;--cream:#f2e6d4}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{overflow:hidden;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--cream);
+ background:
+  radial-gradient(ellipse 80% 55% at 50% 28%,#3a2218 0%,transparent 65%),
+  radial-gradient(ellipse 60% 40% at 70% 80%,#e8843a18 0%,transparent 50%),
+  repeating-linear-gradient(90deg,#0000 0 31px,#ffffff05 31px 32px),
+  linear-gradient(175deg,#1e1712 0%,#12100e 45%,#0a0908 100%);
+ -webkit-user-select:none;user-select:none}
+body.narrow{overflow:auto}
+body.narrow #wrap{height:auto;min-height:100%;padding-bottom:12px;justify-content:flex-start}
+body.narrow #note{position:static;height:auto;padding:10px 14px;background:#0a0908}
+body.narrow #stage{grid-template-columns:1fr;gap:10px}
+body.narrow #panel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.narrow #panel h3,#histwrap{grid-column:1/-1}
+body.rm #hammer{transition:none!important}
+#wrap{position:relative;max-width:1480px;margin:0 auto;padding:10px 14px 0;height:100%;display:flex;flex-direction:column;gap:8px;padding-bottom:44px}
+#sign{display:flex;align-items:stretch;gap:12px}
+#plate{flex:1;min-width:0;display:flex;align-items:baseline;gap:14px;background:
+  linear-gradient(#2a1e16,#16110c);color:var(--cream);border-radius:3px;padding:8px 18px 9px;
+  box-shadow:inset 0 0 0 2px var(--brass),inset 0 0 0 4px #16110c,0 3px 0 #0a0804,0 10px 22px -10px #000a;
+  background-image:radial-gradient(circle at 12px 50%,#5a3a18 0 3px,#0000 3.5px),radial-gradient(circle at calc(100% - 12px) 50%,#5a3a18 0 3px,#0000 3.5px),linear-gradient(#2a1e16,#16110c)}
+#plate small{font:500 11px/1 'IBM Plex Mono';letter-spacing:.32em;opacity:.75;white-space:nowrap;color:var(--ember)}
+#plate h1{margin:0;font:normal clamp(26px,4vw,42px)/1 'Bebas Neue',sans-serif;letter-spacing:.06em;white-space:nowrap;color:var(--cream);text-shadow:0 2px 0 #0008,0 0 18px #e8843a44}
+#plate h1 i{font-style:normal;color:var(--ember)}
+#plate .no{margin-left:auto;font:500 11px/1 'IBM Plex Mono';letter-spacing:.18em;opacity:.65;white-space:nowrap;align-self:center}
+#badge{flex:none;width:56px;height:56px;border-radius:4px;background:radial-gradient(circle at 35% 30%,#ffb060,#e8843a 55%,#8a4018);
+ box-shadow:inset 0 0 0 2px #f2e6d4,inset 0 0 0 4px #8a4018,0 4px 8px #0007;display:grid;place-items:center;
+ font:normal 11px/1.05 'Bebas Neue';letter-spacing:.12em;color:#1a1008;text-align:center}
+#stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(210px,19vw,280px);gap:12px;align-items:stretch}
+#forge{position:relative;background:
+  linear-gradient(#0000,#00000055),
+  repeating-linear-gradient(0deg,#3a221c 0 14px,#2e1a16 14px 28px),
+  linear-gradient(180deg,#3a2820,#1a1210);
+ border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 2px #0a0804,inset 0 1px 0 #ffffff12,0 4px 0 #0a0804,0 14px 28px -12px #000c;
+ min-height:300px}
+#forge::before{content:'';position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(ellipse 55% 35% at 50% 72%,#e8843a33,transparent 70%),
+  linear-gradient(90deg,#0008,#0000 10%,#0000 90%,#0008);z-index:2}
+#cv{display:block;width:100%;height:100%;position:absolute;inset:0;cursor:crosshair;z-index:1}
+#hud{position:absolute;left:10px;right:10px;top:8px;z-index:4;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+#pairstrip,#comp{background:#0c0a08cc;border:1.5px solid var(--brass);border-radius:2px;padding:5px 8px 6px;backdrop-filter:blur(2px)}
+#pairstrip{flex:1;min-width:0}
+#pairstrip .lab,#comp .lab{font:500 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:var(--ember);margin-bottom:4px}
+#pairs{display:flex;gap:4px;height:28px;align-items:flex-end;overflow:hidden}
+#pairs i{flex:1;min-width:0;background:linear-gradient(180deg,var(--hot),var(--ember) 40%,#8a3010);border-radius:2px 2px 0 0;min-height:3px;position:relative;transition:height .12s;box-shadow:0 0 8px #e8843a55}
+#pairs i.hot{box-shadow:0 0 14px #ffd6a0aa,0 0 4px #e8843a;outline:1px solid #ffd6a0}
+#pairs i b{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font:600 8px/1 'IBM Plex Mono';color:var(--cream);opacity:.85;margin-bottom:2px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#comp{flex:none;width:130px}
+#compmeter{height:10px;background:#1a1410;border-radius:2px;overflow:hidden;box-shadow:inset 0 1px 2px #0008}
+#compmeter span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#8a4018,var(--ember) 50%,var(--hot));border-radius:2px;transition:width .2s;box-shadow:0 0 8px #e8843a88}
+#compval{font:500 11px/1.2 'IBM Plex Mono';color:var(--cream);margin-top:3px;letter-spacing:.04em}
+#hammerSvg{position:absolute;z-index:5;pointer-events:none;width:90px;height:120px;left:50%;top:18%;margin-left:-20px;transform-origin:70% 15%;filter:drop-shadow(0 4px 6px #000a)}
+#panel{background:linear-gradient(#2a221a,#16120e);border-radius:4px;padding:10px 10px 12px;box-shadow:inset 0 1px 0 #ffffff14,0 4px 0 #0c0a08,0 14px 24px -10px #000a;color:var(--cream);display:flex;flex-direction:column;gap:8px;overflow:auto}
+#panel h3{margin:0;font:normal 14px/1 'Bebas Neue';letter-spacing:.28em;text-align:center;opacity:.85;color:var(--ember)}
+#panel label{font:500 9px/1 'IBM Plex Mono';letter-spacing:.18em;color:var(--brass);display:block;margin-bottom:4px}
+select,input[type=range]{width:100%;accent-color:var(--ember)}
+select{border:1px solid #5a4030;border-radius:2px;padding:7px 8px;font:500 12px/1 'IBM Plex Mono';background:#1a1410;color:var(--cream);outline:none}
+#btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font:normal 14px/1 'Bebas Neue';letter-spacing:.14em;border:0;border-radius:3px;padding:11px 4px;cursor:pointer;color:#1a1008;background:linear-gradient(#ffb060,#e8843a 40%,#a05020);box-shadow:inset 0 1px 0 #ffd6a088,0 3px 0 #6a3010;touch-action:manipulation}
+button.small{font-size:12px;padding:9px 2px;background:linear-gradient(#cfc7b0,#8a7a68);box-shadow:inset 0 1px 0 #fff8,0 3px 0 #4a4035;color:#1a1410}
+button.off{opacity:.5}
+#hammerBtn{grid-column:1/3;font-size:18px;padding:14px 4px;letter-spacing:.2em}
+button.down{transform:translateY(3px);box-shadow:inset 0 1px 0 #ffd6a088,0 0 0 #6a3010}
+#stats{font:500 11px/1.4 'IBM Plex Mono';letter-spacing:.02em;color:var(--ash);text-align:center}
+#stats b{color:var(--ember)}
+#histwrap{flex:1;min-height:80px;display:flex;flex-direction:column;gap:4px}
+#hist{flex:1;overflow:auto;background:#0c0a08;border:1px solid #3a2a20;border-radius:2px;padding:6px;font:500 10px/1.45 'IBM Plex Mono';color:var(--ash);max-height:160px}
+#hist .m{color:var(--cream)}
+#hist .m em{font-style:normal;color:var(--ember)}
+#vocab{display:flex;flex-wrap:wrap;gap:3px;max-height:72px;overflow:auto;padding:2px 0}
+#vocab span{font:600 9px/1 'IBM Plex Mono';background:#1a1410;border:1px solid #5a4030;color:var(--hot);padding:3px 5px;border-radius:2px;letter-spacing:.04em}
+#vocab span.new{border-color:var(--ember);box-shadow:0 0 6px #e8843a66;color:#fff}
+#note{position:fixed;left:0;right:0;bottom:0;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;color:#b9ab8f;font:400 11px/1.25 'IBM Plex Mono';text-align:center;background:linear-gradient(#0000,#0a0908cc)}
+#note a{white-space:nowrap;color:var(--ember);text-decoration:none;font-family:'Bebas Neue';font-size:13px;letter-spacing:.08em}
+#ghost{position:fixed;left:0;top:0;width:30px;height:34px;pointer-events:none;z-index:20;opacity:0;will-change:transform}
+#ring{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid var(--ember);pointer-events:none;z-index:19;opacity:0}
+@media(max-width:760px){#plate .no{display:none}#plate{flex-wrap:wrap;gap:4px}#comp{width:100px}}
+</style></head><body>
+<div id="wrap">
+ <header id="sign">
+  <div id="plate"><small>CURIO · FORGE HALL</small><h1>Byte Pair <i>Forge</i></h1><span class="no">No. 009 · TOKENIZATION</span></div>
+  <div id="badge">BPE<br>MERGE</div>
+ </header>
+ <div id="stage">
+  <section id="forge" aria-label="Blacksmith forge anvil">
+   <div id="hud">
+    <div id="pairstrip"><div class="lab">PAIR HEAT · COUNT</div><div id="pairs"></div></div>
+    <div id="comp"><div class="lab">COMPRESSION</div><div id="compmeter"><span id="compbar"></span></div><div id="compval">—</div></div>
+   </div>
+   <canvas id="cv"></canvas>
+   <svg id="hammerSvg" viewBox="0 0 90 120" aria-hidden="true">
+    <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d8d0c0"/><stop offset="50%" stop-color="#8a8480"/><stop offset="100%" stop-color="#3a3834"/></linearGradient>
+    <linearGradient id="hw" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6a4030"/><stop offset="100%" stop-color="#2a1810"/></linearGradient></defs>
+    <rect x="38" y="28" width="10" height="78" rx="2" fill="url(#hw)" stroke="#1a1008" stroke-width="1"/>
+    <rect x="18" y="8" width="50" height="28" rx="3" fill="url(#hg)" stroke="#1a1008" stroke-width="1.5"/>
+    <rect x="22" y="12" width="42" height="8" fill="#ffffff22"/>
+    <ellipse cx="43" cy="108" rx="8" ry="4" fill="#1a1008" opacity=".5"/>
+   </svg>
+  </section>
+  <aside id="panel">
+   <h3>FORGE CONTROLS</h3>
+   <div><label for="corpus">CORPUS PRESET</label>
+    <select id="corpus"></select></div>
+   <div><label for="speed">SPEED · <span id="spdlab">1.0×</span></label>
+    <input id="speed" type="range" min="0.4" max="2.5" step="0.1" value="1"></div>
+   <div id="btns">
+    <button id="hammerBtn">HAMMER</button>
+    <button id="auto" class="small">AUTO: ON</button>
+    <button id="reset" class="small">RESET</button>
+    <button id="snd" class="small">SOUND: ON</button>
+   </div>
+   <div id="stats">vocab <b id="vcount">0</b> · tokens <b id="tcount">0</b> · merges <b id="mcount">0</b></div>
+   <div><label>VOCAB RACK</label><div id="vocab"></div></div>
+   <div id="histwrap"><label>MERGE HISTORY</label><div id="hist"></div></div>
+  </aside>
+ </div>
+ <div id="note">Toy BPE over an embedded corpus — not a production tokenizer; fully client-side; no API keys. <a href="../">← Curio</a></div>
+</div>
+<svg id="ghost" viewBox="0 0 30 34" aria-hidden="true"><path d="M3 2 L3 26 L9.5 20.5 L13.5 30 L18 28 L14 19 L23 19 Z" fill="#fffaf0" stroke="#1c1610" stroke-width="2.2" stroke-linejoin="round"/></svg><div id="ring"></div>
+<script>
+(()=>{
+const Q=new URLSearchParams(location.search),FIXED=Q.has('fixed');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.body.classList.toggle('rm',RM);
+let seed=(+Q.get('seed'))||(FIXED?7:(Math.random()*1e9)|0);
+const rand=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const $=s=>document.querySelector(s),clamp=(a,b,c)=>Math.max(b,Math.min(c,a)),eio=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+const CORPUS=[
+ {id:'anvil',name:'Anvil Primer',text:`In the forge hall a smith heats iron until it glows. Hammer falls, billets weld, sparks leap. Language works the same way. Letters sit side by side. The hottest pair fuses into a new piece. Space and punctuation stay. Again and again the hammer finds the busiest neighbors. Short marks become longer tokens. Compression grows as the rack fills with welded shards. Heat, strike, cool, count. That is the craft.`},
+ {id:'ember',name:'Ember Lexicon',text:`Embers breathe under charcoal. A bellows wakes them. Soft orange turns white-hot. Soft speech turns crisp tokens. Pair by pair a vocabulary racks itself on iron pegs. The anvil holds the current string as glowing bars. Each strike rewrites the layout. Nothing leaves the shop. No secret keys. Only counts and courage and a steady rhythm of merges.`},
+ {id:'quench',name:'Quench Song',text:`Quench water hisses when hot steel meets it. Steam writes temporary runes in air. Token merges leave permanent marks in the vocab rack. Start from characters. Find the pair that appears most often. Weld it. Rewrite every occurrence. Watch the sentence shrink. Watch meaning hold. This toy forge explains the shape of Byte-Pair Encoding without claiming to be a production tokenizer.`}
+];
+
+/* ---- BPE state ---- */
+let corpusIdx=0,tokens=[],vocab=[],pairCounts=new Map(),hotPairs=[],merges=[],charLen=0,speed=1,auto=true,soundOn=true;
+let hammerPhase=0,hammerAngle=-35,merging=false,mergeAnim=null,sparks=[],billets=[],hoverPair=null,forcePair=null;
+let simT=0,phT=0,userUntil=-1;
+
+function charsOf(s){return Array.from(s)}
+function initFromCorpus(i){
+ corpusIdx=i;const text=CORPUS[i].text;
+ tokens=charsOf(text);charLen=tokens.length;
+ vocab=[...new Set(tokens)].sort((a,b)=>a.localeCompare(b));
+ merges=[];pairCounts=new Map();countPairs();buildBillets(true);renderVocab();renderHist();updateStats();updatePairsUI();
+}
+function countPairs(){
+ pairCounts=new Map();
+ for(let i=0;i<tokens.length-1;i++){
+  const a=tokens[i],b=tokens[i+1],k=a+'\0'+b;
+  pairCounts.set(k,(pairCounts.get(k)||0)+1);
+ }
+ hotPairs=[...pairCounts.entries()].map(([k,c])=>{const[a,b]=k.split('\0');return{a,b,c,k}}).sort((x,y)=>y.c-x.c||(x.a+x.b).localeCompare(y.a+y.b));
+}
+function showTok(t){return t===' '?'␠':t==='\n'?'↵':t}
+function mergeHottest(forced){
+ if(merging)return false;
+ let target=forced;
+ if(!target){
+  if(!hotPairs.length)return false;
+  target=hotPairs[0];
+ }
+ const {a,b}=target;
+ const neu=a+b;
+ // find all merge indices (from right to avoid shift)
+ const idx=[];
+ for(let i=0;i<tokens.length-1;i++)if(tokens[i]===a&&tokens[i+1]===b){idx.push(i);i++}
+ if(!idx.length)return false;
+ merging=true;hammerPhase=1;
+ const mid=idx[Math.floor(idx.length/2)];
+ mergeAnim={a,b,neu,idx,mid,t:0,dur:.55};
+ clang();
+ return true;
+}
+function applyMerge(m){
+ const {a,b,neu,idx}=m;
+ // rebuild tokens
+ const out=[];
+ for(let i=0;i<tokens.length;i++){
+  if(idx.includes(i)){out.push(neu);i++}
+  else out.push(tokens[i]);
+ }
+ tokens=out;
+ if(!vocab.includes(neu))vocab.push(neu);
+ merges.push({a,b,neu,count:idx.length,n:merges.length+1});
+ countPairs();buildBillets(false);renderVocab(neu);renderHist();updateStats();updatePairsUI();
+ merging=false;mergeAnim=null;hammerPhase=0;
+ burstSparks();
+}
+function compression(){
+ if(!charLen)return 0;
+ return 1-tokens.length/charLen;
+}
+
+/* ---- UI ---- */
+const pairsEl=$('#pairs'),vocabEl=$('#vocab'),histEl=$('#hist'),compbar=$('#compbar'),compval=$('#compval');
+const vcount=$('#vcount'),tcount=$('#tcount'),mcount=$('#mcount'),corpusSel=$('#corpus');
+CORPUS.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.name;corpusSel.appendChild(o)});
+function updatePairsUI(){
+ const top=hotPairs.slice(0,10);const max=top[0]?top[0].c:1;
+ pairsEl.innerHTML='';
+ top.forEach((p,i)=>{
+  const el=document.createElement('i');
+  el.style.height=Math.max(8,(p.c/max)*100)+'%';
+  if(i===0)el.classList.add('hot');
+  const b=document.createElement('b');b.textContent=showTok(p.a)+showTok(p.b)+'×'+p.c;
+  el.appendChild(b);el.title=JSON.stringify([p.a,p.b]);
+  el.addEventListener('pointerenter',()=>{hoverPair=p});
+  el.addEventListener('pointerleave',()=>{if(hoverPair===p)hoverPair=null});
+  el.addEventListener('click',e=>{e.stopPropagation();userPoke();mergeHottest(p)});
+  pairsEl.appendChild(el);
+ });
+ const pct=compression()*100;
+ compbar.style.width=pct.toFixed(1)+'%';
+ compval.textContent=charLen+' → '+tokens.length+'  ('+pct.toFixed(0)+'%)';
+}
+function renderVocab(neu){
+ vocabEl.innerHTML='';
+ const show=vocab.slice(-48);
+ show.forEach(t=>{
+  const s=document.createElement('span');s.textContent=showTok(t);
+  if(t===neu)s.classList.add('new');
+  vocabEl.appendChild(s);
+ });
+}
+function renderHist(){
+ histEl.innerHTML=merges.slice().reverse().slice(0,40).map(m=>
+  `<div class="m">#${m.n} <em>${showTok(m.a)}+${showTok(m.b)}</em> → ${showTok(m.neu)} ×${m.count}</div>`
+ ).join('')||'<div>No merges yet — strike the hammer.</div>';
+}
+function updateStats(){vcount.textContent=vocab.length;tcount.textContent=tokens.length;mcount.textContent=merges.length}
+
+/* ---- canvas forge ---- */
+const cv=$('#cv'),ctx=cv.getContext('2d');
+const hammerSvg=$('#hammerSvg');
+let W=0,H=0,dpr=1;
+function resize(){
+ const r=$('#forge').getBoundingClientRect();
+ dpr=Math.min(2,devicePixelRatio||1);
+ W=r.width;H=r.height;
+ cv.width=Math.max(1,W*dpr);cv.height=Math.max(1,H*dpr);
+ cv.style.width=W+'px';cv.style.height=H+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function buildBillets(snap){
+ const maxShow=Math.min(tokens.length,42);
+ const start=Math.max(0,Math.floor((tokens.length-maxShow)/2));
+ const slice=tokens.slice(start,start+maxShow);
+ const pad=24,avail=Math.max(100,W-pad*2);
+ const gap=3;
+ let totalChars=slice.reduce((s,t)=>s+Math.max(1,t.length),0);
+ const unit=Math.min(18,(avail-gap*(slice.length-1))/Math.max(1,totalChars));
+ let x=pad+(avail-(totalChars*unit+gap*(slice.length-1)))/2;
+ const y=H*0.62;
+ const next=[];
+ slice.forEach((t,i)=>{
+  const w=Math.max(unit,t.length*unit);
+  const prev=billets.find(b=>b.tok===t&&Math.abs(b.x-x)<40);
+  const b={tok:t,x,y,w,h:Math.min(36,22+Math.min(10,t.length*2)),glow:.55+Math.min(.4,t.length*.08),idx:start+i,vx:0,vy:0};
+  if(prev&&!snap){b.x0=prev.x;b.y0=prev.y;b.morph=0}
+  else{b.x0=x;b.y0=y;b.morph=1}
+  next.push(b);x+=w+gap;
+ });
+ billets=next;
+}
+function burstSparks(){
+ const mid=billets[Math.floor(billets.length/2)];
+ const cx=mid?mid.x+mid.w/2:W/2,cy=mid?mid.y:H*.62;
+ for(let i=0;i<48;i++){
+  const a=-Math.PI*.2-rand()*Math.PI*.6,sp=80+rand()*220;
+  sparks.push({x:cx+(rand()-.5)*20,y:cy-8,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-40,life:.4+rand()*.5,age:0,r:1.2+rand()*2.2});
+ }
+}
+function drawForge(dt){
+ ctx.clearRect(0,0,W,H);
+ // brick soot
+ ctx.fillStyle='#1a100c';
+ ctx.fillRect(0,0,W,H);
+ for(let row=0;row<Math.ceil(H/18);row++){
+  const off=(row%2)*16;
+  for(let col=-1;col<Math.ceil(W/32)+1;col++){
+   const x=col*32+off,y=row*18;
+   ctx.fillStyle=row>H*.55/18?'#2a1814':'#3a2420';
+   ctx.fillRect(x+1,y+1,30,16);
+   ctx.strokeStyle='#0c0806';ctx.lineWidth=1;ctx.strokeRect(x+1,y+1,30,16);
+  }
+ }
+ // hearth glow
+ const g=ctx.createRadialGradient(W*.5,H*.78,10,W*.5,H*.7,W*.45);
+ g.addColorStop(0,'#ffd6a055');g.addColorStop(.35,'#e8843a33');g.addColorStop(1,'#0000');
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+ // anvil silhouette
+ const ax=W*.5,ay=H*.78;
+ ctx.save();
+ ctx.translate(ax,ay);
+ ctx.fillStyle='#16120e';
+ ctx.beginPath();
+ ctx.moveTo(-110,-8);ctx.lineTo(-70,-28);ctx.lineTo(40,-28);ctx.lineTo(95,-14);ctx.lineTo(95,0);
+ ctx.lineTo(55,8);ctx.lineTo(40,42);ctx.lineTo(-40,42);ctx.lineTo(-55,8);ctx.lineTo(-110,0);ctx.closePath();
+ ctx.fill();
+ ctx.fillStyle='#2a2420';
+ ctx.fillRect(-48,42,96,14);
+ ctx.fillStyle='#0c0a08';
+ ctx.fillRect(-55,54,110,10);
+ // anvil highlight
+ ctx.strokeStyle='#e8843a44';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(-68,-26);ctx.lineTo(38,-26);ctx.stroke();
+ ctx.restore();
+
+ // coals
+ for(let i=0;i<18;i++){
+  const cx=ax-90+i*10+(Math.sin(simT*2+i)*.5),cy=ay+28+Math.sin(simT*3+i*1.7)*2;
+  const flick=.5+.5*Math.sin(simT*8+i*2);
+  ctx.fillStyle=`rgba(232,132,58,${.25+flick*.35})`;
+  ctx.beginPath();ctx.arc(cx,cy,3+flick*2,0,6.28);ctx.fill();
+ }
+
+ // billets
+ const hp=hoverPair;
+ billets.forEach(b=>{
+  if(b.morph<1){b.morph=Math.min(1,b.morph+dt*3);b.x=lerp(b.x0,b.tx??b.x,eio(b.morph));}
+  // settle target
+  b.tx=b.tx??b.x;
+ });
+ // recompute layout targets each frame lightly
+ {
+  const maxShow=billets.length;const pad=24,avail=Math.max(100,W-pad*2),gap=3;
+  let totalChars=billets.reduce((s,t)=>s+Math.max(1,t.tok.length),0);
+  const unit=Math.min(18,(avail-gap*(maxShow-1))/Math.max(1,totalChars));
+  let x=pad+(avail-(totalChars*unit+gap*(maxShow-1)))/2;
+  billets.forEach(b=>{
+   const w=Math.max(unit,b.tok.length*unit);b.w=w;b.h=Math.min(36,22+Math.min(10,b.tok.length*2));
+   b.tx=x;b.ty=H*0.62;x+=w+gap;
+   if(b.morph>=1){b.x=lerp(b.x,b.tx,1-Math.pow(.001,dt));b.y=lerp(b.y,b.ty,1-Math.pow(.001,dt))}
+   else{b.x=lerp(b.x0,b.tx,eio(b.morph));b.y=lerp(b.y0,b.ty,eio(b.morph))}
+  });
+ }
+
+ // merge squash visual
+ let squashL=null,squashR=null;
+ if(mergeAnim){
+  const k=clamp(mergeAnim.t/mergeAnim.dur,0,1);
+  const mid=billets.find(b=>b.idx===mergeAnim.mid)||billets[Math.floor(billets.length/2)];
+  const mid2=billets.find(b=>b.idx===mergeAnim.mid+1);
+  if(mid&&mid2){squashL=mid;squashR=mid2;
+   const pull=eio(Math.min(1,k*1.4))*((mid.w+mid2.w)*.35);
+   mid.x+=pull*.5;mid2.x-=pull*.5;
+  }
+ }
+
+ billets.forEach((b,i)=>{
+  const hot=hp&&((b.tok===hp.a&&billets[i+1]&&billets[i+1].tok===hp.b)||(billets[i-1]&&billets[i-1].tok===hp.a&&b.tok===hp.b));
+  const glow=b.glow+(hot?.35:0)+Math.sin(simT*4+i)*.05;
+  const grd=ctx.createLinearGradient(b.x,b.y-b.h,b.x,b.y+b.h*.3);
+  grd.addColorStop(0,`rgba(255,220,170,${.55+glow*.3})`);
+  grd.addColorStop(.45,`rgba(232,132,58,${.75+glow*.2})`);
+  grd.addColorStop(1,`rgba(80,30,10,.95)`);
+  ctx.save();
+  ctx.shadowColor=`rgba(232,132,58,${.35+glow*.4})`;
+  ctx.shadowBlur=12+glow*10;
+  roundRect(ctx,b.x,b.y-b.h,b.w,b.h,3);
+  ctx.fillStyle=grd;ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle=hot?'#ffd6a0':'#5a3018';ctx.lineWidth=hot?2:1;ctx.stroke();
+  // label
+  ctx.fillStyle='#1a1008';
+  ctx.font=`600 ${Math.max(9,Math.min(14,b.h*.55))}px "IBM Plex Mono",monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  const label=showTok(b.tok);
+  const tw=ctx.measureText(label).width;
+  if(tw<b.w-4)ctx.fillText(label,b.x+b.w/2,b.y-b.h/2+1);
+  else{
+   ctx.font=`600 ${Math.max(8,Math.min(11,b.h*.4))}px "IBM Plex Mono",monospace`;
+   ctx.fillText(label.slice(0,Math.max(1,Math.floor(b.w/7))),b.x+b.w/2,b.y-b.h/2+1);
+  }
+  ctx.restore();
+ });
+
+ // sparks
+ for(let i=sparks.length-1;i>=0;i--){
+  const s=sparks[i];s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=280*dt;s.vx*=.98;
+  const u=s.age/s.life;if(u>=1){sparks.splice(i,1);continue}
+  ctx.beginPath();ctx.fillStyle=`rgba(255,${Math.floor(200-u*120)},${Math.floor(80-u*60)},${1-u})`;
+  ctx.arc(s.x,s.y,s.r*(1-u*.5),0,6.28);ctx.fill();
+ }
+
+ // hammer SVG pose
+ const ang=hammerAngle+(hammerPhase>0?Math.sin(Math.min(1,(mergeAnim?mergeAnim.t/mergeAnim.dur:0))*Math.PI)*70:Math.sin(simT*1.2)*6);
+ hammerSvg.style.transform=`rotate(${ang}deg)`;
+ hammerSvg.style.left=(W*.52)+'px';
+ hammerSvg.style.top=(H*.12)+'px';
+}
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+
+/* ---- hit test billets ---- */
+function billetAt(mx,my){
+ for(let i=0;i<billets.length;i++){
+  const b=billets[i];
+  if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y-b.h&&my<=b.y+4)return i;
+ }
+ return -1;
+}
+cv.addEventListener('pointermove',e=>{
+ const r=cv.getBoundingClientRect();
+ const mx=(e.clientX-r.left),my=(e.clientY-r.top);
+ const i=billetAt(mx,my);
+ if(i>=0&&i<billets.length-1)hoverPair={a:billets[i].tok,b:billets[i+1].tok,c:0};
+ else if(i>0)hoverPair={a:billets[i-1].tok,b:billets[i].tok,c:0};
+ else hoverPair=null;
+});
+cv.addEventListener('pointerleave',()=>{hoverPair=null});
+cv.addEventListener('pointerdown',e=>{
+ userPoke();
+ const r=cv.getBoundingClientRect();
+ const mx=(e.clientX-r.left),my=(e.clientY-r.top);
+ const i=billetAt(mx,my);
+ if(i>=0&&i<billets.length-1){
+  mergeHottest({a:billets[i].tok,b:billets[i+1].tok});
+ }else if(i>0){
+  mergeHottest({a:billets[i-1].tok,b:billets[i].tok});
+ }else{
+  mergeHottest();
+ }
+});
+
+/* ---- controls ---- */
+const hammerBtn=$('#hammerBtn'),autoBtn=$('#auto'),resetBtn=$('#reset'),sndB=$('#snd'),spd=$('#speed'),spdlab=$('#spdlab');
+hammerBtn.addEventListener('click',()=>{userPoke();hammerBtn.classList.add('down');setTimeout(()=>hammerBtn.classList.remove('down'),120);mergeHottest()});
+autoBtn.addEventListener('click',()=>{auto=!auto;autoBtn.textContent='AUTO: '+(auto?'ON':'OFF');autoBtn.classList.toggle('off',!auto);userPoke()});
+resetBtn.addEventListener('click',()=>{userPoke();initFromCorpus(corpusIdx);burstSparks()});
+sndB.addEventListener('click',()=>{soundOn=!soundOn;sndB.textContent='SOUND: '+(soundOn?'ON':'OFF');sndB.classList.toggle('off',!soundOn);if(soundOn)initAudio()});
+spd.addEventListener('input',()=>{speed=+spd.value;spdlab.textContent=speed.toFixed(1)+'×'});
+corpusSel.addEventListener('change',()=>{userPoke();initFromCorpus(+corpusSel.value);burstSparks()});
+addEventListener('keydown',e=>{
+ if(e.key===' '||e.code==='Space'){e.preventDefault();userPoke();mergeHottest()}
+ else if(e.key==='r'||e.key==='R'){userPoke();initFromCorpus(corpusIdx)}
+});
+
+/* ---- sound ---- */
+let AC=null,master=null;
+function initAudio(){if(AC||!soundOn)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.35;master.connect(AC.destination)}catch(e){AC=null}}
+function tone(freq,t0,dur,vol,type){if(!AC||!soundOn||AC.state!=='running')return;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'sine';o.frequency.value=freq;const t=AC.currentTime+t0;
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.03)}
+function noiseBurst(dur,vol,bp){if(!AC||!soundOn||AC.state!=='running')return;const n=Math.floor(AC.sampleRate*dur);const buf=AC.createBuffer(1,n,AC.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(n*.3));
+ const s=AC.createBufferSource();s.buffer=buf;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=bp||900;f.Q.value=.7;const g=AC.createGain();g.gain.value=vol;s.connect(f);f.connect(g);g.connect(master);s.start()}
+function clang(){tone(180,0,.08,.18,'square');tone(90,.02,.12,.14,'sine');tone(420,.0,.05,.06,'triangle');noiseBurst(.06,.22,1400)}
+function hiss(){noiseBurst(.12,.12,2200);tone(200,0,.08,.03,'triangle')}
+function crackle(){noiseBurst(.04,.06,800+rand()*600)}
+const unlock=()=>{initAudio();if(AC&&AC.state==='suspended')AC.resume()};
+addEventListener('pointerdown',unlock);addEventListener('keydown',unlock);
+
+/* ---- autopilot ---- */
+const ghost=$('#ghost'),ring=$('#ring');let gx=innerWidth*.55,gy=innerHeight*.55,gAlpha=0,script=null,cyc=0,autoHammerT=0;
+function userPoke(){userUntil=simT+12;if(script)script=null}
+function elPt(sel){const el=$(sel);if(!el)return[innerWidth/2,innerHeight/2];const r=el.getBoundingClientRect();return[r.left+r.width*.55,r.top+r.height*.55]}
+function pickScript(){
+ const c=cyc++;const k=c%8;const S=[];
+ const mv=(f,d)=>S.push({t:'mv',f,d}),wait=d=>S.push({t:'w',d}),prs=fn=>S.push({t:'p',fn,d:.28});
+ // Prefer hammering so compression is visible; switch corpus rarely
+ if(k===6){const next=(corpusIdx+1)%CORPUS.length;mv(()=>elPt('#corpus'),.5);prs(()=>{corpusSel.value=String(next);initFromCorpus(next);burstSparks()});wait(.15);mv(()=>elPt('#hammerBtn'),.4);prs(()=>mergeHottest())}
+ else if(k===3||k===7){mv(()=>{const b=billets[Math.max(0,Math.floor(billets.length*.35))];if(!b)return elPt('#hammerBtn');const r=cv.getBoundingClientRect();return[r.left+b.x+b.w/2,r.top+b.y-b.h/2]},.5);prs(()=>{const i=Math.max(0,Math.floor(billets.length*.35));if(billets[i]&&billets[i+1])mergeHottest({a:billets[i].tok,b:billets[i+1].tok});else mergeHottest()})}
+ else{mv(()=>elPt('#hammerBtn'),.4);prs(()=>mergeHottest());wait(.15);mv(()=>elPt('#hammerBtn'),.35);prs(()=>mergeHottest())}
+ return{steps:S,i:0,t:0,sx:gx,sy:gy}}
+function runScript(dt){
+ const st=script.steps[script.i];if(!st){script=null;return}
+ if(script.t===0){script.sx=gx;script.sy=gy}
+ script.t+=dt;const k=clamp(script.t/st.d,0,1);
+ if(st.t==='mv'){const[x,y]=st.f();gx=script.sx+(x-script.sx)*eio(k);gy=script.sy+(y-script.sy)*eio(k)}
+ else if(st.t==='p'&&!st.done){st.done=true;st.fn();ring.style.opacity='1';ring.style.transform=`translate(${gx}px,${gy}px) scale(.5)`}
+ else if(st.t==='w'){/* wait */}
+ if(st.t==='p'){ring.style.opacity=String(Math.max(0,1-k));ring.style.transform=`translate(${gx}px,${gy}px) scale(${.5+k})`}
+ if(k>=1){script.i++;script.t=0}}
+
+/* ---- layout ---- */
+function layout(){
+ const narrow=innerWidth<640;document.body.classList.toggle('narrow',narrow);
+ resize();buildBillets(false);
+}
+
+/* ---- main loop ---- */
+let last=0;window.__frame=0;
+function frame(ts){
+ const n=FIXED?last+1000/60:(ts||performance.now());const dt0=FIXED?1/60:clamp((n-last)/1000,0,.05);last=n;
+ const dt=dt0*(RM?.55:1)*speed;simT+=dt;window.__frame++;phT+=dt;
+
+ if(mergeAnim){
+  mergeAnim.t+=dt;
+  if(mergeAnim.t>=mergeAnim.dur){applyMerge(mergeAnim);hiss()}
+ }
+
+ // idle ember crackle
+ if(soundOn&&AC&&AC.state==='running'&&rand()<dt*.4)crackle();
+
+ // auto-hammer cadence when auto and no script (~1.2s)
+ autoHammerT+=dt;
+ if(auto&&simT>userUntil&&!script&&!merging&&autoHammerT>=1.2){
+  autoHammerT=0;
+  if(FIXED||gAlpha>.2){/* ghost will hammer via script */}
+ }
+
+ if(auto&&simT>userUntil&&!script&&!merging)script=pickScript();
+ if(script)runScript(dt);
+ const ghostOK=auto&&simT>userUntil;
+ gAlpha=clamp(gAlpha+(script||ghostOK?dt*4:-dt*4),0,1);
+ ghost.style.opacity=gAlpha.toFixed(3);ghost.style.transform=`translate(${(gx-3).toFixed(1)}px,${(gy-2).toFixed(1)}px)`;
+
+ drawForge(dt);
+
+ window.__state={
+  merges:merges.length,tokens:tokens.length,vocab:vocab.length,
+  compression:+compression().toFixed(3),hot:hotPairs[0]?showTok(hotPairs[0].a)+showTok(hotPairs[0].b):null,
+  corpus:CORPUS[corpusIdx].id,merging,ghost:!!script,t:+simT.toFixed(2),sparks:sparks.length
+ };
+ if(!FIXED)requestAnimationFrame(frame);
+}
+
+/* ---- boot ---- */
+function boot(){
+ layout();
+ initFromCorpus(FIXED?0:0);
+ // seed several merges so first frame looks alive
+ const seedMerges=FIXED?8:5;
+ for(let i=0;i<seedMerges;i++){
+  if(!hotPairs.length)break;
+  const t=hotPairs[0];
+  const a=t.a,b=t.b,neu=a+b;
+  const idx=[];
+  for(let j=0;j<tokens.length-1;j++)if(tokens[j]===a&&tokens[j+1]===b){idx.push(j);j++}
+  if(!idx.length)break;
+  const out=[];
+  for(let j=0;j<tokens.length;j++){if(idx.includes(j)){out.push(neu);j++}else out.push(tokens[j])}
+  tokens=out;if(!vocab.includes(neu))vocab.push(neu);
+  merges.push({a,b,neu,count:idx.length,n:merges.length+1});
+  countPairs();
+ }
+ buildBillets(true);renderVocab();renderHist();updateStats();updatePairsUI();
+ burstSparks();burstSparks();
+ // start ghost mid-swing toward hammer
+ if(FIXED){
+  const[x,y]=elPt('#hammerBtn');gx=x;gy=y;gAlpha=1;
+  script=pickScript();
+ }
+}
+addEventListener('resize',layout);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{layout();buildBillets(true)});
+boot();
+if(FIXED){window.step=n=>{for(let i=0;i<(n||1);i++)frame()};frame()}
+else{window.step=()=>{};requestAnimationFrame(t=>{last=t;frame(t)})}
+})();
+</script></body></html>
