@@ -48,7 +48,7 @@ export const EXHIBITS={
   const cut=new T.Mesh(new T.BoxGeometry(.012,.5,.012),M(T,0xc8321e,{emissiveIntensity:.8}));cut.position.set(-.14,0,.01);cut.rotation.z=.5;g.add(cut);
   const hole=new T.Mesh(new T.CircleGeometry(.07,6),new T.MeshBasicMaterial({color:0x1d1a16,side:T.DoubleSide}));hole.position.set(.17,.1,.002);hinge.add(hole);
   const h2=hole.clone();h2.position.set(-.17,.1,.002);g.add(h2);
-  const upd=t=>{hinge.rotation.y=-(Math.sin(t*.9)*.5+.5)*Math.PI*.92};upd(1.2);g.rotation.y=.4;
+  const upd=t=>{hinge.rotation.y=-(Math.sin(t*.9)*.5+.5)*Math.PI*.92};upd(0);g.rotation.y=.4;
   return{obj:g,mats:[pm],tick:t=>upd(t)}},
  // Token Departures: mini split-flap board, rows flip through letters, top row lit as chosen token
  flap(T,col){const g=new T.Group(),W=['THE','CAT','SAT','RAN','SKY'],L='ABCDEFGHIJKLMNOPQRSTUVWXYZ',cv=document.createElement('canvas');cv.width=256;cv.height=192;const x=cv.getContext('2d'),tx=new T.CanvasTexture(cv);tx.colorSpace=T.SRGBColorSpace;
