@@ -213,68 +213,99 @@ function buildRoom(){
  mk('ellipse',{cx:140,cy:145,rx:28,ry:10,fill:'#0a1410',stroke:'#c9a24a','stroke-width':2});
  mk('rect',{x:125,y:145,width:30,height:40,rx:4,fill:'url(#brassG)',stroke:'#6a4820'});
 
- // sorting gate
  gatePt={x:300,y:280};
+
+ // desk positions (2 rows of 4) — cards are 100×72 centered near (x,y)
+ const deskPos=[];
+ for(let i=0;i<8;i++){
+  const col=i%4,row=(i/4)|0;
+  const x=480+col*125,y=120+row*220;
+  // top-row: port on BOTTOM edge; bottom-row: port on TOP edge
+  const portX=x, portY=row===0?(y-8+72):(y-8);
+  deskPos.push({x,y,i,col,row,portX,portY});
+ }
+ paths.length=0;
+
+ // —— LAYER 1: all tubes BEHIND desks (even fan from router) ——
+ const tubeG=mk('g',{id:'tubes'});
+ const GR=48; // exit on gate rim
+ // inter-row channel (below top-row bottoms @184, above bottom-row tops @332)
+ const gapLo=198, gapHi=318, gapMid=(gapLo+gapHi)/2;
+ for(const d of deskPos){
+  // even fan on gate rim: top −70°…−14°, bottom +14°…+70°
+  const angDeg=d.row===0?(-70+d.col*18.5):(14+d.col*18.5);
+  const ang=angDeg*Math.PI/180;
+  const x1=gatePt.x+Math.cos(ang)*GR, y1=gatePt.y+Math.sin(ang)*GR;
+  const x2=d.portX, y2=d.portY;
+  // stub further along the same ray so the bundle visibly fans before bending
+  const stub=38+d.col*6;
+  const sx=x1+Math.cos(ang)*stub, sy=y1+Math.sin(ang)*stub;
+  // lane in the mid gap, staggered by column so tubes run side-by-side (no tangle)
+  const laneY=d.row===0?(gapMid-28+d.col*10):(gapMid+28-d.col*10);
+  const laneX=360+d.col*70;
+  // approach port from outside only, staying inside the gap
+  const c2x=x2, c2y=d.row===0?Math.min(y2+56,gapHi-6):Math.max(y2-56,gapLo+6);
+  // cubic from stub through lane to approach to port
+  const c1x=laneX, c1y=laneY;
+  const dstr=`M${x1.toFixed(1)} ${y1.toFixed(1)} L${sx.toFixed(1)} ${sy.toFixed(1)} C${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+  mk('path',{d:dstr,fill:'none',stroke:'#0a0804',opacity:.35,'stroke-width':14,'stroke-linecap':'round','stroke-linejoin':'round'},tubeG);
+  const tube=mk('path',{d:dstr,fill:'none',stroke:'url(#pipeG)','stroke-width':11,'stroke-linecap':'round','stroke-linejoin':'round',id:'tube'+d.i},tubeG);
+  mk('path',{d:dstr,fill:'none',stroke:'#ffffff33','stroke-width':3,'stroke-linecap':'round','stroke-dasharray':'1 16'},tubeG);
+  // junction collar on the radial stub (evenly spaced around the gate)
+  mk('circle',{cx:sx,cy:sy,r:6.5,fill:'none',stroke:'#c9a24a','stroke-width':2.2,opacity:.8},tubeG);
+  // pointOnPath uses getPointAtLength; pts kept for fallback (approx cubic only)
+  paths[d.i]={el:tube,d:dstr,pts:[sx,sy,c1x,c1y,c2x,c2y,x2,y2],len:0};
+ }
+
+ // dead-letter tube (behind desks too)
+ {
+  const x1=gatePt.x,y1=gatePt.y+GR,x2=880,y2=520;
+  const dstr=`M${x1} ${y1} C${x1+80} ${y1+100}, ${x2-100} ${y2-20}, ${x2} ${y2}`;
+  mk('path',{d:dstr,fill:'none',stroke:'#0a0804',opacity:.3,'stroke-width':12,'stroke-linecap':'round'},tubeG);
+  const tube=mk('path',{d:dstr,fill:'none',stroke:'#6b1e1a','stroke-width':9,'stroke-linecap':'round',id:'tubedead'},tubeG);
+  mk('path',{d:dstr,fill:'none',stroke:'#c0403044','stroke-width':2,'stroke-linecap':'round','stroke-dasharray':'4 8'},tubeG);
+  paths.dead={el:tube,d:dstr,pts:[x1,y1,x1+80,y1+100,x2-100,y2-20,x2,y2],len:0};
+ }
+
+ // hopper → gate tube
+ {
+  const x1=hopperPt.x,y1=hopperPt.y+40,x2=gatePt.x-GR,y2=gatePt.y;
+  const dstr=`M${x1} ${y1} C${x1} ${y1+60}, ${x2-20} ${y2+40}, ${x2} ${y2}`;
+  mk('path',{d:dstr,fill:'none',stroke:'#0a0804',opacity:.3,'stroke-width':12,'stroke-linecap':'round'},tubeG);
+  const tube=mk('path',{d:dstr,fill:'none',stroke:'url(#pipeG)','stroke-width':10,'stroke-linecap':'round',id:'tubein'},tubeG);
+  paths.in={el:tube,d:dstr,pts:[x1,y1,x1,y1+60,x2-20,y2+40,x2,y2],len:0};
+ }
+
+ // —— LAYER 2: router gate ON TOP of tube origins (tubes emerge from under the rim) ——
  mk('circle',{cx:300,cy:280,r:52,fill:'#1a1208',stroke:'url(#brassG)','stroke-width':5});
  mk('circle',{cx:300,cy:280,r:38,fill:'#0e1c16',stroke:'#8a6a28','stroke-width':2});
  for(let i=0;i<8;i++){const a=i*Math.PI/4;mk('circle',{cx:300+Math.cos(a)*45,cy:280+Math.sin(a)*45,r:3.2,fill:'#c9a24a'})}
  mk('text',{x:300,y:276,'text-anchor':'middle',fill:'#c9a24a','font-family':'Oswald','font-size':10,'font-weight':700,'letter-spacing':1.5}).textContent='ROUTER';
  mk('text',{x:300,y:292,'text-anchor':'middle',fill:'#f3e6c888','font-family':'Oswald','font-size':9,'letter-spacing':1}).textContent='GATE';
 
- // desk positions (2 rows of 4)
- const deskPos=[];
- for(let i=0;i<8;i++){
-  const col=i%4,row=(i/4)|0;
-  const x=480+col*125,y=120+row*220;
-  deskPos.push({x,y,i});
- }
- paths.length=0;
- // tubes from gate to desks
+ // —— LAYER 3: desks ON TOP of tubes; ports on card edge ——
+ const deskG=mk('g',{id:'desks'});
  for(const d of deskPos){
   const ex=EXPERTS[d.i];
-  const x1=gatePt.x+40,y1=gatePt.y,x2=d.x-50,y2=d.y+20;
-  const c1x=x1+(x2-x1)*.35,c1y=y1+((d.i%2)?-70:70);
-  const c2x=x1+(x2-x1)*.7,c2y=y2+((rowBump(d.i)));
-  const dstr=`M${x1} ${y1} C${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
-  // tube shadow + body
-  mk('path',{d:dstr,fill:'none',stroke:'#0a0804',opacity:.35,'stroke-width':14,'stroke-linecap':'round'});
-  const tube=mk('path',{d:dstr,fill:'none',stroke:'url(#pipeG)','stroke-width':11,'stroke-linecap':'round',id:'tube'+d.i});
-  mk('path',{d:dstr,fill:'none',stroke:'#ffffff33','stroke-width':3,'stroke-linecap':'round','stroke-dasharray':'1 16'});
-  // junction bump ring near gate
-  const t0=.12;const p0=pointOnCubic(x1,y1,c1x,c1y,c2x,c2y,x2,y2,t0);
-  mk('circle',{cx:p0.x,cy:p0.y,r:8,fill:'none',stroke:'#c9a24a','stroke-width':2.5,opacity:.7});
-  paths[d.i]={el:tube,d:dstr,pts:[x1,y1,c1x,c1y,c2x,c2y,x2,y2],len:0};
-  // desk
-  mk('rect',{x:d.x-48,y:d.y-8,width:100,height:72,rx:5,fill:'url(#deskG)',stroke:ex.col,'stroke-width':2.5});
-  mk('rect',{x:d.x-42,y:d.y-2,width:88,height:18,rx:2,fill:ex.col});
-  mk('text',{x:d.x,y:d.y+12,'text-anchor':'middle',fill:'#1c1610','font-family':'Oswald','font-size':11,'font-weight':700,'letter-spacing':1}).textContent=ex.short;
-  mk('text',{x:d.x,y:d.y+30,'text-anchor':'middle',fill:'#c9a24a','font-family':'Oswald','font-size':9,'letter-spacing':.5}).textContent='DESK '+(d.i+1);
-  // load gauge
-  mk('rect',{x:d.x-36,y:d.y+38,width:72,height:8,rx:2,fill:'#0a1410',stroke:'#5a4018','stroke-width':1});
-  mk('rect',{x:d.x-36,y:d.y+38,width:2,height:8,rx:2,fill:ex.col,id:'gauge'+d.i});
-  mk('text',{x:d.x,y:d.y+58,'text-anchor':'middle',fill:'#b9ab8f','font-family':'Oswald','font-size':9,id:'loadlab'+d.i}).textContent='0';
-  // inbox flange
-  mk('ellipse',{cx:d.x-50,cy:d.y+20,rx:10,ry:7,fill:'#0a1410',stroke:'#c9a24a','stroke-width':2});
- }
- function rowBump(i){return ((i/4)|0)===0?-40:40}
-
- // dead-letter tube
- {
-  const x1=gatePt.x,y1=gatePt.y+48,x2=880,y2=520;
-  const dstr=`M${x1} ${y1} C${x1+80} ${y1+100}, ${x2-100} ${y2-20}, ${x2} ${y2}`;
-  mk('path',{d:dstr,fill:'none',stroke:'#0a0804',opacity:.3,'stroke-width':12,'stroke-linecap':'round'});
-  const tube=mk('path',{d:dstr,fill:'none',stroke:'#6b1e1a','stroke-width':9,'stroke-linecap':'round',id:'tubedead'});
-  mk('path',{d:dstr,fill:'none',stroke:'#c0403044','stroke-width':2,'stroke-linecap':'round','stroke-dasharray':'4 8'});
-  paths.dead={el:tube,d:dstr,pts:[x1,y1,x1+80,y1+100,x2-100,y2-20,x2,y2],len:0};
- }
-
- // hopper → gate tube
- {
-  const x1=hopperPt.x,y1=hopperPt.y+40,x2=gatePt.x-48,y2=gatePt.y;
-  const dstr=`M${x1} ${y1} C${x1} ${y1+60}, ${x2-20} ${y2+40}, ${x2} ${y2}`;
-  mk('path',{d:dstr,fill:'none',stroke:'#0a0804',opacity:.3,'stroke-width':12,'stroke-linecap':'round'});
-  const tube=mk('path',{d:dstr,fill:'none',stroke:'url(#pipeG)','stroke-width':10,'stroke-linecap':'round',id:'tubein'});
-  paths.in={el:tube,d:dstr,pts:[x1,y1,x1,y1+60,x2-20,y2+40,x2,y2],len:0};
+  // glow flash (hidden until capsule lands)
+  mk('rect',{x:d.x-52,y:d.y-12,width:108,height:80,rx:7,fill:ex.col,opacity:0,id:'deskglow'+d.i},deskG);
+  mk('rect',{x:d.x-48,y:d.y-8,width:100,height:72,rx:5,fill:'url(#deskG)',stroke:ex.col,'stroke-width':2.5},deskG);
+  // per-row layout keeps EVERY label clear of the edge port
+  // top-row (port on bottom): content high, leave ~14px bottom strip
+  // bottom-row (port on top): content low, leave ~14px top strip
+  const dy=d.row===0?0:12;
+  mk('rect',{x:d.x-42,y:d.y-2+dy,width:88,height:17,rx:2,fill:ex.col},deskG);
+  mk('text',{x:d.x,y:d.y+11+dy,'text-anchor':'middle',fill:'#1c1610','font-family':'Oswald','font-size':11,'font-weight':700,'letter-spacing':1},deskG).textContent=ex.short;
+  mk('text',{x:d.x,y:d.y+28+dy,'text-anchor':'middle',fill:'#c9a24a','font-family':'Oswald','font-size':9,'letter-spacing':.5},deskG).textContent='DESK '+(d.i+1);
+  // gauge + load count side-by-side so nothing sits inside the port circle
+  const gy=d.row===0?d.y+38:d.y+50;
+  mk('rect',{x:d.x-40,y:gy,width:58,height:8,rx:2,fill:'#0a1410',stroke:'#5a4018','stroke-width':1},deskG);
+  mk('rect',{x:d.x-40,y:gy,width:2,height:8,rx:2,fill:ex.col,id:'gauge'+d.i},deskG);
+  mk('text',{x:d.x+28,y:gy+8,'text-anchor':'start',fill:'#b9ab8f','font-family':'Oswald','font-size':10,id:'loadlab'+d.i},deskG).textContent='0';
+  // brass port on the rim (drawn last among desk parts)
+  mk('circle',{cx:d.portX,cy:d.portY,r:8,fill:'#0a1410',stroke:'#c9a24a','stroke-width':2.2},deskG);
+  mk('circle',{cx:d.portX,cy:d.portY,r:4.5,fill:'#1a1208',stroke:'#e8c878','stroke-width':1.4,id:'port'+d.i},deskG);
+  mk('circle',{cx:d.portX,cy:d.portY,r:1.8,fill:'#0a0804'},deskG);
  }
 
  // measure path lengths
@@ -334,7 +365,7 @@ function updateBalance(){
  $('#balval').textContent='CV '+cv.toFixed(2)+(cv>.6?' · skewed':cv>.3?' · uneven':' · balanced');
  for(let i=0;i<NE;i++){
   const g=document.getElementById('gauge'+i);const lab=document.getElementById('loadlab'+i);
-  if(g){const lim=capacityLimit();g.setAttribute('width',String(clamp(loads[i]/(lim||1),0,1)*72))}
+  if(g){const lim=capacityLimit();g.setAttribute('width',String(clamp(loads[i]/(lim||1),0,1)*58))}
   if(lab)lab.textContent=String(loads[i]|0);
  }
  $('#stats').innerHTML=`sent <b>${sent}</b> · routed <b>${totalRouted}</b> · dropped <b>${dropped}</b> · k=<b>${topK}</b> · cap=<b>${capFactor.toFixed(2)}</b>`}
@@ -358,10 +389,23 @@ function updateCapsules(dt){
   // caps overlay is positioned absolute in room, so coords relative to room
   const x=sc.x,y=sc.y;
   const ang=(()=>{const p2=pointOnPath(c.pathKey,clamp(e+.02,0,1));const s2=svgToScreen(p2);return Math.atan2(s2.y-y,s2.x-x)*180/Math.PI})();
-  c.el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotate(${ang.toFixed(1)}deg)`;
+  // shrink into the desk port on the last 15% of a desk flight
+  const intoPort=typeof c.pathKey==='number'&&u>.85;
+  const sca=intoPort?Math.max(0.15,1-(u-.85)/.15):1;
+  c.el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotate(${ang.toFixed(1)}deg) scale(${sca.toFixed(3)})`;
+  c.el.style.opacity=intoPort?String(Math.max(0,1-(u-.85)/.12)):"";
   if(u>=1){c.el.remove();flying.splice(i,1);if(c.onDone)c.onDone();if(c.drop)addDead(c.tok);else landDesk(c)}}
 }
-function landDesk(c){hiss(.3);/* flash gauge already updated */}
+function landDesk(c){
+ if(typeof c.pathKey==='number'){
+  thunk();
+  const port=document.getElementById('port'+c.pathKey);
+  if(port){port.setAttribute('fill','#f3e6c8');port.setAttribute('r','6');
+   setTimeout(()=>{port.setAttribute('fill','#1a1208');port.setAttribute('r','4.5')},150)}
+  const glow=document.getElementById('deskglow'+c.pathKey);
+  if(glow){glow.setAttribute('opacity','0.5');setTimeout(()=>glow.setAttribute('opacity','0'),180)}
+ }else{hiss(.3)}
+}
 function addDead(tok){
  const chip=document.createElement('span');chip.className='chip';chip.textContent=tok.slice(0,6).toUpperCase();
  deadbin.appendChild(chip);deadChips.push(chip);
