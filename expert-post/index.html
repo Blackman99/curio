@@ -384,24 +384,24 @@ function markTok(i,cls){const el=$('#typed').querySelector(`[data-i="${i}"]`);if
 let tokIndex=0,pendingTok=null;
 function pullNext(){
  if(!queue.length){phase='idle';phT=0;return}
+ // keep a few capsules in flight at once for visual density
+ if(flying.length>=6){phase='pull';phT=0;return}
  const item=queue.shift();pendingTok=item;currentTok=item.tok;
- markTok(tokIndex,'on');
- // seal: hop from hopper through intake tube to gate, then route
+ const myIdx=tokIndex++;
+ markTok(myIdx,'on');
  phase='seal';phT=0;
  hiss(.5);
- spawnCapsule(item.tok,'in',.42+rand()*.1,false,false,()=>{
-  // at gate — decide route
+ spawnCapsule(item.tok,'in',.38+rand()*.08,false,false,()=>{
   const r=pickExperts(item.tok);
+  // release the seal slot immediately so the next token can leave the hopper
+  phase=queue.length?'pull':'idle';phT=0;
   if(r.drop){
-   spawnCapsule(item.tok,'dead',.7+rand()*.15,false,true,()=>{markTok(tokIndex,'done');tokIndex++;phase=queue.length?'pull':'idle';phT=0});
+   spawnCapsule(item.tok,'dead',.65+rand()*.15,false,true,()=>markTok(myIdx,'done'));
   }else{
-   const parts=r.experts;
-   let left=parts.length;
+   const parts=r.experts;let left=parts.length;
    parts.forEach((pw,j)=>{
     const half=parts.length>1;
-    spawnCapsule(item.tok,pw.e,.55+rand()*.2+j*.06,half,false,()=>{
-     left--;if(left<=0){markTok(tokIndex,'done');tokIndex++;phase=queue.length?'pull':'idle';phT=0}
-    });
+    spawnCapsule(item.tok,pw.e,.5+rand()*.18+j*.05,half,false,()=>{left--;if(left<=0)markTok(myIdx,'done')});
    });
    whoosh();
   }
@@ -523,8 +523,8 @@ buildRoom();buildLevers();layout();updateBalance();
 // seed initial activity: a sentence already mid-flight
 (function bootstrap(){
  const toks=tokenize(SAMPLES[0]);
- capFactor=1.0;
- for(let i=0;i<10;i++){const e=(i*3+1)%NE;loads[e]++;totalRouted++}
+ capFactor=1.15;
+ for(let i=0;i<5;i++){const e=(i*3+1)%NE;loads[e]++;totalRouted++}
  ['THE','MIX','OF'].forEach(t=>{const chip=document.createElement('span');chip.className='chip';chip.textContent=t;deadbin.appendChild(chip);deadChips.push(chip);dropped++});
  updateBalance();
  enqueueSentence(SAMPLES[0]);
