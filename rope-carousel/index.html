@@ -1,0 +1,540 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RoPE Carousel — Rotary Position Embeddings as a Victorian fairground</title>
+<meta name="description" content="A Victorian carousel for Rotary Position Embeddings: each horse is a frequency pair; drag to advance position and watch phases spin. Toy RoPE visualization — fully client-side, no API keys.">
+<meta property="og:title" content="RoPE Carousel"><meta property="og:description" content="Each horse is a RoPE frequency pair. Drag position m and watch phases spin on a Victorian fairground carousel.">
+<meta property="og:image" content="https://blackman99.github.io/curio/rope-carousel/og.png"><meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/rope-carousel/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{--crimson:#c41e3a;--cream:#f4e8d0;--brass:#c9a24a;--night:#1a1218;--deep:#0e0a0c;--gilt:#e8d090;--sawdust:#3a2a20}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{overflow:hidden;font-family:'Libre Baskerville',Georgia,serif;color:var(--cream);
+ background:
+  radial-gradient(ellipse 70% 50% at 50% 18%,#3a1820 0%,transparent 60%),
+  radial-gradient(ellipse 50% 40% at 80% 90%,#c9a24a14 0%,transparent 50%),
+  radial-gradient(ellipse 40% 35% at 15% 80%,#c41e3a18 0%,transparent 45%),
+  linear-gradient(180deg,#1a1218 0%,#0e0a0c 55%,#080608 100%);
+ -webkit-user-select:none;user-select:none}
+body.narrow{overflow:auto}
+body.narrow #wrap{height:auto;min-height:100%;padding-bottom:12px;justify-content:flex-start}
+body.narrow #note{position:static;height:auto;padding:10px 14px;background:#0e0a0c}
+body.narrow #stage{grid-template-columns:1fr;gap:10px}
+body.narrow #panel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.narrow #panel h3,#readout,#phasorwrap{grid-column:1/-1}
+body.rm .horse-bob,body.rm .light,body.rm #platform{animation:none!important;transition:none!important}
+#wrap{position:relative;max-width:1480px;margin:0 auto;padding:10px 14px 0;height:100%;display:flex;flex-direction:column;gap:8px;padding-bottom:44px}
+#sign{display:flex;align-items:stretch;gap:12px}
+#plate{flex:1;min-width:0;display:flex;align-items:baseline;gap:14px;background:
+  linear-gradient(#2a181c,#160e12);color:var(--cream);border-radius:6px;padding:8px 18px 9px;
+  box-shadow:inset 0 0 0 2px var(--brass),inset 0 0 0 5px #160e12,0 3px 0 #0a0608,0 10px 22px -10px #000a;
+  background-image:
+   radial-gradient(circle at 14px 50%,#c9a24a 0 2.5px,#0000 3px),
+   radial-gradient(circle at calc(100% - 14px) 50%,#c9a24a 0 2.5px,#0000 3px),
+   linear-gradient(#2a181c,#160e12)}
+#plate small{font:700 10px/1 'Special Elite',monospace;letter-spacing:.28em;opacity:.8;white-space:nowrap;color:var(--brass)}
+#plate h1{margin:0;font:900 clamp(22px,3.6vw,36px)/1 'Cinzel Decorative',serif;letter-spacing:.02em;white-space:nowrap;color:var(--cream);text-shadow:0 2px 0 #0008,0 0 20px #c41e3a55}
+#plate h1 i{font-style:normal;color:var(--crimson);text-shadow:0 0 18px #c41e3a88}
+#plate .no{margin-left:auto;font:400 11px/1 'Special Elite',monospace;letter-spacing:.14em;opacity:.7;white-space:nowrap;align-self:center;color:var(--gilt)}
+#badge{flex:none;width:58px;height:58px;border-radius:50%;background:
+  conic-gradient(from 0deg,var(--crimson),var(--cream),var(--crimson),var(--cream),var(--crimson));
+ box-shadow:inset 0 0 0 3px var(--brass),inset 0 0 0 6px #1a1218,0 4px 10px #0008;display:grid;place-items:center;
+ font:900 9px/1.05 'Cinzel Decorative',serif;letter-spacing:.06em;color:var(--cream);text-align:center;
+ background-image:radial-gradient(circle at 50% 50%,#1a1218 0 38%,transparent 39%),conic-gradient(from 0deg,#c41e3a,#f4e8d0,#c41e3a,#f4e8d0,#c41e3a)}
+#badge span{position:relative;z-index:1;text-shadow:0 1px 2px #000}
+#stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,20vw,290px);gap:12px;align-items:stretch}
+#fair{position:relative;background:
+  radial-gradient(ellipse 60% 35% at 50% 88%,#5a3a2088 0%,transparent 70%),
+  linear-gradient(180deg,#24181e 0%,#1a1218 40%,#2a1e16 100%);
+ border-radius:8px;overflow:hidden;box-shadow:inset 0 0 0 2px #0a0608,inset 0 1px 0 #ffffff10,0 4px 0 #0a0608,0 14px 28px -12px #000c;
+ min-height:320px;perspective:900px;cursor:ew-resize;touch-action:none}
+#fair::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:6;background:
+  radial-gradient(ellipse 80% 50% at 50% 0%,#c41e3a22,transparent 55%),
+  linear-gradient(90deg,#0009,#0000 12%,#0000 88%,#0009);
+ box-shadow:inset 0 -40px 60px #0e0a0caa}
+#hud{position:absolute;left:10px;right:10px;top:8px;z-index:8;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+#poscard,#thetacard{background:#0e0a0ccc;border:1.5px solid var(--brass);border-radius:3px;padding:5px 9px 6px;backdrop-filter:blur(3px)}
+#poscard{flex:none;min-width:110px}
+#thetacard{flex:1;min-width:0;overflow:hidden}
+#poscard .lab,#thetacard .lab{font:700 9px/1 'Special Elite',monospace;letter-spacing:.2em;color:var(--brass);margin-bottom:4px}
+#posval{font:700 22px/1 'Cinzel Decorative',serif;color:var(--cream);text-shadow:0 0 12px #c41e3a66}
+#posval small{font:400 11px/1 'Special Elite';color:var(--gilt);letter-spacing:.08em;margin-left:4px}
+#thetas{display:flex;gap:6px;flex-wrap:wrap;font:400 10px/1.35 'Special Elite',monospace;color:var(--cream);opacity:.92}
+#thetas b{color:var(--crimson);font-weight:700}
+#scene{position:absolute;inset:0;display:grid;place-items:center;transform-style:preserve-3d;z-index:2}
+#carousel{position:relative;width:min(92%,520px);height:min(88%,460px);transform-style:preserve-3d;
+ transform:rotateX(58deg) translateY(18px);transform-origin:50% 55%}
+#floor{position:absolute;left:50%;top:55%;width:78%;aspect-ratio:1;transform:translate(-50%,-50%) translateZ(0);
+ border-radius:50%;background:
+  radial-gradient(circle at 50% 50%,#4a3428 0%,#2a1c14 55%,#1a100c 100%);
+ box-shadow:0 0 0 6px #c9a24a55,0 0 0 10px #1a1218,0 20px 40px #000a,inset 0 0 40px #0008;
+ background-image:
+  repeating-conic-gradient(from 0deg,#3a2a20 0deg 12deg,#2a1c14 12deg 24deg),
+  radial-gradient(circle at 50% 50%,#4a3428 0%,transparent 70%)}
+#platform{position:absolute;left:50%;top:55%;width:72%;aspect-ratio:1;transform:translate(-50%,-50%) translateZ(8px);
+ border-radius:50%;transform-style:preserve-3d;will-change:transform;
+ background:
+  repeating-conic-gradient(from 0deg,var(--crimson) 0deg 15deg,var(--cream) 15deg 30deg);
+ box-shadow:0 0 0 4px var(--brass),inset 0 0 0 8px #1a121888,0 8px 20px #0008;opacity:.95}
+#platform::after{content:'';position:absolute;inset:12%;border-radius:50%;background:radial-gradient(circle,#1a1218ee,#1a1218aa 60%,transparent);
+ box-shadow:inset 0 0 0 2px #c9a24a44}
+#spindle{position:absolute;left:50%;top:55%;width:18px;height:42%;transform:translate(-50%,-100%) translateZ(40px) rotateX(-58deg);
+ transform-origin:50% 100%;background:linear-gradient(90deg,#8a7028,#e8d090 40%,#c9a24a 60%,#6a5420);
+ border-radius:4px 4px 2px 2px;box-shadow:0 0 12px #c9a24a66,2px 0 0 #0004;z-index:5}
+#canopy{position:absolute;left:50%;top:12%;width:70%;aspect-ratio:2.2;transform:translate(-50%,0) translateZ(55px) rotateX(-58deg);
+ transform-origin:50% 100%;z-index:4;pointer-events:none}
+#canopy svg{width:100%;height:100%;filter:drop-shadow(0 8px 12px #0009);display:block}
+#horses{position:absolute;left:50%;top:55%;width:72%;aspect-ratio:1;transform:translate(-50%,-50%) translateZ(10px);
+ border-radius:50%;transform-style:preserve-3d;will-change:transform}
+.horse{position:absolute;left:50%;top:50%;width:52px;height:70px;margin:-35px 0 0 -26px;transform-style:preserve-3d;
+ transform-origin:50% 85%;will-change:transform}
+.horse .pole{position:absolute;left:50%;bottom:8px;width:4px;height:78px;margin-left:-2px;
+ background:linear-gradient(90deg,#8a7028,#e8d090,#c9a24a,#6a5420);border-radius:2px;
+ box-shadow:0 0 6px #c9a24a55;transform:translateZ(1px)}
+.horse .bob{position:absolute;left:50%;bottom:28px;width:48px;height:42px;margin-left:-24px;
+ transform-origin:50% 80%;will-change:transform}
+.horse .bob svg{width:100%;height:100%;display:block;filter:drop-shadow(0 3px 2px #0008)}
+.horse .tag{position:absolute;left:50%;top:-2px;transform:translateX(-50%);font:700 8px/1 'Special Elite',monospace;
+ color:var(--gilt);background:#1a1218cc;border:1px solid var(--brass);padding:2px 4px;border-radius:2px;
+ white-space:nowrap;letter-spacing:.04em;opacity:.9;pointer-events:none}
+.horse.sel .tag{color:var(--cream);background:var(--crimson);border-color:var(--cream);box-shadow:0 0 10px #c41e3a88}
+.horse.sel .pole{box-shadow:0 0 14px #c41e3a99,0 0 4px #e8d090}
+#lights{position:absolute;left:50%;top:55%;width:76%;aspect-ratio:1;transform:translate(-50%,-50%) translateZ(52px) rotateX(-58deg);
+ pointer-events:none;z-index:3}
+.light{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gilt);
+ box-shadow:0 0 8px #e8d090,0 0 16px #c41e3a88;left:50%;top:50%;margin:-3.5px}
+#panel{background:linear-gradient(#2a181c,#160e12);border-radius:6px;padding:10px 10px 12px;
+ box-shadow:inset 0 1px 0 #ffffff12,0 4px 0 #0c080a,0 14px 24px -10px #000a;color:var(--cream);
+ display:flex;flex-direction:column;gap:8px;overflow:auto;
+ border:1.5px solid #c9a24a44}
+#panel h3{margin:0;font:900 13px/1 'Cinzel Decorative',serif;letter-spacing:.18em;text-align:center;opacity:.9;color:var(--brass)}
+#panel label{font:700 9px/1 'Special Elite',monospace;letter-spacing:.16em;color:var(--brass);display:block;margin-bottom:4px}
+input[type=range]{width:100%;accent-color:var(--crimson)}
+#btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font:900 13px/1 'Cinzel Decorative',serif;letter-spacing:.1em;border:0;border-radius:4px;padding:11px 4px;cursor:pointer;
+ color:var(--cream);background:linear-gradient(#e05060,#c41e3a 45%,#8a1028);
+ box-shadow:inset 0 1px 0 #ff8a9888,0 3px 0 #5a0818;touch-action:manipulation}
+button.small{font-size:11px;padding:9px 2px;background:linear-gradient(#e8d090,#c9a24a 50%,#8a7028);
+ box-shadow:inset 0 1px 0 #fff8,0 3px 0 #5a4820;color:#1a1218}
+button.off{opacity:.5}
+#spinBtn{grid-column:1/3;font-size:16px;padding:13px 4px;letter-spacing:.16em}
+button.down{transform:translateY(3px);box-shadow:inset 0 1px 0 #ff8a9888,0 0 0 #5a0818}
+#readout{font:400 11px/1.45 'Special Elite',monospace;letter-spacing:.02em;color:#d8c8a8;text-align:left;
+ background:#0e0a0c;border:1px solid #c9a24a44;border-radius:3px;padding:7px 8px}
+#readout b{color:var(--crimson)}
+#readout .g{color:var(--gilt)}
+#phasorwrap{background:#0e0a0c;border:1px solid #c9a24a55;border-radius:3px;padding:6px;text-align:center}
+#phasorwrap .lab{font:700 9px/1 'Special Elite',monospace;letter-spacing:.16em;color:var(--brass);margin-bottom:4px;text-align:left}
+#phasor{display:block;width:100%;height:120px;background:#120c10;border-radius:2px;cursor:pointer}
+#dimrow{display:flex;gap:4px}
+#dimrow button{flex:1;font-size:12px;padding:8px 2px}
+#dimrow button.on{background:linear-gradient(#e05060,#c41e3a);color:#fff;box-shadow:inset 0 1px 0 #ff8a9888,0 3px 0 #5a0818}
+#note{position:fixed;left:0;right:0;bottom:0;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;
+ padding:0 12px;color:#d8c8a8;font:400 11px/1.25 'Libre Baskerville',serif;text-align:center;
+ background:linear-gradient(#0000,#0e0a0ccc)}
+#note a{white-space:nowrap;color:var(--crimson);text-decoration:none;font-family:'Cinzel Decorative',serif;font-size:12px;letter-spacing:.06em;font-weight:700}
+#ghost{position:fixed;left:0;top:0;width:30px;height:34px;pointer-events:none;z-index:20;opacity:0;will-change:transform}
+#ring{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid var(--crimson);pointer-events:none;z-index:19;opacity:0}
+@media(max-width:760px){#plate .no{display:none}#plate{flex-wrap:wrap;gap:4px}#carousel{transform:rotateX(62deg) translateY(10px) scale(.92)}}
+</style></head><body>
+<div id="wrap">
+ <header id="sign">
+  <div id="plate"><small>CURIO · FAIRGROUND</small><h1>RoPE <i>Carousel</i></h1><span class="no">No. 010 · POSITIONAL ENCODING</span></div>
+  <div id="badge"><span>RoPE<br>θᵢ</span></div>
+ </header>
+ <div id="stage">
+  <section id="fair" aria-label="Victorian RoPE carousel">
+   <div id="hud">
+    <div id="poscard"><div class="lab">POSITION m</div><div id="posval">0<small>token</small></div></div>
+    <div id="thetacard"><div class="lab">FREQUENCIES θᵢ = 10000<sup>−2i/d</sup></div><div id="thetas"></div></div>
+   </div>
+   <div id="scene">
+    <div id="carousel">
+     <div id="floor"></div>
+     <div id="platform"></div>
+     <div id="horses"></div>
+     <div id="spindle"></div>
+     <div id="canopy">
+      <svg viewBox="0 0 400 180" aria-hidden="true">
+       <defs>
+        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e8d090"/><stop offset="40%" stop-color="#c41e3a"/><stop offset="100%" stop-color="#6a1020"/></linearGradient>
+        <pattern id="stripes" width="40" height="180" patternUnits="userSpaceOnUse">
+         <rect width="20" height="180" fill="#c41e3a"/><rect x="20" width="20" height="180" fill="#f4e8d0"/>
+        </pattern>
+       </defs>
+       <ellipse cx="200" cy="155" rx="190" ry="18" fill="#00000055"/>
+       <path d="M20 150 Q200 10 380 150 L360 155 Q200 40 40 155 Z" fill="url(#stripes)" stroke="#c9a24a" stroke-width="3"/>
+       <path d="M20 150 Q200 10 380 150" fill="none" stroke="#e8d090" stroke-width="2" opacity=".7"/>
+       <circle cx="200" cy="48" r="14" fill="#c9a24a" stroke="#e8d090" stroke-width="2"/>
+       <circle cx="200" cy="48" r="6" fill="#c41e3a"/>
+       <g fill="#e8d090" opacity=".9">
+        <circle cx="55" cy="140" r="4"/><circle cx="100" cy="100" r="4"/><circle cx="150" cy="70" r="4"/>
+        <circle cx="200" cy="58" r="4"/><circle cx="250" cy="70" r="4"/><circle cx="300" cy="100" r="4"/><circle cx="345" cy="140" r="4"/>
+       </g>
+      </svg>
+     </div>
+     <div id="lights"></div>
+    </div>
+   </div>
+  </section>
+  <aside id="panel">
+   <h3>CALLIOPE DESK</h3>
+   <div><label for="pos">POSITION m · <span id="poslab">0.0</span></label>
+    <input id="pos" type="range" min="0" max="64" step="0.05" value="0"></div>
+   <div><label>DIMENSION PAIRS</label>
+    <div id="dimrow">
+     <button type="button" data-d="8" class="small">8</button>
+     <button type="button" data-d="16" class="small on">16</button>
+     <button type="button" data-d="32" class="small">32</button>
+    </div></div>
+   <div id="btns">
+    <button id="spinBtn">SPIN ▸</button>
+    <button id="auto" class="small">AUTO: ON</button>
+    <button id="snd" class="small">SOUND: ON</button>
+   </div>
+   <div id="phasorwrap">
+    <div class="lab">PHASOR · horse <span id="selLab">0</span> · (cos mθ, sin mθ)</div>
+    <canvas id="phasor" width="240" height="120"></canvas>
+   </div>
+   <div id="readout"></div>
+  </aside>
+ </div>
+ <div id="note">Toy RoPE visualization — not a trained model; fully client-side; no API keys. <a href="../">← Curio</a></div>
+</div>
+<svg id="ghost" viewBox="0 0 30 34" aria-hidden="true"><path d="M3 2 L3 26 L9.5 20.5 L13.5 30 L18 28 L14 19 L23 19 Z" fill="#fffaf0" stroke="#1c1610" stroke-width="2.2" stroke-linejoin="round"/></svg><div id="ring"></div>
+<script>
+(()=>{
+const Q=new URLSearchParams(location.search),FIXED=Q.has('fixed');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(RM)document.body.classList.add('rm');
+let seed=(+Q.get('seed'))||(FIXED?7:(Math.random()*1e9)|0);
+const rand=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,eio=t=>{t=clamp(t,0,1);return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2};
+
+/* ---- RoPE params ---- */
+const BASE=10000;
+let nPairs=16, m=0, mTarget=0, sel=0, auto=true, soundOn=true;
+let baseAngles=[], accents=[], morphT=1, morphFrom=[], morphTo=[];
+let simT=0, phT=0, userUntil=-1, platformAngle=0;
+let lightPhase=0;
+
+function theta(i,d){return Math.pow(BASE,-2*i/d)}
+function thetas(){const t=[];for(let i=0;i<nPairs;i++)t.push(theta(i,nPairs*2));return t}
+function reseed(hard){
+ morphFrom=baseAngles.slice();
+ accents=Array.from({length:nPairs},()=>rand());
+ morphTo=Array.from({length:nPairs},(_,i)=>rand()*Math.PI*2+(i*0.37));
+ if(hard||!morphFrom.length){baseAngles=morphTo.slice();morphT=1}
+ else morphT=0;
+ chime();
+}
+function ensureAngles(){
+ while(baseAngles.length<nPairs)baseAngles.push(rand()*Math.PI*2);
+ baseAngles.length=nPairs;
+ while(accents.length<nPairs)accents.push(rand());
+ accents.length=nPairs;
+}
+
+/* ---- SVG horse ---- */
+const HORSE_COLS=['#c41e3a','#f4e8d0','#c9a24a','#e05060','#e8d090','#a01828'];
+function horseSVG(col,brass){
+ return `<svg viewBox="0 0 64 56" aria-hidden="true"><defs>
+  <linearGradient id="hg${col.replace('#','')}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="#1a1218"/></linearGradient>
+ </defs>
+ <ellipse cx="32" cy="50" rx="14" ry="3" fill="#0006"/>
+ <path d="M12 36 Q8 28 14 22 Q18 16 26 18 L30 14 Q34 10 40 14 L46 18 Q54 16 56 24 Q58 32 52 36 L48 40 Q42 44 34 42 L22 42 Q14 42 12 36Z"
+  fill="url(#hg${col.replace('#','')})" stroke="${brass}" stroke-width="1.4"/>
+ <path d="M40 16 Q48 8 54 14" fill="none" stroke="${brass}" stroke-width="1.5"/>
+ <circle cx="44" cy="20" r="1.6" fill="#1a1218"/>
+ <path d="M20 42 L18 52 M28 42 L28 52 M36 42 L38 52 M44 40 L48 50" stroke="${brass}" stroke-width="2" stroke-linecap="round"/>
+ <circle cx="32" cy="30" r="3" fill="${brass}" opacity=".85"/>
+ <path d="M24 28 Q32 34 40 28" fill="none" stroke="#fff6" stroke-width="1"/>
+ </svg>`;
+}
+
+/* ---- build horses + lights ---- */
+const horsesEl=$('#horses'), lightsEl=$('#lights'), platform=$('#platform');
+function buildHorses(){
+ ensureAngles();
+ horsesEl.innerHTML='';
+ lightsEl.innerHTML='';
+ const N=nPairs;
+ for(let i=0;i<N;i++){
+  const col=HORSE_COLS[i%HORSE_COLS.length];
+  const el=document.createElement('div');
+  el.className='horse'+(i===sel?' sel':'');
+  el.dataset.i=i;
+  el.innerHTML=`<div class="tag">i=${i}</div><div class="pole"></div><div class="bob">${horseSVG(col,'#c9a24a')}</div>`;
+  el.addEventListener('click',e=>{e.stopPropagation();sel=i;updateSel();playTone(thetas()[i])});
+  horsesEl.appendChild(el);
+ }
+ const nL=16;
+ for(let i=0;i<nL;i++){
+  const L=document.createElement('div');L.className='light';
+  const a=i/nL*Math.PI*2,r=48;
+  L.style.transform=`translate(${Math.cos(a)*r}%,${Math.sin(a)*r}%)`;
+  lightsEl.appendChild(L);
+ }
+ $$('#dimrow button').forEach(b=>b.classList.toggle('on',+b.dataset.d===nPairs));
+ updateSel();renderThetas();
+}
+function updateSel(){
+ $$('.horse').forEach(h=>h.classList.toggle('sel',+h.dataset.i===sel));
+ $('#selLab').textContent=String(sel);
+}
+function renderThetas(){
+ const th=thetas();
+ const show=th.slice(0,Math.min(6,th.length)).map((t,i)=>`<span>θ<sub>${i}</sub>=<b>${t.toFixed(4)}</b></span>`).join('');
+ $('#thetas').innerHTML=show+(th.length>6?`<span class="g">… +${th.length-6}</span>`:'');
+}
+
+/* ---- layout horses in ring ---- */
+function layoutHorses(mNow,t){
+ const th=thetas();
+ const kids=[...horsesEl.children];
+ const morph=eio(morphT);
+ const N=kids.length||1;
+ // platform rotates with m (slow visual)
+ platformAngle=mNow*th[0]*0.35;
+ platform.style.transform=`translate(-50%,-50%) translateZ(8px) rotateZ(${platformAngle}rad)`;
+ horsesEl.style.transform=`translate(-50%,-50%) translateZ(10px) rotateZ(${platformAngle}rad)`;
+ kids.forEach((el,i)=>{
+  const base=lerp(morphFrom[i]??baseAngles[i],morphTo[i]??baseAngles[i],morph);
+  if(morphT>=1)baseAngles[i]=base;
+  const place=base; // physical slot on ring
+  const phase=mNow*th[i]; // RoPE phase
+  const R=42; // % of container
+  const x=Math.cos(place)*R, y=Math.sin(place)*R;
+  // bob up/down with phase; also subtle facing from phase
+  const bob=Math.sin(phase+t*1.2+accents[i]*6.28)*10;
+  const face=phase*57.3*0.15;
+  el.style.transform=`translate(${x}%,${y}%) rotateZ(${-platformAngle}rad) translateZ(${8+bob*0.3}px)`;
+  const bobEl=el.querySelector('.bob');
+  if(bobEl) bobEl.style.transform=`translateY(${-bob}px) rotateZ(${face}deg)`;
+  // depth sort
+  el.style.zIndex=String(100+Math.round(y));
+ });
+ // canopy lights blink
+ const lights=[...lightsEl.children];
+ lights.forEach((L,i)=>{
+  const on=((Math.sin(lightPhase*3+i*0.8)+1)/2)>.35;
+  L.style.opacity=on?1:0.25;
+  L.style.background=i%3===0?'#c41e3a':(i%3===1?'#e8d090':'#f4e8d0');
+ });
+}
+
+/* ---- phasor canvas ---- */
+const pcv=$('#phasor'), pctx=pcv.getContext('2d');
+function drawPhasor(mNow){
+ const th=thetas()[sel]||0;
+ const ang=mNow*th;
+ const W=pcv.width,H=pcv.height,cx=W/2,cy=H/2,R=Math.min(W,H)*0.36;
+ pctx.clearRect(0,0,W,H);
+ // grid
+ pctx.strokeStyle='#c9a24a33';pctx.lineWidth=1;
+ pctx.beginPath();pctx.moveTo(8,cy);pctx.lineTo(W-8,cy);pctx.moveTo(cx,8);pctx.lineTo(cx,H-8);pctx.stroke();
+ pctx.beginPath();pctx.arc(cx,cy,R,0,Math.PI*2);pctx.strokeStyle='#c9a24a55';pctx.stroke();
+ // trail
+ pctx.beginPath();
+ for(let k=0;k<=48;k++){
+  const a=(mNow-k*0.35)*th;
+  const x=cx+Math.cos(a)*R,y=cy-Math.sin(a)*R;
+  if(k===0)pctx.moveTo(x,y);else pctx.lineTo(x,y);
+ }
+ pctx.strokeStyle='#c41e3a55';pctx.lineWidth=2;pctx.stroke();
+ // phasor
+ const x=cx+Math.cos(ang)*R,y=cy-Math.sin(ang)*R;
+ pctx.beginPath();pctx.moveTo(cx,cy);pctx.lineTo(x,y);pctx.strokeStyle='#c41e3a';pctx.lineWidth=2.5;pctx.stroke();
+ pctx.beginPath();pctx.arc(x,y,5,0,Math.PI*2);pctx.fillStyle='#e8d090';pctx.fill();
+ pctx.beginPath();pctx.arc(cx,cy,3,0,Math.PI*2);pctx.fillStyle='#c9a24a';pctx.fill();
+ // labels
+ pctx.fillStyle='#d8c8a8';pctx.font='10px Special Elite,monospace';
+ pctx.fillText('Re',W-22,cy-6);pctx.fillText('Im',cx+6,16);
+ pctx.fillStyle='#e8d090';pctx.fillText(`θ=${th.toFixed(4)}`,10,H-10);
+ pctx.fillText(`∠=${(ang%(Math.PI*2)).toFixed(2)}`,W/2+8,H-10);
+}
+
+/* ---- readout ---- */
+function updateReadout(mNow){
+ const th=thetas();
+ const d=nPairs*2;
+ $('#posval').innerHTML=`${mNow.toFixed(1)}<small>token</small>`;
+ $('#poslab').textContent=mNow.toFixed(2);
+ $('#readout').innerHTML=`pairs <b>${nPairs}</b> · d=<span class="g">${d}</span><br>
+ selected <b>i=${sel}</b> · θ=<span class="g">${(th[sel]||0).toFixed(5)}</span><br>
+ phase mθ=<b>${(mNow*(th[sel]||0)).toFixed(3)}</b> rad<br>
+ <span class="g">cos=${Math.cos(mNow*(th[sel]||0)).toFixed(3)} · sin=${Math.sin(mNow*(th[sel]||0)).toFixed(3)}</span>`;
+}
+
+/* ---- audio (calliope-ish) ---- */
+let actx=null, master=null;
+function initAudio(){
+ if(actx)return;
+ try{
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+  master=actx.createGain();master.gain.value=0.08;master.connect(actx.destination);
+ }catch(e){actx=null}
+}
+function tone(freq,dur,type,gain){
+ if(!soundOn||!actx)return;
+ try{
+  if(actx.state==='suspended')actx.resume();
+  const o=actx.createOscillator(),g=actx.createGain();
+  o.type=type||'triangle';o.frequency.value=freq;
+  g.gain.setValueAtTime(0,actx.currentTime);
+  g.gain.linearRampToValueAtTime(gain||0.12,actx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+(dur||0.25));
+  o.connect(g);g.connect(master);o.start();o.stop(actx.currentTime+(dur||0.25)+0.05);
+ }catch(e){}
+}
+function chime(){
+ if(!soundOn)return;initAudio();
+ [523.25,659.25,783.99,1046.5].forEach((f,i)=>setTimeout(()=>tone(f,0.18,'triangle',0.1),i*70));
+}
+function playTone(th){
+ if(!soundOn)return;initAudio();
+ const f=220+th*800;tone(f,0.2,'sine',0.09);tone(f*1.5,0.15,'triangle',0.05);
+}
+function softTick(){
+ if(!soundOn||!actx)return;
+ tone(330+rand()*80,0.06,'sine',0.03);
+}
+
+/* ---- interaction ---- */
+const fair=$('#fair'), posIn=$('#pos');
+let dragging=false, lastX=0;
+fair.addEventListener('pointerdown',e=>{
+ if(e.target.closest('.horse'))return;
+ dragging=true;lastX=e.clientX;fair.setPointerCapture(e.pointerId);
+ userUntil=simT+4;initAudio();
+});
+fair.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ const dx=e.clientX-lastX;lastX=e.clientX;
+ mTarget=clamp(mTarget+dx*0.08,0,64);
+ posIn.value=mTarget;
+ userUntil=simT+4;
+});
+fair.addEventListener('pointerup',()=>dragging=false);
+fair.addEventListener('pointercancel',()=>dragging=false);
+posIn.addEventListener('input',()=>{mTarget=+posIn.value;userUntil=simT+5;initAudio()});
+$$('#dimrow button').forEach(b=>b.addEventListener('click',()=>{
+ nPairs=+b.dataset.d;sel=Math.min(sel,nPairs-1);reseed(true);buildHorses();initAudio();
+}));
+$('#spinBtn').addEventListener('click',()=>{reseed(false);userUntil=simT+2;initAudio();
+ $('#spinBtn').classList.add('down');setTimeout(()=>$('#spinBtn').classList.remove('down'),120)});
+$('#auto').addEventListener('click',()=>{auto=!auto;$('#auto').textContent='AUTO: '+(auto?'ON':'OFF');$('#auto').classList.toggle('off',!auto)});
+$('#snd').addEventListener('click',()=>{soundOn=!soundOn;$('#snd').textContent='SOUND: '+(soundOn?'ON':'OFF');$('#snd').classList.toggle('off',!soundOn);if(soundOn)initAudio()});
+pcv.addEventListener('click',()=>{sel=(sel+1)%nPairs;updateSel();playTone(thetas()[sel])});
+window.addEventListener('keydown',e=>{
+ if(e.code==='Space'){e.preventDefault();reseed(false);userUntil=simT+2;initAudio()}
+ if(e.key==='ArrowRight'){mTarget=clamp(mTarget+0.5,0,64);posIn.value=mTarget;userUntil=simT+3}
+ if(e.key==='ArrowLeft'){mTarget=clamp(mTarget-0.5,0,64);posIn.value=mTarget;userUntil=simT+3}
+});
+
+/* ---- ghost autopilot ---- */
+const ghost=$('#ghost'), ring=$('#ring');
+let script=null;
+function startScript(){
+ if(RM&&!FIXED)return;
+ const kind=rand();
+ if(kind<.45){
+  // drag position
+  const from=mTarget,to=clamp(from+(rand()-.3)*18,0,64);
+  script={type:'drag',t:0,dur:2.2+rand()*1.5,from,to,x0:fair.getBoundingClientRect().left+fair.clientWidth*0.3,
+   y0:fair.getBoundingClientRect().top+fair.clientHeight*0.55};
+ }else if(kind<.7){
+  script={type:'spin',t:0,dur:1.2,done:false};
+ }else{
+  script={type:'sel',t:0,dur:1.0,idx:(sel+1+((rand()*3)|0))%nPairs,done:false};
+ }
+}
+function runScript(dt){
+ if(!script)return;
+ script.t+=dt;
+ const u=clamp(script.t/script.dur,0,1);
+ ghost.style.opacity=u<.1?u*10:u>.85?(1-u)/.15:1;
+ ring.style.opacity=ghost.style.opacity*.7;
+ if(script.type==='drag'){
+  const x=script.x0+eio(u)*(script.to-script.from)*8;
+  const y=script.y0+Math.sin(u*Math.PI)*12;
+  ghost.style.transform=`translate(${x}px,${y}px)`;
+  ring.style.transform=`translate(${x}px,${y}px)`;
+  mTarget=lerp(script.from,script.to,eio(u));
+  posIn.value=mTarget;
+ }else if(script.type==='spin'){
+  const r=$('#spinBtn').getBoundingClientRect();
+  const x=r.left+r.width/2-15,y=r.top+r.height/2-17;
+  ghost.style.transform=`translate(${x}px,${y}px)`;
+  ring.style.transform=`translate(${x+15}px,${y+17}px)`;
+  if(u>.45&&!script.done){script.done=true;reseed(false)}
+ }else if(script.type==='sel'){
+  const el=horsesEl.children[script.idx];
+  if(el){
+   const r=el.getBoundingClientRect();
+   const x=r.left+r.width/2-15,y=r.top+r.height/2-17;
+   ghost.style.transform=`translate(${x}px,${y}px)`;
+   ring.style.transform=`translate(${x+15}px,${y+17}px)`;
+   if(u>.5&&!script.done){script.done=true;sel=script.idx;updateSel();playTone(thetas()[sel])}
+  }
+ }
+ if(u>=1){script=null;ghost.style.opacity=0;ring.style.opacity=0;userUntil=simT+1.5}
+}
+
+/* ---- frame ---- */
+function layoutNarrow(){
+ const narrow=innerWidth<640;document.body.classList.toggle('narrow',narrow);
+}
+layoutNarrow();
+addEventListener('resize',layoutNarrow);
+
+let last=0;window.__frame=0;
+function frame(ts){
+ const dt0=FIXED?(1/60):Math.min(0.05,((ts-last)||16.7)/1000);
+ last=ts||last;
+ const dt=dt0*(RM?.45:1);
+ simT+=dt;window.__frame++;phT+=dt;lightPhase+=dt;
+ if(morphT<1)morphT=clamp(morphT+dt/(RM?1.6:0.9),0,1);
+
+ // smooth m toward target
+ m=lerp(m,mTarget,1-Math.exp(-dt*6));
+
+ // idle autopilot: slowly advance m
+ if(auto&&simT>userUntil){
+  mTarget=clamp(mTarget+dt*(RM?0.35:0.85),0,64);
+  if(mTarget>=63.5)mTarget=0;
+  posIn.value=mTarget;
+  if(!script&&phT>(RM?5.5:3.2)){phT=0;startScript()}
+  if(FIXED&&window.__frame%180===90&&!script){reseed(false)}
+ }
+ if(script)runScript(dt);
+ else if(auto&&simT>userUntil&&!FIXED){/* ghost idle */}
+
+ layoutHorses(m,simT);
+ drawPhasor(m);
+ updateReadout(m);
+
+ window.__state={
+  m:+m.toFixed(3),mTarget:+mTarget.toFixed(3),nPairs,sel,
+  morph:+morphT.toFixed(2),auto,frame:window.__frame,
+  theta0:+(thetas()[0]||0).toFixed(5),
+  ghost:!!script,t:+simT.toFixed(2)
+ };
+ if(!FIXED)requestAnimationFrame(frame);
+}
+
+/* ---- boot ---- */
+reseed(true);
+buildHorses();
+// seed activity so first frames look alive
+mTarget=FIXED?6:3.5;m=mTarget*0.6;posIn.value=mTarget;
+if(FIXED){userUntil=-1;phT=0.5;auto=true}
+layoutHorses(m,0);drawPhasor(m);updateReadout(m);
+
+if(FIXED){window.step=n=>{for(let i=0;i<(n||1);i++)frame()};frame()}
+else{window.step=()=>{};requestAnimationFrame(t=>{last=t;frame(t)})}
+})();
+</script>
+</body></html>
