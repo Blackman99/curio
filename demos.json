@@ -4,54 +4,60 @@
   "title": "Token Departures",
   "no": "007",
   "date": "2026-10-13",
-  "kind": "Sampling \u00b7 Split-flap DOM",
+  "kind": "Sampling · Split-flap DOM",
   "blurb": "A split-flap departures board of next-token odds. Pull the temperature and top-p levers, watch the odds re-flap, dispatch a word.",
-  "color": "#f5c518"
+  "color": "#f5c518",
+  "exhibit": "flap"
  },
  {
   "slug": "snowflake-net",
   "title": "Snowflake Net",
   "no": "006",
   "date": "2026-10-13",
-  "kind": "Geometry \u00b7 WebGL",
+  "kind": "Geometry · WebGL",
   "blurb": "Fold paper like a ReLU net folds space, make one cut, unfold a decision boundary.",
-  "color": "#d9c39a"
+  "color": "#d9c39a",
+  "exhibit": "fold"
  },
  {
   "slug": "phase-choir",
   "title": "Phase Choir",
   "no": "005",
   "date": "2026-10-12",
-  "kind": "Sync \u00b7 WebGL",
+  "kind": "Sync · WebGL",
   "blurb": "Kuramoto lattice whose coupling is a tiny random neural map. Move to entrain; click to re-roll the score.",
-  "color": "#c9a0ff"
+  "color": "#c9a0ff",
+  "exhibit": "choir"
  },
  {
   "slug": "latent-quicksilver",
   "title": "Latent Quicksilver",
   "no": "004",
   "date": "2026-10-12",
-  "kind": "Implicit fields \u00b7 WebGL",
+  "kind": "Implicit fields · WebGL",
   "blurb": "A liquid-metal isosurface of a random Fourier-feature field. Move to warp the latent; click to re-roll a new creature.",
-  "color": "#7ee0ff"
+  "color": "#7ee0ff",
+  "exhibit": "quicksilver"
  },
  {
   "slug": "diffusion-bloom",
   "title": "Diffusion Bloom",
   "no": "003",
   "date": "2026-10-12",
-  "kind": "Diffusion \u00b7 WebGL",
+  "kind": "Diffusion · WebGL",
   "blurb": "Particles reverse-diffuse from noise into form. Move to condition the score field; click to re-noise and bloom again.",
-  "color": "#ff6b9d"
+  "color": "#ff6b9d",
+  "exhibit": "bloom"
  },
  {
   "slug": "neural-storm",
   "title": "Neural Storm",
   "no": "002",
   "date": "2026-10-12",
-  "kind": "Neural nets \u00b7 WebGL",
+  "kind": "Neural nets · WebGL",
   "blurb": "262,144 GPU particles ride the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.",
-  "color": "#00b8d4"
+  "color": "#00b8d4",
+  "exhibit": "mlp"
  },
  {
   "slug": "attention-loom",
@@ -60,6 +66,7 @@
   "date": "2026-10-12",
   "kind": "Transformers",
   "blurb": "Type a sentence, hover a word, and watch toy self-attention weights stretch out as red threads.",
-  "color": "#c8321e"
+  "color": "#c8321e",
+  "exhibit": "loom"
  }
 ]
