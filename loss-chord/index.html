@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loss Chord — hear a toy optimizer descend</title>
+<meta name="description" content="A toy optimizer descends a loss surface you primarily hear. Pitch and chord tension track loss; rhythm tracks step size. Drag the learning rate until the chord resolves — or screams. Fully client-side.">
+<meta property="og:title" content="Loss Chord">
+<meta property="og:description" content="Hear gradient descent. Pitch = loss, rhythm = step size. Drag the learning rate until the chord resolves or blows up.">
+<meta property="og:image" content="https://blackman99.github.io/curio/loss-chord/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Loss Chord">
+<meta name="twitter:description" content="A toy optimizer you hear. Drag LR until the chord resolves — or screams.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/loss-chord/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060816;--panel:#0a0e22;--edge:#1a2450;--teal:#5eead4;--teal2:#2dd4bf;
+  --mag:#e846b4;--mag2:#f472b6;--ink:#e8f0ff;--mute:#7a8ab0;--warn:#ff6b9d;
+  --ok:#5eead4;--bad:#ff4d6d;--glow:0 0 18px #5eead466,0 0 40px #e846b422;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+body.scroll{overflow:auto}
+#wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;height:100%;
+  display:grid;grid-template-rows:auto 1fr auto auto;gap:0;padding:12px 14px 36px}
+#hud{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;
+  padding:10px 14px;border:1px solid var(--edge);background:linear-gradient(180deg,#0c1230,#070a1a);
+  box-shadow:var(--glow),inset 0 0 40px #5eead408;border-radius:10px}
+#hud .brand{font-family:'IBM Plex Mono',monospace;letter-spacing:.2em;font-size:10px;color:var(--teal2);text-transform:uppercase}
+#hud h1{margin:2px 0 0;font:700 clamp(18px,2.6vw,26px)/1.1 'IBM Plex Sans';color:var(--ink);
+  letter-spacing:.02em}
+#hud h1 span{color:var(--teal);text-shadow:0 0 14px #5eead488}
+#hud .sub{font-size:11px;color:var(--mute);margin-top:3px;letter-spacing:.02em}
+#meters{display:flex;gap:14px;justify-content:center;align-items:stretch}
+.meter{min-width:100px;text-align:center;padding:4px 10px;border:1px solid var(--edge);border-radius:8px;background:#050814aa}
+.meter .lab{font:600 9px/1 'IBM Plex Mono';letter-spacing:.18em;color:var(--mute)}
+.meter .val{font:700 clamp(18px,3vw,26px)/1.15 'IBM Plex Mono';color:var(--teal);margin-top:4px;
+  font-variant-numeric:tabular-nums;text-shadow:0 0 12px #5eead455}
+.meter .val.mag{color:var(--mag);text-shadow:0 0 12px #e846b466}
+.meter .val.warn{color:var(--warn);text-shadow:0 0 12px #ff6b9d88;animation:pulse .5s ease-in-out infinite}
+.meter .val.ok{color:var(--ok)}
+#status-pill{text-align:right}
+#status-pill .pill{display:inline-block;padding:6px 12px;border:1px solid var(--edge);border-radius:999px;
+  font:700 11px/1 'IBM Plex Mono';letter-spacing:.14em;color:var(--teal);background:#5eead412;text-transform:uppercase}
+#status-pill .pill.div{color:var(--bad);border-color:#ff4d6d88;background:#ff4d6d22;animation:pulse .4s infinite}
+#status-pill .pill.con{color:var(--teal);border-color:var(--teal);background:#5eead422;animation:none}
+#status-pill .pill.pau{color:var(--mute);border-color:var(--mute);background:transparent}
+#status-pill .meta{font-size:10px;color:var(--mute);margin-top:6px}
+@keyframes pulse{0%,100%{opacity:1;filter:brightness(1)}50%{opacity:.72;filter:brightness(1.25)}}
+#stage{position:relative;margin-top:12px;border:1px solid var(--edge);border-radius:12px;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 30%,#12183a 0%,#060816 70%);
+  box-shadow:var(--glow),inset 0 0 60px #000a;min-height:280px}
+#cv{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+#ghost{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
+  border:2px solid #5eead4;box-shadow:0 0 12px #5eead4aa,0 0 24px #e846b455;pointer-events:none;opacity:0;z-index:5;
+  transition:opacity .15s}
+#ghost::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px solid #e846b488;opacity:.5}
+#wave{position:absolute;left:14px;right:14px;bottom:10px;height:36px;pointer-events:none;opacity:.85}
+#wave canvas{width:100%;height:100%;display:block}
+#controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.lr-block{flex:1 1 280px;min-width:200px;padding:10px 14px;border:1px solid var(--edge);border-radius:10px;
+  background:linear-gradient(180deg,#0c1230,#070a1a);box-shadow:inset 0 0 20px #5eead408}
+.lr-block .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.lr-block .top .ttl{font:700 11px/1 'IBM Plex Mono';letter-spacing:.16em;color:var(--mag);text-transform:uppercase}
+.lr-block .top .num{font:700 18px/1 'IBM Plex Mono';color:var(--teal);font-variant-numeric:tabular-nums}
+#lr{width:100%;-webkit-appearance:none;appearance:none;height:28px;background:transparent;cursor:pointer;touch-action:manipulation}
+#lr:focus{outline:none}
+#lr::-webkit-slider-runnable-track{height:10px;border-radius:999px;background:linear-gradient(90deg,#5eead4 0%,#a78bfa 45%,#e846b4 78%,#ff4d6d 100%);
+  box-shadow:0 0 12px #5eead433}
+#lr::-moz-range-track{height:10px;border-radius:999px;background:linear-gradient(90deg,#5eead4 0%,#a78bfa 45%,#e846b4 78%,#ff4d6d 100%)}
+#lr::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;
+  border:3px solid var(--teal);box-shadow:0 0 14px #5eead4aa;margin-top:-8px;cursor:grab}
+#lr::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--teal);
+  box-shadow:0 0 14px #5eead4aa;cursor:grab}
+.lr-hint{display:flex;justify-content:space-between;font:500 9px/1 'IBM Plex Mono';letter-spacing:.08em;color:var(--mute);margin-top:6px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:700 12px/1 'IBM Plex Mono';letter-spacing:.12em;border:1px solid var(--edge);border-radius:8px;
+  padding:11px 14px;cursor:pointer;color:var(--teal);background:#0a1028;box-shadow:inset 0 0 12px #5eead411;
+  text-transform:uppercase;touch-action:manipulation;min-height:44px}
+button:hover{background:#5eead418;border-color:var(--teal)}
+button.on{color:#060816;background:var(--teal);border-color:var(--teal);box-shadow:0 0 16px #5eead466}
+button.off{color:var(--mute);opacity:.7}
+button.mag{color:var(--mag);border-color:#e846b466}
+button.mag.on{color:#fff;background:var(--mag);border-color:var(--mag);box-shadow:0 0 16px #e846b466}
+#chk{display:flex;align-items:center;gap:8px;font:600 11px/1 'IBM Plex Mono';letter-spacing:.1em;color:var(--mute);cursor:pointer;touch-action:manipulation;min-height:44px;padding:0 6px}
+#chk input{width:18px;height:18px;accent-color:var(--mag);cursor:pointer}
+#foot{margin-top:10px;font-size:11px;color:var(--mute);line-height:1.6;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+#foot a{color:var(--teal);text-decoration:none}
+#foot a:hover{text-decoration:underline}
+@media (max-width:720px){
+  body.scroll{overflow:auto}
+  #hud{grid-template-columns:1fr;gap:8px}
+  #status-pill{text-align:left}
+  #meters{justify-content:flex-start;flex-wrap:wrap}
+  #stage{min-height:240px}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header id="hud">
+    <div>
+      <div class="brand">Curio · drawer 012</div>
+      <h1>LOSS <span>CHORD</span></h1>
+      <div class="sub">Hear the optimizer. Pitch = loss · rhythm = step · drag LR</div>
+    </div>
+    <div id="meters">
+      <div class="meter"><div class="lab">LOSS</div><div class="val" id="lossV">—</div></div>
+      <div class="meter"><div class="lab">STEP</div><div class="val mag" id="stepV">0</div></div>
+    </div>
+    <div id="status-pill">
+      <div class="pill" id="statPill">DESCENDING</div>
+      <div class="meta" id="paramMeta">x=· y=·</div>
+    </div>
+  </header>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="ghost"></div>
+    <div id="wave"><canvas id="wcv"></canvas></div>
+  </div>
+
+  <div id="controls">
+    <div class="lr-block">
+      <div class="top"><span class="ttl">Learning rate</span><span class="num" id="lrNum">0.08</span></div>
+      <input id="lr" type="range" min="0" max="1000" value="220" aria-label="Learning rate">
+      <div class="lr-hint"><span>SWEET</span><span>FAST</span><span>SCREAM</span></div>
+    </div>
+    <div class="btns">
+      <button id="play" class="on">PAUSE</button>
+      <button id="reset">RESET</button>
+      <button id="snd" class="off">SOUND: OFF</button>
+      <label id="chk"><input type="checkbox" id="mom"> MOMENTUM</label>
+    </div>
+  </div>
+
+  <footer id="foot">
+    <a href="../">← cabinet</a>
+    <span>Toy optimizer + synthetic loss — not a trained model · fully client-side · no API keys</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+const Q = new URLSearchParams(location.search);
+const FIXED = Q.has('fixed');
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let seed = (+Q.get('seed')) || (FIXED ? 7 : ((Math.random() * 1e9) | 0));
+const rand = () => {
+  seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+  let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+};
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const $ = s => document.querySelector(s);
+
+/* ---- synthetic loss: elongated valley + gentle ripples (audible + drawable) ---- */
+function loss(x, y) {
+  // Gentle bowl at (0.3, 0.1) — slow audible descent — plus hard walls that scream when LR overshoots
+  const dx = x - 0.3, dy = y - 0.1;
+  const bowl = 1.05 * (dx * dx + 0.85 * dy * dy);
+  const rip = 0.035 * Math.sin(2.8 * x) * Math.cos(2.2 * y);
+  const ax = Math.max(0, Math.abs(x) - 0.72);
+  const ay = Math.max(0, Math.abs(y) - 0.68);
+  const wall = 0.55 * (Math.exp(6.0 * ax) - 1) + 0.45 * (Math.exp(5.5 * ay) - 1);
+  return Math.max(1e-6, 0.02 + bowl + rip + wall);
+}
+function grad(x, y) {
+  const eps = 1e-4;
+  const lx = (loss(x + eps, y) - loss(x - eps, y)) / (2 * eps);
+  const ly = (loss(x, y + eps) - loss(x, y - eps)) / (2 * eps);
+  return [lx, ly];
+}
+
+/* ---- state ---- */
+let x = -0.55, y = 0.55; // mid-high loss start
+let vx = 0, vy = 0;
+let lr = 0.085;
+let stepN = 0;
+let running = true;
+let momentum = false;
+let soundOn = !!FIXED; // fixed mode: sound from frame 0
+let status = 'descending'; // descending | converged | diverged | paused
+let simT = 0;
+let userUntil = -1;
+let auto = true;
+let trail = [];
+const TRAIL_MAX = 120;
+let pulsePhase = 0;
+let divergeT = 0;
+let squealed = false;
+
+function resetState(opts) {
+  // start mid/high-loss with audible tension (left of bowl, near ridge)
+  x = -0.78 + (rand() - 0.5) * 0.02;
+  y = 0.58 + (rand() - 0.5) * 0.02;
+  vx = 0; vy = 0;
+  stepN = 0;
+  status = 'descending';
+  trail = [];
+  divergeT = 0;
+  squealed = false;
+  lr = opts && opts.lr != null ? opts.lr : 0.016;
+  syncLR();
+  running = true;
+  $('#play').textContent = 'PAUSE';
+  $('#play').classList.add('on');
+}
+
+function syncLR() {
+  // map slider 0..1000 -> LR ~0.005 .. 0.85 (log-ish)
+  const t = (+$('#lr').value) / 1000;
+  // invert: set slider from lr
+  const u = Math.log(Math.max(lr, 0.005) / 0.005) / Math.log(0.85 / 0.005);
+  $('#lr').value = (clamp(u, 0, 1) * 1000) | 0;
+  $('#lrNum').textContent = lr.toFixed(lr < 0.1 ? 3 : 2);
+}
+function lrFromSlider() {
+  const t = (+$('#lr').value) / 1000;
+  lr = 0.005 * Math.pow(0.85 / 0.005, t);
+  $('#lrNum').textContent = lr.toFixed(lr < 0.1 ? 3 : 2);
+}
+
+/* ---- canvas ---- */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+const wcv = $('#wcv'), wctx = wcv.getContext('2d');
+const ghost = $('#ghost');
+let W = 0, H = 0, dpr = 1;
+
+function resize() {
+  dpr = Math.min(2, devicePixelRatio || 1);
+  const r = cv.parentElement.getBoundingClientRect();
+  W = Math.max(320, r.width | 0);
+  H = Math.max(260, Math.min(420, (r.height | 0) || Math.round(W * 0.48)));
+  cv.width = (W * dpr) | 0; cv.height = (H * dpr) | 0;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const wr = wcv.parentElement.getBoundingClientRect();
+  wcv.width = (wr.width * dpr) | 0; wcv.height = (36 * dpr) | 0;
+  wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+addEventListener('resize', () => { resize(); draw(); });
+
+/* world coords: x in [-1.1, 1.1], y in [-0.6, 1.0] */
+const XR = [-1.1, 1.1], YR = [-0.55, 1.05];
+function toPx(px, py) {
+  return [
+    ((px - XR[0]) / (XR[1] - XR[0])) * (W - 48) + 24,
+    H - 28 - ((py - YR[0]) / (YR[1] - YR[0])) * (H - 56)
+  ];
+}
+
+let lossField = null;
+function bakeField() {
+  const cols = 72, rows = 40;
+  lossField = { cols, rows, z: new Float32Array(cols * rows), mn: Infinity, mx: -Infinity };
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const xx = XR[0] + (i + 0.5) / cols * (XR[1] - XR[0]);
+    const yy = YR[0] + (j + 0.5) / rows * (YR[1] - YR[0]);
+    const z = loss(xx, yy);
+    lossField.z[j * cols + i] = z;
+    if (z < lossField.mn) lossField.mn = z;
+    if (z > lossField.mx) lossField.mx = z;
+  }
+}
+bakeField();
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // vignette bg already from CSS; draw contour silhouette
+  const { cols, rows, z, mn, mx } = lossField;
+  const span = mx - mn + 1e-9;
+  // filled bands
+  for (let j = 0; j < rows - 1; j++) {
+    for (let i = 0; i < cols - 1; i++) {
+      const z0 = z[j * cols + i];
+      const t = (z0 - mn) / span;
+      const xx0 = XR[0] + i / cols * (XR[1] - XR[0]);
+      const yy0 = YR[0] + j / rows * (YR[1] - YR[0]);
+      const xx1 = XR[0] + (i + 1) / cols * (XR[1] - XR[0]);
+      const yy1 = YR[0] + (j + 1) / rows * (YR[1] - YR[0]);
+      const [a, b] = toPx(xx0, yy0);
+      const [c, d] = toPx(xx1, yy1);
+      const teal = Math.floor(30 + t * 40);
+      const mag = Math.floor(10 + t * 70);
+      ctx.fillStyle = `rgba(${20 + mag},${24 + teal},${50 + Math.floor(t * 40)},${0.35 + t * 0.35})`;
+      ctx.fillRect(a, d, Math.max(1, c - a + 1), Math.max(1, b - d + 1));
+    }
+  }
+  // contour lines
+  const levels = [0.08, 0.15, 0.28, 0.45, 0.7, 1.1, 1.6];
+  ctx.lineWidth = 1.2;
+  for (const L of levels) {
+    ctx.beginPath();
+    let pen = false;
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols - 1; i++) {
+        const z0 = z[j * cols + i], z1 = z[j * cols + i + 1];
+        if ((z0 - L) * (z1 - L) <= 0) {
+          const u = Math.abs(z1 - z0) < 1e-9 ? 0.5 : (L - z0) / (z1 - z0);
+          const xx = XR[0] + (i + u) / cols * (XR[1] - XR[0]);
+          const yy = YR[0] + (j + 0.5) / rows * (YR[1] - YR[0]);
+          const [px, py] = toPx(xx, yy);
+          if (!pen) { ctx.moveTo(px, py); pen = true; }
+          else ctx.lineTo(px, py);
+        }
+      }
+      pen = false;
+    }
+    const tt = clamp((L - mn) / span, 0, 1);
+    ctx.strokeStyle = `rgba(94,234,212,${0.15 + tt * 0.35})`;
+    ctx.stroke();
+  }
+  // valley ridge highlight (min path silhouette)
+  ctx.beginPath();
+  for (let i = 0; i < 60; i++) {
+    const xx = XR[0] + (i + 0.5) / 60 * (XR[1] - XR[0]);
+    let bestY = 0, bestL = Infinity;
+    for (let k = 0; k < 40; k++) {
+      const yy = YR[0] + (k + 0.5) / 40 * (YR[1] - YR[0]);
+      const lv = loss(xx, yy);
+      if (lv < bestL) { bestL = lv; bestY = yy; }
+    }
+    const [px, py] = toPx(xx, bestY);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = 'rgba(232,70,180,0.55)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // trail
+  if (trail.length > 1) {
+    ctx.beginPath();
+    for (let i = 0; i < trail.length; i++) {
+      const [px, py] = toPx(trail[i][0], trail[i][1]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = 'rgba(94,234,212,0.55)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // particle
+  const [px, py] = toPx(x, y);
+  const L = loss(x, y);
+  const hot = status === 'diverged' || L > 2.5;
+  const glowR = 18 + Math.min(22, L * 6);
+  const g = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+  if (hot) {
+    g.addColorStop(0, 'rgba(255,80,140,0.85)');
+    g.addColorStop(0.4, 'rgba(232,70,180,0.35)');
+    g.addColorStop(1, 'rgba(232,70,180,0)');
+  } else {
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.25, 'rgba(94,234,212,0.7)');
+    g.addColorStop(1, 'rgba(94,234,212,0)');
+  }
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(px, py, glowR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = hot ? '#ff6b9d' : '#fff';
+  ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2); ctx.fill();
+
+  // star mark at minimum
+  const [mxp, myp] = toPx(0.3, 0.1);
+  ctx.strokeStyle = 'rgba(94,234,212,0.45)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(mxp - 7, myp); ctx.lineTo(mxp + 7, myp);
+  ctx.moveTo(mxp, myp - 7); ctx.lineTo(mxp, myp + 7);
+  ctx.stroke();
+
+  // labels
+  ctx.fillStyle = 'rgba(122,138,176,0.7)';
+  ctx.font = '600 10px IBM Plex Mono,monospace';
+  ctx.fillText('θ', 16, 22);
+  ctx.fillText('loss surface', W - 100, 22);
+}
+
+function drawWave(L) {
+  const ww = wcv.parentElement.getBoundingClientRect().width;
+  const hh = 36;
+  wctx.clearRect(0, 0, ww, hh);
+  const n = 64;
+  const tense = clamp(L / 2.2, 0, 1);
+  wctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1);
+    const amp = (4 + 14 * tense) * (0.55 + 0.45 * Math.sin(simT * (2 + tense * 10) + u * Math.PI * (3 + tense * 5)));
+    const yy = hh * 0.55 + amp * Math.sin(u * Math.PI * 2 * (2 + tense * 4) + pulsePhase);
+    const xx = u * ww;
+    if (i === 0) wctx.moveTo(xx, yy); else wctx.lineTo(xx, yy);
+  }
+  wctx.strokeStyle = tense > 0.7 ? `rgba(255,77,109,${0.5 + tense * 0.4})` : `rgba(94,234,212,${0.45 + (1 - tense) * 0.4})`;
+  wctx.lineWidth = 2;
+  wctx.stroke();
+  // magenta secondary partial
+  wctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1);
+    const amp = (3 + 8 * tense) * Math.sin(simT * 3.2 + u * 18);
+    const yy = hh * 0.55 + amp;
+    const xx = u * ww;
+    if (i === 0) wctx.moveTo(xx, yy); else wctx.lineTo(xx, yy);
+  }
+  wctx.strokeStyle = `rgba(232,70,180,${0.25 + tense * 0.45})`;
+  wctx.lineWidth = 1.2;
+  wctx.stroke();
+}
+
+/* ---- audio: continuous chord driven by loss ---- */
+let AC = null, master = null, oscs = [], gains = [], lfo = null, lfoG = null, pulseOsc = null, pulseG = null;
+const VOICES = 4; // root, third, fifth, tension
+
+function initAudio() {
+  if (AC) {
+    if (AC.state === 'suspended') AC.resume();
+    return;
+  }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) { AC = null; return; }
+  master = AC.createGain();
+  master.gain.value = RM ? 0.18 : 0.32;
+  master.connect(AC.destination);
+
+  for (let i = 0; i < VOICES; i++) {
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.type = i === 3 ? 'sawtooth' : (i === 0 ? 'sine' : 'triangle');
+    o.frequency.value = 220;
+    g.gain.value = 0.0001;
+    o.connect(g); g.connect(master);
+    o.start();
+    oscs.push(o); gains.push(g);
+  }
+  // soft tremolo / pulse tied to step rhythm
+  pulseOsc = AC.createOscillator();
+  pulseG = AC.createGain();
+  pulseOsc.type = 'sine';
+  pulseOsc.frequency.value = 2;
+  pulseG.gain.value = 0;
+  pulseOsc.connect(pulseG);
+  pulseG.connect(master.gain);
+  // Don't connect LFO to AudioParam incorrectly — use manual pulse beeps instead
+  pulseOsc.disconnect();
+  pulseG.disconnect();
+}
+
+function chordForLoss(L) {
+  // High L → high pitch + dissonance; low L → lower pitch + major triad
+  const t = clamp(Math.log(1 + L * 2.4) / Math.log(1 + 6), 0, 1);
+  const root = 165 + t * 480;
+  let ratios;
+  if (status === 'diverged' || L > 3.2) {
+    ratios = [1, 1.059, 1.414, 1.888];
+  } else if (t > 0.5) {
+    ratios = [1, 1.122, 1.414, 1.682];
+  } else if (t > 0.22) {
+    ratios = [1, 1.189, 1.498, 1.782];
+  } else {
+    ratios = [1, 1.25, 1.5, 2.0];
+  }
+  const vols = (status === 'diverged' || L > 3.2)
+    ? [0.24, 0.2, 0.18, 0.16]
+    : [0.2, 0.14, 0.12, 0.04 + t * 0.12];
+  return { root, ratios, vols, t };
+}
+
+function updateAudio(L, dt) {
+  if (!soundOn || !AC) return;
+  if (AC.state === 'suspended') AC.resume();
+  const { root, ratios, vols, t } = chordForLoss(L);
+  const now = AC.currentTime;
+  const atk = RM ? 0.08 : 0.04;
+  for (let i = 0; i < VOICES; i++) {
+    const f = root * ratios[i];
+    oscs[i].frequency.setTargetAtTime(f, now, 0.03);
+    const v = (soundOn ? vols[i] : 0) * (RM ? 0.55 : 1) * (status === 'paused' ? 0.35 : 1);
+    gains[i].gain.setTargetAtTime(v, now, atk);
+  }
+  // rhythmic tick on each optimizer step — handled in stepOpt
+}
+
+let lastTick = 0;
+function tickBeep(L) {
+  if (!soundOn || !AC || AC.state !== 'running') return;
+  const now = AC.currentTime;
+  if (now - lastTick < 0.04) return;
+  lastTick = now;
+  const o = AC.createOscillator(), g = AC.createGain();
+  const tense = clamp(L / 2, 0, 1);
+  o.type = 'square';
+  o.frequency.value = 80 + tense * 200;
+  g.gain.value = (RM ? 0.03 : 0.06) * (0.5 + tense);
+  o.connect(g); g.connect(master);
+  o.start(now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+  o.stop(now + 0.06);
+}
+
+function squealBurst() {
+  if (!soundOn || !AC || AC.state !== 'running') return;
+  const now = AC.currentTime;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(900, now);
+  o.frequency.exponentialRampToValueAtTime(1800, now + 0.25);
+  g.gain.setValueAtTime(RM ? 0.08 : 0.16, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+  o.connect(g); g.connect(master);
+  o.start(now); o.stop(now + 0.36);
+}
+
+/* ---- optimizer step ---- */
+function stepOpt() {
+  if (!running) return;
+  if (FIXED && simT >= 2.0 && simT < 3.65) return; // autopilot owns the squeal thrash
+  if (status === 'converged' && !(FIXED && simT < 4.5)) return;
+  const [gx, gy] = grad(x, y);
+  const gnorm = Math.hypot(gx, gy);
+  if (momentum) {
+    vx = 0.85 * vx - lr * gx;
+    vy = 0.85 * vy - lr * gy;
+    x += vx; y += vy;
+  } else {
+    x -= lr * gx;
+    y -= lr * gy;
+    vx = 0; vy = 0;
+  }
+  // soft walls
+  x = clamp(x, XR[0] + 0.02, XR[1] - 0.02);
+  y = clamp(y, YR[0] + 0.02, YR[1] - 0.02);
+  stepN++;
+  trail.push([x, y]);
+  if (trail.length > TRAIL_MAX) trail.shift();
+
+  const L = loss(x, y);
+  pulsePhase += 0.4 + lr * 8;
+  tickBeep(L);
+
+  if (L > 3.8 || !isFinite(L) || Math.abs(x) > 5 || Math.abs(y) > 5) {
+    if (status !== 'diverged') squealBurst();
+    status = 'diverged';
+    divergeT = simT;
+  } else if (L < 0.055 && gnorm < 0.12) {
+    status = 'converged';
+  } else if (status !== 'diverged') {
+    status = 'descending';
+  }
+}
+
+/* ---- autopilot script for wow recording ---- */
+/*
+  ?fixed&seed=7 timeline (simT seconds):
+  0.0–1.8  mid-loss tense chord, moderate LR descending (payoff in 2s)
+  1.8–3.2  spike LR too high → brief squeal / diverge scare
+  3.2–4.0  yank LR back to sweet spot, reset if needed
+  4.0–9.0  sweet descend into resolved chord
+*/
+let script = null;
+function pickScript() {
+  return {
+    done: false,
+    phase: 0,
+    // ghost targets as UI coords fractions; actual moves computed in runScript
+  };
+}
+
+function runScript(dt) {
+  // wow path: tense descend (0-2s) → squeal (2-3.6s) → sweet resolve (~8-9s)
+  const t = simT;
+  let targetLR = lr;
+  let gx = W * 0.5, gy = H * 0.5;
+
+  if (t < 2.0) {
+    targetLR = 0.015;
+    const [px, py] = toPx(x, y);
+    gx = px; gy = py;
+  } else if (t < 3.6) {
+    // Force a visible/audible diverge scare: slam LR and fling into the wall
+    targetLR = 0.9;
+    lr = 0.9;
+    if (!squealed) {
+      squealed = true;
+      // overshoot fling from near the basin into the hard wall
+      x = 1.06; y = 0.98; vx = 0; vy = 0;
+      status = 'diverged';
+      divergeT = simT;
+      trail.push([x, y]);
+      squealBurst();
+    } else {
+      // jitter in the danger zone so the particle thrashes
+      // thrash along the outer wall so loss stays screaming
+      // pin to outer corners so loss stays in scream territory
+      const corner = Math.floor(simT * 6 + rand() * 0.2) % 4;
+      const cx = corner % 2 ? 1.06 : -1.06;
+      const cy = corner < 2 ? 0.98 : -0.68;
+      x = clamp(cx + (rand() - 0.5) * 0.06, XR[0] + 0.02, XR[1] - 0.02);
+      y = clamp(cy + (rand() - 0.5) * 0.06, YR[0] + 0.02, YR[1] - 0.02);
+      status = 'diverged';
+      trail.push([x, y]);
+      if (trail.length > TRAIL_MAX) trail.shift();
+    }
+    const lrRect = $('#lr').getBoundingClientRect();
+    const stage = $('#stage').getBoundingClientRect();
+    gx = lrRect.left + lrRect.width * 0.93 - stage.left;
+    gy = H + 40;
+  } else if (t < 4.6) {
+    targetLR = 0.018;
+    if (status === 'diverged' || loss(x, y) > 0.5 || t < 3.7) {
+      x = -0.72; y = 0.55; vx = 0; vy = 0;
+      status = 'descending';
+      trail = [];
+      squealed = false;
+    }
+    const lrRect = $('#lr').getBoundingClientRect();
+    const stage = $('#stage').getBoundingClientRect();
+    gx = lrRect.left + lrRect.width * 0.28 - stage.left;
+    gy = H + 40;
+  } else {
+    targetLR = 0.022;
+    const [px, py] = toPx(x, y);
+    gx = px; gy = py;
+  }
+
+  if (t < 2.0 || t >= 3.6) {
+    lr += (targetLR - lr) * clamp(dt * 8, 0, 1);
+  }
+  syncLR();
+
+  ghostX += (gx - ghostX) * clamp(dt * 5, 0, 1);
+  ghostY += (gy - ghostY) * clamp(dt * 5, 0, 1);
+}
+
+let ghostX = 0, ghostY = 0, gAlpha = 0;
+
+/* ---- HUD ---- */
+function updateHUD() {
+  const L = loss(x, y);
+  const el = $('#lossV');
+  el.textContent = L.toFixed(L < 0.1 ? 3 : 2);
+  el.className = 'val' + (status === 'diverged' ? ' warn' : status === 'converged' ? ' ok' : '');
+  $('#stepV').textContent = String(stepN);
+  const pill = $('#statPill');
+  if (!running && status !== 'converged' && status !== 'diverged') {
+    pill.textContent = 'PAUSED';
+    pill.className = 'pill pau';
+  } else if (status === 'diverged') {
+    pill.textContent = 'DIVERGED';
+    pill.className = 'pill div';
+  } else if (status === 'converged') {
+    pill.textContent = 'CONVERGED';
+    pill.className = 'pill con';
+  } else {
+    pill.textContent = 'DESCENDING';
+    pill.className = 'pill';
+  }
+  $('#paramMeta').textContent = `x=${x.toFixed(2)}  y=${y.toFixed(2)}  lr=${lr.toFixed(3)}`;
+}
+
+/* ---- frame ---- */
+let last = 0;
+window.__frame = 0;
+let acc = 0;
+const STEP_EVERY = 1 / 10; // ~12 optimizer steps / sec at lr-independent cadence; scaled by speed feel
+
+function frame(ts) {
+  const n = FIXED ? last + 1000 / 60 : (ts || performance.now());
+  let dt = FIXED ? 1 / 60 : clamp((n - last) / 1000, 0, 0.05);
+  if (RM) dt *= 0.55;
+  last = n;
+  simT += dt;
+  window.__frame++;
+
+  const ghostOK = auto && simT > userUntil;
+  if (ghostOK && !script) script = pickScript();
+  if (script && !script.done && ghostOK) runScript(dt);
+
+  // optimizer cadence scales with LR a bit (rhythm = step size feel)
+  const cadence = STEP_EVERY / (0.65 + clamp(lr / 0.12, 0.4, 2.2));
+  acc += dt;
+  while (acc >= cadence) {
+    acc -= cadence;
+    if (running) stepOpt();
+  }
+
+  // auto-recover from diverge after a beat (except during squeal showcase window)
+  if (status === 'diverged' && simT - divergeT > 1.1 && !(FIXED && simT < 4.6)) {
+    x = clamp(x * 0.3 - 0.15, -0.8, 0.1);
+    y = clamp(0.45, 0.2, 0.7);
+    vx = 0; vy = 0;
+    status = 'descending';
+    lr = Math.min(lr, 0.08);
+    syncLR();
+    trail = [];
+  }
+
+  // idle restart when converged
+  if (status === 'converged' && auto && !FIXED && simT > userUntil + 4) {
+    resetState({ lr: 0.016 });
+    simT = 0;
+  }
+
+  const L = loss(x, y);
+  updateAudio(L, dt);
+  updateHUD();
+  draw();
+  drawWave(L);
+
+  gAlpha = clamp(gAlpha + ((script && ghostOK) ? dt * 4 : -dt * 3), 0, 1);
+  ghost.style.opacity = gAlpha.toFixed(3);
+  // ghost is positioned relative to #stage
+  const stage = $('#stage').getBoundingClientRect();
+  // ghostX/Y are stage-local
+  let sx = ghostX, sy = ghostY;
+  if (!(script && ghostOK)) {
+    const [px, py] = toPx(x, y);
+    sx = px; sy = py;
+  }
+  ghost.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`;
+
+  window.__state = {
+    t: +simT.toFixed(2),
+    loss: +L.toFixed(4),
+    step: stepN,
+    lr: +lr.toFixed(4),
+    x: +x.toFixed(4),
+    y: +y.toFixed(4),
+    status,
+    running,
+    momentum,
+    sound: soundOn,
+    auto,
+    frame: window.__frame,
+    ghost: !!(script && ghostOK),
+    seed: (+Q.get('seed')) || seed
+  };
+}
+
+/* ---- UI events ---- */
+$('#lr').addEventListener('input', () => {
+  lrFromSlider();
+  poke();
+});
+$('#play').addEventListener('click', () => {
+  running = !running;
+  $('#play').textContent = running ? 'PAUSE' : 'STEP';
+  $('#play').classList.toggle('on', running);
+  if (!running) status = status === 'converged' || status === 'diverged' ? status : 'paused';
+  else if (status === 'paused') status = 'descending';
+  poke(); initAudio();
+});
+$('#reset').addEventListener('click', () => {
+  resetState({ lr: 0.016 });
+  simT = 0; script = null;
+  poke(); initAudio();
+});
+$('#snd').addEventListener('click', () => {
+  soundOn = !soundOn;
+  $('#snd').textContent = 'SOUND: ' + (soundOn ? 'ON' : 'OFF');
+  $('#snd').classList.toggle('off', !soundOn);
+  $('#snd').classList.toggle('on', soundOn);
+  if (soundOn) { initAudio(); }
+  else if (AC) {
+    for (const g of gains) g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.05);
+  }
+  poke();
+});
+$('#mom').addEventListener('change', () => {
+  momentum = $('#mom').checked;
+  poke();
+});
+
+function poke() {
+  userUntil = simT + 4;
+  auto = true;
+}
+
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect();
+  const px = (e.clientX - r.left);
+  const py = (e.clientY - r.top);
+  x = XR[0] + ((px - 24) / (W - 48)) * (XR[1] - XR[0]);
+  y = YR[0] + ((H - 28 - py) / (H - 56)) * (YR[1] - YR[0]);
+  x = clamp(x, XR[0] + 0.02, XR[1] - 0.02);
+  y = clamp(y, YR[0] + 0.02, YR[1] - 0.02);
+  vx = 0; vy = 0;
+  status = 'descending';
+  trail = [[x, y]];
+  poke(); initAudio();
+});
+
+addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    $('#play').click();
+  }
+  if (e.key === 'r' || e.key === 'R') $('#reset').click();
+  if (e.key === 'm' || e.key === 'M') { $('#mom').checked = !$('#mom').checked; momentum = $('#mom').checked; poke(); }
+  if (e.key === 's' || e.key === 'S') $('#snd').click();
+});
+addEventListener('pointerdown', () => { initAudio(); }, { once: true });
+
+function layout() {
+  if (innerWidth < 720) document.body.classList.add('scroll');
+  else document.body.classList.remove('scroll');
+}
+layout();
+addEventListener('resize', layout);
+
+/* ---- boot ---- */
+resetState({ lr: 0.016 });
+if (FIXED) {
+  auto = true; userUntil = -1; soundOn = true;
+  $('#snd').textContent = 'SOUND: ON';
+  $('#snd').classList.remove('off');
+  $('#snd').classList.add('on');
+  initAudio();
+}
+
+updateHUD();
+draw();
+
+if (FIXED) {
+  window.step = n => { for (let i = 0; i < (n || 1); i++) frame(); };
+  frame();
+} else {
+  window.step = () => {};
+  requestAnimationFrame(t => { last = t; (function loop(t) { frame(t); requestAnimationFrame(loop); })(t); });
+}
+})();
+</script>
+</body>
+</html>
