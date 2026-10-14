@@ -1,10 +1,20 @@
 [
  {
+  "slug": "injection-heist",
+  "title": "Injection Heist",
+  "no": "011",
+  "date": "2026-10-14",
+  "kind": "Prompt injection \u00b7 Terminal game",
+  "blurb": "You are a coding agent reading a fake repo. Flag the hidden prompt injection before tools arm. CRT terminal heist \u2014 toy game, not a scanner.",
+  "color": "#39ff14",
+  "exhibit": "heist"
+ },
+ {
   "slug": "rope-carousel",
   "title": "RoPE Carousel",
   "no": "010",
   "date": "2026-10-13",
-  "kind": "Positional encoding · CSS 3D carousel",
+  "kind": "Positional encoding \u00b7 CSS 3D carousel",
   "blurb": "A Victorian carousel for Rotary Position Embeddings: each horse is a frequency pair; drag to advance position and watch phases spin.",
   "color": "#c41e3a",
   "exhibit": "carousel"
@@ -14,7 +24,7 @@
   "title": "Byte Pair Forge",
   "no": "009",
   "date": "2026-10-13",
-  "kind": "Tokenization · Canvas forge",
+  "kind": "Tokenization \u00b7 Canvas forge",
   "blurb": "A blacksmith forge for Byte-Pair Encoding: hammer the hottest letter pairs until words become tokens.",
   "color": "#e8843a",
   "exhibit": "forge"
@@ -24,7 +34,7 @@
   "title": "Expert Post",
   "no": "008",
   "date": "2026-10-13",
-  "kind": "MoE routing · SVG mailroom",
+  "kind": "MoE routing \u00b7 SVG mailroom",
   "blurb": "A 1920s brass pneumatic-tube mailroom: each token is sealed in a capsule and whooshed to specialist desks by a toy Mixture-of-Experts router.",
   "color": "#c9a24a",
   "exhibit": "tubes"
@@ -34,7 +44,7 @@
   "title": "Token Departures",
   "no": "007",
   "date": "2026-10-13",
-  "kind": "Sampling · Split-flap DOM",
+  "kind": "Sampling \u00b7 Split-flap DOM",
   "blurb": "A split-flap departures board of next-token odds. Pull the temperature and top-p levers, watch the odds re-flap, dispatch a word.",
   "color": "#f5c518",
   "exhibit": "flap"
@@ -44,7 +54,7 @@
   "title": "Snowflake Net",
   "no": "006",
   "date": "2026-10-13",
-  "kind": "Geometry · WebGL",
+  "kind": "Geometry \u00b7 WebGL",
   "blurb": "Fold paper like a ReLU net folds space, make one cut, unfold a decision boundary.",
   "color": "#d9c39a",
   "exhibit": "fold"
@@ -54,7 +64,7 @@
   "title": "Phase Choir",
   "no": "005",
   "date": "2026-10-12",
-  "kind": "Sync · WebGL",
+  "kind": "Sync \u00b7 WebGL",
   "blurb": "Kuramoto lattice whose coupling is a tiny random neural map. Move to entrain; click to re-roll the score.",
   "color": "#c9a0ff",
   "exhibit": "choir"
@@ -64,7 +74,7 @@
   "title": "Latent Quicksilver",
   "no": "004",
   "date": "2026-10-12",
-  "kind": "Implicit fields · WebGL",
+  "kind": "Implicit fields \u00b7 WebGL",
   "blurb": "A liquid-metal isosurface of a random Fourier-feature field. Move to warp the latent; click to re-roll a new creature.",
   "color": "#7ee0ff",
   "exhibit": "quicksilver"
@@ -74,7 +84,7 @@
   "title": "Diffusion Bloom",
   "no": "003",
   "date": "2026-10-12",
-  "kind": "Diffusion · WebGL",
+  "kind": "Diffusion \u00b7 WebGL",
   "blurb": "Particles reverse-diffuse from noise into form. Move to condition the score field; click to re-noise and bloom again.",
   "color": "#ff6b9d",
   "exhibit": "bloom"
@@ -84,7 +94,7 @@
   "title": "Neural Storm",
   "no": "002",
   "date": "2026-10-12",
-  "kind": "Neural nets · WebGL",
+  "kind": "Neural nets \u00b7 WebGL",
   "blurb": "262,144 GPU particles ride the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.",
   "color": "#00b8d4",
   "exhibit": "mlp"
