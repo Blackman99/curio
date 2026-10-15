@@ -558,7 +558,7 @@ let geoKey='',geoSince=0,shownCap='';
 function ui(T){
   const p=dens(),S=1-p,{n,m}=M;
   $('#sv').textContent=S<.99?(S*100).toFixed(1)+'%':(S*100).toFixed(2)+'%';
-  $('#sh').textContent=p>.9995?'every feature is on in every sample':'each feature is on in 1 sample out of '+(1/p<10?(1/p).toFixed(1):Math.round(1/p).toLocaleString('en'));
+  $('#sh').textContent=p>.9995?'every feature is on in every sample':p>.9?'each feature is on in '+Math.round(p*100)+'% of samples':'each feature is on in 1 sample out of '+(1/p<10?(1/p).toFixed(1):Math.round(1/p).toLocaleString('en'));
   $('#ks').textContent=ST.k;$('#kn').textContent=n;$('#km').textContent=m;$('#fpd').textContent=(ST.k/m).toFixed(2);
   $('#st').textContent=steps.toLocaleString('en');
   $('#lv').textContent=lossE==null?'—':lossE<.001?lossE.toExponential(1):lossE.toFixed(4);
