@@ -1,5 +1,15 @@
 [
  {
+  "slug": "lumen-landing",
+  "title": "Lumen Landing",
+  "no": "014",
+  "date": "2026-10-15",
+  "kind": "Agent-built \u00b7 WebGL landing page",
+  "blurb": "One prompt \u2014 \u201cmake the flashiest landing page you can\u201d \u2014 and an AI coding agent shipped this single HTML file: a raymarched liquid-metal hero, 24,000 GPU particles morphing word \u2192 sphere \u2192 knot \u2192 galaxy, live spring physics, zero dependencies. Lumen is fictional; the page is the demo.",
+  "color": "#5b6cff",
+  "exhibit": "lumen"
+ },
+ {
   "slug": "podium-machine",
   "title": "Podium Machine",
   "no": "013",
