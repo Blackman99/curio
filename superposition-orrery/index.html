@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Superposition Orrery — five features, two dimensions, one pentagon</title>
+<meta name="description" content="A tiny ReLU network trains live in your browser to squeeze sparse features into 2 or 3 dimensions. Each brass arm is one feature's direction; raise sparsity and they snap into antipodal pairs, a pentagon, an octahedron, a square antiprism — the geometry of Toy Models of Superposition.">
+<meta property="og:title" content="Superposition Orrery">
+<meta property="og:description" content="Make the features rare and a network trained live in your browser packs more of them than it has dimensions: antipodal pairs, a pentagon, a square antiprism.">
+<meta property="og:image" content="https://blackman99.github.io/curio/superposition-orrery/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Superposition Orrery">
+<meta name="twitter:description" content="Pull the sparsity lever and watch a live-trained network pack more features than it has dimensions: pairs, pentagons, antiprisms.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/superposition-orrery/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500;1,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#04060d;--iv:#efe6cf;--iv2:#cfc4a8;--brass:#d8b26a;--brass2:#8a6a35;--coral:#ff7a59;--line:rgba(216,178,106,.32);--panel:rgba(8,10,20,.74)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--iv);font-family:'Cormorant Garamond',Georgia,serif;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(120% 90% at 42% 45%,transparent 55%,rgba(0,0,0,.55) 100%)}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#title{position:fixed;left:34px;top:26px;max-width:460px;pointer-events:none;z-index:2}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'JetBrains Mono',monospace;letter-spacing:.08em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(4,6,13,.55);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--brass);color:#140e04;outline:none}
+.kick{margin-top:20px;font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:var(--brass)}
+h1{margin:10px 0 10px;font-weight:700;font-size:clamp(42px,5vw,76px);line-height:.9;letter-spacing:-.012em;text-shadow:0 4px 40px rgba(0,0,0,.6)}
+h1 em{display:block;font-style:italic;font-weight:500;color:var(--coral)}
+.sub{margin:0;font-size:19px;line-height:1.36;color:var(--iv2);max-width:370px;text-shadow:0 1px 3px #000,0 2px 14px #000}
+.sub b{color:var(--iv);font-weight:700}
+
+#story{position:fixed;left:34px;bottom:30px;width:440px;z-index:2;pointer-events:none}
+#caption{margin:0 0 12px;font:italic 500 22px/1.32 'Cormorant Garamond',serif;color:#f6eed8;text-shadow:0 2px 18px #000,0 0 2px #000;min-height:3.9em;transition:opacity .45s}
+#caption.fade{opacity:0}
+#probeBox{border-top:1px solid var(--line);padding-top:10px;pointer-events:auto}
+.ph{display:flex;justify-content:space-between;gap:10px;font:500 10.5px/1.3 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--iv2)}
+.ph b{color:var(--brass)}
+.ph span{opacity:.7}
+#probe{display:block;width:100%;height:118px;margin-top:6px}
+
+#panel{position:fixed;right:22px;top:22px;bottom:22px;width:352px;z-index:3;overflow:auto;scrollbar-width:thin;
+  background:var(--panel);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);
+  border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,236,190,.08)}
+.sec{margin-bottom:14px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;font:600 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin-bottom:8px}
+.lab b{font:600 15px/1 'JetBrains Mono',monospace;letter-spacing:0;color:var(--iv)}
+.lab i{font-style:italic;font-family:'Cormorant Garamond',serif;font-size:15px;letter-spacing:0;text-transform:none}
+.hint{font:italic 500 15px/1.25 'Cormorant Garamond',serif;color:var(--iv2);margin-top:6px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:linear-gradient(90deg,#3a2c15,#c9a25c 60%,#f3d79a);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:6px;border-radius:6px;background:linear-gradient(90deg,#3a2c15,#c9a25c 60%,#f3d79a)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;border:1px solid #5a4318;background:radial-gradient(circle at 35% 30%,#fff3cf,#d8b26a 45%,#7a5a26);box-shadow:0 3px 10px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;border:1px solid #5a4318;background:radial-gradient(circle at 35% 30%,#fff3cf,#d8b26a 45%,#7a5a26)}
+input[type=range].big::-webkit-slider-thumb{width:30px;height:30px;margin-top:-12px}
+input[type=range]:focus-visible{outline:1px dashed var(--brass);outline-offset:3px}
+.row2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;height:28px}
+.seg button{flex:1;border:0;background:transparent;border-radius:999px;font:600 12px/1 'JetBrains Mono',monospace;color:var(--iv2)}
+.seg button.on{background:var(--brass);color:#140e04}
+.plates{display:flex;flex-wrap:wrap;gap:6px}
+.chip,.btn{border:1px solid var(--line);background:rgba(216,178,106,.06);border-radius:999px;padding:6px 10px;font:500 11.5px/1 'JetBrains Mono',monospace;color:var(--iv);transition:background .2s,border-color .2s}
+.chip:hover,.btn:hover,.chip:focus-visible,.btn:focus-visible{background:rgba(216,178,106,.2);border-color:var(--brass);outline:none}
+.chip.on{background:var(--brass);color:#140e04;border-color:var(--brass)}
+.btns{display:flex;gap:6px;margin-top:2px}
+.btns .btn{flex:1;padding:8px 6px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.big{font-size:21px;line-height:1.2;color:var(--iv2)}
+.big b{font:700 34px/1 'Cormorant Garamond',serif;color:var(--iv)}
+#geo{font:italic 600 28px/1.1 'Cormorant Garamond',serif;color:var(--coral);margin:4px 0 8px;min-height:1.1em}
+.meta{display:flex;justify-content:space-between;font:500 11px/1.4 'JetBrains Mono',monospace;color:var(--iv2)}
+.meta b{color:var(--iv);font-weight:600}
+#spark{display:block;width:100%;height:34px;margin:6px 0 12px}
+#ruler{display:block;width:100%;height:196px}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font:600 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:16px;line-height:1.38;color:var(--iv2);margin:10px 0 0}
+details code{font:12px 'JetBrains Mono',monospace;color:var(--iv)}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:12px;font:500 10.5px/1.5 'JetBrains Mono',monospace;color:rgba(239,230,207,.55)}
+
+#tip{position:fixed;z-index:5;pointer-events:none;padding:8px 10px;border-radius:10px;background:rgba(8,10,20,.9);border:1px solid var(--line);font:500 11px/1.45 'JetBrains Mono',monospace;color:var(--iv);opacity:0;transform:translate(14px,14px);transition:opacity .15s;white-space:nowrap}
+#tip b{color:var(--brass)}
+#nogl{display:none;position:fixed;left:34px;top:50%;max-width:420px;font:italic 500 20px/1.35 'Cormorant Garamond',serif;color:var(--iv2)}
+.nogl #nogl{display:block}
+.nogl #c,.nogl #vig{display:none}
+
+@media (max-height:740px) and (min-width:821px){#probeBox{display:none}#caption{min-height:0}h1{font-size:clamp(38px,4.4vw,60px)}}
+@media (max-width:820px){
+  #title{left:16px;top:14px;right:16px}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:34px;margin:6px 0 4px}
+  h1 em{display:inline}
+  .sub{display:none}
+  #story{left:16px;right:16px;top:118px;bottom:auto;width:auto}
+  #caption{font-size:17px;min-height:0}
+  #probeBox{display:none}
+  #panel{left:0;right:0;top:auto;bottom:0;width:auto;max-height:44vh;border-radius:18px 18px 0 0;border-bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom))}
+  #ruler{height:170px}
+  #tip{display:none}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="A brass orrery: each arm is one feature's direction in the network's hidden space"></canvas>
+<div id="vig"></div>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 015 · Superposition</div>
+  <h1>Superposition <em>Orrery</em></h1>
+  <p class="sub">A network with <b id="tm">2</b> dimensions learns to store <b id="tn">5</b> features. Make the features rare and it starts cheating geometry.</p>
+</header>
+<p id="nogl">This exhibit draws its orrery with WebGL, which this browser didn't give us. The network still trains: the readouts on the right are live.</p>
+
+<section id="story">
+  <p id="caption" aria-live="polite"></p>
+  <div id="probeBox">
+    <div class="ph"><div>PROBE · <b id="pf">f1</b> alone</div><span>fill = output · dashed = before ReLU</span></div>
+    <canvas id="probe" aria-label="Output of every feature when only the probed feature is on"></canvas>
+  </div>
+</section>
+
+<aside id="panel" aria-label="Controls and readouts">
+  <div class="sec">
+    <div class="lab"><span>Sparsity</span><b id="sv">0%</b></div>
+    <input id="sp" class="big" type="range" min="0" max="1000" value="0" aria-label="Sparsity">
+    <div class="hint" id="sh">every feature is on in every sample</div>
+  </div>
+  <div class="row2">
+    <div class="sec"><div class="lab"><span>Features <i>n</i></span><b id="nv">5</b></div><input id="nn" type="range" min="2" max="16" value="5" aria-label="Number of features"></div>
+    <div class="sec"><div class="lab"><span>Dims <i>m</i></span></div><div class="seg" id="mm" role="group" aria-label="Hidden dimensions"><button data-m="2" class="on">2</button><button data-m="3">3</button></div></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Importance falloff</span><b id="rv">0.90</b></div>
+    <input id="rr" type="range" min="70" max="100" value="90" aria-label="Importance falloff">
+    <div class="hint">feature <i>i</i> counts <i>r<sup>i</sup></i> as much as feature 1 in the loss</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Plates</span></div>
+    <div class="plates">
+      <button class="chip" data-plate="dense">Dense</button>
+      <button class="chip" data-plate="pairs">Pairs</button>
+      <button class="chip" data-plate="pentagon">Pentagon</button>
+      <button class="chip" data-plate="octahedron">Octahedron</button>
+      <button class="chip" data-plate="antiprism">Antiprism</button>
+    </div>
+  </div>
+  <div class="btns"><button class="btn" id="shake" title="Re-randomise the weights (Space)">Shake ↻</button><button class="btn" id="pause">Pause</button><button class="btn" id="tourb">Tour ▸</button></div>
+  <hr>
+  <div class="big"><b id="ks">0</b> of <b id="kn">5</b> features stored in <b id="km">2</b> dimensions</div>
+  <div id="geo">—</div>
+  <div class="meta"><span>loss <b id="lv">—</b></span><span>step <b id="st">0</b></span><span><b id="fpd">0</b> per dim</span></div>
+  <canvas id="spark" aria-hidden="true"></canvas>
+  <div class="lab"><span>Dimensions per feature</span></div>
+  <canvas id="ruler" aria-label="Each feature's share of a dimension, with the fractions that name each geometry"></canvas>
+  <details>
+    <summary>What is this?</summary>
+    <p>Each planet is one input feature of a toy model. <i>n</i> features are squeezed into <i>m</i> hidden numbers, <code>h = W x</code>, and read back out with <code>x̂ = ReLU(Wᵀh + b)</code>. A feature's brass arm is its column of <code>W</code>.</p>
+    <p>Training runs live in your browser: Adam on importance-weighted squared error, inputs uniform in [0, 1] and set to zero with probability = sparsity. Nothing is pre-baked, so every shake can land a little differently.</p>
+    <p>When features are rare, they seldom fire together. The network then stores more of them than it has dimensions and tolerates a little interference, which the negative bias and the ReLU mostly erase. That is <i>superposition</i>. The ruler shows each feature's share of a dimension, <code>‖Wᵢ‖² / Σⱼ(Ŵᵢ·Wⱼ)²</code>; it locks onto fractions like 1/2 and 2/5 that name the shape.</p>
+    <p>After Elhage et al., <a href="https://transformer-circuits.pub/2022/toy_model/index.html">Toy Models of Superposition</a> (Anthropic, 2022). A toy, not a real language model.</p>
+  </details>
+  <div class="foot">Drag to orbit · scroll to zoom · click a planet to probe it · <a href="../">← Curio</a></div>
+</aside>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Q=new URLSearchParams(location.search);
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* ================= the toy model, trained live ================= */
+const MAXN=16,MAXM=3,MAXB=2048;
+const M={n:5,m:2,v:0,r:.9};                 // v = sparsity lever 0..1; feature density p = 10^(-2.3v), down to 1 in 200
+const dens=()=>Math.pow(10,-2.3*M.v);
+const W=new Float64Array(MAXM*MAXN),b=new Float64Array(MAXN),I=new Float64Array(MAXN);
+const mW=new Float64Array(MAXM*MAXN),vW=new Float64Array(MAXM*MAXN),mb=new Float64Array(MAXN),vb=new Float64Array(MAXN);
+const gW=new Float64Array(MAXM*MAXN),gb=new Float64Array(MAXN);
+const act=new Int32Array(MAXB*MAXN),actV=new Float64Array(MAXB*MAXN),xd=new Float64Array(MAXN),hh=new Float64Array(MAXM),dh=new Float64Array(MAXM);
+let s32=(Math.random()*4294967295|0)||7;
+const rnd=()=>{s32^=s32<<13;s32^=s32>>>17;s32^=s32<<5;return((s32>>>0)+.5)/4294967296};
+const gauss=()=>Math.sqrt(-2*Math.log(rnd()))*Math.cos(6.283185307179586*rnd());
+let adamT=0,boost=0,steps=0,paused=false;
+const setImportance=()=>{for(let i=0;i<MAXN;i++)I[i]=Math.pow(M.r,i)};
+const zeroAdamCol=j=>{for(let k=0;k<MAXM;k++){mW[k*MAXN+j]=0;vW[k*MAXN+j]=0}mb[j]=0;vb[j]=0};
+function initCols(a,z,scale){const s=scale??Math.sqrt(2/(M.m+M.n));for(let j=a;j<z;j++){for(let k=0;k<MAXM;k++)W[k*MAXN+j]=k<M.m?gauss()*s:0;b[j]=0;zeroAdamCol(j)}}
+function shake(){initCols(0,MAXN);adamT=0;boost=.017;fresh=true}
+let fresh=true; // tells the scene to grow the arms out of the sun
+
+function trainStep(){
+  const{n,m}=M,p=dens(),B=Math.min(MAXB,Math.max(256,Math.ceil(64/(p*n)))),total=B*n;
+  gW.fill(0);gb.fill(0);
+  // active cells of the B×n input matrix, by geometric skipping (cost ∝ number of active features)
+  let na=0;
+  if(p>.9995){for(let c=0;c<total;c++){act[na]=c;actV[na++]=rnd()}}
+  else{const lq=Math.log(1-p);let c=-1;for(;;){c+=1+Math.floor(Math.log(rnd())/lq);if(c>=total)break;act[na]=c;actV[na++]=rnd()}}
+  let loss=0,a=0,empty=0;
+  for(let s=0;s<B;s++){
+    const base=s*n;
+    if(a>=na||act[a]>=base+n){empty++;continue}
+    const a0=a;while(a<na&&act[a]<base+n)a++;
+    for(let k=0;k<m;k++){let v=0;for(let q=a0;q<a;q++)v+=W[k*MAXN+act[q]-base]*actV[q];hh[k]=v;dh[k]=0}
+    xd.fill(0,0,n);for(let q=a0;q<a;q++)xd[act[q]-base]=actV[q];
+    for(let i=0;i<n;i++){
+      let y=b[i];for(let k=0;k<m;k++)y+=W[k*MAXN+i]*hh[k];
+      const e=(y>0?y:0)-xd[i];loss+=I[i]*e*e;
+      if(y>0){const g=2*I[i]*e/B;gb[i]+=g;for(let k=0;k<m;k++){gW[k*MAXN+i]+=g*hh[k];dh[k]+=W[k*MAXN+i]*g}}
+    }
+    for(let q=a0;q<a;q++){const j=act[q]-base,x=actV[q];for(let k=0;k<m;k++)gW[k*MAXN+j]+=dh[k]*x}
+  }
+  // all-zero samples: h = 0, output = ReLU(b)
+  if(empty)for(let i=0;i<n;i++)if(b[i]>0){loss+=empty*I[i]*b[i]*b[i];gb[i]+=empty*2*I[i]*b[i]/B}
+  adamT++;const lr=.003+boost;boost*=.9993;
+  const c1=1-Math.pow(.9,adamT),c2=1-Math.pow(.999,adamT);
+  for(let k=0;k<m;k++)for(let i=0;i<n;i++){const x=k*MAXN+i,g=gW[x];mW[x]=.9*mW[x]+.1*g;vW[x]=.999*vW[x]+.001*g*g;W[x]-=lr*(mW[x]/c1)/(Math.sqrt(vW[x]/c2)+1e-8)}
+  for(let i=0;i<n;i++){const g=gb[i];mb[i]=.9*mb[i]+.1*g;vb[i]=.999*vb[i]+.001*g*g;b[i]-=lr*(mb[i]/c1)/(Math.sqrt(vb[i]/c2)+1e-8)}
+  steps++;return loss/B;
+}
+
+/* ---------- what the weights currently say ---------- */
+const ST={norm:new Float64Array(MAXN),D:new Float64Array(MAXN),stored:[],k:0,pre:new Float64Array(MAXN)};
+function stats(){
+  const{n,m}=M;ST.stored.length=0;
+  for(let i=0;i<n;i++){let s=0;for(let q=0;q<m;q++)s+=W[q*MAXN+i]**2;ST.norm[i]=Math.sqrt(s)}
+  for(let i=0;i<n;i++){
+    const ni=ST.norm[i];if(ni<1e-5){ST.D[i]=0;continue}
+    let den=0;for(let j=0;j<n;j++){let d=0;for(let q=0;q<m;q++)d+=W[q*MAXN+i]*W[q*MAXN+j];den+=(d/ni)**2}
+    ST.D[i]=ni*ni/den;if(ni>.5)ST.stored.push(i)}
+  ST.k=ST.stored.length;
+}
+function probeOut(i){const{n,m}=M;for(let j=0;j<n;j++){let d=b[j];for(let q=0;q<m;q++)d+=W[q*MAXN+j]*W[q*MAXN+i];ST.pre[j]=d}}
+
+const NOTCH=[[1,'1','own dimension'],[3/4,'3/4','tetrahedron'],[2/3,'2/3','triangle'],[1/2,'1/2','antipodal pair'],[2/5,'2/5','pentagon'],[3/8,'3/8','square antiprism']];
+// nearest named fraction within 0.03, else -1
+const notchOf=D=>{let best=-1,bd=.03;NOTCH.forEach(([v],q)=>{const d=Math.abs(D-v);if(d<bd){bd=d;best=q}});return best};
+function classify(){
+  const{n,m}=M,st=ST.stored,k=st.length,drop=n-k;
+  if(!k)return{key:'none',name:'Nothing stored',drop};
+  const tag=st.map(i=>notchOf(ST.D[i]));
+  if(tag.every(t=>t>=0&&t===tag[0])){const t=tag[0];
+    if(t===0)return{key:'orth',name:k===1?'One feature':'Orthogonal',drop};
+    if(t===3)return{key:'pairs',name:k===2?'Antipodal pair':k===6&&m===3?'Octahedron':k===4&&m===2?'Two antipodal pairs':k/2+' antipodal pairs',drop};
+    if(t===4)return{key:'penta',name:'Pentagon',drop};
+    if(t===5)return{key:'anti',name:'Square antiprism',drop};
+    if(t===2)return{key:'tri',name:'Triangle',drop};
+    if(t===1)return{key:'tetra',name:'Tetrahedron',drop}}
+  if(m===2&&k>=3){const an=st.map(i=>Math.atan2(W[MAXN+i],W[i])).sort((x,y)=>x-y);let lo=9,hi=0;
+    for(let q=0;q<k;q++){const g=q<k-1?an[q+1]-an[q]:an[0]+2*Math.PI-an[k-1];lo=Math.min(lo,g);hi=Math.max(hi,g)}
+    if(hi/lo<1.12)return k===5?{key:'penta',name:'Pentagon',drop}:{key:'gon',name:({3:'Triangle',4:'Square',6:'Hexagon',7:'Heptagon',8:'Octagon'})[k]||'Regular '+k+'-gon',drop}}
+  if(boost>.0025)return{key:'settle',name:'Settling…',drop};
+  if(tag.every(t=>t>=0)){const c={};tag.forEach(t=>c[t]=(c[t]||0)+1);
+    return{key:'mix',name:'Mixed',parts:Object.entries(c).sort((x,y)=>y[1]-x[1]).map(([t,q])=>t==='0'?q+' with a dimension of their own':t==='3'?q+' in antipodal pairs':q+' at '+NOTCH[t][1]),drop}}
+  return{key:'odd',name:'Irregular packing',drop};
+}
+function story(g){
+  const{n,m}=M,k=ST.k,d=g.drop,s=(q,a,b2)=>q===1?a:b2;
+  switch(g.key){
+    case'orth':return d?`Dense inputs: only the ${k} most important feature${s(k,' gets','s get')} a dimension of ${s(k,'its','their')} own. The other ${d} ${s(d,'is','are')} simply dropped. No superposition.`:`Every feature has a dimension of its own. No superposition needed.`;
+    case'pairs':return k===6&&m===3?`Six features, three dimensions: three antipodal pairs on three axes, an octahedron. Each gets half a dimension.`:`Rarer inputs: features now share a dimension by pointing in opposite directions. When one fires, the ReLU and a small negative bias hide its partner.${d?` ${d} ${s(d,'is','are')} still dropped.`:''}`;
+    case'penta':return`Very sparse inputs: five features in two dimensions, packed as a pentagon, 2/5 of a dimension each. They interfere a little; the negative bias and the ReLU clean most of it up.`;
+    case'anti':return`Eight features in three dimensions settle into a square antiprism: 3/8 of a dimension each.`;
+    case'tri':return`Three features share two dimensions as a triangle, 2/3 of a dimension each.`;
+    case'tetra':return`Four features in three dimensions spread to the corners of a tetrahedron, 3/4 of a dimension each.`;
+    case'gon':return`${k} features fanned evenly around ${m} dimensions: ${(k/m).toFixed(1)}× more features than dimensions.`;
+    case'mix':return`Not every feature gets the same share: ${g.parts.join(', ')}.`;
+    case'settle':return`Training… the arms are still finding their places.`;
+    case'odd':return`${k} of ${n} features stored, in a lopsided arrangement. Shake it and it may find a cleaner one.`;
+    default:return`Nothing is worth storing yet.`;
+  }
+}
+
+/* ---------- controls ---------- */
+const PLATES={dense:{n:5,m:2,v:0,r:.9},pairs:{n:5,m:2,v:0.227,r:1},pentagon:{n:5,m:2,v:0.566,r:.9},octahedron:{n:6,m:3,v:0.566,r:1},antiprism:{n:8,m:3,v:0.662,r:1}}; // sparsity .7 / .95 / .95 / .97
+let plate=null,tour=null,tourDone=false;
+function setN(v){v=clamp(v|0,2,MAXN);if(v>M.n)initCols(M.n,v,.06);M.n=v;boost=Math.max(boost,.008)}
+function setM(v){if(v===M.m)return;for(let j=0;j<MAXN;j++){if(v===3){W[2*MAXN+j]=gauss()*.08}else{W[2*MAXN+j]=0;mW[2*MAXN+j]=0;vW[2*MAXN+j]=0}}M.m=v;boost=Math.max(boost,.01)}
+function applyPlate(name){const P=PLATES[name];plate=name;tour=null;M.v=P.v;M.r=P.r;setImportance();M.n=P.n;M.m=P.m;shake();syncUI();saveURL()}
+const TOUR=[[0,0,.9],[3,0,.9],[8,0.215,1],[11,0.215,1],[16,0.608,1]]; // [t, lever, importance falloff]: dense → pairs → pentagon
+function startTour(){tour={t:0};plate=null;tourDone=false;M.n=5;M.m=2;M.r=.9;M.v=0;setImportance();shake();syncUI()}
+function tourTick(dt){
+  if(!tour)return;const t0=tour.t;tour.t+=dt;const t=tour.t,L=TOUR.length,end=TOUR[L-1][0];let v=TOUR[L-1][1],r=TOUR[L-1][2];
+  for(let q=0;q<L-1;q++){const[a,va,ra]=TOUR[q],[z,vz,rz]=TOUR[q+1];if(t<z){const u=(t-a)/(z-a),e=u*u*(3-2*u);v=va+(vz-va)*e;r=ra+(rz-ra)*e;break}}
+  M.v=v;$('#sp').value=Math.round(v*1000);
+  if(r!==M.r){M.r=r;setImportance();$('#rr').value=Math.round(r*100);$('#rv').textContent=r.toFixed(2)}
+  if(t0<end&&t>=end)boost=Math.max(boost,.012); // a nudge so the pairs give way to the pentagon while we watch
+  if(t>end+7){tour=null;tourDone=true}
+}
+const stopTour=()=>{tour=null};
+$('#sp').addEventListener('input',e=>{stopTour();plate=null;M.v=e.target.value/1000;boost=Math.max(boost,.006);syncUI();saveURL()});
+$('#nn').addEventListener('input',e=>{stopTour();plate=null;setN(+e.target.value);syncUI();saveURL()});
+$('#rr').addEventListener('input',e=>{stopTour();plate=null;M.r=e.target.value/100;setImportance();boost=Math.max(boost,.006);syncUI();saveURL()});
+$$('#mm button').forEach(bt=>bt.addEventListener('click',()=>{stopTour();plate=null;setM(+bt.dataset.m);syncUI();saveURL()}));
+$$('[data-plate]').forEach(bt=>bt.addEventListener('click',()=>applyPlate(bt.dataset.plate)));
+$('#shake').addEventListener('click',()=>{stopTour();shake()});
+$('#pause').addEventListener('click',()=>{paused=!paused;$('#pause').textContent=paused?'Resume':'Pause'});
+$('#tourb').addEventListener('click',startTour);
+addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,button'))return;if(e.code==='Space'){e.preventDefault();stopTour();shake()}});
+function syncUI(){
+  $('#sp').value=Math.round(M.v*1000);$('#nn').value=M.n;$('#rr').value=Math.round(M.r*100);
+  $('#nv').textContent=M.n;$('#rv').textContent=M.r.toFixed(2);$('#tm').textContent=M.m;$('#tn').textContent=M.n;
+  $$('#mm button').forEach(bt=>bt.classList.toggle('on',+bt.dataset.m===M.m));
+  $$('[data-plate]').forEach(bt=>bt.classList.toggle('on',bt.dataset.plate===plate));
+}
+let urlT=0;
+function saveURL(){clearTimeout(urlT);urlT=setTimeout(()=>{const u=new URL(location.href);u.searchParams.set('n',M.n);u.searchParams.set('m',M.m);u.searchParams.set('s',(1-dens()).toFixed(3));u.searchParams.set('r',M.r.toFixed(2));history.replaceState(null,'',u)},400)}
+
+/* ================= the orrery ================= */
+const PAL=['#ffd27a','#ffa05a','#ff6f7d','#e66bcf','#a98bff','#6f9dff','#4fd2ff','#4fe0b5'].map(c=>new THREE.Color(c));
+const fcol=(i,n,out=new THREE.Color())=>{const t=n>1?Math.min(1,i/(n-1)):0,f=t*(PAL.length-1),a=Math.floor(f);return out.copy(PAL[a]).lerp(PAL[Math.min(PAL.length-1,a+1)],f-a)};
+const css=i=>fcol(i,M.n).getStyle();
+
+let R=null;
+try{R=new THREE.WebGLRenderer({canvas:$('#c'),antialias:devicePixelRatio<2,powerPreference:'high-performance'})}catch(e){R=null}
+if(!R)document.body.classList.add('nogl');
+const scene=R?buildScene():null;
+
+function buildScene(){
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1,.1,400);
+  R.setPixelRatio(Math.min(devicePixelRatio,2));R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.05;
+  { // a dark room with a few hot panels, prefiltered into reflections for the brass
+    const e=new THREE.Scene();e.add(new THREE.Mesh(new THREE.BoxGeometry(12,12,12),new THREE.MeshBasicMaterial({color:new THREE.Color(.012,.014,.03),side:THREE.BackSide})));
+    const L=(r,g,bb,x,y,z,w,h)=>{const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,bb),side:THREE.DoubleSide}));p.position.set(x,y,z);p.lookAt(0,0,0);e.add(p)};
+    L(9,6.4,3.8,0,5.5,1,5,3);L(1.1,1.7,4.6,-5.5,1.2,-1,2.5,5);L(5,3,1.5,5.5,.4,2,2,4);L(.5,.4,.32,0,-5.5,0,8,8);L(2.2,2,1.8,0,1,5.5,3,1.4);
+    const pm=new THREE.PMREMGenerator(R);sc.environment=pm.fromScene(e,.035).texture;pm.dispose()}
+  // sky
+  const skyU={uT:{value:0}};
+  sc.add(new THREE.Mesh(new THREE.SphereGeometry(150,48,24),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:skyU,
+    vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`varying vec3 vP;uniform float uT;
+      float hs(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+      float ns(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(mix(hs(i),hs(i+vec3(1,0,0)),f.x),mix(hs(i+vec3(0,1,0)),hs(i+vec3(1,1,0)),f.x),f.y),mix(mix(hs(i+vec3(0,0,1)),hs(i+vec3(1,0,1)),f.x),mix(hs(i+vec3(0,1,1)),hs(i+vec3(1,1,1)),f.x),f.y),f.z);}
+      float fbm(vec3 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*ns(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=.5;}return s;}
+      void main(){vec3 d=normalize(vP);
+        vec3 c=mix(vec3(.010,.012,.030),vec3(.030,.034,.075),smoothstep(-.5,.9,d.y));
+        float band=exp(-pow((d.y-.18-.3*d.x)*2.2,2.));
+        float n1=fbm(d*2.4+vec3(0.,uT*.004,0.)),n2=fbm(d*5.3+7.);
+        c+=vec3(.17,.06,.13)*smoothstep(.45,.92,n1)*band;
+        c+=vec3(.05,.09,.18)*smoothstep(.5,.95,n2)*(.35+band*.6);
+        gl_FragColor=vec4(c,1.);}`})));
+  // stars
+  const NS=2400,sp=new Float32Array(NS*3),ss=new Float32Array(NS),sph=new Float32Array(NS);
+  for(let i=0;i<NS;i++){const u=Math.random()*2-1,a=Math.random()*6.2832,r=70+Math.random()*50,q=Math.sqrt(1-u*u);sp.set([Math.cos(a)*q*r,u*r,Math.sin(a)*q*r],i*3);ss[i]=.7+Math.pow(Math.random(),7)*3.4;sph[i]=Math.random()}
+  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(sp,3));sg.setAttribute('aS',new THREE.BufferAttribute(ss,1));sg.setAttribute('aP',new THREE.BufferAttribute(sph,1));
+  const starU={uT:{value:0},uPR:{value:R.getPixelRatio()}};
+  sc.add(new THREE.Points(sg,new THREE.ShaderMaterial({uniforms:starU,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    vertexShader:`attribute float aS;attribute float aP;uniform float uT;uniform float uPR;varying float vA;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;vA=.55+.45*sin(uT*(.4+aP*1.8)+aP*60.);gl_PointSize=aS*uPR*2.;}`,
+    fragmentShader:`varying float vA;void main(){float r=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,r);gl_FragColor=vec4(vec3(1.,.93,.82)*a*a*vA,1.);}`})));
+  const glowT=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),gr=g.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.16,'rgba(255,255,255,.55)');gr.addColorStop(.42,'rgba(255,255,255,.12)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t})();
+
+  sc.add(new THREE.HemisphereLight(0x9fb4ff,0x1a1208,.35));
+  const key=new THREE.DirectionalLight(0xffe2b0,2.2);key.position.set(3,6,4);sc.add(key);
+  const rim=new THREE.DirectionalLight(0x7aa8ff,1.6);rim.position.set(-5,2,-4);sc.add(rim);
+
+  const RU=1.5; // world units per unit of weight norm: the equator ring is ‖W‖ = 1
+  const brass=new THREE.MeshStandardMaterial({color:0xd9b46e,metalness:1,roughness:.27});
+  const brassD=new THREE.MeshStandardMaterial({color:0x9c7a40,metalness:1,roughness:.42});
+  const lac=new THREE.MeshStandardMaterial({color:0x0d1020,metalness:.6,roughness:.3});
+  const orr=new THREE.Group();orr.position.y=.2;sc.add(orr);
+  const tor=(r,t,mat,seg=200)=>new THREE.Mesh(new THREE.TorusGeometry(r,t,10,seg),mat);
+  const flat=o=>{o.rotation.x=Math.PI/2;return o};
+  orr.add(flat(tor(RU,.013,brass)),flat(tor(RU*1.4,.018,brassD)),flat(tor(RU*1.47,.008,brassD)));
+  {const N=144,ti=new THREE.InstancedMesh(new THREE.BoxGeometry(.007,.007,1),brass,N),m4=new THREE.Matrix4(),q=new THREE.Quaternion(),s=new THREE.Vector3(),p=new THREE.Vector3(),Y=new THREE.Vector3(0,1,0);
+    for(let i=0;i<N;i++){const a=i/N*Math.PI*2,L=i%12===0?.14:i%3===0?.08:.045,r=RU*1.4+.02+L/2;p.set(Math.cos(a)*r,0,Math.sin(a)*r);q.setFromAxisAngle(Y,Math.PI/2-a);s.set(1,1,L);m4.compose(p,q,s);ti.setMatrixAt(i,m4)}orr.add(ti)}
+  // armillary rings for the third dimension
+  const meri=new THREE.Group();orr.add(meri);
+  {const a=tor(RU,.011,brass),c=tor(RU,.011,brass);c.rotation.y=Math.PI/2;const t=tor(RU*1.03,.006,brassD);t.rotation.x=Math.PI/2-.41;
+   meri.add(a,c,t,new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,RU*2.18,8),brassD));
+   for(const y of[-1,1]){const f=new THREE.Mesh(new THREE.SphereGeometry(.035,16,10),brass);f.position.y=y*RU*1.09;meri.add(f)}}
+  const rod=(a,z,r,mat)=>{const d=new THREE.Vector3().subVectors(z,a),L=d.length(),o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,10),mat);o.position.copy(a).addScaledVector(d,.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o};
+  const V=(x,y,z)=>new THREE.Vector3(x,y,z),yb=-2.45;
+  orr.add(rod(V(0,-.1,0),V(0,yb,0),.03,brassD));
+  for(let i=0;i<4;i++){const a=Math.PI/4+i*Math.PI/2;orr.add(rod(V(0,-1.2,0),V(Math.cos(a)*RU*1.4,0,Math.sin(a)*RU*1.4),.011,brassD))}
+  {const c=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.12,24),brass);c.position.y=-1.2;orr.add(c);
+   const bs=new THREE.Mesh(new THREE.CylinderGeometry(.92,1.04,.14,72),lac);bs.position.y=yb-.06;orr.add(bs);
+   const br=flat(tor(.99,.018,brass,120));br.position.y=yb+.01;orr.add(br)}
+  // a faint dust disc beyond the unit ring
+  {const N=1600,p=new Float32Array(N*3),c=new Float32Array(N*3),col=new THREE.Color();
+   for(let i=0;i<N;i++){const a=Math.random()*6.2832,r=RU*(1.05+Math.pow(Math.random(),1.5)*.32);p.set([Math.cos(a)*r,(Math.random()-.5)*.04,Math.sin(a)*r],i*3);col.setHSL(.08+Math.random()*.06,.7,.35+Math.random()*.25);c.set([col.r,col.g,col.b],i*3)}
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('color',new THREE.BufferAttribute(c,3));
+   var dust=new THREE.Points(g,new THREE.PointsMaterial({size:.035,map:glowT,vertexColors:true,transparent:true,opacity:.55,depthWrite:false,blending:THREE.AdditiveBlending}));orr.add(dust)}
+  // the sun at the origin: the zero vector, where unstored features collapse
+  const sun=new THREE.Mesh(new THREE.SphereGeometry(.085,32,16),new THREE.MeshStandardMaterial({color:0xffcf8a,emissive:0xffa64d,emissiveIntensity:2.4,roughness:.4}));orr.add(sun);
+  const sunH=new THREE.Sprite(new THREE.SpriteMaterial({map:glowT,color:0xffa04a,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:.85}));sunH.scale.setScalar(1.15);orr.add(sunH);
+  orr.add(new THREE.PointLight(0xffb46b,4,7,2));
+
+  // one arm + planet + halo + trail per feature
+  const armG=new THREE.CylinderGeometry(1,1,1,10);armG.translate(0,.5,0);
+  const plG=new THREE.SphereGeometry(1,32,20),TR=44,F=[];
+  for(let i=0;i<MAXN;i++){
+    const mat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:.6,metalness:.15,roughness:.3});
+    const arm=new THREE.Mesh(armG,brass),pl=new THREE.Mesh(plG,mat);
+    const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowT,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
+    const tp=new Float32Array(TR*3),tc=new Float32Array(TR*3),tg=new THREE.BufferGeometry();
+    tg.setAttribute('position',new THREE.BufferAttribute(tp,3));tg.setAttribute('color',new THREE.BufferAttribute(tc,3));
+    const trail=new THREE.Line(tg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));trail.frustumCulled=false;
+    orr.add(arm,pl,halo,trail);F.push({arm,pl,mat,halo,trail,tp,tc,pos:new THREE.Vector3(),vis:0,born:true,col:new THREE.Color(),scr:new THREE.Vector3()})}
+  // filaments between neighbouring stored features: the polytope's edges
+  const EMAX=120,eG=new THREE.CylinderGeometry(1,1,1,6,1,true);eG.translate(0,.5,0);
+  const mkE=op=>{const e=new THREE.InstancedMesh(eG,new THREE.MeshBasicMaterial({transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}),EMAX);e.frustumCulled=false;for(let q=0;q<EMAX;q++)e.setColorAt(q,new THREE.Color(0,0,0));e.count=0;orr.add(e);return e};
+  const eCore=mkE(1),eGlow=mkE(.22);
+  const FMAX=600,fp=new Float32Array(FMAX*9),fc=new Float32Array(FMAX*9),fg=new THREE.BufferGeometry();
+  fg.setAttribute('position',new THREE.BufferAttribute(fp,3));fg.setAttribute('color',new THREE.BufferAttribute(fc,3));
+  const faces=new THREE.Mesh(fg,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));faces.frustumCulled=false;orr.add(faces);
+  // interference rays from the probed feature
+  const pp=new Float32Array(MAXN*6),pc=new Float32Array(MAXN*6),pg=new THREE.BufferGeometry();
+  pg.setAttribute('position',new THREE.BufferAttribute(pp,3));pg.setAttribute('color',new THREE.BufferAttribute(pc,3));
+  const rays=new THREE.LineSegments(pg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));rays.frustumCulled=false;orr.add(rays);
+  const sonar=new THREE.Mesh(new THREE.RingGeometry(.92,1,64),new THREE.MeshBasicMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));orr.add(sonar);
+
+  const UP=V(0,1,0),tmp=V(0,0,0),dir=V(0,0,0),m4=new THREE.Matrix4(),q4=new THREE.Quaternion(),s4=V(0,0,0),ec=new THREE.Color();
+  const toWorld=(i,o)=>o.set(W[i]*RU,(M.m>2?W[2*MAXN+i]:0)*RU,W[MAXN+i]*RU);
+  const camS={yaw:.7,pitch:.44,dist:7.4,zoom:1,yv:0,pv:0,idle:0};
+  let mix3=0;
+
+  function update(dt,T){
+    skyU.uT.value=T;starU.uT.value=T;
+    if(!RM&&camS.idle<=0)camS.yaw+=dt*.055;
+    camS.idle-=dt;camS.yaw+=camS.yv;camS.pitch=clamp(camS.pitch+camS.pv,-.2,1.25);camS.yv*=.9;camS.pv*=.9;
+    const d=camS.dist*camS.zoom;
+    cam.position.set(Math.sin(camS.yaw)*Math.cos(camS.pitch)*d,Math.sin(camS.pitch)*d,Math.cos(camS.yaw)*Math.cos(camS.pitch)*d);cam.lookAt(0,.05,0);
+    mix3=RM?(M.m===3?1:0):mix3+((M.m===3?1:0)-mix3)*(1-Math.exp(-dt*3));
+    meri.visible=mix3>.004;meri.scale.setScalar(Math.max(.001,mix3*mix3*(3-2*mix3)));
+    dust.rotation.y+=RM?0:dt*.02;sunH.material.opacity=.75+.1*Math.sin(T*1.7);
+    const k=RM?1:1-Math.exp(-dt*10),n=M.n;
+    if(fresh){for(const f of F)f.born=true;fresh=false}
+    for(let i=0;i<MAXN;i++){
+      const f=F[i],on=i<n;f.vis=RM?(on?1:0):f.vis+((on?1:0)-f.vis)*(1-Math.exp(-dt*6));
+      const show=f.vis>.01;f.arm.visible=f.pl.visible=f.halo.visible=f.trail.visible=show;if(!show){f.born=true;continue}
+      toWorld(i,tmp);
+      if(f.born){f.pos.set(0,0,0);if(RM)f.pos.copy(tmp);f.tp.fill(0);f.born=false}
+      f.pos.lerp(tmp,k);
+      const L=f.pos.length(),stored=ST.norm[i]>.5,hot=i===probeI;
+      fcol(i,n,f.col);
+      if(L>.02){f.arm.visible=true;f.arm.quaternion.setFromUnitVectors(UP,dir.copy(f.pos).divideScalar(L));f.arm.scale.set(.0105,L,.0105)}else f.arm.visible=false;
+      const pr=(.048+.05*I[i])*f.vis*(stored?1:.62)*(hot?1.3:1);
+      f.pl.position.copy(f.pos);f.pl.scale.setScalar(pr);
+      f.mat.color.copy(f.col);f.mat.emissive.copy(f.col);f.mat.emissiveIntensity=stored?.95:.22;
+      f.halo.position.copy(f.pos);f.halo.scale.setScalar(pr*(hot?9:7));f.halo.material.color.copy(f.col);f.halo.material.opacity=(stored?.8:.22)*f.vis;
+      // trail: newest point first, fading out
+      f.tp.copyWithin(3,0,(TR-1)*3);f.tp[0]=f.pos.x;f.tp[1]=f.pos.y;f.tp[2]=f.pos.z;
+      const tb=(stored?.85:.3)*f.vis;for(let q=0;q<TR;q++){const a=Math.pow(1-q/TR,1.7)*tb;f.tc[q*3]=f.col.r*a;f.tc[q*3+1]=f.col.g*a;f.tc[q*3+2]=f.col.b*a}
+      f.trail.visible=!RM;f.trail.geometry.attributes.position.needsUpdate=true;f.trail.geometry.attributes.color.needsUpdate=true;
+    }
+    // polytope edges: join each stored feature to its nearest neighbours (by angle in hidden space)
+    const st=ST.stored,ks=st.length,ang=(i,j)=>{let d=0;for(let q=0;q<M.m;q++)d+=W[q*MAXN+i]*W[q*MAXN+j];return Math.acos(clamp(d/(ST.norm[i]*ST.norm[j]),-1,1))};
+    const th=st.map(i=>{let mn=9;for(const j of st)if(j!==i)mn=Math.min(mn,ang(i,j));return mn});
+    let ne=0;const adj=new Uint8Array(ks*ks);
+    for(let x=0;x<ks;x++)for(let y=x+1;y<ks;y++){
+      const a=ang(st[x],st[y]);if(a>2.95||!(a<=th[x]*1.13||a<=th[y]*1.13)||ne>=EMAX)continue;adj[x*ks+y]=adj[y*ks+x]=1;
+      const A=F[st[x]].pos,Bp=F[st[y]].pos;dir.subVectors(Bp,A);const L=dir.length();if(L<1e-3)continue;
+      q4.setFromUnitVectors(UP,dir.divideScalar(L));
+      m4.compose(A,q4,s4.set(.0045,L,.0045));eCore.setMatrixAt(ne,m4);m4.compose(A,q4,s4.set(.022,L,.022));eGlow.setMatrixAt(ne,m4);
+      ec.copy(F[st[x]].col).lerp(F[st[y]].col,.5).multiplyScalar(.9);eCore.setColorAt(ne,ec);eGlow.setColorAt(ne,ec);ne++}
+    eCore.count=eGlow.count=ne;
+    let nf=0;const tri=(A,B2,C,ca,cb,cc)=>{if(nf>=FMAX)return;fp.set([A.x,A.y,A.z,B2.x,B2.y,B2.z,C.x,C.y,C.z],nf*9);fc.set([ca.r,ca.g,ca.b,cb.r,cb.g,cb.b,cc.r,cc.g,cc.b],nf*9);nf++};
+    if(M.m===2&&ks>=3){const ord=st.map((i,x)=>[Math.atan2(W[MAXN+i],W[i]),x]).sort((u,v)=>u[0]-v[0]);
+      for(let q=0;q<ks;q++){const x=ord[q][1],y=ord[(q+1)%ks][1];if(adj[x*ks+y])tri(sun.position,F[st[x]].pos,F[st[y]].pos,ec.setRGB(.25,.18,.1),F[st[x]].col,F[st[y]].col)}}
+    else for(let x=0;x<ks;x++)for(let y=x+1;y<ks;y++)if(adj[x*ks+y])for(let z=y+1;z<ks;z++)if(adj[x*ks+z]&&adj[y*ks+z])tri(F[st[x]].pos,F[st[y]].pos,F[st[z]].pos,F[st[x]].col,F[st[y]].col,F[st[z]].col);
+    fg.setDrawRange(0,nf*3);fg.attributes.position.needsUpdate=true;fg.attributes.color.needsUpdate=true;
+    for(const e of[eCore,eGlow]){e.instanceMatrix.needsUpdate=true;if(e.instanceColor)e.instanceColor.needsUpdate=true}
+    // the probe: rays to every other feature, warm where it leaks through, cool where the bias holds it down
+    let nr=0;
+    if(probeI>=0&&probeI<n){probeOut(probeI);const P=F[probeI].pos;
+      for(let j=0;j<n;j++){if(j===probeI||F[j].vis<.3)continue;const v=ST.pre[j],w=v>0?Math.min(1,v*2.2):Math.min(1,-v*1.6)*.55;if(w<.03)continue;
+        const c=v>0?[1,.42,.26]:[.3,.55,1];const Q2=F[j].pos;pp.set([P.x,P.y,P.z,Q2.x,Q2.y,Q2.z],nr*6);pc.set([c[0]*w,c[1]*w,c[2]*w,c[0]*w*.35,c[1]*w*.35,c[2]*w*.35],nr*6);nr++}
+      const ph=RM?.3:(T%1.5)/1.5,f=F[probeI];sonar.visible=ST.norm[probeI]>.5&&f.pos.length()>.3;sonar.position.copy(f.pos);sonar.quaternion.copy(cam.quaternion);
+      sonar.scale.setScalar(f.pl.scale.x*(1.5+ph*3.2));sonar.material.color.copy(f.col).multiplyScalar((1-ph)*.75);
+    }else sonar.visible=false;
+    pg.setDrawRange(0,nr*2);pg.attributes.position.needsUpdate=true;pg.attributes.color.needsUpdate=true;
+  }
+  function resize(){
+    const w=innerWidth,h=innerHeight,desk=w>820;R.setSize(w,h,false);
+    cam.fov=desk?34:46;cam.aspect=w/h;
+    const tx=Math.tan(cam.fov*Math.PI/360);
+    const want=desk?Math.min(h*.36,(w-400)*.33):0; // on-screen radius of the outer ring, px
+    camS.dist=desk?2.35*(h/2)/(want*tx):Math.max(7.6,2.45/(tx*cam.aspect));
+    // desktop: centre the orrery in the space left of the panel; phone: between the caption and the bottom sheet
+    cam.setViewOffset(w,h,desk?170:0,desk?0:h/2-(150+h*.56)/2,w,h);cam.updateProjectionMatrix();starU.uPR.value=R.getPixelRatio();
+  }
+  function nearest(cx,cy){let best=-1,bd=28*28;const r=R.domElement.getBoundingClientRect();
+    for(let i=0;i<M.n;i++){const f=F[i];if(f.vis<.5)continue;f.scr.copy(f.pos).add(orr.position).project(cam);const x=(f.scr.x+1)/2*r.width,y=(1-f.scr.y)/2*r.height,d=(x-cx)**2+(y-cy)**2;if(d<bd){bd=d;best=i}}
+    return best}
+  return{update,resize,nearest,render:()=>R.render(sc,cam),camS};
+}
+
+/* ---------- pointer ---------- */
+let probeI=0,probePin=false,probeAt=0;
+const setProbe=(i,pin)=>{probeI=i;probePin=pin&&i>=0;probeAt=0};
+if(scene){
+  const cv=$('#c'),tip=$('#tip');let drag=null;
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,moved:0};cv.setPointerCapture(e.pointerId);cv.classList.add('drag');scene.camS.idle=8});
+  cv.addEventListener('pointermove',e=>{
+    if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;scene.camS.yv=-dx*.006;scene.camS.pv=dy*.004;scene.camS.idle=8;tip.style.opacity=0;return}
+    const i=scene.nearest(e.clientX,e.clientY);
+    if(i<0){tip.style.opacity=0;return}
+    const D=ST.D[i],nt=NOTCH[notchOf(D)];
+    tip.innerHTML=`<b>f${i+1}</b> · importance ${I[i].toFixed(2)}<br>‖W‖ ${ST.norm[i].toFixed(2)} · ${ST.norm[i]>.5?D.toFixed(2)+' of a dimension'+(nt?` (${nt[2]})`:''):'not stored'}`;
+    tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.style.opacity=1});
+  cv.addEventListener('pointerup',e=>{if(drag&&drag.moved<6){const i=scene.nearest(e.clientX,e.clientY);setProbe(i,i>=0)}drag=null;cv.classList.remove('drag')});
+  cv.addEventListener('pointerleave',()=>{tip.style.opacity=0});
+  cv.addEventListener('wheel',e=>{e.preventDefault();scene.camS.zoom=clamp(scene.camS.zoom*(1+e.deltaY*.0012),.55,1.7);scene.camS.idle=8},{passive:false});
+  addEventListener('resize',scene.resize);scene.resize();
+}
+
+/* ---------- 2D readouts ---------- */
+const fit=c=>{const d=Math.min(devicePixelRatio,2),w=c.clientWidth,h=c.clientHeight;if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return[g,w,h]};
+const Dd=new Float64Array(MAXN),hist=[];
+// ruler: piecewise-linear so that 3/8 and 2/5 don't sit on top of each other
+const RA=[0,3/8,2/5,1/2,2/3,3/4,1];
+const rpos=v=>{v=clamp(v,0,1);for(let q=0;q<RA.length-1;q++)if(v<=RA[q+1])return(q+(v-RA[q])/(RA[q+1]-RA[q]))/(RA.length-1);return 1};
+function drawRuler(){
+  const c=$('#ruler');if(!c.clientWidth)return;const[g,w,h]=fit(c),top=18,bot=h-8,ax=34,Y=v=>bot-(bot-top)*rpos(v);
+  g.font='500 10.5px "JetBrains Mono",monospace';g.textBaseline='middle';
+  g.strokeStyle='rgba(216,178,106,.6)';g.lineWidth=1;g.beginPath();g.moveTo(ax,top);g.lineTo(ax,bot);g.stroke();
+  for(const[v,lab,nm]of[[0,'0','not stored'],...NOTCH]){const y=Y(v);
+    g.strokeStyle='rgba(216,178,106,.2)';g.setLineDash([2,4]);g.beginPath();g.moveTo(ax,y);g.lineTo(w,y);g.stroke();g.setLineDash([]);
+    g.fillStyle='#d8b26a';g.textAlign='right';g.fillText(lab,ax-7,y);g.fillStyle='rgba(239,230,207,.42)';g.fillText(nm,w-2,y-7)}
+  const used={},n=M.n,gap=Math.min(13,(w-ax-120)/Math.max(1,n));
+  for(let i=0;i<n;i++){const y=Y(Dd[i]),nq=notchOf(Dd[i]),bin=nq>=0&&ST.norm[i]>.5?'n'+nq:'y'+Math.round(y/10),c2=used[bin]=(used[bin]||0)+1,x=ax+11+(c2-1)*gap;
+    g.fillStyle=css(i);g.globalAlpha=ST.norm[i]>.5?1:.4;g.beginPath();g.arc(x,y,i===probeI?5.5:4.2,0,7);g.fill();g.globalAlpha=1}
+}
+function drawSpark(){
+  const[g,w,h]=fit($('#spark'));if(hist.length<2)return;
+  const lo=Math.log10(Math.max(1e-5,Math.min(...hist))),hi=Math.log10(Math.max(...hist))+1e-6;
+  g.strokeStyle='rgba(216,178,106,.2)';g.beginPath();g.moveTo(0,h-.5);g.lineTo(w,h-.5);g.stroke();
+  g.strokeStyle='#ff7a59';g.lineWidth=1.4;g.beginPath();
+  hist.forEach((v,q)=>{const x=q/(hist.length-1)*w,y=2+(h-4)*(1-(Math.log10(Math.max(1e-5,v))-lo)/Math.max(.3,hi-lo));q?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();
+}
+function drawProbe(){
+  const c=$('#probe');if(!c.clientWidth)return;const[g,w,h]=fit(c),n=M.n,y0=h*.6,up=h*.46,dn=h*.22,cw=w/n,bw=Math.min(22,cw*.55);
+  g.strokeStyle='rgba(216,178,106,.45)';g.beginPath();g.moveTo(0,y0+.5);g.lineTo(w,y0+.5);g.stroke();
+  if(probeI<0||probeI>=n)return;probeOut(probeI);
+  g.font='500 10px "JetBrains Mono",monospace';g.textAlign='center';g.textBaseline='alphabetic';
+  for(let j=0;j<n;j++){const x=cw*j+cw/2,v=ST.pre[j],o=Math.max(0,v),col=css(j);
+    const vy=v>=0?y0-Math.min(1.25,v)*up:y0+Math.min(1,-v/.7)*dn;
+    g.setLineDash([3,2]);g.strokeStyle=col;g.globalAlpha=.65;g.strokeRect(x-bw/2,Math.min(y0,vy),bw,Math.abs(vy-y0)||.5);g.setLineDash([]);
+    g.globalAlpha=1;g.fillStyle=col;const oh=Math.min(1.25,o)*up;g.fillRect(x-bw/2+2,y0-oh,bw-4,oh);
+    if(j===probeI){g.fillStyle='#efe6cf';g.beginPath();g.moveTo(x,y0-up-1);g.lineTo(x-5,y0-up-8);g.lineTo(x+5,y0-up-8);g.fill()}
+    if(n<=12||j%2===0){g.fillStyle=j===probeI?'#efe6cf':'rgba(239,230,207,.55)';g.fillText('f'+(j+1),x,h-2)}}
+  g.textAlign='left';g.fillStyle='rgba(239,230,207,.45)';g.fillText('1',2,y0-up+3);g.fillText('0',2,y0-3);
+}
+let geoKey='',geoSince=0,shownCap='';
+function ui(T){
+  const p=dens(),S=1-p,{n,m}=M;
+  $('#sv').textContent=S<.99?(S*100).toFixed(1)+'%':(S*100).toFixed(2)+'%';
+  $('#sh').textContent=p>.9995?'every feature is on in every sample':'each feature is on in 1 sample out of '+(1/p<10?(1/p).toFixed(1):Math.round(1/p).toLocaleString('en'));
+  $('#ks').textContent=ST.k;$('#kn').textContent=n;$('#km').textContent=m;$('#fpd').textContent=(ST.k/m).toFixed(2);
+  $('#st').textContent=steps.toLocaleString('en');
+  $('#lv').textContent=lossE==null?'—':lossE<.001?lossE.toExponential(1):lossE.toFixed(4);
+  $('#pf').textContent=probeI>=0?'f'+(probeI+1):'—';
+  const g=classify(),name=g.key==='mix'?'Mixed packing':g.name;$('#geo').textContent=name;
+  const cap=story(g)+(tourDone&&!plate?' Your turn: pull the sparsity lever, or try a 3D plate.':'');
+  const key=g.key+'|'+g.name+'|'+ST.k;if(key!==geoKey){geoKey=key;geoSince=T}
+  if(cap!==shownCap&&(T-geoSince>.35||!shownCap)){
+    const el=$('#caption');shownCap=cap;
+    if(RM){el.textContent=cap}else{el.classList.add('fade');setTimeout(()=>{el.textContent=shownCap;el.classList.remove('fade')},300)}}
+  if(lossE!=null){hist.push(lossE);if(hist.length>180)hist.shift()}
+  drawSpark();
+}
+
+/* ---------- start ---------- */
+setImportance();
+let lossE=null;
+const want=['n','m','s','r'].some(k=>Q.has(k));
+if(want){M.n=clamp(parseInt(Q.get('n'))||5,2,MAXN);M.m=Q.get('m')==='3'?3:2;const s=clamp(parseFloat(Q.get('s'))||0,0,.995);M.v=s>0?-Math.log10(1-s)/2.3:0;M.r=clamp(parseFloat(Q.get('r'))||.9,.7,1);setImportance()}
+else if(RM){Object.assign(M,PLATES.pentagon);plate='pentagon';setImportance()}
+shake();
+if(want||RM){for(let s=0;s<6000;s++)trainStep();fresh=!RM}
+syncUI();
+if(!want&&!RM)setTimeout(startTour,500);
+
+let T=0,last=performance.now(),uiAcc=1;
+function frame(now){
+  requestAnimationFrame(frame); // first, so one bad frame can't stop the orrery
+  const dt=Math.min(.05,(now-last)/1000);last=now;T+=dt;
+  tourTick(dt);
+  if(!paused){const ns=clamp(Math.round(dt*1400),1,60);let L=0;for(let s=0;s<ns;s++)L+=trainStep();L/=ns;lossE=lossE==null?L:lossE+(L-lossE)*.08}
+  stats();
+  const k=RM?1:1-Math.exp(-dt*6);for(let i=0;i<M.n;i++)Dd[i]+=(ST.D[i]-Dd[i])*k;
+  if(!probePin){probeAt-=dt;if(probeAt<=0){const st=ST.stored;probeI=st.length?st[(st.indexOf(probeI)+1)%st.length]:-1;probeAt=1.8}}
+  else if(probeI>=M.n)setProbe(-1,false);
+  if(scene)scene.update(dt,T);
+  uiAcc+=dt;if(uiAcc>.1){uiAcc=0;ui(T)}
+  drawRuler();drawProbe();
+  if(scene)scene.render();
+}
+requestAnimationFrame(frame);
+// for tests: read-only view of the live model
+window.orrery={state:()=>({n:M.n,m:M.m,sparsity:1-dens(),steps,stored:ST.k,geometry:classify().name,dims:[...ST.D.slice(0,M.n)].map(v=>+v.toFixed(3)),loss:lossE})};
+</script>
+</body>
+</html>

@@ -1,5 +1,15 @@
 [
  {
+  "slug": "superposition-orrery",
+  "title": "Superposition Orrery",
+  "no": "015",
+  "date": "2026-10-16",
+  "kind": "Superposition \u00b7 Live-trained WebGL orrery",
+  "blurb": "A tiny ReLU network trains live in your browser to fit n sparse features into 2 or 3 dimensions. Each brass arm is one feature\u2019s direction. Raise sparsity and the arms snap into antipodal pairs, a pentagon, an octahedron, a square antiprism \u2014 the geometry of Anthropic\u2019s Toy Models of Superposition. Real training, no pre-baked weights.",
+  "color": "#ff7a59",
+  "exhibit": "orrery"
+ },
+ {
   "slug": "lumen-landing",
   "title": "Lumen Landing",
   "no": "014",
