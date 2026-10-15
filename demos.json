@@ -1,5 +1,15 @@
 [
  {
+  "slug": "podium-machine",
+  "title": "Podium Machine",
+  "no": "013",
+  "date": "2026-10-15",
+  "kind": "Eval leaderboards \u00b7 Results board",
+  "blurb": "Six fictional toy models, one toy test, seven eval knobs \u2014 432 setups, and every model can be No.1. Flip a knob and the leaderboard reshuffles; target any model and RIG IT brute-forces the setup that crowns it. Synthetic scores.",
+  "color": "#e10600",
+  "exhibit": "podium"
+ },
+ {
   "slug": "loss-chord",
   "title": "Loss Chord",
   "no": "012",

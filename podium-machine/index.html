@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Podium Machine — same models, same test, different No.1</title>
+<meta name="description" content="Six fictional toy models, one toy test, seven eval knobs. Flip a knob and the leaderboard reshuffles. Pick any model and RIG IT brute-forces all 432 setups to crown it. Synthetic scores, fully client-side.">
+<meta property="og:title" content="Podium Machine">
+<meta property="og:description" content="Same models. Same test. Seven eval knobs, 432 setups — and every model can be No.1. Pick one and RIG IT.">
+<meta property="og:image" content="https://blackman99.github.io/curio/podium-machine/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Podium Machine">
+<meta name="twitter:description" content="Seven eval knobs. 432 setups. Pick any toy model and rig the leaderboard until it wins.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/podium-machine/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f1f0eb;--ink:#121212;--red:#e10600;--red2:#b80500;--grey:#8b8a85;--rule:#121212;
+  --rowH:62px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);
+  font-family:'Archivo',Helvetica,Arial,sans-serif;font-stretch:100%;-webkit-font-smoothing:antialiased;
+  overflow:hidden;-webkit-tap-highlight-color:transparent}
+body.scroll{overflow-y:auto;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}
+.tab{font-variant-numeric:tabular-nums lining-nums}
+/* printed paper grain */
+#grain{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:.33;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .07 0 0 0 0 .07 0 0 0 0 .07 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+#poster{position:relative;height:100%;display:grid;grid-template-rows:30px 1fr 28px;max-width:1500px;margin:0 auto}
+/* top strip */
+#strip{display:flex;align-items:center;gap:18px;padding:0 18px;background:var(--ink);color:var(--paper);
+  font:700 11px/1 'Archivo';font-stretch:112%;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;overflow:hidden}
+#strip a{color:var(--paper);text-decoration:none;border-bottom:1px solid transparent}
+#strip a:hover{border-color:var(--paper)}
+#strip .no{background:var(--red);color:#fff;padding:5px 8px;margin-left:-4px}
+#strip .r{margin-left:auto;color:#bdbcb6}
+main{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(340px,1fr);min-height:0}
+#left{display:grid;grid-template-rows:auto auto 1fr;min-height:0;border-right:3px solid var(--ink)}
+/* hero */
+#hero{position:relative;overflow:hidden;padding:14px 22px 10px;border-bottom:3px solid var(--ink);height:178px}
+#bigone{position:absolute;right:26px;top:-58px;font:900 330px/1 'Archivo';font-stretch:62%;color:var(--red);
+  letter-spacing:-.04em;transform-origin:70% 60%;pointer-events:none}
+#hero .kick{position:relative;font:800 11px/1 'Archivo';font-stretch:115%;letter-spacing:.2em;text-transform:uppercase;display:flex;gap:10px;align-items:center}
+#hero .kick i{display:inline-block;width:26px;height:3px;background:var(--ink)}
+#champ{position:relative;height:104px;overflow:hidden;margin-top:6px}
+#champ span{position:absolute;left:-3px;top:0;font:900 108px/.95 'Archivo';font-stretch:68%;letter-spacing:-.02em;text-transform:uppercase;white-space:nowrap}
+#champSub{position:relative;font:600 14px/1.2 'Archivo';font-stretch:100%;display:flex;gap:14px;flex-wrap:wrap}
+#champSub b{font-weight:900}
+#caption{padding:7px 22px;border-bottom:1px solid var(--ink);font:700 10.5px/1.35 'Archivo';font-stretch:108%;letter-spacing:.11em;text-transform:uppercase;color:#4b4a46;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#caption em{font-style:normal;color:var(--ink)}
+#caption em.hot{background:var(--red);color:#fff;padding:1px 3px}
+/* board */
+#boardWrap{position:relative;min-height:0;padding:0 0 0 0;overflow:hidden}
+#heads{display:grid;grid-template-columns:var(--cols);align-items:end;height:24px;padding:0 22px 4px;
+  font:800 9.5px/1 'Archivo';font-stretch:115%;letter-spacing:.16em;text-transform:uppercase;color:#4b4a46;border-bottom:2px solid var(--ink)}
+#heads .rt{text-align:right}
+#heads .pr{letter-spacing:.06em;white-space:nowrap}
+:root{--cols:64px minmax(0,1.25fr) 128px minmax(60px,1fr) 104px}
+#board{position:relative}
+.row{position:absolute;left:0;right:0;top:0;height:var(--rowH);display:grid;grid-template-columns:var(--cols);align-items:center;
+  padding:0 22px;background:var(--paper);border-bottom:2px solid var(--ink);cursor:pointer;will-change:transform}
+.row:hover .nm{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px}
+.row .rk{font:900 46px/1 'Archivo';font-stretch:62%;letter-spacing:-.02em}
+.row .who{min-width:0;display:flex;flex-direction:column;gap:3px}
+.row .nm{font:900 25px/1 'Archivo';font-stretch:88%;text-transform:uppercase;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .meta{font:700 9.5px/1 'Archivo';font-stretch:112%;letter-spacing:.14em;text-transform:uppercase;color:#5d5c57;white-space:nowrap}
+.row .pips{display:flex;gap:3px}
+.row .pips b{width:13px;height:13px;border:2px solid currentColor;opacity:.25}
+.row .pips b.can{opacity:1}
+.row .pips b.now{background:currentColor}
+.row .bar{height:14px;position:relative;margin-right:14px}
+.row .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);width:50%}
+.row .bar::after{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px dashed currentColor;opacity:.25;z-index:-1}
+.row .sc{font:900 48px/1 'Archivo';font-stretch:72%;text-align:right;letter-spacing:-.01em}
+.row .sc small{font-size:.42em;font-weight:800;margin-left:1px;letter-spacing:0}
+.row .dl{position:absolute;right:130px;top:50%;margin-top:-11px;height:22px;padding:0 6px;font:900 13px/22px 'Archivo';font-stretch:90%;
+  background:var(--ink);color:var(--paper);opacity:0;pointer-events:none}
+.row .dl.up{background:var(--red);color:#fff}
+.row.first{background:var(--red);color:#fff}
+.row.first .meta{color:#ffd9d6}
+.row.first .bar i{background:#fff}
+.row.first .dl.up{background:var(--ink)}
+.row.target::before{content:'TARGET';position:absolute;left:0;top:0;bottom:0;width:14px;background:var(--ink);color:var(--paper);
+  writing-mode:vertical-rl;transform:rotate(180deg);font:900 8px/14px 'Archivo';letter-spacing:.18em;text-align:center}
+.row.first.target::before{background:var(--paper);color:var(--red)}
+#crown{position:fixed;left:0;top:0;width:54px;height:42px;z-index:38;pointer-events:none;transform-origin:50% 100%}
+#crown svg{display:block;width:100%;height:100%;overflow:visible}
+/* right panel */
+#right{background:var(--red);color:#fff;display:flex;flex-direction:column;min-height:0;padding:14px 18px 12px;gap:10px;overflow:hidden}
+#right h2{margin:0;font:900 30px/.9 'Archivo';font-stretch:70%;text-transform:uppercase;letter-spacing:-.005em;display:flex;align-items:baseline;justify-content:space-between}
+#right h2 small{font:800 10px/1 'Archivo';font-stretch:115%;letter-spacing:.16em}
+#knobs{display:flex;flex-direction:column;border-top:2px solid #fff}
+.knob{display:grid;grid-template-columns:86px 1fr;align-items:center;min-height:40px;border-bottom:1px solid rgba(255,255,255,.55);gap:8px}
+.knob .kl{font:800 10px/1.1 'Archivo';font-stretch:112%;letter-spacing:.14em;text-transform:uppercase}
+.seg{display:flex;height:29px;border:2px solid #fff;position:relative}
+.seg button{flex:1;border:0;background:transparent;font:800 12px/1 'Archivo';font-stretch:92%;letter-spacing:.04em;text-transform:uppercase;padding:0 2px;color:#fff;position:relative;z-index:1}
+.seg button+button{border-left:2px solid #fff}
+.seg button.on{background:#fff;color:var(--red)}
+.seg button.scan{outline:3px solid var(--ink);outline-offset:-3px}
+.seg button:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.knob.bump .kl{background:var(--ink);color:#fff;margin-left:-4px;padding:3px 4px}
+#rig{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch}
+#tline{font:700 14px/1.25 'Archivo';font-stretch:96%;min-height:50px;display:flex;flex-direction:column;justify-content:center}
+#tline b{font-weight:900;text-transform:uppercase}
+#tline .why{font:700 9.5px/1.3 'Archivo';font-stretch:110%;letter-spacing:.1em;text-transform:uppercase;color:#ffd9d6;margin-top:3px}
+#rigBtn{background:var(--ink);color:#fff;border:0;padding:0 18px;min-width:120px;font:900 30px/1 'Archivo';font-stretch:66%;letter-spacing:.02em;
+  box-shadow:5px 5px 0 #fff;transform:translate(0,0)}
+#rigBtn:active,#rigBtn.press{box-shadow:1px 1px 0 #fff;transform:translate(4px,4px)}
+#rigBtn[disabled]{background:transparent;box-shadow:none;outline:2px solid #fff;outline-offset:-2px;opacity:.62;cursor:default}
+#rigBtn small{display:block;font:800 9px/1 'Archivo';font-stretch:112%;letter-spacing:.16em;margin-top:4px}
+#log{font:800 10px/1.35 'Archivo';font-stretch:112%;letter-spacing:.12em;text-transform:uppercase;min-height:28px;border-top:2px solid #fff;padding-top:6px}
+#log .tab{font-variant-numeric:tabular-nums}
+#hist{margin-top:auto;border-top:2px solid #fff;padding-top:6px}
+#hist .hl{display:flex;justify-content:space-between;font:800 9.5px/1 'Archivo';font-stretch:112%;letter-spacing:.14em;text-transform:uppercase}
+#hchips{display:flex;gap:4px;margin-top:6px;height:26px;overflow:hidden}
+#hchips b{flex:0 0 auto;min-width:44px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;font:900 15px/1 'Archivo';font-stretch:80%;letter-spacing:.04em}
+#hchips b:last-child{background:#fff;color:var(--red)}
+#hchips i{font-style:normal;align-self:center;font:900 12px/1 'Archivo'}
+#stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:2px solid #fff}
+.st{padding:8px 8px 2px 0}
+.st+.st{border-left:2px solid #fff;padding-left:10px}
+.st b{display:block;font:900 46px/.9 'Archivo';font-stretch:66%;letter-spacing:-.02em}
+.st span{display:block;font:800 9.5px/1.2 'Archivo';font-stretch:110%;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
+.st.pop b{background:var(--ink);color:#fff;display:inline-block;padding:0 4px;margin-left:-4px}
+#tools{display:flex;gap:8px}
+#tools button{flex:1;background:transparent;border:2px solid #fff;color:#fff;height:28px;font:800 10.5px/1 'Archivo';font-stretch:112%;letter-spacing:.14em;text-transform:uppercase}
+#tools button:hover{background:#fff;color:var(--red)}
+footer{display:flex;align-items:center;gap:14px;padding:0 18px;border-top:3px solid var(--ink);font:700 10px/1.2 'Archivo';font-stretch:108%;letter-spacing:.08em;text-transform:uppercase;color:#3d3c38;white-space:nowrap;overflow:hidden}
+footer a{color:var(--ink);font-weight:900;text-decoration:none}
+footer span{overflow:hidden;text-overflow:ellipsis}
+/* stamp */
+#stamp{position:absolute;right:20px;top:22px;z-index:35;pointer-events:none;background:var(--ink);color:#fff;padding:8px 14px 9px;
+  transform-origin:30% 50%;opacity:0;border:3px solid var(--paper);outline:3px solid var(--ink)}
+#stamp b{display:block;font:900 54px/.86 'Archivo';font-stretch:64%;letter-spacing:.01em}
+#stamp span{display:block;font:800 11px/1.25 'Archivo';font-stretch:110%;letter-spacing:.12em;text-transform:uppercase;margin-top:5px;max-width:236px}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:36}
+#ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;opacity:0;will-change:transform}
+#ghost svg{display:block;width:26px;height:32px;filter:none}
+#ghost .tag{position:absolute;left:22px;top:26px;background:var(--ink);color:#fff;font:900 8.5px/1 'Archivo';font-stretch:115%;letter-spacing:.16em;padding:3px 4px;white-space:nowrap}
+#ring{position:fixed;left:0;top:0;width:40px;height:40px;margin:-20px 0 0 -20px;border:3px solid var(--ink);border-radius:50%;z-index:49;pointer-events:none;opacity:0}
+/* responsive */
+@media (max-width:1100px){:root{--cols:52px minmax(0,1.3fr) 118px minmax(40px,1fr) 92px}#champ span{font-size:92px}}
+@media (max-width:820px){
+  html,body{overflow:auto}
+  #poster{height:auto;min-height:100%;grid-template-rows:30px auto auto}
+  main{grid-template-columns:1fr}
+  #left{border-right:0;border-bottom:3px solid var(--ink)}
+  #hero{height:150px;padding:12px 14px 8px}
+  #bigone{font-size:250px;top:-50px;right:-10px}
+  #champ{height:76px}
+  #champ span{font-size:78px}
+  #champSub{font-size:12.5px;gap:10px}
+  #caption{padding:6px 14px;white-space:normal;font-size:9.5px}
+  :root{--rowH:56px;--cols:40px minmax(0,1fr) 78px 74px}
+  #heads{padding:0 14px 4px}
+  #heads .hb{display:none}
+  .row{padding:0 14px}
+  .row .bar{display:none}
+  .row .rk{font-size:38px}
+  .row .nm{font-size:20px}
+  .row .meta{font-size:8.5px;letter-spacing:.1em}
+  .row .pips b{width:10px;height:10px}
+  .row .pips{gap:2px}
+  .row .sc{font-size:40px}
+  .row .dl{right:92px}
+  #right{padding:14px 14px 16px}
+  .knob{grid-template-columns:84px 1fr;min-height:42px}
+  .seg{height:32px}
+  #stamp{left:8px;right:8px;top:auto;bottom:6px;display:flex;align-items:center;gap:10px;padding:6px 10px;border-width:2px;outline-width:2px}
+  #stamp b{font-size:34px;flex:0 0 auto}
+  #stamp span{max-width:none;margin:0;font-size:9px;letter-spacing:.08em}
+  .row .dl{display:none}
+  #strip .nm2{display:none}
+  .knob .kl{font-size:9.5px;letter-spacing:.1em}
+  footer{white-space:normal;padding:10px 14px;font-size:9.5px;line-height:1.4;display:block}
+  footer a{display:inline-block;margin-right:10px}
+  #strip .r{display:none}
+}
+@media (max-height:540px) and (min-width:821px){#poster{grid-template-rows:24px 1fr 22px}#strip{font-size:9.5px}#hero{height:118px;padding:8px 18px 6px}#champ{height:64px;margin-top:3px}#champ span{font-size:66px}#bigone{font-size:210px;top:-34px}#champSub{font-size:11.5px}#caption{padding:4px 18px;font-size:9px}#heads{height:18px;font-size:8.5px}.row .rk{font-size:32px}.row .sc{font-size:34px}.row .nm{font-size:18px}.row .meta{display:none}#right{gap:6px;padding:8px 14px}#right h2{font-size:22px}.knob{min-height:27px}.seg{height:21px}.seg button{font-size:10.5px}#tline{min-height:0;font-size:11.5px}#tline .why{display:none}#rigBtn{font-size:22px;min-width:92px}#hist{display:none}.st b{font-size:28px}.st span{font-size:8px}#tools{display:none}footer{font-size:8.5px}#stamp b{font-size:40px}#stamp span{font-size:9px;max-width:200px}#crown{width:40px;height:31px}}
+@media (max-height:700px) and (min-width:821px){#hero{height:160px}#champ{height:92px}#champ span{font-size:96px}:root{--rowH:54px}.knob{min-height:33px}.seg{height:24px}.st b{font-size:38px}}
+</style>
+</head>
+<body>
+<div id="grain"></div>
+<div id="poster">
+  <header id="strip">
+    <a href="../" title="Back to the cabinet">← Curio</a>
+    <span class="no">Drawer No. 013</span>
+    <span class="nm2">Podium Machine</span>
+    <span class="r">Results board · 6 fictional models · synthetic scores</span>
+  </header>
+  <main>
+    <section id="left">
+      <div id="hero">
+        <div id="bigone">1</div>
+        <div class="kick"><i></i>No.1 under this setup</div>
+        <div id="champ"><span id="cA"></span><span id="cB"></span></div>
+        <div id="champSub"><span>margin <b class="tab" id="marg">+0.0</b></span><span>No.1 in <b class="tab" id="cw">0</b> of <b class="tab">432</b> setups</span><span id="cwas"></span></div>
+        <div id="stamp"><b>RIGGED.</b><span id="stampT"></span></div>
+      </div>
+      <div id="caption"></div>
+      <div id="boardWrap">
+        <div id="heads"><span>Pos</span><span>Model · toy</span><span class="pr">Possible ranks</span><span class="hb">Score</span><span class="rt">%</span></div>
+        <div id="board"></div>
+      </div>
+    </section>
+    <aside id="right">
+      <h2>The setup <small>7 knobs · <span class="tab">432</span> setups</small></h2>
+      <div id="knobs"></div>
+      <div id="rig">
+        <div id="tline"></div>
+        <button id="rigBtn" disabled>RIG IT<small>search all 432</small></button>
+      </div>
+      <div id="log">Click any model to target it. Then rig the podium.</div>
+      <div id="hist"><div class="hl"><span>Champions so far</span><span id="hcount" class="tab"></span></div><div id="hchips"></div></div>
+      <div id="stats">
+        <div class="st" id="st1"><b class="tab" id="sCrown">–</b><span>models can be No.1</span></div>
+        <div class="st" id="st2"><b class="tab" id="sLast">–</b><span>can also finish last</span></div>
+        <div class="st" id="st3"><b class="tab" id="sAll">–</b><span>setups · all computed</span></div>
+      </div>
+      <div id="tools"><button id="plain" title="P">Plain setup</button><button id="shuffle" title="S">Shuffle</button></div>
+    </aside>
+  </main>
+  <footer><a href="../">← Cabinet</a><span>Toy: six fictional models; names and scores are synthetic (base + per-model knob effects). Not a real benchmark · fully client-side · no API keys</span></footer>
+</div>
+<canvas id="fx"></canvas>
+<div id="crown"><svg viewBox="0 0 44 34"><path d="M3 31 L1 7 L13 17 L22 2 L31 17 L43 7 L41 31 Z" fill="#121212" stroke="#f1f0eb" stroke-width="2.5" stroke-linejoin="miter"/><rect x="5" y="25" width="34" height="3" fill="#e10600"/><circle cx="22" cy="2.5" r="2.6" fill="#e10600"/><circle cx="1.5" cy="7" r="2.2" fill="#e10600"/><circle cx="42.5" cy="7" r="2.2" fill="#e10600"/></svg></div>
+<div id="ring"></div>
+<div id="ghost"><svg viewBox="0 0 26 32"><path d="M2 2 L2 26 L8.5 20 L13 30 L17.5 28 L13 18.5 L22 18.5 Z" fill="#121212" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg><div class="tag">AUTOPILOT</div></div>
+<script>
+(() => {
+'use strict';
+const Q = new URLSearchParams(location.search);
+const FIXED = Q.has('fixed');
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let seed = (+Q.get('seed')) || (FIXED ? 7 : ((Math.random() * 1e9) | 0));
+const SEED0 = seed;
+const rand = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = u => 1 - Math.pow(1 - u, 3);
+
+/* ---------- the toy space ---------- */
+const KNOBS = [
+  { id: 'H', label: 'Harness', opts: ['Vendor', 'Independent'], cap: ['vendor harness', 'independent harness'] },
+  { id: 'P', label: 'Prompt', opts: ['A', 'B', 'C'], cap: ['template A', 'template B', 'template C'] },
+  { id: 'K', label: 'Few-shot', opts: ['0', '3', '8'], cap: ['0-shot', '3-shot', '8-shot'] },
+  { id: 'T', label: 'Temp', opts: ['0', '0.7'], cap: ['T=0', 'T=0.7'] },
+  { id: 'S', label: 'Subset', opts: ['Full', 'Hard', 'Easy'], cap: ['full set', 'hard subset', 'easy subset'] },
+  { id: 'J', label: 'Judge', opts: ['Strict', 'Lenient'], cap: ['strict judge', 'lenient judge'] },
+  { id: 'A', label: 'Attempts', opts: ['pass@1', 'pass@5'], cap: ['pass@1', 'pass@5'] },
+];
+// Six fictional models. Hidden per-knob sensitivities (points added to a base score). All synthetic.
+const MODELS = [
+  { name: 'Brisket-4',  code: 'BRI', blurb: 'steady, hates hard items', b: 71.0, H: [1.5, 0], P: [0, -1.0, 0.8], K: [0, 1.2, 1.6], T: [0, -3.2], S: [0, -15.5, 6.0], J: [0, 2.0], A: [0, 4.5] },
+  { name: 'Gannet-XL',  code: 'GAN', blurb: 'loves its own harness', b: 66.5, H: [6.0, 0], P: [0, 3.0, -2.6], K: [0, 1.5, 3.0], T: [0, -1.0], S: [0, -10.5, 7.5], J: [0, 3.0], A: [0, 6.0] },
+  { name: 'Tuffet-2',   code: 'TUF', blurb: 'barely moves', b: 64.0, H: [0.5, 0], P: [0, 0.5, 0.2], K: [0, 0.8, 0.4], T: [0, -0.8], S: [0, -4.0, 5.0], J: [0, 1.0], A: [0, 6.0] },
+  { name: 'Quillon-9',  code: 'QUI', blurb: 'wins on retries', b: 58.5, H: [2.0, 0], P: [0, -0.5, 1.5], K: [0, 2.0, 1.0], T: [0, 1.6], S: [0, -11.0, 7.0], J: [0, 2.5], A: [0, 15.5], TA: 4.0 },
+  { name: 'Morrow-3',   code: 'MOR', blurb: 'prompt-sensitive', b: 61.0, H: [3.0, 0], P: [0, -4.0, 9.5], K: [0, 4.0, 2.0], T: [0, -1.5], S: [0, -13.0, 6.5], J: [0, 8.0], A: [0, 6.5] },
+  { name: 'Pippin-8B',  code: 'PIP', blurb: 'small, eats easy items', b: 52.5, H: [4.0, 0], P: [0, 2.0, -1.0], K: [0, 4.5, 9.5], T: [0, -2.0], S: [0, -12.5, 16.0], J: [0, 6.0], A: [0, 10.5] },
+];
+const NM = MODELS.length;
+const DIMS = KNOBS.map(k => k.opts.length);
+const NC = DIMS.reduce((a, b) => a * b, 1);
+const idxOf = c => c.reduce((acc, v, i) => acc * DIMS[i] + v, 0);
+const cfgOf = n => { const c = []; for (let i = DIMS.length - 1; i >= 0; i--) { c[i] = n % DIMS[i]; n = (n / DIMS[i]) | 0; } return c; };
+function hash(a, b) { let h = Math.imul(a + 1, 2654435761) ^ Math.imul(b + 7, 2246822519); h ^= h >>> 13; h = Math.imul(h, 3266489917); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function raw(m, mi, c) {
+  let s = m.b;
+  KNOBS.forEach((k, i) => { s += m[k.id][c[i]]; });
+  if (m.TA) { if (c[3] === 1 && c[6] === 1) s += m.TA; else if (c[3] === 1) s -= 2; }
+  s += (hash(mi, idxOf(c)) - 0.5) * 0.7;          // tiny deterministic per-setup wobble
+  if (s > 85) s = 85 + (s - 85) * 0.45;            // soft ceiling, keeps it under 100
+  return Math.round(s * 10) / 10;
+}
+// brute force the entire toy space once: every score, every ranking
+const SC = new Float32Array(NC * NM), RK = new Uint8Array(NC * NM);
+const wins = new Array(NM).fill(0), best = new Array(NM).fill(9), worst = new Array(NM).fill(0);
+for (let n = 0; n < NC; n++) {
+  const c = cfgOf(n);
+  for (let m = 0; m < NM; m++) SC[n * NM + m] = raw(MODELS[m], m, c);
+  const ord = [...Array(NM).keys()].sort((a, b) => SC[n * NM + b] - SC[n * NM + a] || a - b);
+  ord.forEach((m, r) => { RK[n * NM + m] = r; best[m] = Math.min(best[m], r); worst[m] = Math.max(worst[m], r); });
+  wins[ord[0]]++;
+}
+const crownable = wins.filter(w => w > 0).length;
+const canLast = worst.filter(w => w === NM - 1).length;
+const champsOf = n => { for (let m = 0; m < NM; m++) if (RK[n * NM + m] === 0) return m; return 0; };
+const ordOf = n => [...Array(NM).keys()].sort((a, b) => RK[n * NM + a] - RK[n * NM + b]);
+const ham = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; };
+function rigPlan(target, cur) {
+  let bestN = -1, bestD = 99, bestM = -1, hits = 0;
+  for (let n = 0; n < NC; n++) {
+    if (RK[n * NM + target] !== 0) continue;
+    hits++;
+    const c = cfgOf(n), d = ham(c, cur);
+    let second = -1; for (let m = 0; m < NM; m++) if (m !== target) second = Math.max(second, SC[n * NM + m]);
+    const marg = SC[n * NM + target] - second;
+    if (d < bestD || (d === bestD && marg > bestM)) { bestD = d; bestN = n; bestM = marg; }
+  }
+  if (bestN < 0) { // cannot win anywhere: aim for its best rank
+    let bn = -1, bd = 99; for (let n = 0; n < NC; n++) { if (RK[n * NM + target] !== best[target]) continue; const d = ham(cfgOf(n), cur); if (d < bd) { bd = d; bn = n; } }
+    return { n: bn, d: bd, hits: 0, marg: 0, ok: false };
+  }
+  return { n: bestN, d: bestD, hits, marg: bestM, ok: true };
+}
+const PLAIN = [1, 0, 0, 0, 0, 0, 0];
+
+/* ---------- state ---------- */
+let cfg = PLAIN.slice();
+let simT = 0, target = -1, champ = -1, rigging = null, userUntil = -1, script = null;
+const rows = [];
+const boardEl = $('#board'), crownEl = $('#crown');
+let rowH = 62;
+let shake = 0, crown = { x: 0, y: 0, fromX: 0, fromY: 0, t: 1, sx: 1, sy: 1, vs: 0, rot: 0, land: false };
+let hero = { t: 1, from: '', to: '' }, bigS = 1, bigV = 0, stampT = -1, statPop = -1;
+
+/* ---------- build DOM ---------- */
+const knobsEl = $('#knobs');
+KNOBS.forEach((k, i) => {
+  const d = document.createElement('div'); d.className = 'knob'; d.dataset.k = i;
+  d.innerHTML = `<span class="kl">${k.label}</span><div class="seg">${k.opts.map((o, j) => `<button data-v="${j}" aria-label="${k.label}: ${o}">${o}</button>`).join('')}</div>`;
+  knobsEl.appendChild(d);
+  d.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { if (rigging) return; poke(); setKnob(i, +b.dataset.v); }));
+});
+MODELS.forEach((m, i) => {
+  const r = document.createElement('div'); r.className = 'row'; r.tabIndex = 0; r.setAttribute('role', 'button');
+  r.setAttribute('aria-label', `Target ${m.name}`);
+  r.innerHTML = `<span class="rk tab">1</span><span class="who"><span class="nm">${m.name}</span><span class="meta">${m.code} · ${m.blurb}</span></span>
+  <span class="pips">${[...Array(NM)].map((_, k) => `<b class="${k >= best[i] && k <= worst[i] ? 'can' : ''}"></b>`).join('')}</span>
+  <span class="bar"><i></i></span><span class="sc tab">0.0</span><span class="dl"></span>`;
+  boardEl.appendChild(r);
+  const o = { el: r, rk: r.querySelector('.rk'), sc: r.querySelector('.sc'), bar: r.querySelector('.bar i'), dl: r.querySelector('.dl'), pips: [...r.querySelectorAll('.pips b')],
+    y: 0, v: 0, ty: 0, delay: 0, lift: 0, disp: 0, tgt: 0, rank: i, prevRank: i, dlT: -9, dlTxt: '', z: 1 };
+  rows.push(o);
+  const pick = () => { if (rigging) return; poke(); setTarget(target === i ? -1 : i); };
+  r.addEventListener('click', pick);
+  r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+});
+$('#sCrown').textContent = `${crownable}/${NM}`;
+$('#sLast').textContent = `${canLast}/${NM}`;
+$('#sAll').textContent = String(NC);
+
+function layout() {
+  const narrow = innerWidth <= 820;
+  document.body.classList.toggle('scroll', narrow);
+  rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || 62;
+  if (!narrow) {
+    const avail = $('#boardWrap').getBoundingClientRect().height - 26;
+    rowH = clamp(Math.floor(avail / NM), 36, 76);
+    document.documentElement.style.setProperty('--rowH', rowH + 'px');
+  } else document.documentElement.style.removeProperty('--rowH');
+  rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rowH')) || rowH;
+  boardEl.style.height = (rowH * NM) + 'px';
+  rows.forEach(r => { r.ty = r.rank * rowH; });
+  fxResize();
+}
+
+/* ---------- apply setup ---------- */
+function ranksFor(c) { const n = idxOf(c); return MODELS.map((_, m) => RK[n * NM + m]); }
+function apply(instant) {
+  const n = idxOf(cfg), rk = ranksFor(cfg);
+  rows.forEach((r, m) => {
+    r.prevRank = r.rank; r.rank = rk[m]; r.tgt = SC[n * NM + m];
+    r.ty = r.rank * rowH;
+    const moved = r.rank - r.prevRank;
+    if (instant) { r.y = r.ty; r.v = 0; r.disp = r.tgt; r.delay = 0; }
+    else {
+      r.delay = RM ? 0 : 0.03 * r.rank + (moved < 0 ? 0 : 0.05);
+      r.lift = moved < 0 ? 1 : 0;
+      if (moved !== 0) { r.dlT = simT; r.dlTxt = (moved < 0 ? '▲' : '▼') + Math.abs(moved); r.dl.className = 'dl ' + (moved < 0 ? 'up' : 'dn'); r.dl.textContent = r.dlTxt; }
+    }
+    r.pips.forEach((p, k) => p.classList.toggle('now', k === r.rank));
+  });
+  // knob UI
+  KNOBS.forEach((k, i) => knobsEl.children[i].querySelectorAll('button').forEach((b, j) => b.classList.toggle('on', j === cfg[i])));
+  // caption
+  $('#caption').innerHTML = 'Setup: ' + KNOBS.map((k, i) => `<em class="${cfg[i] !== PLAIN[i] ? 'hot' : ''}">${k.cap[cfg[i]]}</em>`).join(' · ');
+  const nc = champsOf(n);
+  if (nc !== champ) onChamp(nc, instant);
+  updateHeroSub();
+  updateTargetLine();
+}
+function setKnob(i, v, quiet) {
+  if (cfg[i] === v) return false;
+  cfg[i] = v; apply(false);
+  const k = knobsEl.children[i]; k.classList.add('bump'); k._bt = simT;
+  return true;
+}
+function updateHeroSub() {
+  const n = idxOf(cfg); const c = champ;
+  let second = -1; for (let m = 0; m < NM; m++) if (m !== c) second = Math.max(second, SC[n * NM + m]);
+  $('#marg').textContent = '+' + (SC[n * NM + c] - second).toFixed(1);
+  $('#cw').textContent = wins[c];
+}
+let champHist = [];
+function onChamp(nc, instant) {
+  const old = champ; champ = nc;
+  champHist.push(nc); renderHist();
+  rows.forEach((r, m) => r.el.classList.toggle('first', m === nc));
+  if (instant || old < 0) { $('#cA').textContent = MODELS[nc].name; $('#cB').textContent = ''; hero.t = 1; placeCrownInstant(); return; }
+  hero = { t: 0, from: MODELS[old].name, to: MODELS[nc].name };
+  $('#cA').textContent = hero.from; $('#cB').textContent = hero.to;
+  // crown hop: from where it is to the new champion's row
+  crown.fromX = crown.x; crown.fromY = crown.y; crown.t = 0; crown.land = false; crown.rot = 0;
+  $('#cwas').textContent = '';
+}
+function renderHist() {
+  const H = champHist.slice(-7), uniq = new Set(champHist).size;
+  $('#hchips').innerHTML = H.map(m => `<b>${MODELS[m].code}</b>`).join('<i>→</i>');
+  $('#hcount').textContent = `${champHist.length - 1} crown change${champHist.length === 2 ? '' : 's'} · ${uniq} different`;
+}
+function crownTarget() { const r = rows[champ]; const nar = innerWidth <= 820; return { x: nar ? 6 : 14, y: r.y - 21 }; }
+function placeCrownInstant() { const p = crownTarget(); crown.x = p.x; crown.y = p.y; crown.t = 1; crown.land = true; crown.rot = -8; }
+
+function updateTargetLine() {
+  const tl = $('#tline'), btn = $('#rigBtn');
+  if (target < 0) { tl.innerHTML = `<span>Click a model to target it.</span><span class="why">Can it be No.1? The board will tell you.</span>`; btn.disabled = true; return; }
+  const m = MODELS[target], r = rows[target];
+  const boosts = KNOBS.map((k, i) => { let bi = 0, bv = -1e9; m[k.id].forEach((v, j) => { if (v - m[k.id][0] > bv) { bv = v - m[k.id][0]; bi = j; } }); return { v: bv, t: k.cap[bi] }; }).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 3);
+  const st = wins[target] > 0 ? `<b>${m.name}</b> is No.1 in <b class="tab">${wins[target]}</b> of ${NC} setups.` : `<b>${m.name}</b> wins in <b>none</b> of ${NC} setups. Best finish: No.${best[target] + 1}.`;
+  tl.innerHTML = `<span>${st}${r.rank === 0 ? ' Already on top.' : ` Now No.${r.rank + 1}.`}</span><span class="why">Likes: ${boosts.map(b => `${b.t} +${b.v.toFixed(1)}`).join(' · ')}</span>`;
+  btn.disabled = r.rank === 0;
+}
+function setTarget(i) {
+  target = i; rows.forEach((r, m) => r.el.classList.toggle('target', m === i)); updateTargetLine();
+  if (i >= 0 && !rigging) $('#log').innerHTML = `Target locked: ${MODELS[i].name}. Press RIG IT (R).`;
+}
+
+/* ---------- RIG IT ---------- */
+function startRig() {
+  if (rigging || target < 0 || rows[target].rank === 0) return;
+  const plan = rigPlan(target, cfg);
+  const dest = cfgOf(plan.n);
+  const changes = []; for (let i = 0; i < KNOBS.length; i++) if (dest[i] !== cfg[i]) changes.push([i, dest[i]]);
+  rigging = { t0: simT, plan, changes, applied: 0, fromRank: rows[target].rank, scanDur: RM ? 0.5 : 0.85, gap: RM ? 0.45 : 0.32 };
+  $('#rigBtn').classList.add('press');
+}
+function tickRig() {
+  const R = rigging; if (!R) return;
+  const e = simT - R.t0;
+  if (e > 0.12) $('#rigBtn').classList.remove('press');
+  if (e < R.scanDur) {
+    const u = e / R.scanDur, n = Math.min(NC - 1, Math.floor(u * NC));
+    let hits = 0; for (let k = 0; k <= n; k++) if (RK[k * NM + target] === 0) hits++;
+    const c = cfgOf(n);
+    KNOBS.forEach((k, i) => knobsEl.children[i].querySelectorAll('button').forEach((b, j) => b.classList.toggle('scan', j === c[i])));
+    $('#log').innerHTML = `Searching setup <span class="tab">${String(n + 1).padStart(3, '0')}</span>/${NC} · <span class="tab">${hits}</span> crown ${MODELS[target].name}`;
+    return;
+  }
+  document.querySelectorAll('.seg .scan').forEach(b => b.classList.remove('scan'));
+  const P = R.plan;
+  const head = P.ok ? `${NC} searched · ${P.hits} crown ${MODELS[target].name} · nearest: ${P.d} knob turn${P.d === 1 ? '' : 's'}` : `${NC} searched · no setup crowns ${MODELS[target].name} · best: No.${best[target] + 1}`;
+  const k = Math.floor((e - R.scanDur) / R.gap) + 1;
+  while (R.applied < Math.min(k, R.changes.length)) { const [i, v] = R.changes[R.applied++]; setKnob(i, v); }
+  $('#log').innerHTML = head + (R.applied < R.changes.length ? ` · turning ${R.applied + 1}/${R.changes.length}` : '');
+  if (R.applied >= R.changes.length && !R.done) {
+    R.done = true; R.doneT = simT;
+    const to = rows[target].rank + 1;
+    $('#stampT').textContent = P.ok ? `${MODELS[target].name}: No.${R.fromRank + 1} → No.1 in ${P.d} knob turn${P.d === 1 ? '' : 's'}. Same model. Same test.` : `${MODELS[target].name} tops out at No.${to}.`;
+    $('#stamp b').textContent = P.ok ? 'RIGGED.' : 'NO DICE.';
+    stampT = simT + (RM ? 0 : 0.42);
+    if (P.ok) $('#cwas').innerHTML = `<b>was No.${R.fromRank + 1}</b>`;
+  }
+  if (R.done && simT - R.doneT > 0.9) { rigging = null; statPop = simT; }
+}
+
+/* ---------- FX canvas (speed lines + ticker tape) ---------- */
+const fx = $('#fx'), fctx = fx.getContext('2d'); let FW = 0, FH = 0, dpr = 1;
+function fxResize() { dpr = Math.min(2, devicePixelRatio || 1); FW = innerWidth; FH = innerHeight; fx.width = FW * dpr | 0; fx.height = FH * dpr | 0; fctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+const bursts = [], tape = [];
+function burst(x, y, big) { if (RM) return; bursts.push({ x, y, t: 0, n: big ? 22 : 14, r0: big ? 30 : 22, len: big ? 120 : 70, a: rand() * 6.28 }); }
+function confetti(x0, y0, w) {
+  if (RM) return;
+  for (let i = 0; i < 90; i++) { const top = i % 2 === 0; tape.push({ x: x0 + rand() * w, y: top ? -10 - rand() * 80 : y0 + 40 + rand() * 80, vx: (rand() - .5) * 160, vy: top ? 40 + rand() * 120 : -160 - rand() * 200, w: 6 + rand() * 9, h: 3 + rand() * 5, a: rand() * 6.28, va: (rand() - .5) * 14, c: [ '#e10600', '#121212', '#e10600', '#ffffff' ][i % 4], life: 2.4 + rand() * 1.2 }); }
+}
+function drawFx(dt) {
+  fctx.clearRect(0, 0, FW, FH);
+  for (let i = bursts.length - 1; i >= 0; i--) {
+    const b = bursts[i]; b.t += dt; const u = b.t / 0.42; if (u >= 1) { bursts.splice(i, 1); continue; }
+    fctx.strokeStyle = '#121212'; fctx.lineCap = 'butt';
+    for (let k = 0; k < b.n; k++) {
+      const a = b.a + k / b.n * Math.PI * 2, r1 = b.r0 + ease(u) * b.len, r0 = b.r0 + ease(Math.max(0, u - .25) / .75) * b.len * .85;
+      fctx.lineWidth = 4 * (1 - u) + 1; fctx.beginPath();
+      fctx.moveTo(b.x + Math.cos(a) * r0, b.y + Math.sin(a) * r0 * .8); fctx.lineTo(b.x + Math.cos(a) * r1, b.y + Math.sin(a) * r1 * .8); fctx.stroke();
+    }
+  }
+  for (let i = tape.length - 1; i >= 0; i--) {
+    const p = tape[i]; p.life -= dt; if (p.life <= 0 || p.y > FH + 30) { tape.splice(i, 1); continue; }
+    p.vy += 520 * dt; p.vx *= (1 - 1.6 * dt); p.vy = Math.min(p.vy, 260); p.x += p.vx * dt; p.y += p.vy * dt; p.a += p.va * dt;
+    fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.a); fctx.scale(1, Math.cos(p.a * 1.7));
+    fctx.fillStyle = p.c; fctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    if (p.c === '#ffffff') { fctx.strokeStyle = '#121212'; fctx.lineWidth = 1; fctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h); }
+    fctx.restore();
+  }
+}
+
+/* ---------- ghost autopilot ---------- */
+const ghost = $('#ghost'), ring = $('#ring');
+let gx = 0, gy = 0, gA = 0, ringT = -9, ringX = 0, ringY = 0;
+function center(el, fx_ = .5, fy_ = .5) { const r = el.getBoundingClientRect(); return [r.left + r.width * fx_, r.top + r.height * fy_]; }
+function knobBtn(i, v) { return knobsEl.children[i].querySelectorAll('button')[v]; }
+function flipSequence(start, count) {
+  // pick single-knob flips that each change the champion, with big reshuffles; ends with the last-place model needing 3 turns to win
+  let bestSeq = null, bestScore = -1e9;
+  const tries = 900;
+  for (let t = 0; t < tries; t++) {
+    let c = start.slice(), seq = [], last = -1, sc = 0, champs = new Set([champsOf(idxOf(c))]), ok = true;
+    for (let s = 0; s < count; s++) {
+      const opts = [];
+      for (let i = 0; i < KNOBS.length; i++) { if (i === last) continue; for (let v = 0; v < DIMS[i]; v++) if (v !== c[i]) { const c2 = c.slice(); c2[i] = v; const ch = champsOf(idxOf(c2)); if (ch !== champsOf(idxOf(c))) opts.push([i, v, c2, ch]); } }
+      if (!opts.length) { ok = false; break; }
+      const o = opts[Math.floor(rand() * opts.length)];
+      const r1 = ranksFor(c), r2 = ranksFor(o[2]); sc += r1.reduce((a, r, m) => a + Math.abs(r - r2[m]), 0);
+      if (!champs.has(o[3])) sc += 6; champs.add(o[3]);
+      seq.push([o[0], o[1]]); c = o[2]; last = o[0];
+    }
+    if (!ok) continue;
+    const lastM = ordOf(idxOf(c))[NM - 1];
+    const plan = rigPlan(lastM, c);
+    if (!plan.ok) continue;
+    sc += plan.d === 3 ? 30 : plan.d === 4 ? 18 : plan.d === 2 ? 4 : -40;
+    if (sc > bestScore) { bestScore = sc; bestSeq = { seq, end: c, lastM, plan }; }
+  }
+  return bestSeq;
+}
+function makeScript(t0, firstNow) {
+  const flips = FIXED ? 5 : 3 + Math.floor(rand() * 2);
+  const S = flipSequence(cfg, flips);
+  const acts = [];
+  const gap = FIXED ? 0.4 : (RM ? 1.1 : 0.62);
+  let t = t0;
+  S.seq.forEach(([i, v], k) => { acts.push({ at: t, el: () => knobBtn(i, v), go: () => { setKnob(i, v); } }); t += gap; });
+  t += FIXED ? 0.22 : 0.6;
+  acts.push({ at: t, el: () => rows[S.lastM].el.querySelector('.nm'), go: () => setTarget(S.lastM) });
+  t += FIXED ? 0.55 : 1.1;
+  acts.push({ at: t, el: () => $('#rigBtn'), go: () => startRig() });
+  t += 0.85 + 0.32 * S.plan.d + 0.9;
+  acts.push({ at: t + (FIXED ? 0.4 : 1.2), el: () => $('#st1'), go: () => {} , soft: true });
+  acts.push({ at: t + (FIXED ? 5 : 3.6), el: () => $('#shuffle'), go: () => {}, end: true, soft: true });
+  return { acts, i: 0 };
+}
+function runScript(dt) {
+  if (!script) return;
+  const a = script.acts[script.i];
+  if (!a) { script = null; return; }
+  const [tx, ty] = center(a.el(), .5, .55);
+  const k = 1 - Math.exp(-dt * (FIXED ? 13 : 9));
+  gx += (tx - gx) * k; gy += (ty - gy) * k;
+  if (simT >= a.at) {
+    if (!a.soft) { ringT = simT; ringX = gx; ringY = gy; }
+    a.go(); script.i++;
+    if (a.end) script = null;
+  }
+}
+function poke() { userUntil = simT + (FIXED ? 1e9 : 6); script = null; }
+
+/* ---------- frame ---------- */
+window.__frame = 0;
+let last = 0;
+function frame(ts) {
+  let dt;
+  if (FIXED) dt = 1 / 60; else { const n = ts || performance.now(); dt = clamp((n - last) / 1000, 0, 0.05); last = n; }
+  simT += dt; window.__frame++;
+
+  // autopilot
+  const idle = simT > userUntil;
+  if (idle && !script && !rigging && (FIXED ? window.__frame < 3 : true)) {
+    if (!FIXED && target >= 0) setTarget(-1);
+    script = makeScript(simT + (FIXED ? 0.3 : 0.6));
+    if (FIXED) { const [x, y] = center(script.acts[0].el(), .5, .55); gx = x + 60; gy = y + 40; gA = 1; }
+  }
+  if (idle && script) runScript(dt);
+  tickRig();
+
+  // springs
+  const K = 260, C = RM ? 2 * Math.sqrt(260) : 17;
+  rows.forEach(r => {
+    if (r.delay > 0) r.delay -= dt;
+    else { for (let s = 0; s < 2; s++) { const h = dt / 2; const a = K * (r.ty - r.y) - C * r.v; r.v += a * h; r.y += r.v * h; } }
+    if (Math.abs(r.ty - r.y) < 0.3 && Math.abs(r.v) < 2) { r.lift = Math.max(0, r.lift - dt * 3); }
+    const d = r.tgt - r.disp; r.disp += d * (1 - Math.exp(-dt * 7)); if (Math.abs(d) < 0.05) r.disp = r.tgt;
+    const z = r.lift > 0.05 ? 20 : (r.rank === 0 ? 10 : 5 - Math.round(r.y / rowH));
+    r.el.style.zIndex = z;
+    const sc = 1 + 0.03 * r.lift;
+    r.el.style.transform = `translate3d(0,${r.y.toFixed(2)}px,0) scale(${sc.toFixed(4)})`;
+    r.el.style.boxShadow = r.lift > 0.02 ? `${(7 * r.lift).toFixed(1)}px ${(7 * r.lift).toFixed(1)}px 0 #121212` : 'none';
+    r.rk.textContent = String(r.rank + 1).padStart(2, '0');
+    r.sc.innerHTML = r.disp.toFixed(1);
+    r.bar.style.width = clamp((r.disp - 30) / 65, 0.02, 1) * 100 + '%';
+    const de = simT - r.dlT; r.dl.style.opacity = de < 1.6 ? (de < 1.2 ? 1 : (1.6 - de) / .4).toFixed(2) : 0;
+  });
+  // crown
+  const ct = crownTarget();
+  if (crown.t < 1) {
+    crown.t = Math.min(1, crown.t + dt / (RM ? 0.3 : 0.62));
+    const u = crown.t, e = 1 - Math.pow(1 - u, 2.2);
+    crown.x = crown.fromX + (ct.x - crown.fromX) * e;
+    crown.y = crown.fromY + (ct.y - crown.fromY) * e - (RM ? 0 : Math.sin(Math.PI * u) * (90 + Math.abs(ct.y - crown.fromY) * 0.35));
+    crown.rot = RM ? -8 : Math.sin(Math.PI * u) * -28 + u * 352;
+    if (crown.t >= 1 && !crown.land) {
+      crown.land = true; crown.rot = -8; crown.vs = -5.5; shake = RM ? 0 : 1; bigV = RM ? 0 : 4.2;
+      const br = boardEl.getBoundingClientRect(); burst(br.left + crown.x + 27, br.top + crown.y + 34, !!(rigging && rigging.applied >= rigging.changes.length));
+      if (rigging && rigging.applied >= rigging.changes.length && rigging.plan.ok) { const hr = $('#hero').getBoundingClientRect(); confetti(hr.left, hr.top, hr.width); }
+    }
+  } else { crown.x = ct.x; crown.y = ct.y; }
+  // squash spring
+  const sAcc = 300 * (0 - (crown.sy - 1)) - 14 * crown.vs; crown.vs += sAcc * dt; crown.sy += crown.vs * dt; if (!crown.land) crown.sy = 1;
+  const sy = clamp(crown.sy, .55, 1.4), sx = 1 + (1 - sy) * .6;
+  const bR = boardEl.getBoundingClientRect();
+  crownEl.style.transform = `translate(${(bR.left + crown.x).toFixed(1)}px,${(bR.top + crown.y).toFixed(1)}px) rotate(${crown.rot.toFixed(1)}deg) scale(${sx.toFixed(3)},${sy.toFixed(3)})`;
+  // board shake
+  shake = Math.max(0, shake - dt * 3.2);
+  const sh = shake * shake * 7;
+  boardEl.style.transform = sh > 0.05 ? `translate(${(Math.sin(simT * 83) * sh).toFixed(2)}px,${(Math.cos(simT * 71) * sh * .6).toFixed(2)}px)` : '';
+  // hero swap + big 1 slam
+  if (hero.t < 1) {
+    hero.t = Math.min(1, hero.t + dt / (RM ? 0.2 : 0.42));
+    const u = hero.t, out = ease(Math.min(1, u * 1.6)), inn = u < 1 ? 1 - (Math.pow(1 - u, 3) * Math.cos(u * 7.5)) : 1;
+    $('#cA').style.transform = `translateY(${(-112 * out).toFixed(1)}%)`;
+    $('#cB').style.transform = `translateY(${(112 * (1 - inn)).toFixed(1)}%)`;
+    if (hero.t >= 1) { $('#cA').textContent = hero.to; $('#cA').style.transform = ''; $('#cB').textContent = ''; $('#cB').style.transform = ''; }
+  }
+  const bAcc = 240 * (1 - bigS) - 12 * bigV; bigV += bAcc * dt; bigS += bigV * dt;
+  $('#bigone').style.transform = `scale(${(1 + (bigS - 1) * 0.35).toFixed(4)}) rotate(${((bigS - 1) * -6).toFixed(2)}deg)`;
+  // knob bump decay
+  for (const k of knobsEl.children) if (k._bt != null && simT - k._bt > 0.55) { k.classList.remove('bump'); k._bt = null; }
+  // stamp
+  const st = $('#stamp');
+  if (stampT > 0 && simT >= stampT) {
+    const e = simT - stampT, hold = FIXED ? 99 : 3.2;
+    const u = Math.min(1, e / 0.34), s = RM ? 1 : 1 + 1.4 * Math.pow(1 - u, 3) * Math.cos(u * 5);
+    st.style.opacity = e > hold ? Math.max(0, 1 - (e - hold) / 0.4) : Math.min(1, e / 0.06);
+    st.style.transform = `rotate(-5deg) scale(${s.toFixed(3)})`;
+    if (e < 0.05 && !st._hit) { st._hit = 1; shake = RM ? 0 : 0.8; }
+    if (e > hold + 0.4) { stampT = -1; st._hit = 0; }
+  } else if (stampT < 0) { st.style.opacity = 0; }
+  // stat pop
+  const pop = statPop > 0 && simT - statPop < (FIXED ? 99 : 2.2);
+  $('#st1').classList.toggle('pop', pop);
+  // ghost
+  const showG = idle && !!script;
+  gA = clamp(gA + (showG ? dt * 6 : -dt * 3), 0, 1);
+  ghost.style.opacity = gA.toFixed(3);
+  ghost.style.transform = `translate(${(gx - 3).toFixed(1)}px,${(gy - 3).toFixed(1)}px)`;
+  const re = simT - ringT;
+  if (re < 0.4) { ring.style.opacity = (1 - re / 0.4).toFixed(2); ring.style.transform = `translate(${ringX.toFixed(1)}px,${ringY.toFixed(1)}px) scale(${(0.4 + re * 3).toFixed(2)})`; } else ring.style.opacity = 0;
+  drawFx(dt);
+
+  window.__state = {
+    t: +simT.toFixed(3), frame: window.__frame, seed: SEED0, setup: cfg.slice(), setupIndex: idxOf(cfg),
+    champion: MODELS[champ].name, order: ordOf(idxOf(cfg)).map(m => MODELS[m].code),
+    target: target >= 0 ? MODELS[target].name : null, rigging: !!rigging,
+    stats: { setups: NC, crownable, canFinishLast: canLast, wins: Object.fromEntries(MODELS.map((m, i) => [m.code, wins[i]])) },
+    ghost: showG, reducedMotion: RM
+  };
+}
+
+/* ---------- controls ---------- */
+$('#rigBtn').addEventListener('click', () => { poke(); startRig(); });
+$('#plain').addEventListener('click', () => { if (rigging) return; poke(); cfg = PLAIN.slice(); apply(false); });
+$('#shuffle').addEventListener('click', () => { if (rigging) return; poke(); let c; do { c = cfgOf(Math.floor(rand() * NC)); } while (champsOf(idxOf(c)) === champ); cfg = c; apply(false); });
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r') { poke(); startRig(); }
+  else if (k === 'p') $('#plain').click();
+  else if (k === 's') $('#shuffle').click();
+  else if (k >= '1' && k <= '6') { const m = ordOf(idxOf(cfg))[+k - 1]; poke(); setTarget(m); }
+  else if (k === 'escape') { poke(); setTarget(-1); }
+});
+addEventListener('pointerdown', () => { if (!FIXED) poke(); }, { capture: true });
+addEventListener('resize', () => { layout(); placeCrownInstant(); });
+
+/* ---------- boot ---------- */
+layout();
+if (FIXED) {
+  // frame 0 payoff: board starts mid-reshuffle from a different setup
+  cfg = [0, 1, 0, 0, 0, 0, 0]; apply(true);
+  cfg = PLAIN.slice(); apply(false);
+  rows.forEach(r => { r.delay = Math.max(0, r.delay - 0.12); });
+  hero.t = 1; $('#cA').textContent = MODELS[champ].name; $('#cB').textContent = '';
+  champHist = [champ]; renderHist(); updateHeroSub();
+} else apply(true);
+userUntil = FIXED ? -1 : simT + 2.2;
+
+if (FIXED) {
+  window.step = n => { for (let i = 0; i < (n || 1); i++) frame(); };
+  frame();
+} else {
+  window.step = () => {};
+  requestAnimationFrame(t => { last = t; (function loop(t) { frame(t); requestAnimationFrame(loop); })(t); });
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layout(); });
+})();
+</script>
+</body>
+</html>
