@@ -1,0 +1,721 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compaction Shredder — LLM context compaction as an industrial shredder</title>
+<meta name="description" content="Feed an agent transcript into a graphite shredder. Boilerplate becomes confetti; why / paths / TODOs eject as labeled KEEP strips. Toy compaction metaphor — fully client-side, no API keys.">
+<meta property="og:title" content="Compaction Shredder"><meta property="og:description" content="Boilerplate shreds. Goals, paths, and TODOs survive. A toy metaphor for LLM context compaction.">
+<meta property="og:image" content="https://blackman99.github.io/curio/compaction-shredder/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Teko:wght@500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g0:#0e1014;--g1:#1a1d24;--g2:#2a2e38;--g3:#3d4350;--g4:#5a6270;
+  --warn:#f5c518;--warn2:#ffe566;--paper:#f7f4ea;--ink:#12141a;
+  --why:#ff8c42;--paths:#4db6ff;--todo:#f5c518;--mute:#8a93a3;
+  --fluor:#c8ffe6;
+}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{
+  overflow:hidden;font-family:'Manrope',system-ui,sans-serif;color:var(--paper);
+  background:
+    radial-gradient(ellipse 90% 50% at 50% 0%,#2a3834 0%,transparent 55%),
+    repeating-linear-gradient(90deg,#ffffff04 0 1px,transparent 1px 48px),
+    linear-gradient(180deg,#1c2228 0%,#12161c 40%,#0a0c10 100%);
+  -webkit-user-select:none;user-select:none;
+}
+body.narrow{overflow:auto}
+body.narrow #wrap{height:auto;min-height:100%;padding-bottom:14px;justify-content:flex-start}
+body.narrow #note{position:static;height:auto;padding:10px 14px;background:#0a0c10}
+body.narrow #stage{grid-template-columns:1fr;gap:10px}
+body.narrow #panel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.narrow #panel h3,#traywrap,#hudkeep{grid-column:1/-1}
+body.rm .blade,body.rm #machine{transition:none!important}
+#wrap{position:relative;max-width:1480px;margin:0 auto;padding:10px 14px 0;height:100%;display:flex;flex-direction:column;gap:8px;padding-bottom:44px}
+#sign{display:flex;align-items:stretch;gap:12px}
+#plate{
+  flex:1;min-width:0;display:flex;align-items:baseline;gap:14px;
+  background:linear-gradient(#2e333c,#1a1e26);
+  border-radius:2px;padding:6px 16px 8px;
+  box-shadow:inset 0 0 0 2px var(--warn),inset 0 0 0 5px #1a1e26,0 3px 0 #0a0c10,0 10px 22px -10px #000a;
+  position:relative;overflow:hidden;
+}
+#plate::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:8px;
+  background:repeating-linear-gradient(90deg,var(--warn) 0 14px,var(--ink) 14px 28px);
+}
+#plate small{font:700 11px/1 'JetBrains Mono';letter-spacing:.28em;opacity:.85;white-space:nowrap;color:var(--warn);margin-top:6px}
+#plate h1{margin:0;font:600 clamp(28px,4.2vw,46px)/.95 'Teko',sans-serif;letter-spacing:.04em;white-space:nowrap;color:var(--paper);text-shadow:0 2px 0 #0008}
+#plate h1 i{font-style:normal;color:var(--warn)}
+#plate .no{margin-left:auto;font:600 11px/1 'JetBrains Mono';letter-spacing:.14em;opacity:.7;white-space:nowrap;align-self:center;margin-top:6px}
+#badge{
+  flex:none;width:58px;height:58px;border-radius:2px;
+  background:linear-gradient(145deg,var(--warn2),var(--warn) 55%,#c9a000);
+  box-shadow:inset 0 0 0 2px #1a1e26,0 4px 8px #0007;
+  display:grid;place-items:center;font:700 12px/1.05 'Teko';letter-spacing:.14em;color:var(--ink);text-align:center;
+}
+#stage{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,20vw,300px);gap:12px;align-items:stretch}
+#room{
+  position:relative;background:
+    linear-gradient(#0000,#00000066),
+    repeating-linear-gradient(0deg,#2a3038 0 2px,#232830 2px 4px),
+    linear-gradient(180deg,#343a44,#1e232c);
+  border-radius:2px;overflow:hidden;
+  box-shadow:inset 0 0 0 2px #0a0c10,inset 0 1px 0 #ffffff10,0 4px 0 #0a0c10,0 14px 28px -12px #000c;
+  min-height:320px;
+}
+#room::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:6;
+  background:radial-gradient(ellipse 70% 40% at 50% 8%,#c8ffe622,transparent 60%),
+    linear-gradient(90deg,#0009,#0000 8%,#0000 92%,#0009);
+}
+#hud{
+  position:absolute;left:10px;right:10px;top:8px;z-index:8;
+  display:flex;gap:8px;align-items:flex-start;pointer-events:none;
+}
+#meter,#counts{
+  background:#0e1014cc;border:1.5px solid var(--warn);border-radius:2px;padding:5px 8px 6px;backdrop-filter:blur(2px);
+}
+#meter{flex:1;min-width:0}
+#counts{flex:none;min-width:118px}
+#meter .lab,#counts .lab{font:700 9px/1 'JetBrains Mono';letter-spacing:.2em;color:var(--warn);margin-bottom:4px}
+#meterbar{height:12px;background:#1a1d24;border-radius:1px;overflow:hidden;box-shadow:inset 0 1px 2px #0008;position:relative}
+#meterbar span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#3d4350,var(--warn) 70%,var(--warn2));border-radius:1px;transition:width .15s;box-shadow:0 0 10px #f5c51866}
+#meterval{font:600 11px/1.2 'JetBrains Mono';color:var(--paper);margin-top:3px;letter-spacing:.03em}
+#counts .row{font:600 11px/1.35 'JetBrains Mono';color:var(--mute)}
+#counts .row b{color:var(--paper)}
+#counts .row b.keep{color:var(--warn)}
+#scene{position:absolute;inset:0;z-index:1}
+#paperLayer,#confettiLayer,#keepFly{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#paperWeb{
+  position:absolute;left:14%;right:22%;top:48px;height:28%;
+  background:var(--paper);color:var(--ink);
+  font:500 10px/1.35 'JetBrains Mono',monospace;
+  padding:10px 14px;overflow:hidden;
+  box-shadow:0 8px 18px -6px #000a, inset 0 0 0 1px #0002;
+  border-radius:1px 1px 0 0;
+  transform-origin:50% 100%;
+  white-space:pre-wrap;word-break:break-word;
+}
+#paperWeb .hl-why{background:#ff8c4233;color:#8a3a10;border-bottom:2px solid var(--why)}
+#paperWeb .hl-paths{background:#4db6ff33;color:#0a4a7a;border-bottom:2px solid var(--paths)}
+#paperWeb .hl-todo{background:#f5c51844;color:#5a4800;border-bottom:2px solid var(--todo)}
+#paperWeb.feeding{animation:none}
+#machine{
+  position:absolute;left:8%;right:8%;bottom:6%;height:52%;
+  z-index:3;
+}
+#machine svg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 10px #0008)}
+#tray{
+  position:absolute;right:2%;bottom:8%;width:24%;min-width:120px;height:40%;
+  background:linear-gradient(180deg,#2a2e38,#161a22);
+  border:2px solid var(--warn);border-radius:2px;z-index:4;
+  box-shadow:inset 0 0 0 1px #0008,0 4px 12px #0008;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#tray .th{
+  flex:none;background:var(--warn);color:var(--ink);
+  font:700 11px/1 'Teko';letter-spacing:.22em;padding:5px 6px;text-align:center;
+}
+#traybin{flex:1;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:5px;align-items:stretch}
+.kstrip{
+  background:var(--paper);color:var(--ink);border-radius:1px;
+  padding:5px 6px 5px 8px;font:600 9px/1.25 'JetBrains Mono';
+  box-shadow:2px 2px 0 #0006;position:relative;overflow:hidden;
+  animation:popIn .35s cubic-bezier(.2,1.4,.4,1) both;
+}
+.kstrip::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px}
+.kstrip.why::before{background:var(--why)}.kstrip.paths::before{background:var(--paths)}.kstrip.todo::before{background:var(--todo)}
+.kstrip .tag{font:700 8px/1 'Teko';letter-spacing:.18em;opacity:.85;margin-bottom:2px}
+.kstrip.why .tag{color:var(--why)}.kstrip.paths .tag{color:#1a6a9a}.kstrip.todo .tag{color:#8a7000}
+@keyframes popIn{from{transform:translateY(-12px) scale(.9);opacity:0}to{transform:none;opacity:1}}
+.confetti{
+  position:absolute;background:var(--paper);box-shadow:0 1px 2px #0005;
+  font:600 7px/1 'JetBrains Mono';color:#333;overflow:hidden;white-space:nowrap;
+  pointer-events:none;will-change:transform;
+}
+#panel{
+  background:linear-gradient(#2a2e38,#161a22);border-radius:2px;padding:10px 10px 12px;
+  box-shadow:inset 0 1px 0 #ffffff12,0 4px 0 #0a0c10,0 14px 24px -10px #000a;
+  color:var(--paper);display:flex;flex-direction:column;gap:8px;overflow:auto;
+}
+#panel h3{margin:0;font:600 16px/1 'Teko';letter-spacing:.28em;text-align:center;color:var(--warn)}
+#panel label{font:700 9px/1 'JetBrains Mono';letter-spacing:.16em;color:var(--mute);display:block;margin-bottom:4px}
+#chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{
+  font:700 11px/1 'Teko';letter-spacing:.14em;border:1.5px solid var(--g4);border-radius:2px;
+  padding:8px 10px;cursor:pointer;background:#1a1d24;color:var(--mute);touch-action:manipulation;
+}
+.chip.on{border-color:var(--warn);color:var(--ink);background:var(--warn);box-shadow:0 0 0 1px #0004}
+.chip.why.on{background:var(--why);border-color:#ffaa70}
+.chip.paths.on{background:var(--paths);border-color:#7accff;color:#061828}
+.chip.todo.on{background:var(--todo);border-color:var(--warn2)}
+input[type=range]{width:100%;accent-color:var(--warn)}
+#btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{
+  font:600 15px/1 'Teko';letter-spacing:.14em;border:0;border-radius:2px;padding:11px 4px;cursor:pointer;
+  color:var(--ink);background:linear-gradient(var(--warn2),var(--warn) 45%,#c9a000);
+  box-shadow:inset 0 1px 0 #fff6,0 3px 0 #7a6800;touch-action:manipulation;
+}
+button.small{font-size:13px;padding:9px 2px;background:linear-gradient(#6a7280,#3d4350);box-shadow:inset 0 1px 0 #fff3,0 3px 0 #1a1d24;color:var(--paper)}
+button.off{opacity:.5}
+#feedBtn{grid-column:1/3;font-size:20px;padding:14px 4px;letter-spacing:.22em}
+button.down{transform:translateY(3px);box-shadow:inset 0 1px 0 #fff6,0 0 0 #7a6800}
+#stats{font:600 11px/1.4 'JetBrains Mono';letter-spacing:.02em;color:var(--mute);text-align:center}
+#stats b{color:var(--warn)}
+#legend{font:500 10px/1.45 'Manrope';color:var(--mute);padding:4px 2px}
+#legend span{display:inline-block;width:8px;height:8px;border-radius:1px;margin-right:4px;vertical-align:middle}
+#note{
+  position:fixed;left:0;right:0;bottom:0;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:0 12px;color:#8a93a3;font:500 11px/1.25 'Manrope';text-align:center;
+  background:linear-gradient(#0000,#0a0c10cc);
+}
+#note a{white-space:nowrap;color:var(--warn);text-decoration:none;font-family:'Teko';font-size:14px;letter-spacing:.08em;font-weight:600}
+#ghost{position:fixed;left:0;top:0;width:30px;height:34px;pointer-events:none;z-index:20;opacity:0;will-change:transform}
+#ring{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid var(--warn);pointer-events:none;z-index:19;opacity:0}
+#shake{position:absolute;inset:0;z-index:2;pointer-events:none}
+@media(max-width:760px){#plate .no{display:none}#tray{width:28%;height:32%}#paperWeb{font-size:8px}}
+</style></head><body>
+<div id="wrap">
+ <header id="sign">
+  <div id="plate"><small>CURIO · DOCUMENT ROOM</small><h1>Compaction <i>Shredder</i></h1><span class="no">No. 016 · CONTEXT</span></div>
+  <div id="badge">KEEP<br>TRAY</div>
+ </header>
+ <div id="stage">
+  <section id="room" aria-label="Industrial paper shredder">
+   <div id="hud">
+    <div id="meter"><div class="lab">TOKENS IN → KEPT · COMPRESSION</div><div id="meterbar"><span id="meterfill"></span></div><div id="meterval">—</div></div>
+    <div id="counts"><div class="lab">STRIP TALLY</div><div class="row">shredded <b id="nShred">0</b></div><div class="row">kept <b class="keep" id="nKeep">0</b></div></div>
+   </div>
+   <div id="shake">
+    <div id="scene">
+     <div id="paperLayer"><div id="paperWeb"></div></div>
+     <div id="machine">
+      <svg viewBox="0 0 640 320" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+       <defs>
+        <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4a5160"/><stop offset="45%" stop-color="#2a2e38"/><stop offset="100%" stop-color="#161a22"/></linearGradient>
+        <linearGradient id="bladeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8a93a3"/><stop offset="50%" stop-color="#e8ecf2"/><stop offset="100%" stop-color="#5a6270"/></linearGradient>
+        <linearGradient id="slotG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a0c10"/><stop offset="100%" stop-color="#1a1d24"/></linearGradient>
+        <pattern id="hazard" width="28" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(-18)">
+          <rect width="28" height="14" fill="#f5c518"/><rect width="14" height="14" fill="#12141a"/>
+        </pattern>
+       </defs>
+       <!-- floor shadow -->
+       <ellipse cx="320" cy="300" rx="240" ry="14" fill="#000" opacity=".35"/>
+       <!-- machine body -->
+       <rect x="70" y="70" width="500" height="210" rx="6" fill="url(#bodyG)" stroke="#0a0c10" stroke-width="3"/>
+       <!-- hazard stripe band -->
+       <rect x="70" y="70" width="500" height="22" fill="url(#hazard)"/>
+       <rect x="70" y="70" width="500" height="22" fill="none" stroke="#0a0c10" stroke-width="2"/>
+       <!-- mouth / feed slot -->
+       <rect x="140" y="100" width="360" height="36" rx="2" fill="url(#slotG)" stroke="#f5c518" stroke-width="2"/>
+       <text x="320" y="123" text-anchor="middle" fill="#f5c518" font-family="Teko,sans-serif" font-size="16" letter-spacing="4" font-weight="700">FEED SLOT</text>
+       <!-- twin blade rollers -->
+       <g transform="translate(220,168)">
+        <circle r="38" fill="#1a1d24" stroke="#5a6270" stroke-width="3"/>
+        <g id="spinL">
+          <rect x="-44" y="-5" width="88" height="10" rx="2" fill="url(#bladeG)"/>
+          <rect x="-5" y="-44" width="10" height="88" rx="2" fill="url(#bladeG)"/>
+          <rect x="-44" y="-5" width="88" height="10" rx="2" fill="url(#bladeG)" transform="rotate(45)"/>
+          <rect x="-44" y="-5" width="88" height="10" rx="2" fill="url(#bladeG)" transform="rotate(-45)"/>
+        </g>
+        <circle r="8" fill="#f5c518" stroke="#12141a" stroke-width="2"/>
+       </g>
+       <g transform="translate(420,168)">
+        <circle r="38" fill="#1a1d24" stroke="#5a6270" stroke-width="3"/>
+        <g id="spinR">
+          <rect x="-44" y="-5" width="88" height="10" rx="2" fill="url(#bladeG)"/>
+          <rect x="-5" y="-44" width="10" height="88" rx="2" fill="url(#bladeG)"/>
+          <rect x="-44" y="-5" width="88" height="10" rx="2" fill="url(#bladeG)" transform="rotate(45)"/>
+          <rect x="-44" y="-5" width="88" height="10" rx="2" fill="url(#bladeG)" transform="rotate(-45)"/>
+        </g>
+        <circle r="8" fill="#f5c518" stroke="#12141a" stroke-width="2"/>
+       </g>
+       <!-- status lamps -->
+       <circle cx="100" cy="250" r="8" fill="#3d4350" stroke="#0a0c10" stroke-width="2"/><circle id="lamp" cx="100" cy="250" r="5" fill="#f5c518"/>
+       <circle cx="130" cy="250" r="8" fill="#3d4350" stroke="#0a0c10" stroke-width="2"/><circle id="lamp2" cx="130" cy="250" r="5" fill="#4db6ff"/>
+       <!-- label plate -->
+       <rect x="200" y="248" width="240" height="22" rx="2" fill="#12141a" stroke="#f5c518" stroke-width="1.5"/>
+       <text x="320" y="263" text-anchor="middle" fill="#f5c518" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600" letter-spacing="1">CTX-COMPACT · MODEL G-7</text>
+       <!-- eject chute toward KEEP tray -->
+       <path d="M520 200 L580 200 L600 240 L520 240 Z" fill="#1a1d24" stroke="#f5c518" stroke-width="1.5"/>
+       <text x="555" y="225" text-anchor="middle" fill="#f5c518" font-family="Teko,sans-serif" font-size="12" letter-spacing="2">EJECT</text>
+      </svg>
+     </div>
+     <div id="confettiLayer"></div>
+     <div id="keepFly"></div>
+     <div id="tray"><div class="th">KEEP TRAY</div><div id="traybin"></div></div>
+    </div>
+   </div>
+  </section>
+  <aside id="panel">
+   <h3>SHREDDER CONTROLS</h3>
+   <div><label>KEEP MODE</label>
+    <div id="chips">
+     <button type="button" class="chip why on" data-k="why">WHY</button>
+     <button type="button" class="chip paths on" data-k="paths">PATHS</button>
+     <button type="button" class="chip todo on" data-k="todo">TODOs</button>
+    </div>
+   </div>
+   <div><label for="speed">FEED SPEED · <span id="spdlab">1.0×</span></label>
+    <input id="speed" type="range" min="0.4" max="2.2" step="0.1" value="1"></div>
+   <div id="btns">
+    <button id="feedBtn">FEED / SHRED</button>
+    <button id="auto" class="small">AUTO: ON</button>
+    <button id="reset" class="small">RESET</button>
+    <button id="snd" class="small">SOUND: ON</button>
+   </div>
+   <div id="stats">in <b id="tokIn">0</b> · kept <b id="tokKeep">0</b> · ratio <b id="ratio">—</b></div>
+   <div id="legend">
+    <div><span style="background:var(--why)"></span>why · goal / rationale</div>
+    <div><span style="background:var(--paths)"></span>paths · file paths</div>
+    <div><span style="background:var(--todo)"></span>TODOs · action items</div>
+   </div>
+   <div id="hudkeep" style="font:600 10px/1.4 'JetBrains Mono';color:var(--mute);max-height:120px;overflow:auto"></div>
+  </aside>
+ </div>
+ <div id="note">Toy compaction metaphor over an embedded transcript — not a real LLM / not a memory system; fully client-side; no API keys. <a href="../">← Curio</a></div>
+</div>
+<svg id="ghost" viewBox="0 0 30 34" aria-hidden="true"><path d="M3 2 L3 26 L9.5 20.5 L13.5 30 L18 28 L14 19 L23 19 Z" fill="#fffaf0" stroke="#12141a" stroke-width="2.2" stroke-linejoin="round"/></svg><div id="ring"></div>
+<script>
+(()=>{
+const Q=new URLSearchParams(location.search),FIXED=Q.has('fixed');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.body.classList.toggle('rm',RM);
+let seed=(+Q.get('seed'))||(FIXED?7:(Math.random()*1e9)|0);
+const SEED0=seed;
+const rand=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const clamp=(a,b,c)=>Math.max(b,Math.min(c,a)),eio=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ---- embedded agent transcript (~1100 words fictional) ---- */
+const RAW=`[agent] session 7f3a · workspace /tmp/aid · model toy-compact-7
+goal: ship Compaction Shredder drawer for Curio gallery and verify live Pages.
+reason: strategy recommends SVG + paper physics after five consecutive non-SVG media types.
+TODO: pull origin/main before editing demos.json
+TODO: prepend demos.json entry and add exhibit builder key shredder
+reading /tmp/aid/demos.json (15 entries, first=superposition-orrery)
+reading /tmp/aid/assets/exhibits.js (EXHIBITS map ends at orrery)
+ls /tmp/aid/podium-machine/ → index.html og.png
+note: drawer numbers 014 and 015 already taken; next free is 016.
+chatter: fluorescent hum in the document room. hazard tape peels at one corner.
+tool call: Shell · git pull origin main · cwd=/tmp/aid
+stdout: Fast-forward 8433617 · lumen-landing + superposition-orrery
+tool call: Read · /workspace/oss-factory/x-ops/demos.md · limit=80
+reason: match Podium Machine log format for the new demos.md entry.
+boilerplate: awaiting index · awaiting index · awaiting index · retry ok
+boilerplate: heartbeat ok · heartbeat ok · heartbeat ok
+path: /tmp/aid/compaction-shredder/index.html
+path: /tmp/aid/compaction-shredder/og.png
+path: /tmp/aid/assets/exhibits.js
+path: /workspace/oss-factory/x-ops/media/compaction-shredder.mp4
+TODO: generate og.png 1200×630 in graphite + warning yellow
+TODO: record 8–10s ?fixed&seed=7 media with mid-shred frame 0
+goal: every demo must clear the five-second wow bar before push.
+reason: user rule — fine is a fail; polish before publishing.
+tool call: Shell · mkdir -p /tmp/aid/compaction-shredder
+chatter: paper accordion stacks above the feed slot. blades idle at 0 rpm.
+tool call: Write · /tmp/aid/compaction-shredder/index.html
+stdout: wrote 1 file · 0 diagnostics
+boilerplate: lint pass · lint pass · format ok
+reading /tmp/aid/byte-pair-forge/index.html for FIXED/step pattern
+reading /tmp/aid/podium-machine/index.html for autopilot ghost script
+path: /workspace/oss-factory/x-ops/demos.md
+path: /workspace/oss-factory/x-ops/demo-compaction-shredder.png
+reason: keep categories survive compaction — why, paths, TODOs.
+TODO: toggle KEEP MODE chips during autopilot for the recording
+TODO: verify HTTP 200 on live index + og.png after Pages deploy
+tool call: Shell · npx puppeteer screenshot sequence
+chatter: confetti strips pile under the rollers. KEEP tray stamps WHY PATHS TODO.
+boilerplate: waiting for gh-pages · waiting for gh-pages · waiting for gh-pages
+tool call: Shell · curl -sI https://blackman99.github.io/curio/compaction-shredder/
+stdout: HTTP/2 200
+goal: parent posts to X; this agent only ships media + tweet draft.
+reason: standing rule — do not post without explicit user ask in this run.
+TODO: append demos.md entry Status published not-yet-tweeted
+path: /tmp/aid/demos.json
+chatter: tokens-in meter ticks down as boilerplate shreds. compression rises.
+tool call: Shell · git add compaction-shredder demos.json assets/exhibits.js
+tool call: Shell · git commit -m "Add Compaction Shredder (016)"
+tool call: Shell · git push origin main
+boilerplate: ci pending · ci pending · ci green
+reading console logs for ?fixed&seed=7 · 0 errors expected
+TODO: confirm exhibit shredder builder present (no missing-builder warning)
+goal: frame 0 of the video already shows paper in blades and KEEP strips flying.
+reason: recording must open on payoff, not a static idle screen.
+path: /workspace/oss-factory/x-ops/media/compaction-shredder.gif
+chatter: reduced-motion slows feed and thins confetti; no aggressive shake.
+boilerplate: sync mirrors · sync mirrors · sync done
+tool call: ReadEmailThread skipped — not needed for this task
+note: English-only copy on the demo page and tweet draft.
+TODO: write tweet draft ≤280 with URL on its own line
+goal: knowledgeable stranger says wow within five seconds.
+reason: core principle recorded 2026-10-13 in playbook and x-ops memory.
+path: https://blackman99.github.io/curio/compaction-shredder/
+path: https://blackman99.github.io/curio/?exhibit=compaction-shredder
+chatter: ghost pointer hits FEED, flips KEEP chips, resets once, feeds again.
+boilerplate: end of log · end of log · end of log
+session complete · compaction metaphor only · no API keys used.`;
+
+/* classify lines into segments */
+function tokenizeTranscript(text){
+  const lines=text.split(/\n/).map(l=>l.trim()).filter(Boolean);
+  const segs=[];
+  for(const line of lines){
+    let kind='junk';
+    if(/^\s*TODO:/i.test(line)||/\bTODO\b/.test(line)&&/TODO:/.test(line))kind='todo';
+    else if(/^goal:/i.test(line)||/^reason:/i.test(line))kind='why';
+    else if(/^path:/i.test(line)||/\/[\w./-]+\.\w{1,8}\b/.test(line)&&/^(path:|reading |tool call:.*·)/i.test(line))kind='paths';
+    else if(/^path:/i.test(line))kind='paths';
+    else if(/\b(goal|reason):/i.test(line))kind='why';
+    else if(/^TODO:/i.test(line))kind='todo';
+    // path lines
+    if(/^path:/i.test(line))kind='paths';
+    if(/^goal:/i.test(line)||/^reason:/i.test(line))kind='why';
+    if(/^TODO:/i.test(line))kind='todo';
+    // also catch reading /tmp paths as paths
+    if(/^reading \//i.test(line)||/^ls \//i.test(line))kind='paths';
+    const words=line.split(/\s+/).length;
+    const tokens=Math.max(4,Math.round(words*1.3));
+    segs.push({text:line,kind,tokens,id:segs.length});
+  }
+  return segs;
+}
+
+let segs=tokenizeTranscript(RAW);
+let keepMode={why:true,paths:true,todo:true};
+let speed=1,auto=true,soundOn=true;
+let feeding=false,feedT=0,bladeAngle=0,shake=0;
+let confetti=[],kept=[],shreddedCount=0,keptTokens=0,totalTokens=0;
+let paperOffset=0,paperScale=1,simT=0,userUntil=-1;
+let remaining=[]; // segments not yet processed
+
+function recount(){
+  totalTokens=segs.reduce((a,s)=>a+s.tokens,0);
+  remaining=segs.map(s=>({...s}));
+  kept=[];keptTokens=0;shreddedCount=0;confetti=[];
+  paperOffset=0;paperScale=1;
+  renderPaper();renderTray();updateHUD();
+}
+function tokensKeptPotential(){
+  return remaining.filter(s=>keepMode[s.kind]).reduce((a,s)=>a+s.tokens,0)+keptTokens;
+}
+
+function renderPaper(){
+  const el=$('#paperWeb');
+  if(!remaining.length){
+    el.innerHTML='<i style="opacity:.5">— feed empty · hit RESET —</i>';
+    return;
+  }
+  // show a window of upcoming text with highlights
+  const slice=remaining.slice(0,18);
+  el.innerHTML=slice.map(s=>{
+    const cls=s.kind==='junk'?'':('hl-'+s.kind);
+    return `<span class="${cls}">${esc(s.text)}</span>`;
+  }).join('\n');
+  el.style.transform=`translateY(${paperOffset}px) scaleY(${paperScale})`;
+}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function renderTray(){
+  const bin=$('#traybin');
+  bin.innerHTML=kept.slice().reverse().map(k=>
+    `<div class="kstrip ${k.kind}"><div class="tag">${k.kind.toUpperCase()}</div>${esc(k.text.length>72?k.text.slice(0,70)+'…':k.text)}</div>`
+  ).join('');
+  const hk=$('#hudkeep');
+  if(hk) hk.innerHTML=kept.slice(-6).reverse().map(k=>`<div style="color:var(--${k.kind==='todo'?'todo':k.kind})">${k.kind}: ${esc(k.text.slice(0,48))}</div>`).join('')||'<div style="opacity:.5">KEEP tray empty</div>';
+}
+function updateHUD(){
+  const inTok=totalTokens;
+  const keptT=keptTokens;
+  const shredT=Math.max(0,inTok-keptT-remaining.reduce((a,s)=>a+s.tokens,0));
+  const ratio=inTok?keptT/inTok:0;
+  const fill=Math.min(100,ratio*100);
+  $('#meterfill').style.width=fill.toFixed(1)+'%';
+  $('#meterval').textContent=`${keptT} / ${inTok} kept · ${(ratio*100).toFixed(0)}% · shredded ${shreddedCount}`;
+  $('#nShred').textContent=String(shreddedCount);
+  $('#nKeep').textContent=String(kept.length);
+  $('#tokIn').textContent=String(inTok);
+  $('#tokKeep').textContent=String(keptT);
+  $('#ratio').textContent=inTok?(ratio*100).toFixed(0)+'%':'—';
+}
+
+function spawnConfetti(text,n){
+  const layer=$('#confettiLayer');
+  const room=$('#room').getBoundingClientRect();
+  const maxN=RM?Math.min(n,4):n;
+  for(let i=0;i<maxN;i++){
+    const el=document.createElement('div');
+    el.className='confetti';
+    const w=14+rand()*22,h=4+rand()*10;
+    el.style.width=w+'px';el.style.height=h+'px';
+    el.textContent=(text||'···').slice(i*3,(i*3)+4);
+    el.style.fontSize='6px';
+    const x=room.width*(.22+rand()*.45);
+    const y=room.height*(.48+rand()*.08);
+    layer.appendChild(el);
+    confetti.push({
+      el,x,y,vx:(rand()-.5)*180,vy:-40-rand()*120,
+      rot:rand()*360,vr:(rand()-.5)*480,life:0,ttl:1.6+rand()*1.2,w,h
+    });
+  }
+}
+function spawnKeepFly(seg){
+  const layer=$('#keepFly');
+  const el=document.createElement('div');
+  el.className='kstrip '+seg.kind;
+  el.style.position='absolute';el.style.width='140px';el.style.zIndex='5';
+  el.innerHTML=`<div class="tag">${seg.kind.toUpperCase()}</div>${esc(seg.text.slice(0,40))}`;
+  layer.appendChild(el);
+  const room=$('#room').getBoundingClientRect();
+  const startX=room.width*.55,startY=room.height*.55;
+  const tray=$('#tray').getBoundingClientRect();
+  const endX=tray.left-room.left+tray.width*.2,endY=tray.top-room.top+30;
+  const fly={el,t:0,dur:RM?.9:.55,sx:startX,sy:startY,ex:endX,ey:endY,seg};
+  confetti.push({fly:true,...fly}); // reuse update loop via fly flag — actually separate
+  keepFlies.push(fly);
+}
+const keepFlies=[];
+
+function processOne(){
+  if(!remaining.length)return false;
+  const seg=remaining.shift();
+  paperOffset=lerp(paperOffset,28,.5);
+  paperScale=.92;
+  const keep=seg.kind!=='junk'&&keepMode[seg.kind];
+  if(keep){
+    keptTokens+=seg.tokens;
+    kept.push(seg);
+    spawnKeepFly(seg);
+    snip(true);
+  }else{
+    shreddedCount++;
+    spawnConfetti(seg.text,RM?3:7+((rand()*5)|0));
+    snip(false);
+  }
+  renderPaper();
+  updateHUD();
+  shake=RM?.15:.55;
+  return true;
+}
+
+function startFeed(){
+  if(feeding)return;
+  if(!remaining.length){recount();}// auto reset empty
+  feeding=true;feedT=0;paperOffset=0;paperScale=1;
+  rumble(true);
+}
+
+function resetAll(){
+  seed=SEED0;feeding=false;feedT=0;bladeAngle=0;shake=0;
+  segs=tokenizeTranscript(RAW);
+  recount();
+  // clear confetti DOM
+  $('#confettiLayer').innerHTML='';confetti=[];
+  $('#keepFly').innerHTML='';keepFlies.length=0;
+  rumble(false);
+}
+
+/* ---- sound ---- */
+let AC=null,master=null,rumbleOsc=null,rumbleGain=null;
+function initAudio(){if(AC||!soundOn)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.3;master.connect(AC.destination)}catch(e){AC=null}}
+function tone(freq,t0,dur,vol,type){if(!AC||!soundOn||AC.state!=='running')return;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'sawtooth';o.frequency.value=freq;const t=AC.currentTime+t0;
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02)}
+function noiseBurst(dur,vol,bp){if(!AC||!soundOn||AC.state!=='running')return;const n=Math.floor(AC.sampleRate*dur);const buf=AC.createBuffer(1,n,AC.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(n*.25));
+ const s=AC.createBufferSource();s.buffer=buf;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=bp||1200;f.Q.value=.8;const g=AC.createGain();g.gain.value=vol;s.connect(f);f.connect(g);g.connect(master);s.start()}
+function snip(keep){noiseBurst(keep?.04:.07,keep?.1:.18,keep?2400:900);tone(keep?520:140,0,.05,keep?.06:.1,keep?'triangle':'square')}
+function rumble(on){
+  if(!AC||!soundOn)return;
+  if(on){
+    if(rumbleOsc)return;
+    rumbleOsc=AC.createOscillator();rumbleGain=AC.createGain();
+    rumbleOsc.type='sawtooth';rumbleOsc.frequency.value=48;
+    rumbleGain.gain.value=.04;rumbleOsc.connect(rumbleGain);rumbleGain.connect(master);rumbleOsc.start();
+  }else if(rumbleOsc){
+    try{rumbleOsc.stop()}catch(e){}rumbleOsc=null;rumbleGain=null;
+  }
+}
+const unlock=()=>{initAudio();if(AC&&AC.state==='suspended')AC.resume()};
+addEventListener('pointerdown',unlock);addEventListener('keydown',unlock);
+
+/* ---- controls ---- */
+$$('.chip').forEach(ch=>{
+  ch.addEventListener('click',()=>{
+    userPoke();
+    const k=ch.dataset.k;keepMode[k]=!keepMode[k];
+    ch.classList.toggle('on',keepMode[k]);
+    renderPaper();
+  });
+});
+const feedBtn=$('#feedBtn'),autoBtn=$('#auto'),resetBtn=$('#reset'),sndB=$('#snd'),spd=$('#speed'),spdlab=$('#spdlab');
+feedBtn.addEventListener('click',()=>{userPoke();feedBtn.classList.add('down');setTimeout(()=>feedBtn.classList.remove('down'),120);startFeed()});
+autoBtn.addEventListener('click',()=>{auto=!auto;autoBtn.textContent='AUTO: '+(auto?'ON':'OFF');autoBtn.classList.toggle('off',!auto);userPoke()});
+resetBtn.addEventListener('click',()=>{userPoke();resetAll()});
+sndB.addEventListener('click',()=>{soundOn=!soundOn;sndB.textContent='SOUND: '+(soundOn?'ON':'OFF');sndB.classList.toggle('off',!soundOn);if(soundOn)initAudio();else rumble(false)});
+spd.addEventListener('input',()=>{speed=+spd.value;spdlab.textContent=speed.toFixed(1)+'×'});
+addEventListener('keydown',e=>{
+  if(e.key===' '||e.code==='Space'){e.preventDefault();userPoke();startFeed()}
+  else if(e.key==='r'||e.key==='R'){userPoke();resetAll()}
+});
+
+/* ---- autopilot ---- */
+const ghost=$('#ghost'),ring=$('#ring');let gx=innerWidth*.55,gy=innerHeight*.55,gAlpha=0,script=null,cyc=0;
+function userPoke(){userUntil=simT+(FIXED?1e9:10);if(script)script=null}
+function elPt(sel){const el=$(sel);if(!el)return[innerWidth/2,innerHeight/2];const r=el.getBoundingClientRect();return[r.left+r.width*.55,r.top+r.height*.55]}
+function pickScript(){
+  const c=cyc++;const k=c%7;const S=[];
+  const mv=(f,d)=>S.push({t:'mv',f,d}),wait=d=>S.push({t:'w',d}),prs=fn=>S.push({t:'p',fn,d:.28});
+  if(k===2){
+    const chips=['.chip.why','.chip.paths','.chip.todo'];
+    const keys=['why','paths','todo'];
+    const ix=c%3;const sel=chips[ix];const key=keys[ix];
+    mv(()=>elPt(sel),.45);prs(()=>{keepMode[key]=!keepMode[key];const el=$(sel);if(el)el.classList.toggle('on',keepMode[key]);renderPaper()});wait(.1);
+    mv(()=>elPt('#feedBtn'),.4);prs(()=>startFeed());
+  }else if(k===5){
+    mv(()=>elPt('#reset'),.4);prs(()=>resetAll());wait(.15);
+    mv(()=>elPt('#feedBtn'),.4);prs(()=>startFeed());
+  }else{
+    mv(()=>elPt('#feedBtn'),.35);prs(()=>startFeed());wait(.2);
+    mv(()=>elPt('#feedBtn'),.3);prs(()=>startFeed());
+  }
+  return{steps:S,i:0,t:0,sx:gx,sy:gy};
+}
+function runScript(dt){
+  const st=script.steps[script.i];if(!st){script=null;return}
+  if(script.t===0){script.sx=gx;script.sy=gy}
+  script.t+=dt;const k=clamp(script.t/st.d,0,1);
+  if(st.t==='mv'){const[x,y]=st.f();gx=script.sx+(x-script.sx)*eio(k);gy=script.sy+(y-script.sy)*eio(k)}
+  else if(st.t==='p'&&!st.done){st.done=true;st.fn();ring.style.opacity='1';ring.style.transform=`translate(${gx}px,${gy}px) scale(.5)`}
+  if(st.t==='p'){ring.style.opacity=String(Math.max(0,1-k));ring.style.transform=`translate(${gx}px,${gy}px) scale(${.5+k})`}
+  if(k>=1){script.i++;script.t=0}
+}
+
+/* ---- main loop ---- */
+let last=0;window.__frame=0;
+function frame(ts){
+  const n=FIXED?last+1000/60:(ts||performance.now());
+  const dt0=FIXED?1/60:clamp((n-last)/1000,0,.05);last=n;
+  const dt=dt0*(RM?.5:1)*speed;simT+=dt;window.__frame++;
+
+  // blades
+  const spinRate=feeding||confetti.length?420:40;
+  bladeAngle+=dt*spinRate;
+  const spinL=$('#spinL'),spinR=$('#spinR');
+  if(spinL)spinL.setAttribute('transform',`rotate(${bladeAngle})`);
+  if(spinR)spinR.setAttribute('transform',`rotate(${-bladeAngle*1.05})`);
+  const lamp=$('#lamp');if(lamp)lamp.setAttribute('fill',feeding?'#f5c518':(confetti.length?'#ffe566':'#3d4350'));
+
+  // feed processing
+  if(feeding){
+    feedT+=dt;
+    paperOffset=Math.sin(feedT*8)*3+(feedT*18);
+    paperScale=1-clamp(feedT*.15,0,.12);
+    renderPaper();
+    const interval=RM?.28:.16;
+    if(feedT>0.08){
+      const steps=Math.floor((feedT-0.08)/interval);
+      // process based on accumulated — simpler: every interval
+    }
+    // process one segment every interval while feeding
+    if(!frame._acc)frame._acc=0;frame._acc+=dt;
+    while(frame._acc>=interval){
+      frame._acc-=interval;
+      if(!processOne()){feeding=false;rumble(false);break}
+    }
+    if(!remaining.length){feeding=false;rumble(false)}
+    // auto-stop after a burst
+    if(feedT>2.8){feeding=false;rumble(false);feedT=0;frame._acc=0}
+  }else{
+    paperOffset=lerp(paperOffset,0,.08);
+    paperScale=lerp(paperScale,1,.08);
+    if(Math.abs(paperOffset)>.2)renderPaper();
+  }
+
+  // shake machine
+  shake=Math.max(0,shake-dt*2.2);
+  const sh=$('#shake');
+  if(sh){
+    const a=RM?shake*.3:shake;
+    sh.style.transform=a?`translate(${(rand()-.5)*a*10}px,${(rand()-.5)*a*6}px)`:'';
+  }
+
+  // confetti physics
+  const g=980;
+  for(let i=confetti.length-1;i>=0;i--){
+    const c=confetti[i];
+    c.life+=dt;
+    c.vy+=g*dt*.35;
+    c.x+=c.vx*dt;c.y+=c.vy*dt;c.rot+=c.vr*dt;
+    c.vx*=0.99;
+    if(c.el){
+      c.el.style.transform=`translate(${c.x}px,${c.y}px) rotate(${c.rot}deg)`;
+      c.el.style.opacity=String(clamp(1-c.life/c.ttl,0,1));
+    }
+    if(c.life>c.ttl||c.y>2000){if(c.el&&c.el.parentNode)c.el.parentNode.removeChild(c.el);confetti.splice(i,1)}
+  }
+
+  // keep flies
+  for(let i=keepFlies.length-1;i>=0;i--){
+    const f=keepFlies[i];f.t+=dt;const k=eio(clamp(f.t/f.dur,0,1));
+    const x=lerp(f.sx,f.ex,k),y=lerp(f.sy,f.ey,k)-Math.sin(k*Math.PI)*40;
+    f.el.style.transform=`translate(${x}px,${y}px) rotate(${(1-k)*-18}deg)`;
+    f.el.style.opacity=String(k>.85?1-(k-.85)/.15:1);
+    if(k>=1){
+      if(f.el.parentNode)f.el.parentNode.removeChild(f.el);
+      keepFlies.splice(i,1);
+      renderTray();
+    }
+  }
+
+  // autopilot
+  if(auto&&simT>userUntil&&!script)script=pickScript();
+  if(script)runScript(dt);
+  const ghostOK=auto&&simT>userUntil;
+  gAlpha=clamp(gAlpha+(script||ghostOK?dt*4:-dt*4),0,1);
+  ghost.style.opacity=gAlpha.toFixed(3);
+  ghost.style.transform=`translate(${(gx-3).toFixed(1)}px,${(gy-2).toFixed(1)}px)`;
+
+  window.__state={
+    t:+simT.toFixed(2),frame:window.__frame,seed:SEED0,
+    feeding,remaining:remaining.length,kept:kept.length,shredded:shreddedCount,
+    keptTokens,totalTokens,ratio:totalTokens?+(keptTokens/totalTokens).toFixed(3):0,
+    keepMode:{...keepMode},confetti:confetti.length,ghost:!!script,speed
+  };
+  if(!FIXED)requestAnimationFrame(frame);
+}
+
+function layout(){document.body.classList.toggle('narrow',innerWidth<640)}
+addEventListener('resize',layout);
+
+function boot(){
+  layout();
+  recount();
+  // Seed mid-shred for frame-0 wow (especially FIXED)
+  const pre=FIXED?14:8;
+  for(let i=0;i<pre&&remaining.length;i++){
+    const seg=remaining.shift();
+    const keep=seg.kind!=='junk'&&keepMode[seg.kind];
+    if(keep){keptTokens+=seg.tokens;kept.push(seg)}
+    else{shreddedCount++;}
+  }
+  renderPaper();renderTray();updateHUD();
+  // already feeding with confetti in air
+  if(FIXED){
+    feeding=true;feedT=.35;frame._acc=.1;shake=.4;
+    for(let i=0;i<18;i++)spawnConfetti(remaining[0]?remaining[0].text:'shred',1);
+    // eject a couple keep strips mid-flight
+    kept.slice(-3).forEach(s=>spawnKeepFly(s));
+    const[x,y]=elPt('#feedBtn');gx=x;gy=y;gAlpha=1;
+    script=pickScript();
+    userUntil=-1;
+    if(FIXED){initAudio();/* may fail headless — ok */}
+  }else{
+    // gentle start: begin feeding soon via autopilot
+    userUntil=simT+.6;
+    feeding=true;feedT=.2;frame._acc=0;shake=.25;
+    for(let i=0;i<10;i++)spawnConfetti('··',1);
+  }
+}
+boot();
+if(FIXED){window.step=n=>{for(let i=0;i<(n||1);i++)frame()};frame()}
+else{window.step=()=>{};requestAnimationFrame(t=>{last=t;frame(t)})}
+})();
+</script></body></html>

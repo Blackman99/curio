@@ -1,11 +1,21 @@
 [
  {
+  "slug": "compaction-shredder",
+  "title": "Compaction Shredder",
+  "no": "016",
+  "date": "2026-10-16",
+  "kind": "Context compaction · SVG shredder",
+  "blurb": "Feed a long agent transcript into a graphite industrial shredder. Boilerplate becomes flying confetti; why / paths / TODOs eject as labeled KEEP strips — a toy metaphor for LLM context compaction.",
+  "color": "#f5c518",
+  "exhibit": "shredder"
+ },
+ {
   "slug": "superposition-orrery",
   "title": "Superposition Orrery",
   "no": "015",
   "date": "2026-10-16",
-  "kind": "Superposition \u00b7 Live-trained WebGL orrery",
-  "blurb": "A tiny ReLU network trains live in your browser to fit n sparse features into 2 or 3 dimensions. Each brass arm is one feature\u2019s direction. Raise sparsity and the arms snap into antipodal pairs, a pentagon, an octahedron, a square antiprism \u2014 the geometry of Anthropic\u2019s Toy Models of Superposition. Real training, no pre-baked weights.",
+  "kind": "Superposition · Live-trained WebGL orrery",
+  "blurb": "A tiny ReLU network trains live in your browser to fit n sparse features into 2 or 3 dimensions. Each brass arm is one feature’s direction. Raise sparsity and the arms snap into antipodal pairs, a pentagon, an octahedron, a square antiprism — the geometry of Anthropic’s Toy Models of Superposition. Real training, no pre-baked weights.",
   "color": "#ff7a59",
   "exhibit": "orrery"
  },
@@ -14,8 +24,8 @@
   "title": "Lumen Landing",
   "no": "014",
   "date": "2026-10-15",
-  "kind": "Agent-built \u00b7 WebGL landing page",
-  "blurb": "One prompt \u2014 \u201cmake the flashiest landing page you can\u201d \u2014 and an AI coding agent shipped this single HTML file: a raymarched liquid-metal hero, 24,000 GPU particles morphing word \u2192 sphere \u2192 knot \u2192 galaxy, live spring physics, zero dependencies. Lumen is fictional; the page is the demo.",
+  "kind": "Agent-built · WebGL landing page",
+  "blurb": "One prompt — “make the flashiest landing page you can” — and an AI coding agent shipped this single HTML file: a raymarched liquid-metal hero, 24,000 GPU particles morphing word → sphere → knot → galaxy, live spring physics, zero dependencies. Lumen is fictional; the page is the demo.",
   "color": "#5b6cff",
   "exhibit": "lumen"
  },
@@ -24,8 +34,8 @@
   "title": "Podium Machine",
   "no": "013",
   "date": "2026-10-15",
-  "kind": "Eval leaderboards \u00b7 Results board",
-  "blurb": "Six fictional toy models, one toy test, seven eval knobs \u2014 432 setups, and every model can be No.1. Flip a knob and the leaderboard reshuffles; target any model and RIG IT brute-forces the setup that crowns it. Synthetic scores.",
+  "kind": "Eval leaderboards · Results board",
+  "blurb": "Six fictional toy models, one toy test, seven eval knobs — 432 setups, and every model can be No.1. Flip a knob and the leaderboard reshuffles; target any model and RIG IT brute-forces the setup that crowns it. Synthetic scores.",
   "color": "#e10600",
   "exhibit": "podium"
  },
@@ -34,8 +44,8 @@
   "title": "Loss Chord",
   "no": "012",
   "date": "2026-10-14",
-  "kind": "Optimization \u00b7 Web Audio",
-  "blurb": "A toy optimizer descends a loss surface you primarily hear: pitch and chord tension track loss, rhythm tracks step size. Drag the learning rate \u2014 sweet spot resolves the chord; too high and it screams.",
+  "kind": "Optimization · Web Audio",
+  "blurb": "A toy optimizer descends a loss surface you primarily hear: pitch and chord tension track loss, rhythm tracks step size. Drag the learning rate — sweet spot resolves the chord; too high and it screams.",
   "color": "#5eead4",
   "exhibit": "chord"
  },
@@ -44,8 +54,8 @@
   "title": "Injection Heist",
   "no": "011",
   "date": "2026-10-14",
-  "kind": "Prompt injection \u00b7 Terminal game",
-  "blurb": "You are a coding agent reading a fake repo. Flag the hidden prompt injection before tools arm. CRT terminal heist \u2014 toy game, not a scanner.",
+  "kind": "Prompt injection · Terminal game",
+  "blurb": "You are a coding agent reading a fake repo. Flag the hidden prompt injection before tools arm. CRT terminal heist — toy game, not a scanner.",
   "color": "#39ff14",
   "exhibit": "heist"
  },
@@ -54,7 +64,7 @@
   "title": "RoPE Carousel",
   "no": "010",
   "date": "2026-10-13",
-  "kind": "Positional encoding \u00b7 CSS 3D carousel",
+  "kind": "Positional encoding · CSS 3D carousel",
   "blurb": "A Victorian carousel for Rotary Position Embeddings: each horse is a frequency pair; drag to advance position and watch phases spin.",
   "color": "#c41e3a",
   "exhibit": "carousel"
@@ -64,7 +74,7 @@
   "title": "Byte Pair Forge",
   "no": "009",
   "date": "2026-10-13",
-  "kind": "Tokenization \u00b7 Canvas forge",
+  "kind": "Tokenization · Canvas forge",
   "blurb": "A blacksmith forge for Byte-Pair Encoding: hammer the hottest letter pairs until words become tokens.",
   "color": "#e8843a",
   "exhibit": "forge"
@@ -74,7 +84,7 @@
   "title": "Expert Post",
   "no": "008",
   "date": "2026-10-13",
-  "kind": "MoE routing \u00b7 SVG mailroom",
+  "kind": "MoE routing · SVG mailroom",
   "blurb": "A 1920s brass pneumatic-tube mailroom: each token is sealed in a capsule and whooshed to specialist desks by a toy Mixture-of-Experts router.",
   "color": "#c9a24a",
   "exhibit": "tubes"
@@ -84,7 +94,7 @@
   "title": "Token Departures",
   "no": "007",
   "date": "2026-10-13",
-  "kind": "Sampling \u00b7 Split-flap DOM",
+  "kind": "Sampling · Split-flap DOM",
   "blurb": "A split-flap departures board of next-token odds. Pull the temperature and top-p levers, watch the odds re-flap, dispatch a word.",
   "color": "#f5c518",
   "exhibit": "flap"
@@ -94,7 +104,7 @@
   "title": "Snowflake Net",
   "no": "006",
   "date": "2026-10-13",
-  "kind": "Geometry \u00b7 WebGL",
+  "kind": "Geometry · WebGL",
   "blurb": "Fold paper like a ReLU net folds space, make one cut, unfold a decision boundary.",
   "color": "#d9c39a",
   "exhibit": "fold"
@@ -104,7 +114,7 @@
   "title": "Phase Choir",
   "no": "005",
   "date": "2026-10-12",
-  "kind": "Sync \u00b7 WebGL",
+  "kind": "Sync · WebGL",
   "blurb": "Kuramoto lattice whose coupling is a tiny random neural map. Move to entrain; click to re-roll the score.",
   "color": "#c9a0ff",
   "exhibit": "choir"
@@ -114,7 +124,7 @@
   "title": "Latent Quicksilver",
   "no": "004",
   "date": "2026-10-12",
-  "kind": "Implicit fields \u00b7 WebGL",
+  "kind": "Implicit fields · WebGL",
   "blurb": "A liquid-metal isosurface of a random Fourier-feature field. Move to warp the latent; click to re-roll a new creature.",
   "color": "#7ee0ff",
   "exhibit": "quicksilver"
@@ -124,7 +134,7 @@
   "title": "Diffusion Bloom",
   "no": "003",
   "date": "2026-10-12",
-  "kind": "Diffusion \u00b7 WebGL",
+  "kind": "Diffusion · WebGL",
   "blurb": "Particles reverse-diffuse from noise into form. Move to condition the score field; click to re-noise and bloom again.",
   "color": "#ff6b9d",
   "exhibit": "bloom"
@@ -134,7 +144,7 @@
   "title": "Neural Storm",
   "no": "002",
   "date": "2026-10-12",
-  "kind": "Neural nets \u00b7 WebGL",
+  "kind": "Neural nets · WebGL",
   "blurb": "262,144 GPU particles ride the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.",
   "color": "#00b8d4",
   "exhibit": "mlp"
