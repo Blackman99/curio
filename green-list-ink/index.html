@@ -285,6 +285,7 @@ details a,.foot a{color:#d9b8ff}
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed');
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
 /* ================= the toy language model ================= */
@@ -594,6 +595,7 @@ function write(seed,delta,gamma,key=KEY){
 const DEFAULT_SEED=20;
 const ST={seed:DEFAULT_SEED,delta:2,gamma:.25,key:'own',toks:[],shown:0,writing:false,flood:false,font:25,newest:-1};
 if(Q.has('seed'))ST.seed=(parseInt(Q.get('seed'))>>>0)||DEFAULT_SEED;
+else if(FIXED)ST.seed=7;
 if(Q.has('d'))ST.delta=clamp(Math.round((parseFloat(Q.get('d'))||0)*10)/10,0,6);
 if(Q.has('g'))ST.gamma=clamp(Math.round((parseFloat(Q.get('g'))||.25)*20)/20,.1,.75);
 const STILL=Q.has('still');
@@ -793,7 +795,8 @@ function tourTick(dt){
     if(!T.cross&&zCross>=0){T.cross=true;caption(CAP.cross())}
     if(!ST.writing){T.ph='sweep';T.t0=T.t;caption(CAP.done())}}
   else if(T.ph==='sweep'){const u=T.t-T.t0;if(lampMode==='tour'){const[x,y]=toDesk(PD.w*(.5+.34*Math.sin(u*.9)),PD.h*(.53+.28*Math.sin(u*.53+.6)));LT.x=x;LT.y=y}
-    if(u>6.5){T.ph='wash';T.z0=det.z;caption(CAP.wash());setTimeout(()=>{if(tour===T)wash(.1,true,()=>{if(tour===T){T.ph='wait';T.t1=T.t;caption(CAP.washed(T.z0,det.z))}})},1400)}}
+    if(u>6.5){T.ph='prewash';T.z0=det.z;T.t2=T.t;caption(CAP.wash())}}
+  else if(T.ph==='prewash'){if(T.t-T.t2>(FIXED?1.0:1.4)){T.ph='wash';wash(.1,true,()=>{if(tour===T){T.ph='wait';T.t1=T.t;caption(CAP.washed(T.z0,det.z))}})}}
   else if(T.ph==='wait'){if(T.t-T.t1>6){tour=null;tourDone=true;if(lampMode==='tour')lampMode='idle';caption(CAP.turn())}}}
 
 /* ================= popover: rewrite one word ================= */
@@ -862,22 +865,44 @@ let T0=0,last=performance.now(),uiAcc=0,started=false;
 async function start(){
   try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
   layout();parkAt(...lampPark);moveLamp(true);fact();
-  if(RM||STILL){rewrite(false);lampMode='park';caption(CAP.idle())}
+  if(FIXED){
+    // Frame-0 wow: letter already written, UV lamp mid-sweep over glowing green words, stamp WATERMARKED
+    rewrite(false);
+    NZ.z=det.z;NZ.v=0;
+    lampMode='tour';
+    // place lamp over body text so green words glow immediately
+    parkAt(.5,.46);moveLamp(true);
+    // mid-sweep: u=t-t0 ≈ 1.2 → ~5.3s of sweep left before wash
+    tour={t:1.2,ph:'sweep',z0:det.z,cross:true,t0:0};
+    tourDone=false;
+    caption(CAP.done());
+    panel();
+  }else if(RM||STILL){rewrite(false);lampMode='park';caption(CAP.idle())}
   else startTour();
   started=true}
+window.__frame=0;
 function frame(now){
-  requestAnimationFrame(frame); // first, so one bad frame can't stop the page
-  const raw=Math.min(.25,(now-last)/1000),dt=Math.min(.05,raw);last=now;T0+=dt;if(!started)return;
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the page
+  const raw=FIXED?1/30:Math.min(.25,(now-last)/1000);
+  const dt=FIXED?1/30:Math.min(.05,raw);
+  last=FIXED?last+1000/30:(now||performance.now());
+  T0+=dt;window.__frame++;
+  if(!started)return;
   writeTick(raw);washTick(dt);tourTick(dt);
   if(lampMode==='idle'&&!RM){const u=T0*.35;const[x,y]=toDesk(PD.w*(.5+.32*Math.sin(u*.8)),PD.h*(.52+.27*Math.sin(u*.47+1.3)));LT.x=x;LT.y=y}
-  if(!RM&&!STILL){const k=1-Math.exp(-dt*(lampMode==='user'?18:4.5));LP.x+=(LT.x-LP.x)*k;LP.y+=(LT.y-LP.y)*k}
+  if(!RM&&!STILL){const k=FIXED?1:1-Math.exp(-dt*(lampMode==='user'?18:4.5));LP.x+=(LT.x-LP.x)*k;LP.y+=(LT.y-LP.y)*k}
   moveLamp(false);
   // needle: critically damped spring
-  const zt=det.T?det.z:0;if(RM||STILL){NZ.z=zt}else{NZ.v+=((zt-NZ.z)*60-NZ.v*15.5)*dt;NZ.z+=NZ.v*dt}
+  const zt=det.T?det.z:0;if(RM||STILL||FIXED){NZ.z=zt;NZ.v=0}else{NZ.v+=((zt-NZ.z)*60-NZ.v*15.5)*dt;NZ.z+=NZ.v*dt}
   needle.setAttribute('transform',`rotate(${(90-ang(NZ.z)*180/Math.PI).toFixed(2)} ${GC.x} ${GC.y})`);
   uiAcc+=dt;if(uiAcc>.12){uiAcc=0;if(!ST.writing){const i=lampWord();if(i>=0)showOdds(i)}}
+  window.__state={t:+T0.toFixed(3),frame:window.__frame,seed:ST.seed,delta:ST.delta,gamma:ST.gamma,
+    shown:ST.shown,total:ST.toks.length,T:det.T,green:det.g,z:det.z,watermarked:det.z>4,
+    writing:ST.writing,tour:tour&&tour.ph,tourDone,edited:ST.toks.filter(t=>t.orig!=null).length,
+    flood:ST.flood,lampMode};
 }
-requestAnimationFrame(frame);start();
+window.step=n=>{if(!FIXED)return;for(let i=0;i<(n||1);i++)frame()};
+(async()=>{await start();if(FIXED){frame()}else{last=performance.now();requestAnimationFrame(frame)}})();
 // for tests: a read-only view of the letter and the detector
 window.ink={state:()=>({seed:ST.seed,delta:ST.delta,gamma:ST.gamma,key:ST.key,E:Math.exp(ST.delta),V,writing:ST.writing,shown:ST.shown,total:ST.toks.length,
   tokens:ST.toks.slice(0,ST.shown).map(t=>t.w),sections:ST.toks.slice(0,ST.shown).map(t=>t.sec),flags:flags.slice(),T:det.T,green:det.g,z:det.z,watermarked:det.z>4,
