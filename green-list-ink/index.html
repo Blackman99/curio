@@ -265,7 +265,7 @@ details a,.foot a{color:#d9b8ff}
     <p>The lamp is the detector. It knows the key, rebuilds each word's list from the word before it, and counts the greens. With <i>T</i> tokens after the first (words and punctuation both count) and <i>g</i> of them green, <code>z = (g − γT) / √(Tγ(1−γ))</code>. Human writing lands near 0. The paper flags z above 4: text written without the key gets that high about once in 31,600 tries (somewhat more often if it keeps repeating the same word pairs, which this toy model does).</p>
     <p id="fact"></p>
     <p>The watermark is weak where the model had no real choice. If only one word can follow, δ cannot move it, and that word is green only by chance. That is why short or formulaic text is hard to watermark. Paraphrasing attacks it the other way: every word you change re-rolls its own colour and the colour of the next word, whose list it seeds.</p>
-    <p><b>Real:</b> the watermark and the detector, as in the paper's soft red-list algorithm with one token of context, computed live. <b>Toy:</b> the language model is a word-level trigram (mixed 9 : 1 with a bigram) trained on about 4,000 words of seaside letters written for this exhibit, so it rambles. Its tokens are whole words and punctuation, not subword pieces; it won't repeat a four-token phrase, and its greeting and sign-off come from small tables of their own. "Paraphrase" just swaps random words for others the model allows there; real paraphrasers are much smarter.</p>
+    <p><b>Real:</b> the watermark and the detector, as in the paper's soft red-list algorithm with one token of context, computed live. <b>Toy:</b> the language model is a word-level trigram (mixed 9 : 1 with a bigram) trained on about 4,000 words of seaside letters written for this exhibit, so it rambles. Its tokens are whole words and punctuation, not subword pieces; it won't repeat a four-token phrase, and its greeting and sign-off come from small tables of their own. "Paraphrase" just swaps random words for others the model allows between their neighbours; real paraphrasers are much smarter.</p>
     <p>After Kirchenbauer, Geiping, Wen, Katz, Miers &amp; Goldstein, <a href="https://arxiv.org/abs/2301.10226">A Watermark for Large Language Models</a> (ICML 2023). The key is the one in their reference code.</p>
   </details>
   <div class="foot">Move the lamp · click a word to rewrite it · U for full UV · <button class="lnk" id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
@@ -767,7 +767,10 @@ function washPlan(frac){
   const ts=ST.toks,ok=[];for(let i=1;i<ts.length;i++)if(ts[i].sec==='BODY'&&!PUNCT.has(ts[i].w)&&ts[i].orig==null)ok.push(i);
   for(let i=ok.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ok[i],ok[j]]=[ok[j],ok[i]]}
   const nw=ts.filter(t=>t.sec==='BODY'&&!PUNCT.has(t.w)).length,k=Math.max(1,Math.round(frac*nw)),plan=[];
-  for(const i of ok){if(plan.length>=k)break;const cs=altsFor(i,true);if(!cs.length)continue;let tot=0;for(const[,c]of cs)tot+=c;let u=Math.random()*tot;
+  // like a careful paraphraser, prefer swaps the following word can still follow
+  const fits=(id,nx)=>nx==null||LM.cands('BODY',-1,id).some(([t])=>t===nx);
+  for(const i of ok){if(plan.length>=k)break;const nx=i+1<ts.length?tokId(ts[i+1].w):null,cs=altsFor(i,true).map(([id,c])=>[id,c*(fits(id,nx)?1:.03)]);if(!cs.length)continue;
+    let tot=0;for(const[,c]of cs)tot+=c;let u=Math.random()*tot;
     for(const[id,c]of cs){u-=c;if(u<=0){plan.push([i,vocab[id]]);break}}}
   return plan}
 function wash(frac,animate,done){
