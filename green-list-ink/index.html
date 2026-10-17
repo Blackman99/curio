@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Green-List Ink — the invisible watermark in a machine-written letter</title>
+<meta name="description" content="A toy language model writes a letter with the green-list watermark of Kirchenbauer et al. (2023). In daylight it reads like any letter; sweep the UV lamp and the green words glow while a live z-score decides whether a machine wrote it. Rewrite words to try to wash the watermark out.">
+<meta property="og:title" content="Green-List Ink">
+<meta property="og:description" content="A machine-written letter with an invisible watermark. Sweep the UV lamp: the green words glow and a live z-score names the writer. Then try to wash it out.">
+<meta property="og:image" content="https://blackman99.github.io/curio/green-list-ink/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Green-List Ink">
+<meta name="twitter:description" content="Sweep a UV lamp over a letter written by a watermarked language model and watch its green words glow. The z-score is computed live.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/green-list-ink/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07080d;--paper:#f3ebd8;--ink:#1f2747;--uv:#b026ff;--uv2:#7b4dff;--glow:#d9ff4a;--glow2:#8dff3a;--iv:#ece6f6;--iv2:#b9b2cc;--line:rgba(176,38,255,.3);--panel:rgba(11,10,22,.8);--amber:#ffb547;--R:118px}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--iv);font-family:'Fraunces',Georgia,serif;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+
+#desk{position:fixed;inset:0;overflow:hidden;cursor:crosshair;touch-action:none;
+  background:radial-gradient(60% 55% at 47% 46%,rgba(255,206,140,.09),transparent 70%),radial-gradient(130% 100% at 45% 45%,#141623 0,#0b0c15 55%,#040407 100%)}
+#desk::before{content:"";position:absolute;inset:0;opacity:.55;pointer-events:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .6 0 0 0 0 .6 0 0 0 0 .7 0 0 0 .09 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(110% 90% at 46% 46%,transparent 55%,rgba(0,0,0,.6) 100%);z-index:1}
+
+#paper{position:absolute;left:0;top:0;width:640px;height:880px;transform-origin:0 0;border-radius:3px;
+  background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 18%,transparent 82%,rgba(120,90,40,.08)),var(--paper);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 40px 80px rgba(0,0,0,.6),0 10px 24px rgba(0,0,0,.4)}
+#paper::before{content:"";position:absolute;inset:0;border-radius:3px;pointer-events:none;opacity:.7;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45 0 0 0 0 .35 0 0 0 0 .2 0 0 0 .13 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>")}
+.txt{position:absolute;inset:0;padding:30px 62px 40px;font:500 25px/1.42 'Caveat',cursive;color:var(--ink);border-radius:3px}
+.lh{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 26px;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.32em;color:#6a5a3c}
+.lh svg{width:22px;height:28px}
+.lh hr{width:100%;border:0;border-top:1px solid rgba(106,90,60,.45);margin:6px 0 0}
+.txt p{margin:0 0 .35em}
+.txt .bd{text-indent:1.4em}
+.txt .cl{text-align:right;margin-top:.6em;padding-right:1.2em}
+.t{border-radius:3px;transition:background .25s}
+#day .t.w{cursor:pointer}
+#day .t.w:hover,#day .t.sel{background:rgba(176,38,255,.12)}
+#day .t.e{background:linear-gradient(#fdfcf7,#f6f3ea);box-shadow:0 0 0 1px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.18);color:#595a63;padding:0 2px}
+#day .t.new{animation:inkin .45s ease-out}
+@keyframes inkin{from{opacity:0;filter:blur(2px)}to{opacity:1;filter:none}}
+#uv{pointer-events:none;color:rgba(14,7,40,.92);
+  background:radial-gradient(circle at var(--lx,50%) var(--ly,50%),#6a4bff 0,#4a2bd0 calc(var(--lr,120px)*.45),#2b168f calc(var(--lr,120px)*1.05),#180a55 calc(var(--lr,120px)*2.2)),var(--fibers,none),#180a55;
+  -webkit-mask:radial-gradient(circle var(--lr,120px) at var(--lx,50%) var(--ly,50%),#000 calc(var(--lr,120px) - 8px),transparent var(--lr,120px));
+  mask:radial-gradient(circle var(--lr,120px) at var(--lx,50%) var(--ly,50%),#000 calc(var(--lr,120px) - 8px),transparent var(--lr,120px));
+  clip-path:circle(var(--lr,120px) at var(--lx,50%) var(--ly,50%))}
+#uv.flood{-webkit-mask:none;mask:none;clip-path:none;background:radial-gradient(90% 70% at 50% 45%,#4f31d6 0,#2d1795 55%,#170a52 100%),var(--fibers,none),#180a55}
+#uv .lh{color:rgba(14,7,40,.85)}
+#uv .lh hr{border-color:rgba(14,7,40,.6)}
+#uv .t.g{color:var(--glow);text-shadow:0 0 1px #f6ffd8,0 0 6px var(--glow2),0 0 14px rgba(120,255,60,.75),0 0 30px rgba(70,255,40,.45)}
+#uv .t.e{background:rgba(18,12,42,.92);box-shadow:0 0 0 1px rgba(0,0,0,.4);padding:0 2px;color:rgba(160,150,200,.42)}
+#uv .t.e.g{color:var(--glow)}
+#uv .t.flash{animation:flash .9s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 2px #fff,0 0 24px 6px rgba(255,255,255,.8)}100%{box-shadow:0 0 0 0 transparent}}
+#nib{position:absolute;width:26px;height:26px;margin:-22px 0 0 2px;pointer-events:none;opacity:0;transition:opacity .3s}
+#nib.on{opacity:1}
+
+#lamp{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3;will-change:transform}
+#lamp .spill{position:absolute;left:calc(var(--R)*-2.4);top:calc(var(--R)*-2.4);width:calc(var(--R)*4.8);height:calc(var(--R)*4.8);border-radius:50%;
+  background:radial-gradient(circle,rgba(150,70,255,.0) 0,rgba(150,70,255,.0) 40%,rgba(150,70,255,.22) 43%,rgba(120,50,255,.08) 60%,transparent 72%);mix-blend-mode:screen}
+#lamp .body{position:absolute;left:0;top:0;filter:drop-shadow(14px 22px 16px rgba(0,0,0,.5))}
+#lamp .bez{position:absolute;left:calc(var(--R)*-1 - 14px);top:calc(var(--R)*-1 - 14px);width:calc(var(--R)*2 + 28px);height:calc(var(--R)*2 + 28px);border-radius:50%;
+  background:conic-gradient(from 30deg,#2b2e37,#9097a6,#30333c,#727887,#23252d,#a1a7b5,#2b2e37);
+  -webkit-mask:radial-gradient(circle,transparent calc(var(--R) - 1px),#000 var(--R));mask:radial-gradient(circle,transparent calc(var(--R) - 1px),#000 var(--R))}
+#lamp .rim{position:absolute;left:calc(var(--R)*-1);top:calc(var(--R)*-1);width:calc(var(--R)*2);height:calc(var(--R)*2);border-radius:50%;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),inset 0 0 26px rgba(110,40,255,.55);
+  background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.16),transparent 34%),radial-gradient(circle at 70% 78%,rgba(255,255,255,.06),transparent 30%)}
+#lamp .led{position:absolute;left:-3.5px;top:-3.5px;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fbf0ff 0,#d08bff 45%,#9d1cff 100%);box-shadow:0 0 6px 2px rgba(176,38,255,.9),0 0 16px 4px rgba(176,38,255,.5)}
+#lamp .hdl{position:absolute;left:-19px;top:0;width:38px;height:170px;transform-origin:19px 0;transform:rotate(-45deg) translateY(calc(var(--R) + 10px));border-radius:12px 12px 18px 18px;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 2px,transparent 2px 8px),linear-gradient(90deg,#101116,#2c2f38 42%,#15161c 80%,#0d0e12)}
+#lamp .hdl::before{content:"";position:absolute;left:11px;top:22px;width:16px;height:26px;border-radius:6px;background:linear-gradient(#3a2a55,#21162f);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+#lamp .hdl::after{content:"";position:absolute;left:16px;top:28px;width:6px;height:6px;border-radius:50%;background:#e2b3ff;box-shadow:0 0 8px 3px rgba(176,38,255,.85)}
+#lamp.off .spill,#lamp.off .led{opacity:.15}
+.flooded #lamp{opacity:0}
+
+#title{position:fixed;left:34px;top:26px;width:330px;pointer-events:none;z-index:4}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#d9b8ff;text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(7,8,13,.6);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--uv);color:#fff;outline:none}
+.kick{margin-top:20px;font:500 11px/1.4 'IBM Plex Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#c79bff}
+h1{margin:10px 0 12px;font-weight:700;font-size:clamp(44px,4.3vw,66px);line-height:.92;letter-spacing:-.015em;text-shadow:0 4px 40px rgba(0,0,0,.7)}
+h1 em{display:block;font-style:italic;font-weight:500;color:var(--glow);text-shadow:0 0 18px rgba(141,255,58,.55),0 0 2px rgba(255,255,255,.4)}
+.sub{margin:0;font-size:17px;line-height:1.42;color:var(--iv2);text-shadow:0 1px 3px #000}
+.sub b{color:var(--iv);font-weight:600}
+
+#story{position:fixed;left:34px;bottom:30px;width:330px;z-index:4;pointer-events:none}
+#caption{margin:0;font:italic 500 19px/1.38 'Fraunces',serif;color:#f1ecfb;text-shadow:0 2px 16px #000,0 0 2px #000;min-height:5.6em;transition:opacity .4s}
+#caption.fade{opacity:0}
+#caption b{font-style:normal;color:var(--glow)}
+
+#panel{position:fixed;right:22px;top:22px;bottom:22px;width:356px;z-index:5;overflow:auto;scrollbar-width:thin;
+  background:var(--panel);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);
+  border:1px solid var(--line);border-radius:16px;padding:14px 16px 12px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(220,190,255,.08)}
+.sec{margin-bottom:10px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;white-space:nowrap;font:600 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#c79bff;margin-bottom:6px}
+.lab b{font:600 14px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--iv)}
+.lab i{font:italic 500 13px/1.2 'Fraunces',serif;letter-spacing:0;text-transform:none;color:var(--iv2);overflow:hidden;text-overflow:ellipsis}
+#gauge{display:block;width:100%;height:auto;margin:-2px 0 -4px}
+.zrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#zv{font:600 34px/1 'IBM Plex Mono',monospace;letter-spacing:-.02em;color:var(--iv)}
+#zv small{font-size:15px;color:var(--iv2);margin-right:4px}
+.stamp{font:700 13px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;padding:8px 10px 7px;border:2.5px solid currentColor;border-radius:6px;transform:rotate(-6deg);white-space:nowrap;
+  -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='60'><filter id='s'><feTurbulence baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 1.9'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>");mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='60'><filter id='s'><feTurbulence baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 1.9'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>")}
+.stamp.ok{color:var(--glow);text-shadow:0 0 10px rgba(141,255,58,.6)}
+.stamp.mid{color:var(--amber)}
+.stamp.no{color:#9b97ad}
+.stamp.hit{animation:stampin .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes stampin{0%{transform:rotate(-16deg) scale(2.1);opacity:0}100%{transform:rotate(-6deg) scale(1);opacity:1}}
+.meta{display:flex;justify-content:space-between;gap:8px;font:500 11px/1.5 'IBM Plex Mono',monospace;color:var(--iv2)}
+.meta b{color:var(--iv);font-weight:600}
+#zt{display:block;width:100%;height:50px;margin:5px 0 1px}
+.hint{font:italic 500 13.5px/1.3 'Fraunces',serif;color:var(--iv2)}
+.hint b{font-style:normal;color:var(--iv)}
+#odds{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;align-content:start;min-height:118px}
+#odds .w{font:600 17px/1 'Caveat',cursive;color:var(--iv);white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+#odds .w.ch{color:#fff}
+#odds .w.pn{font:italic 500 11px/1 'IBM Plex Mono',monospace;color:var(--iv2)}
+#odds .w.ch::after{content:" ◂";font:500 10px 'IBM Plex Mono',monospace;color:var(--iv2)}
+#odds .bar{position:relative;height:12px;border-radius:3px;background:rgba(255,255,255,.04)}
+#odds .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+#odds .bar .p0{border:1px solid rgba(236,230,246,.45);background:transparent}
+#odds .bar .p1{top:3px;bottom:3px}
+#odds .g .p1{background:var(--glow2);box-shadow:0 0 8px rgba(141,255,58,.6)}
+#odds .r .p1{background:#5c4b80}
+#odds .v{font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--iv2);text-align:right;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:5px;background:linear-gradient(90deg,#3b2a5c,#8a4dff 55%,#d9ff4a);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:5px;border-radius:5px;background:linear-gradient(90deg,#3b2a5c,#8a4dff 55%,#d9ff4a)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;border:1px solid #3a1f66;background:radial-gradient(circle at 35% 30%,#fff,#d3a8ff 45%,#7a2bd6);box-shadow:0 2px 8px rgba(0,0,0,.6),0 0 10px rgba(176,38,255,.5)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:1px solid #3a1f66;background:radial-gradient(circle at 35% 30%,#fff,#d3a8ff 45%,#7a2bd6)}
+input[type=range]:focus-visible{outline:1px dashed #c79bff;outline-offset:3px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.btns{display:flex;gap:6px;margin:8px 0 0}
+.btn{flex:1;border:1px solid var(--line);background:rgba(176,38,255,.07);border-radius:999px;padding:8px 6px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--iv);transition:background .2s,border-color .2s;white-space:nowrap}
+.btn:hover,.btn:focus-visible{background:rgba(176,38,255,.22);border-color:#c79bff;outline:none}
+.btn.on{background:var(--uv);border-color:var(--uv);color:#fff}
+.btn.hot{border-color:var(--glow2);color:var(--glow)}
+hr.s{border:0;border-top:1px solid var(--line);margin:8px 0}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#c79bff;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:14.5px;line-height:1.42;color:var(--iv2);margin:9px 0 0}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--iv)}
+details a,.foot a{color:#d9b8ff}
+.foot{margin-top:10px;font:500 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(236,230,246,.5)}
+.lnk{border:0;background:none;padding:0;font:inherit;color:#d9b8ff;text-decoration:underline;cursor:pointer}
+
+#pop{position:fixed;z-index:8;width:262px;padding:12px 12px 10px;border-radius:12px;background:rgba(14,12,26,.96);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.6);display:none}
+#pop.on{display:block}
+#pop .ph{font:600 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#c79bff;display:flex;justify-content:space-between;gap:8px}
+#pop .ph b{font:600 20px/1 'Caveat',cursive;letter-spacing:0;text-transform:none;color:var(--iv)}
+#pl{display:flex;flex-direction:column;gap:3px;margin:8px 0}
+#pl button{display:grid;grid-template-columns:12px 1fr auto auto;gap:7px;align-items:center;text-align:left;border:1px solid transparent;background:rgba(255,255,255,.03);border-radius:8px;padding:4px 8px}
+#pl button:hover,#pl button:focus-visible{border-color:var(--line);background:rgba(176,38,255,.14);outline:none}
+#pl .d{width:9px;height:9px;border-radius:50%}
+#pl .g .d{background:var(--glow2);box-shadow:0 0 8px var(--glow2)}
+#pl .r .d{background:#5c4b80}
+#pl .w{font:600 19px/1 'Caveat',cursive;color:var(--iv)}
+#pl .p,#pl .z{font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--iv2)}
+#pl .z b{color:var(--iv)}
+#pf{display:flex;gap:6px}
+#pi{flex:1;min-width:0;border:1px solid var(--line);background:rgba(0,0,0,.35);border-radius:8px;padding:6px 8px;font:500 12px 'IBM Plex Mono',monospace}
+#pf button,#prs{border:1px solid var(--line);background:rgba(176,38,255,.12);border-radius:8px;padding:6px 9px;font:500 11px 'IBM Plex Mono',monospace}
+#prs{display:none;width:100%;margin-top:6px}
+#prs.on{display:block}
+#pop .hint{margin-top:7px;font-size:12.5px}
+#pill{display:none}
+#tip{position:fixed;z-index:6;pointer-events:none;padding:6px 9px;border-radius:9px;background:rgba(14,12,26,.92);border:1px solid var(--line);font:500 11px/1.4 'IBM Plex Mono',monospace;color:var(--iv);opacity:0;transform:translate(16px,16px);transition:opacity .15s;white-space:nowrap}
+#tip b{color:var(--glow)}
+
+@media (max-width:1179px) and (min-width:821px){
+  #title{width:auto;right:400px}
+  .kick{margin-top:12px}
+  h1{font-size:40px;margin:6px 0 4px}
+  h1 em{display:inline}
+  .sub{display:none}
+  #story{left:34px;right:400px;bottom:auto;top:132px;width:auto}
+  #caption{font-size:16px;min-height:0}
+}
+@media (max-height:760px) and (min-width:1180px){
+  #title{top:18px}
+  .kick{margin-top:12px}
+  h1{font-size:46px;margin:6px 0 8px}
+  .sub{font-size:15.5px}
+  #caption{font-size:17px;min-height:0}
+  #story{bottom:22px}
+}
+@media (max-width:820px){
+  html,body{overflow-x:hidden;overflow-y:auto;height:auto}
+  :root{--R:66px}
+  #desk{position:relative;inset:auto;cursor:default;touch-action:pan-y;margin:0 0 10px;background:radial-gradient(90% 60% at 50% 40%,rgba(255,206,140,.08),transparent 70%),#0b0c15}
+  #vig{display:none}
+  #title{position:relative;left:auto;top:auto;width:auto;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:34px;margin:6px 0 4px}
+  h1 em{display:inline}
+  .sub{font-size:15px}
+  #story{position:relative;left:auto;bottom:auto;width:auto;padding:8px 16px 12px}
+  #caption{font-size:16px;min-height:4.2em}
+  #panel{position:relative;right:auto;top:auto;bottom:auto;width:auto;margin:0 12px 80px;overflow:visible}
+  #lamp .hdl{height:120px}
+  #tip{display:none}
+  #pill{display:flex;position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;background:rgba(11,10,22,.92);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.6);font:600 13px/1 'IBM Plex Mono',monospace;color:var(--iv);white-space:nowrap}
+  #pill .stamp{font-size:10px;padding:5px 6px 4px;border-width:2px}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}.t,#nib{transition:none}#day .t.new,#uv .t.flash,.stamp.hit{animation:none}}
+</style>
+</head>
+<body>
+<div id="vig"></div>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 017 · LLM watermarking</div>
+  <h1>Green-List <em>Ink</em></h1>
+  <p class="sub">A language model wrote this letter and hid a <b>watermark</b> in its choice of words. In daylight you can't see it. Under the lamp you can.</p>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+
+<div id="desk" aria-label="A letter on a desk, and a UV lamp you can move over it">
+  <div id="paper">
+    <div id="day" class="txt"></div>
+    <div id="uv" class="txt" aria-hidden="true"></div>
+    <svg id="nib" viewBox="0 0 26 26" aria-hidden="true"><path d="M3 23 L7 13 L19 1 L25 7 L13 19 Z" fill="#2a2f45"/><path d="M3 23 L10 16" stroke="#f3ebd8" stroke-width="1.2"/><path d="M7 13 L13 19" stroke="#c9a24a" stroke-width="1.6"/></svg>
+  </div>
+  <div id="lamp" aria-hidden="true"><div class="spill"></div><div class="body"><div class="hdl"></div><div class="bez"></div><div class="rim"></div><div id="leds"></div></div></div>
+</div>
+<aside id="panel" aria-label="Detector and controls">
+  <div class="sec">
+    <div class="lab"><span>Detector</span><i id="keyl">lamp tuned to the writer's key</i></div>
+    <svg id="gauge" viewBox="0 0 300 150" aria-label="z-score gauge"></svg>
+    <div class="zrow"><div id="zv"><small>z =</small><span id="zn">0.00</span></div><span id="stamp" class="stamp no">NOT YET</span></div>
+    <div class="meta" style="margin-top:8px"><span><b id="gv">0</b> green of <b id="tv">0</b> tokens</span><span>chance: <b id="ev">0</b> ± <b id="sv">0</b></span></div>
+    <div class="meta"><span>p-value <b id="pv">—</b></span><span>flags at z &gt; 4</span></div>
+    <canvas id="zt" aria-label="z-score as the letter grows"></canvas>
+    <div class="hint" id="zth">&nbsp;</div>
+  </div>
+  <hr class="s">
+  <div class="sec">
+    <div class="lab"><span>Why this word?</span><i id="octx">—</i></div>
+    <div id="odds" aria-live="off"></div>
+    <div class="hint" style="margin-top:4px">outline: the model's odds · fill: after <b>+δ</b> on green</div>
+  </div>
+  <hr class="s">
+  <div class="row2">
+    <div class="sec"><div class="lab"><span>Strength δ</span><b id="dv">2.0</b></div><input id="dl" type="range" min="0" max="60" value="20" aria-label="Watermark strength delta"></div>
+    <div class="sec"><div class="lab"><span>Green γ</span><b id="gmv">25%</b></div><input id="gm" type="range" min="10" max="75" step="5" value="25" aria-label="Green list share gamma"></div>
+  </div>
+  <div class="hint">Either one makes the model rewrite the letter.</div>
+  <div class="btns"><button class="btn hot" id="wash" title="Swap a random 10% of the words for other words the model allows there">Paraphrase 10%</button><button class="btn" id="restore">Restore</button><button class="btn" id="new">New letter</button></div>
+  <div class="btns"><button class="btn on" id="kown" data-k="own">Writer's key</button><button class="btn" id="koth" data-k="other">Wrong key</button><button class="btn" id="flood" title="Light the whole page (U)">Full UV</button></div>
+  <div class="meta" style="margin-top:10px"><span title="How surprised the toy model is by the letter; lower reads more naturally">perplexity <b id="pp">—</b> · unmarked <span id="pp0">—</span></span><span>edited <b id="ed">0%</b></span></div>
+  <details>
+    <summary>What is this?</summary>
+    <p>Before each word, the model hashes the word it just wrote together with a secret key. The hash seeds a random split of its <span id="vn">750</span>-word vocabulary into a <b style="color:var(--glow)">green list</b> (γ of the words) and a red list. Then it adds δ to the green words' logits and samples. The letter still reads like the model's own writing, but it ends up with far more green words than chance would give.</p>
+    <p>The lamp is the detector. It knows the key, rebuilds each word's list from the word before it, and counts the greens. With <i>T</i> tokens after the first (words and punctuation both count) and <i>g</i> of them green, <code>z = (g − γT) / √(Tγ(1−γ))</code>. Human writing lands near 0. The paper flags z above 4: text written without the key gets that high about once in 31,600 tries (somewhat more often if it keeps repeating the same word pairs, which this toy model does).</p>
+    <p id="fact"></p>
+    <p>The watermark is weak where the model had no real choice. If only one word can follow, δ cannot move it, and that word is green only by chance. That is why short or formulaic text is hard to watermark. Paraphrasing attacks it the other way: every word you change re-rolls its own colour and the colour of the next word, whose list it seeds.</p>
+    <p><b>Real:</b> the watermark and the detector, as in the paper's soft red-list algorithm with one token of context, computed live. <b>Toy:</b> the language model is a word-level trigram (mixed 9 : 1 with a bigram) trained on about 4,000 words of seaside letters written for this exhibit, so it rambles. Its tokens are whole words and punctuation, not subword pieces; it won't repeat a four-token phrase, and its greeting and sign-off come from small tables of their own. "Paraphrase" just swaps random words for others the model allows there; real paraphrasers are much smarter.</p>
+    <p>After Kirchenbauer, Geiping, Wen, Katz, Miers &amp; Goldstein, <a href="https://arxiv.org/abs/2301.10226">A Watermark for Large Language Models</a> (ICML 2023). The key is the one in their reference code.</p>
+  </details>
+  <div class="foot">Move the lamp · click a word to rewrite it · U for full UV · <button class="lnk" id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+
+<div id="pop" role="dialog" aria-label="Rewrite a word">
+  <div class="ph"><span>Rewrite <b id="pw">word</b></span><span id="pz"></span></div>
+  <div id="pl"></div>
+  <form id="pf" autocomplete="off"><input id="pi" maxlength="20" placeholder="or write any word" aria-label="Your own word"><button type="submit">Write</button></form>
+  <button id="prs" type="button">Restore the original</button>
+  <div class="hint">A green dot means the word would glow here. Changing it also changes the next word's list.</div>
+</div>
+<div id="pill" aria-hidden="true"><span id="pz2">z = 0.00</span><span id="ps2" class="stamp no">NOT YET</span></div>
+<div id="tip"></div>
+
+<script type="module">
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Q=new URLSearchParams(location.search);
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* ================= the toy language model ================= */
+const CORPUS=/*CORPUS*/`
+#SAL
+Dear Margaret,
+Dear Tom,
+Dear Ada,
+Dear Elsie,
+Dear Arthur,
+Dear Nell,
+Dearest Kit,
+My dear Hugh,
+Dear old Bea,
+My dearest Tom,
+Dearest Margaret,
+#BODY
+It has rained all week, and the garden is soaked through. The roses are bent double, but the beans are doing well. I spend most mornings at the kitchen window with a pot of tea and a book I am not really reading.
+
+The sea has been wild since Sunday. Last night the wind took two slates off the roof, and this morning the beach was covered in weed and driftwood. Old Penrose says it is the worst storm in twenty years, but he says that every winter.
+
+I miss you terribly. The house is too quiet without you, and the cat keeps looking for you in all the wrong places. She sleeps on your chair every evening, as if she is waiting for you to come home.
+
+We walked along the cliffs on Tuesday. The heather is out, and the whole hill is purple. We saw a seal in the cove, and Father swears it waved at him. I think it was only scratching its nose.
+
+Tell me everything about the city. Are you eating properly? Have you found a good bakery yet? I worry that you work too hard and forget to look at the sky.
+
+The village is full of visitors now that the weather has turned. The bakery sells out of buns by ten, and the harbour is crowded with little boats. I sat on the wall by the lighthouse and watched the boats come in.
+
+Mother sends her love and says you must wear your scarf. Father sends his love and a jar of honey, which I have wrapped in three pairs of socks. If it breaks, the socks are yours.
+
+The apple tree is heavy with fruit this year. We will have more apples than we can eat, so I have started making jam. The kitchen smells of sugar and cloves, and the cat is very suspicious of the whole business.
+
+I have been reading by the fire every evening. The book you gave me is wonderful, and I am trying to make it last. I read one chapter a night and then I make myself stop.
+
+The rain has stopped at last. This morning the sky was clear and the sea was flat and silver. I walked down to the harbour before breakfast and the whole town was still asleep.
+
+There was a dance in the village hall on Saturday. The band was terrible and the floor was sticky, but we danced until midnight. Nell danced with the baker's boy, who has grown a foot since the summer.
+
+I hope you are well and that the new work is going well. Do you like the people? Is your room warm enough? You must tell me if you need anything, and I will send it on the next train.
+
+The fog came in from the sea last night and it has not lifted since. The foghorn has been going all day, and the gulls are sulking on the roof. It is a good day for letters.
+
+I keep your letters in the blue tin on the kitchen shelf. When the house is quiet I take them out and read them again. Your last letter made me laugh so much that the cat left the room.
+
+We have had a week of fine weather. The garden is full of bees and the roses are in flower again. I sit outside in the evening until it is too dark to see the page.
+
+The lighthouse keeper brought us a crab on Thursday. It was still alive and it walked across the kitchen floor while Mother screamed. Father caught it with a saucepan and we had it for supper.
+
+I think of you every evening when the lamps come on along the harbour. I wonder what you are doing and whether you can see the same stars. Probably not, with all those city lights.
+
+The wind has dropped and the boats went out at dawn. The whole harbour was empty by six. I like it best like that, with only the water and the gulls and the old men on the wall.
+
+Aunt Rose came for tea on Sunday and stayed for supper. She talked about her knees for an hour and then she talked about the vicar. I thought of you and had to leave the room.
+
+I will come up on the train in June if I can. We could walk by the river and eat ice cream and talk all night. Tell me which days are best and I will write to you from the station.
+
+The garden is a mess after the storm. Half the fence is down and the beans are flat, but the roses survived. Father says the fence was too old anyway, and he has been looking for a reason to build a new one.
+
+Have you been to the museum yet? I would like to see the big whale you wrote about. I cannot believe that anything so big ever lived in the sea.
+
+It is cold and bright here. The mornings are dark now and the frost was thick on the grass today. I have started wearing your old jumper, and I hope you do not mind.
+
+The cat caught a mouse and left it on the doorstep as a present. Mother was not grateful. I told the cat it was very kind of her, and she seemed pleased.
+
+I went to the library and found the book about lighthouses. It has drawings of every light on the coast, and ours is on page forty. I will bring it with me when I come.
+
+The sea is calm this morning and the water is very clear. You can see the sand and the stones and the little fish all the way down. I wish you were here to swim with me.
+
+Old Penrose has painted his boat blue again. He says blue is lucky, but last year he said green was lucky. The boat does not seem to care.
+
+We had a picnic on the beach on Saturday. The wind blew sand into everything, and Nell dropped the cake, but it was still a lovely day. We stayed until the sun went down behind the lighthouse.
+
+I hope the city is treating you kindly. Do you still walk by the river on Sundays? I like to think of you there, with your hands in your pockets and your head full of plans.
+
+Father has mended the gate at last. It took him three weeks and a great deal of language. Now it opens perfectly, but it will not close.
+
+The hens have stopped laying, so there are no eggs for the cake. Mother says it is the cold, and Father says it is the fox. I think the hens are simply on strike.
+
+Thank you for the parcel. The tea is wonderful and the gloves fit perfectly. I wore them to church and everyone wanted to know where they came from.
+
+I have been learning to bake bread. The first loaf was as hard as a brick, but the second one was better. By the time you come home I will be the best baker in the village.
+
+The nights are drawing in and the lamps are lit by five. I like the long evenings by the fire, but I miss the light. Soon it will be spring again and we can walk on the cliffs.
+
+The boats came in early because of the weather. The whole town went down to the harbour to watch, and the waves were breaking right over the wall. Nobody was hurt, but one boat lost its nets.
+
+I am sorry this letter is so short. The post goes at four and I have been in the garden all day. I will write a proper letter on Sunday.
+
+Write soon and tell me everything. Tell me about your work and your friends and what you eat for supper. Tell me about the city at night. I want to know it all.
+
+The weather has turned at last. The sun came out this afternoon and the whole village went outside to look at it. The gulls were very loud about it.
+
+I walked to the end of the harbour wall this morning. The water was green and grey and very cold, and the boats were rocking on the tide. I stood there until my hands were numb.
+
+The baker's boy asked after you again. He wants to know when you are coming home and whether you still like currant buns. I said you did. I hope that is still true.
+
+We have a new vicar, and he is very young and very nervous. He dropped his notes in the middle of the sermon on Sunday, and Aunt Rose helped him find his place.
+
+The school is closed for the summer and the children are everywhere. They have built a castle on the beach that is taller than Father. The tide will take it tonight.
+
+I found your old kite in the shed. It is a little torn, but I think we could mend it. When you come home we will take it up to the cliffs and see if it still flies.
+
+Mother has started painting again. She paints the harbour every morning, and every morning it looks a little different. The kitchen is full of little boats drying on the table.
+
+The roses by the gate are the best they have ever been. I picked a bunch for the kitchen table and the whole house smells of them. I have pressed one for you in this letter.
+
+The rain came back on Thursday, but I did not mind. I stayed in and wrote letters and listened to it on the roof. It is a good sound when you are warm and dry.
+
+Do you remember the summer we found the cave below the lighthouse? I went back there last week. It is smaller than I remember, but the echo is just as good.
+
+The fishing has been poor this month and the town is worried. Old Penrose says the fish have gone south for the winter, like sensible people. I think he would go with them if he could.
+
+It snowed last night, which never happens here. The beach was white all the way to the water, and the boats were white, and the cat would not go out. By noon it had all melted.
+
+I am glad you like the new flat. A window over the river sounds lovely. Do you have room for a plant? I will send you a cutting from the geranium.
+
+The market was busy today. I bought apples and cheese and a new pair of gloves, and I spent too much money on a book. It was worth it.
+
+The lighthouse is being painted, and the keeper has to climb up and down all day. He waves to us from the top. Father says he is showing off.
+
+I hope you are sleeping better. You sounded tired in your last letter. Do not work so late, and do go out and see the sea, or the river, or whatever water you have.
+
+Nell sends her love and says you owe her a letter. She has a new bicycle and she rides it everywhere, mostly into hedges. She is very proud of it.
+
+The evenings are long and warm and the light goes on and on. We eat supper in the garden and watch the bats come out. You would love it.
+
+The new road is finished at last. The bus comes every hour now, and it is very strange to see so many strangers in the village. Some of them are very nice.
+
+I have been thinking about what you said in your letter. I think you are right, and I think you should do it. You will never know unless you try.
+
+The cat is getting fat and lazy. She sleeps all day in the sun by the back door and only wakes up for supper. I am a little jealous of her.
+
+The storm took the old boat shed at last. There is nothing left but the door and a pile of planks on the beach. Father wants to build a new one, but Mother says not this year.
+
+It was your birthday on Tuesday and we all drank to you at supper. Mother made a cake and Father made a speech. The cat ate the icing when nobody was looking.
+
+I walked up to the church on the hill this evening. From the top you can see the whole bay, the lighthouse and the harbour and the boats coming home. I sat on the wall and thought of you.
+
+The house smells of bread and woodsmoke, and the kettle is on. Mother is knitting by the fire and Father is asleep in his chair with the paper over his face. The cat is asleep on Father.
+
+We went to the fair in town on Saturday. Nell won a goldfish and lost it again on the bus. Father won nothing at all and has been very quiet about it since.
+
+I have been walking on the beach every morning before breakfast. The sand is cold and hard and the gulls follow me all the way to the rocks. I think they believe I have bread.
+
+The little boats are all pulled up on the shingle for the winter. They look like sleeping animals in a row. In the spring they will be painted and go back to the water.
+
+I wish you could see the harbour tonight. The moon is up and the water is silver and every boat has a lamp. It looks like the stars have come down to swim.
+
+You asked about the garden. The beans are finished, the apples are picked, and the roses are asleep. Father has planted the bulbs you sent, so there will be tulips in the spring.
+
+Tell me about your friends. Do you go out in the evenings? Is there anywhere to dance? I hope you are not working all the time, because you will make yourself ill.
+
+It is very late and the lamp is low, so I must stop. The wind is getting up again and the windows are rattling. I will post this in the morning on my way to the market.
+
+I hope you are keeping warm. The wind here is so cold that the gulls stand on one leg. Mother says it will snow before the end of the week, and Mother is never wrong about snow.
+
+We went to the harbour on Sunday to see the new boat. It is bright red with a white stripe, and it is called the Margaret. Old Penrose says it is far too pretty to catch fish.
+
+I hope the new work is not too hard. Do they let you go home at a sensible hour? You must eat a proper supper and not just bread and cheese.
+
+The garden is full of birds this morning. There are sparrows in the hedge and a robin on the gate, and the blackbird is singing on the roof of the shed. The cat is watching them all from the kitchen window.
+
+We have had a letter from Aunt Rose. She is coming to stay for a week in June, and she is bringing her dog. Father has gone very quiet and Mother has started cleaning the house.
+
+The sea was so rough last night that the spray came over the harbour wall. In the morning there was a fish on the road. Nobody knows whose it was.
+
+I went up to the lighthouse with a basket of buns for the keeper. He showed me the great lamp and the clockwork that turns it. From the top the boats look like toys and the village looks like a map.
+
+It is very quiet here now that the visitors have gone. The bakery shuts at four and the beach is empty. I like it best this way, with only the gulls and the old men and the sea.
+
+I hope you got the parcel. There is a scarf, a pot of jam and a book I think you will like. The jam is from our own apples, so you must tell me if it is any good.
+
+The little school had its concert on Friday. The children sang three songs and forgot most of the words, and the piano was out of tune, but everyone clapped. Nell played the drum and was very serious about it.
+
+We walked to the next village on Saturday and came back along the beach. It took all day and we were very tired, but the sky was clear and the sea was blue all the way to the edge.
+
+I have been thinking about you all week. I hope you are happy in the city, and I hope you have found some good friends. You deserve them.
+
+The rain has made the lane into a river. The bus could not get through on Tuesday, so the post was late and the bread was late and everyone was cross.
+
+The moon was full last night and the tide was very high. The water came right up to the boat sheds and over the slipway. This morning the whole beach was new and smooth.
+
+Mother has made a coat for the cat out of your old jumper. The cat is not pleased. She sits in the corner and looks at us all as if we have done something terrible.
+
+I am writing this by the window in the kitchen. The sun is going down behind the lighthouse and the sky is pink and gold. The boats are coming home and the gulls are following them.
+
+You asked about Father. He is well, but he will not rest. He is out in the garden all day, and in the evening he falls asleep in his chair before supper.
+
+The library has a new book about the city, and I have been reading about all the places you have seen. I want to see the river and the bridges and the big museum. I want to see your little window.
+
+The weather is warm again and the garden is full of flowers. There are roses by the door and poppies by the gate, and the bees are everywhere. I wish I could send you the smell of it.
+
+We had a storm on Thursday night. The lights went out and we sat in the kitchen with candles and listened to the wind. In the morning the garden was full of leaves and the fence was down again.
+
+I hope you are not too lonely. I know the city is big and busy, but there must be someone kind there. Tell me about the people you meet.
+
+The baker's boy is going to sea. He leaves on the morning boat next week, and his mother has been crying in the bakery all day. The buns are very salty.
+
+The harbour was full of boats this morning, all waiting for the tide. The fishermen were mending their nets on the wall and the gulls were waiting for the fish. It was very loud and very cheerful.
+
+It is Sunday and the bells are ringing. Mother has gone to church and Father is pretending to be asleep. I am writing to you instead, which I think is better than a sermon.
+
+Do you remember the old boat we used to row around the harbour? Father has found it in the shed. It needs paint and new oars, but he says it will float again by the summer.
+
+I have news. Nell is to be married in the spring, to the boy from the farm on the hill. She is very happy and very loud about it, and Mother has started making lists.
+
+The village is very quiet without you. The baker asks after you, and the lighthouse keeper asks after you, and the cat asks after you every night. Come home when you can.
+
+I hope this letter finds you well. It has been a long and busy week here, and I have not had a moment to sit down until now. The tea is hot and the fire is lit, so I will tell you everything.
+
+The garden is asleep for the winter and the house is warm. We sit by the fire in the evenings and Father reads aloud from the paper. Mother knits and the cat sleeps and I think of you.
+
+The sky this morning was the colour of pearls. The sea was very still and the boats were sitting on their own reflections. I stood on the wall for a long time and did not want to go in.
+#CLOSE
+With love, Ada
+Yours ever, Tom
+All my love, Margaret
+Your loving sister, Nell
+Love from us all, Kit
+Write soon, Elsie
+Fondly, Arthur
+Your friend always, Bea
+With love from us both, Hugh
+Yours, with love, Margaret
+All my love, always, Tom
+Your loving friend, Ada
+`/*END*/;
+const KEY=15485863,OTHER_KEY=0x2545F491,L3=9,L2=1,TARGET=160,WRAP=20,PARA=42,MINSENT=4;
+const WORD=/[A-Za-z]+(?:'[a-z]+)?|[.,!?;:]/g,END=new Set(['.','!','?']),PUNCT=new Set(['.',',','!','?',';',':']);
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const LM=(()=>{
+  const out={SAL:[],BODY:[],CLOSE:[]};let sec=null;
+  for(const line of CORPUS.split('\n')){if(line.startsWith('#')){sec=line.slice(1).trim();continue}if(sec)out[sec].push(line)}
+  const sal=out.SAL.map(l=>l.trim()).filter(Boolean),close=out.CLOSE.map(l=>l.trim()).filter(Boolean);
+  const body=out.BODY.join('\n').split('\n\n').map(p=>p.split(/\s+/).filter(Boolean).join(' ')).filter(Boolean);
+  const raw=[...sal,...body,...close].map(u=>u.match(WORD)||[]);
+  const lower=new Set(),capMid=new Set();
+  for(const ts of raw)ts.forEach((w,i)=>{const ini=i===0||END.has(ts[i-1]);if(/^[A-Z]/.test(w)&&!ini)capMid.add(w);if(/^[a-z]/.test(w))lower.add(w)});
+  const proper=new Set(['I',...capMid]);for(const ts of raw)for(const w of ts)if(/^[A-Z]/.test(w)&&!lower.has(w.toLowerCase()))proper.add(w);
+  const norm=ts=>ts.map((w,i)=>{const ini=i===0||END.has(ts[i-1]);return proper.has(w)||!ini?w:w.toLowerCase()});
+  const vocab=[],id=new Map(),vid=w=>{if(!id.has(w)){id.set(w,vocab.length);vocab.push(w)}return id.get(w)};
+  vid('<s>');vid('</s>');
+  const seqs={SAL:sal.map(l=>['<s>','<s>',...norm(l.match(WORD))]),BODY:body.map(p=>['<s>','<s>',...norm(p.match(WORD))]),CLOSE:close.map(l=>['<s>','<s>',...norm(l.match(WORD)),'</s>'])};
+  for(const k of['SAL','BODY','CLOSE'])for(const s of seqs[k])s.forEach(vid);
+  const V=vocab.length,C2={},C3={};
+  for(const k of['SAL','BODY','CLOSE']){const c2=new Map(),c3=new Map();
+    for(const s of seqs[k]){const ids=s.map(w=>id.get(w));
+      for(let i=0;i+1<ids.length;i++){if(ids[i+1]===0)continue;const x=ids[i];if(!c2.has(x))c2.set(x,new Map());const d=c2.get(x);d.set(ids[i+1],(d.get(ids[i+1])||0)+1)}
+      for(let i=0;i+2<ids.length;i++){const x=ids[i]*V+ids[i+1];if(!c3.has(x))c3.set(x,new Map());const d=c3.get(x);d.set(ids[i+2],(d.get(ids[i+2])||0)+1)}}
+    C2[k]=c2;C3[k]=c3}
+  const cache=new Map();
+  // next-token candidates after (a, b): [id, integer weight], best first. Weight ∝ 9·P_tri + 1·P_bi.
+  function cands(sec,a,b){const key=sec+(a*V+b);let r=cache.get(key);if(r)return r;
+    const d2=C2[sec].get(b);if(!d2){cache.set(key,r=[]);return r}
+    const d3=C3[sec].get(a*V+b);let n2=0,n3=0;for(const c of d2.values())n2+=c;if(d3)for(const c of d3.values())n3+=c;
+    r=[];for(const[t,c]of d2)r.push([t,n3?L3*((d3.get(t))||0)*n2+L2*c*n3:c]);
+    r.sort((p,q)=>q[1]-p[1]||p[0]-q[0]);cache.set(key,r);return r}
+  const nwords=raw.reduce((s,t)=>s+t.length,0);
+  return{vocab,id,V,proper,cands,nwords}
+})();
+const{vocab,V}=LM;
+const I=w=>LM.id.get(w);
+
+/* ================= the watermark ================= */
+const rankCache=new Map();
+function rank(prev,key){const k=prev*2+(key===KEY?0:1);let r=rankCache.get(k);if(r)return r;
+  const rng=mulberry32(Math.imul(key,prev+1)),perm=new Uint16Array(V);for(let i=0;i<V;i++)perm[i]=i;
+  for(let i=V-1;i>0;i--){const j=Math.floor(rng()*(i+1)),t=perm[i];perm[i]=perm[j];perm[j]=t}
+  r=new Uint16Array(V);for(let i=0;i<V;i++)r[perm[i]]=i;rankCache.set(k,r);return r}
+// words the model never saw get an id by hashing their spelling (FNV-1a)
+const tokId=w=>{const i=LM.id.get(w);if(i!==undefined)return i;let h=2166136261;for(let k=0;k<w.length;k++)h=Math.imul(h^w.charCodeAt(k),16777619);return 2+(h>>>0)%(V-2)};
+const isGreen=(prev,tok,gamma,key)=>rank(prev,key)[tok]<Math.floor(gamma*V);
+
+/* write a letter: the trigram LM proposes, +delta goes on the green list, a seeded stream samples */
+function write(seed,delta,gamma,key=KEY){
+  const rng=mulberry32(seed),E=Math.exp(delta),G=Math.floor(gamma*V),S=0,out=[],used=new Set();let prev=S;
+  const k4=(x,a,b,t)=>x+','+a+','+b+','+t;
+  function step(sec,a,b,ban,wrap,short){
+    let cs=LM.cands(sec,a,b);const x=out.length>=3?out[out.length-3].id:-1;
+    const ok=cs.filter(([t])=>!used.has(k4(x,a,b,t))&&!(ban&&ban.has(t))&&!(short&&END.has(vocab[t])));if(ok.length)cs=ok;
+    if(!cs.length)return{t:I(sec==='SAL'?',':sec==='BODY'?'.':'</s>'),dist:null};
+    const r=rank(prev,key),ws=cs.map(([t,c])=>{let w=r[t]<G?c*E:c*1;if(wrap&&END.has(vocab[t]))w*=WRAP;return w});
+    let tot=0;for(const w of ws)tot+=w;const u=rng()*tot;let acc=0,pick=cs.length-1;
+    for(let i=0;i<cs.length;i++){acc+=ws[i];if(u<acc){pick=i;break}}
+    let base=0;for(const[,c]of cs)base+=c;
+    const top=cs.map(([t,c],i)=>({t,p:c/base,q:ws[i]/tot,g:r[t]<G})).sort((p,q)=>q.q-p.q).slice(0,6);
+    if(!top.some(o=>o.t===cs[pick][0]))top[top.length-1]={t:cs[pick][0],p:cs[pick][1]/base,q:ws[pick]/tot,g:r[cs[pick][0]]<G};
+    return{t:cs[pick][0],dist:{top,n:cs.length,ng:cs.filter(([t])=>r[t]<G).length}}}
+  function push(t,sec,brk,dist,a,b){out.push({id:t,w:vocab[t],sec,brk,dist});const L=out.length;used.add(k4(L>=4?out[L-4].id:-1,a,b,t))}
+  let a=S,b=S;
+  for(;;){const{t,dist}=step('SAL',a,b);push(t,'SAL',false,dist,a,b);prev=t;a=b;b=t;if(t===I(','))break}
+  const names=new Set(out.filter(o=>LM.proper.has(o.w)&&o.w!=='I').map(o=>o.id));
+  a=S;b=S;let n=0,par=0,sent=0,first=true;
+  for(;;){let t,dist=null;
+    if(n<TARGET+60)({t,dist}=step('BODY',a,b,null,n>=TARGET,sent<MINSENT-1));else t=I('.');
+    sent=END.has(vocab[t])?0:sent+1;
+    const brk=first||(par>=PARA&&END.has(vocab[b]));if(brk)par=0;
+    push(t,'BODY',brk,dist,a,b);first=false;prev=t;a=b;b=t;n++;par++;
+    if(END.has(vocab[t])&&n>=TARGET)break}
+  a=S;b=S;first=true;
+  for(;;){const{t,dist}=step('CLOSE',a,b,names);if(t===I('</s>'))break;push(t,'CLOSE',first,dist,a,b);first=false;prev=t;a=b;b=t}
+  return out.map(o=>({w:o.w,sec:o.sec,brk:o.brk,dist:o.dist,orig:null}))
+}
+
+/* ================= state ================= */
+const DEFAULT_SEED=20;
+const ST={seed:DEFAULT_SEED,delta:2,gamma:.25,key:'own',toks:[],shown:0,writing:false,flood:false,font:25,newest:-1};
+if(Q.has('seed'))ST.seed=(parseInt(Q.get('seed'))>>>0)||DEFAULT_SEED;
+if(Q.has('d'))ST.delta=clamp(Math.round((parseFloat(Q.get('d'))||0)*10)/10,0,6);
+if(Q.has('g'))ST.gamma=clamp(Math.round((parseFloat(Q.get('g'))||.25)*20)/20,.1,.75);
+const STILL=Q.has('still');
+let det={T:0,g:0,z:0},flags=[],zs=[];
+const keyOf=()=>ST.key==='own'?KEY:OTHER_KEY;
+function detect(){
+  const ts=ST.toks,n=Math.min(ST.shown,ts.length),key=keyOf(),gm=ST.gamma;flags=new Array(n).fill(null);zs=[];let g=0;
+  for(let i=1;i<n;i++){const f=isGreen(tokId(ts[i-1].w),tokId(ts[i].w),gm,key);flags[i]=f;if(f)g++;zs.push((g-gm*i)/Math.sqrt(i*gm*(1-gm)))}
+  const T=Math.max(0,n-1);det={T,g,z:T?(g-gm*T)/Math.sqrt(T*gm*(1-gm)):0};return det}
+const zAt=(ts,gm,key)=>{let g=0;for(let i=1;i<ts.length;i++)if(isGreen(tokId(ts[i-1].w),tokId(ts[i].w),gm,key))g++;const T=ts.length-1;return T?(g-gm*T)/Math.sqrt(T*gm*(1-gm)):0};
+// context the model saw for token i (sections restart at <s> <s>)
+function ctxOf(ts,i){let j0=i;while(j0>0&&ts[j0-1].sec===ts[i].sec)j0--;return[i-2>=j0?tokId(ts[i-2].w):0,i-1>=j0?tokId(ts[i-1].w):0]}
+function ppl(ts){let s=0,n=0;for(let i=1;i<ts.length;i++){const[a,b]=ctxOf(ts,i),cs=LM.cands(ts[i].sec,a,b),id=tokId(ts[i].w);let tot=0,w=0;for(const[t,c]of cs){tot+=c;if(t===id)w=c}s+=Math.log(Math.max(1e-4,tot?w/tot:0));n++}return Math.exp(-s/n)}
+
+/* ================= the letter on the page ================= */
+const day=$('#day'),uv=$('#uv'),paper=$('#paper'),desk=$('#desk'),nib=$('#nib'),lamp=$('#lamp');
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const LH=`<div class="lh"><svg viewBox="0 0 22 28" aria-hidden="true"><path d="M8 26 9.5 9h3L14 26Z" fill="currentColor"/><rect x="8.7" y="5.2" width="4.6" height="3.2" fill="none" stroke="currentColor"/><path d="M8 5.2 11 2.6 14 5.2Z" fill="currentColor"/><path d="M5 26.2h12M1 7l6-.6M21 7l-6-.6M2 3.6 7.4 5.6M20 3.6l-5.4 2" stroke="currentColor" stroke-width=".9"/></svg><span>THE LIGHTHOUSE COTTAGE · SALTMARSH</span><hr></div>`;
+function disp(ts,i){const t=ts[i],ini=i===0||END.has(ts[i-1].w)||ts[i-1].sec!==t.sec;return ini?t.w[0].toUpperCase()+t.w.slice(1):t.w}
+const parStart=(ts,i)=>i>0&&(ts[i].sec!==ts[i-1].sec||ts[i].brk);
+function span(i){const ts=ST.toks,t=ts[i],c='t'+(i===0?' u':flags[i]?' g':' r')+(PUNCT.has(t.w)?' p':' w')+(t.orig!=null?' e':'')+(i===ST.newest?' new':'');
+  return`<span class="${c}" data-i="${i}">${esc(disp(ts,i))}</span>`+(t.sec==='CLOSE'&&t.w===','&&i===ts.length-2?'<br>':'')}
+function html(n){
+  const ts=ST.toks;let h=LH+'<p class="sal">';
+  for(let i=0;i<n;i++){if(parStart(ts,i))h+='</p><p class="'+(ts[i].sec==='CLOSE'?'cl':'bd')+'">';else if(i>0&&!PUNCT.has(ts[i].w))h+=' ';h+=span(i)}
+  return h+'</p>'}
+// while the model writes, add one token at a time instead of redrawing the sheet
+function appendTok(i){const ts=ST.toks;
+  for(const L of[day,uv]){let p=L.lastElementChild;
+    if(parStart(ts,i)){p=document.createElement('p');p.className=ts[i].sec==='CLOSE'?'cl':'bd';L.appendChild(p)}else if(i>0&&!PUNCT.has(ts[i].w))p.append(' ');
+    p.insertAdjacentHTML('beforeend',span(i))}
+  placeNib()}
+let selI=-1;
+function render(){const h=html(ST.shown);day.innerHTML=h;uv.innerHTML=h;if(selI>=0)day.querySelector(`[data-i="${selI}"]`)?.classList.add('sel');placeNib()}
+function placeNib(){
+  if(!ST.writing||!ST.shown){nib.classList.remove('on');return}
+  const sp=day.querySelector(`[data-i="${ST.shown-1}"]`);if(!sp)return;
+  nib.classList.add('on');nib.style.left=(sp.offsetLeft+sp.offsetWidth)+'px';nib.style.top=(sp.offsetTop+sp.offsetHeight*.72)+'px'}
+// choose the font size that fits the whole letter on the sheet
+function fit(){
+  const keep=ST.shown;ST.shown=ST.toks.length;detect();const h=html(ST.shown);day.innerHTML=h;
+  let f=25;for(;f>16;f-=.5){day.style.fontSize=f+'px';if(day.scrollHeight<=paper.offsetHeight)break}
+  ST.font=f;uv.style.fontSize=f+'px';ST.shown=Math.min(keep,ST.toks.length);detect()}
+function refitIfNeeded(){if(day.scrollHeight>paper.offsetHeight+1){fit();render()}}
+
+/* ================= layout ================= */
+const P={x:0,y:0,s:1,th:0},PD={w:640,h:880};let RL=118,phone=false;
+function layout(){
+  const w=innerWidth,h=innerHeight;phone=w<=820;
+  PD.w=phone?470:640;PD.h=phone?1160:880;paper.style.width=PD.w+'px';paper.style.height=PD.h+'px';
+  if(phone){P.th=0;P.s=(w-24)/PD.w;P.x=12;P.y=10;desk.style.height=Math.round(PD.h*P.s+22)+'px'}
+  else{desk.style.height='';const pl=$('#panel').getBoundingClientRect().left;
+    let L,T;if(w>=1180){L=34+330+34;T=24}else{L=24;T=Math.max(150,$('#story').getBoundingClientRect().top+96)}
+    const Rr=pl-34,B=h-24,aw=Math.max(200,Rr-L),ah=Math.max(200,B-T);
+    P.th=-1.1*Math.PI/180;const c=Math.cos(P.th),sn=Math.abs(Math.sin(P.th));
+    P.s=Math.min(aw/(PD.w*c+PD.h*sn),ah/(PD.w*sn+PD.h*c),1.1);
+    const cx=L+aw/2,cy=T+ah/2,hx=PD.w/2*P.s,hy=PD.h/2*P.s;
+    P.x=cx-(hx*Math.cos(P.th)-hy*Math.sin(P.th));P.y=cy-(hx*Math.sin(P.th)+hy*Math.cos(P.th))}
+  paper.style.transform=`translate(${P.x}px,${P.y}px) rotate(${P.th}rad) scale(${P.s})`;
+  RL=Math.round((phone?72:clamp(Math.round(124*P.s),64,128))*clamp(parseFloat(Q.get('lampr'))||1,.5,2));document.documentElement.style.setProperty('--R',RL+'px');
+  buildLeds();moveLamp(true)}
+const toLocal=(x,y)=>{const dx=x-P.x,dy=y-P.y,c=Math.cos(-P.th),s=Math.sin(-P.th);return[(dx*c-dy*s)/P.s,(dx*s+dy*c)/P.s]};
+const toDesk=(x,y)=>{const c=Math.cos(P.th),s=Math.sin(P.th);return[P.x+P.s*(x*c-y*s),P.y+P.s*(x*s+y*c)]};
+function buildLeds(){const box=$('#leds');let h='';for(let k=0;k<12;k++){const a=k/12*Math.PI*2,r=RL+7;h+=`<i class="led" style="transform:translate(${Math.cos(a)*r}px,${Math.sin(a)*r}px)"></i>`}box.innerHTML=h}
+
+/* ================= the lamp ================= */
+const LP={x:0,y:0},LT={x:0,y:0};let lampMode='park',lampSet=false,lastUV='';
+function parkAt(fx,fy){const[x,y]=toDesk(fx*PD.w,fy*PD.h);LT.x=x;LT.y=y}
+function moveLamp(snap){
+  if(snap||RM||STILL){LP.x=LT.x;LP.y=LT.y}
+  lamp.style.transform=`translate(${LP.x.toFixed(1)}px,${LP.y.toFixed(1)}px)`;
+  const[lx,ly]=toLocal(LP.x,LP.y),k=`${lx.toFixed(1)}|${ly.toFixed(1)}|${(RL/P.s).toFixed(1)}`;
+  if(k!==lastUV){lastUV=k;uv.style.setProperty('--lx',lx.toFixed(1)+'px');uv.style.setProperty('--ly',ly.toFixed(1)+'px');uv.style.setProperty('--lr',(RL/P.s).toFixed(1)+'px')}}
+const deskXY=e=>{if(!phone)return[e.clientX,e.clientY];const r=desk.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+// UV fibres in the paper, visible only under the lamp
+{const r=mulberry32(7),C=['#ff6bd5','#6ff3ff','#fff27a'];let d='';for(let i=0;i<46;i++){const x=r()*360,y=r()*360,a=r()*6.28,l=6+r()*16;d+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)}q${(Math.cos(a+1)*l*.5).toFixed(1)} ${(Math.sin(a+1)*l*.5).toFixed(1)} ${(Math.cos(a)*l).toFixed(1)} ${(Math.sin(a)*l).toFixed(1)}" stroke="${C[i%3]}" stroke-width="${(.8+r()*.8).toFixed(2)}" fill="none" opacity="${(.35+r()*.45).toFixed(2)}"/>`}
+ uv.style.setProperty('--fibers',`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360">${d}</svg>`)}")`)}
+
+/* ================= detector panel ================= */
+const gauge=$('#gauge'),GC={x:150,y:128,r:104},ZMIN=-2,ZMAX=12;
+const ang=z=>(200-(clamp(z,ZMIN-.4,ZMAX+.4)-ZMIN)/(ZMAX-ZMIN)*220)*Math.PI/180;
+const ptA=(a,r)=>[GC.x+r*Math.cos(a),GC.y-r*Math.sin(a)];
+{const arc=(z0,z1,r,col,w,op=1)=>{const[a,b]=[ang(z0),ang(z1)],[x0,y0]=ptA(a,r),[x1,y1]=ptA(b,r);return`<path d="M${x0.toFixed(1)} ${y0.toFixed(1)}A${r} ${r} 0 ${a-b>Math.PI?1:0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" stroke="${col}" stroke-width="${w}" fill="none" opacity="${op}"/>`};
+ let h=arc(ZMIN,ZMAX,GC.r+9,'rgba(176,38,255,.25)',1)+arc(ZMIN,2,GC.r,'#5d5873',8)+arc(2,4,GC.r,'#ffb547',8,.85)+arc(4,ZMAX,GC.r,'#8dff3a',8,.9);
+ for(let z=ZMIN;z<=ZMAX;z++){const a=ang(z),[x0,y0]=ptA(a,GC.r-7),[x1,y1]=ptA(a,GC.r-(z%2?12:17));h+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="rgba(236,230,246,.55)" stroke-width="${z%2?1:1.6}"/>`;
+  if(z%2===0){const[x,y]=ptA(a,GC.r-29);h+=`<text x="${x.toFixed(1)}" y="${(y+3.5).toFixed(1)}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="${z===4?'#d9ff4a':'rgba(236,230,246,.6)'}">${z}</text>`}}
+ const lbl=(z0,z1,txt,col,id)=>{const r=GC.r+15,[x0,y0]=ptA(ang(z0),r),[x1,y1]=ptA(ang(z1),r);return`<path id="${id}" d="M${x0.toFixed(1)} ${y0.toFixed(1)}A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none"/><text font-family="IBM Plex Mono,monospace" font-size="8.5" letter-spacing="1.2" fill="${col}"><textPath href="#${id}" startOffset="50%" text-anchor="middle">${txt}</textPath></text>`};
+ h+=lbl(-2,2,'CHANCE','#9b97ad','gl0')+lbl(1.2,4.8,'UNSURE','#ffb547','gl1')+lbl(4,12,'WATERMARKED','#8dff3a','gl2');
+ h+=`<g id="needle"><path d="M${GC.x-3} ${GC.y} L${GC.x} ${GC.y-GC.r+14} L${GC.x+3} ${GC.y} Z" fill="#f3ecff"/><circle cx="${GC.x}" cy="${GC.y}" r="7" fill="#1b1730" stroke="#c79bff" stroke-width="1.5"/></g>`;
+ gauge.innerHTML=h}
+const needle=$('#needle');const NZ={z:0,v:0};
+// one-sided normal tail, in log10, good far out (Numerical Recipes erfcc)
+function log10Q(z){const x=z/Math.SQRT2,t=1/(1+.5*Math.abs(x)),y=-x*x-1.26551223+t*(1.00002368+t*(.37409196+t*(.09678418+t*(-.18628806+t*(.27886807+t*(-1.13520398+t*(1.48851587+t*(-.82215223+t*.17087277))))))));
+  if(x>=0)return Math.log10(.5)+Math.log10(t)+y/Math.LN10;return Math.log10(1-.5*t*Math.exp(y))}
+const SUP={'-':'⁻',0:'⁰',1:'¹',2:'²',3:'³',4:'⁴',5:'⁵',6:'⁶',7:'⁷',8:'⁸',9:'⁹'};
+function fmtP(z){const l=log10Q(z);if(l>-3)return Math.pow(10,l).toFixed(3);const e=Math.floor(l),m=Math.pow(10,l-e);return`${m.toFixed(1)}×10${String(e).split('').map(c=>SUP[c]).join('')}`}
+let verdict='',zCross=-1;
+function panel(){
+  const{T,g,z}=det,gm=ST.gamma,sd=Math.sqrt(T*gm*(1-gm));
+  $('#zn').textContent=(T?z:0).toFixed(2);$('#gv').textContent=g;$('#tv').textContent=T;$('#ev').textContent=(gm*T).toFixed(1);$('#sv').textContent=sd.toFixed(1);
+  $('#pv').textContent=T?fmtP(z):'—';
+  const v=T<12?'no|NOT YET':z>4?'ok|WATERMARKED':z>=2?'mid|UNSURE':'no|NOT FLAGGED';
+  for(const el of[$('#stamp'),$('#ps2')]){const[c,txt]=v.split('|');if(el.textContent!==txt){el.className='stamp '+c+(verdict&&!RM&&c==='ok'?' hit':'');el.textContent=txt}}
+  verdict=v;$('#pz2').textContent='z = '+(T?z:0).toFixed(2);
+  zCross=zs.findIndex(v=>v>4);
+  $('#zth').innerHTML=zCross>=0?`The lamp was sure after <b>${zCross+1}</b> tokens; it now reads <b>${T}</b>.`:T?`Not over the line yet: z must pass <b>4</b>.`:'&nbsp;';
+  const ne=ST.toks.filter(t=>t.orig!=null).length,nw=ST.toks.filter(t=>!PUNCT.has(t.w)).length;
+  $('#ed').textContent=Math.round(100*ne/Math.max(1,nw))+'%';
+  $('#keyl').textContent=ST.key==='own'?"lamp tuned to the writer's key":'lamp tuned to the wrong key';
+  drawZ()}
+const fitC=c=>{const d=Math.min(devicePixelRatio,2),w=c.clientWidth,h=c.clientHeight;if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return[g,w,h]};
+function drawZ(){
+  const c=$('#zt');if(!c.clientWidth)return;const[g,w,h]=fitC(c),n=Math.max(ST.toks.length-1,zs.length,40);
+  const hi=Math.max(6,...zs.map(v=>v+1)),lo=Math.min(-2,...zs),X=i=>4+(w-8)*i/(n-1),Y=v=>h-4-(h-8)*(v-lo)/(hi-lo);
+  g.strokeStyle='rgba(236,230,246,.18)';g.beginPath();g.moveTo(0,Y(0));g.lineTo(w,Y(0));g.stroke();
+  g.setLineDash([4,4]);g.strokeStyle='rgba(217,255,74,.55)';g.beginPath();g.moveTo(0,Y(4));g.lineTo(w,Y(4));g.stroke();g.setLineDash([]);
+  g.font='500 9px "IBM Plex Mono",monospace';g.fillStyle='rgba(217,255,74,.75)';g.fillText('z = 4',w-34,Y(4)-4);
+  if(zs.length>1){g.lineWidth=1.6;g.lineJoin='round';g.beginPath();zs.forEach((v,i)=>{i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v))});g.strokeStyle='#b98cff';g.stroke();
+    if(zCross>=0){g.beginPath();for(let i=zCross;i<zs.length;i++)i===zCross?g.moveTo(X(i),Y(zs[i])):g.lineTo(X(i),Y(zs[i]));g.strokeStyle='#d9ff4a';g.shadowColor='#8dff3a';g.shadowBlur=6;g.stroke();g.shadowBlur=0;
+      g.fillStyle='#d9ff4a';g.beginPath();g.arc(X(zCross),Y(zs[zCross]),3,0,7);g.fill()}}}
+// "why this word?": the odds the model had at token i, before and after the nudge
+let oddsI=-2;const PNAME={'.':'full stop',',':'comma','?':'question mark','!':'exclamation',';':'semicolon',':':'colon'};
+function showOdds(i){
+  if(i===oddsI)return;oddsI=i;const box=$('#odds'),t=ST.toks[i];
+  if(!t||!t.dist){box.innerHTML='';$('#octx').textContent=t?'no choice to show':'—';return}
+  const d=t.dist,chosen=I(t.orig??t.w),mx=Math.max(...d.top.map(o=>Math.max(o.p,o.q)));
+  $('#octx').innerHTML=`after “${esc(i>0?ST.toks[i-1].w:'start')}” · ${d.n} option${d.n>1?'s':''} · ${d.ng} green`;
+  box.innerHTML=d.top.map(o=>{const pc=v=>v<.005?'<1%':Math.round(v*100)+'%',w=vocab[o.t];return`<div class="w${o.t===chosen?' ch':''}${PNAME[w]?' pn':''}">${PNAME[w]||esc(w)}</div><div class="bar ${o.g?'g':'r'}"><i class="p0" style="width:${(o.p/mx*100).toFixed(1)}%"></i><i class="p1" style="width:${(o.q/mx*100).toFixed(1)}%"></i></div><div class="v">${pc(o.p)} → ${pc(o.q)}</div>`}).join('')}
+// the word under the middle of the lens, or the nearest one inside it
+function lampWord(){
+  if(ST.flood)return -1;const r=desk.getBoundingClientRect(),cx=phone?LP.x+r.left:LP.x,cy=phone?LP.y+r.top:LP.y;
+  const el=document.elementFromPoint(cx,cy),sp=el&&el.closest&&el.closest('#day .t.w');if(sp)return+sp.dataset.i;
+  let best=-1,bd=RL*RL;for(const s of day.querySelectorAll('.t.w')){const b=s.getBoundingClientRect(),dx=b.left+b.width/2-cx,dy=b.top+b.height/2-cy,d=dx*dx+dy*dy;if(d<bd){bd=d;best=+s.dataset.i}}return best}
+
+/* ================= captions ================= */
+let shownCap='';
+function caption(h){if(h===shownCap)return;shownCap=h;const el=$('#caption');if(RM||STILL){el.innerHTML=h;return}el.classList.add('fade');setTimeout(()=>{el.innerHTML=shownCap;el.classList.remove('fade')},380)}
+const pct=x=>Math.round(x*100)+'%';
+const CAP={
+  write:()=>`A small language model is writing a letter. Before each word, the word it just wrote is hashed with a secret key to split the vocabulary in two, and the <b>green</b> half gets a nudge.`,
+  cross:()=>`After <b>${zCross+1}</b> tokens the lamp is sure: z passed 4. A letter written without the key gets this many green tokens less than once in 31,000 tries.`,
+  done:()=>`In daylight it is just a letter. Under the lamp <b>${det.g}</b> of its ${det.T} tokens glow; chance would light about ${Math.round(ST.gamma*det.T)}.`,
+  wash:()=>`Now try to wash it out: a paraphraser swaps a random 10% of the words for others the model would accept there.`,
+  washed:(a,b)=>`z went from ${a.toFixed(1)} to <b>${b.toFixed(1)}</b>. Each swapped word changes at most two verdicts: its own, and the next word's, because it seeds that word's list.`,
+  turn:()=>`Your turn. Move the lamp, click any word to rewrite it, or pull δ down to 0 and the glow falls back to chance.`,
+  idle:()=>det.z>4?`<b>${det.g}</b> of ${det.T} tokens are green, z = ${det.z.toFixed(1)}. Click a word to rewrite it, or wash the letter until the lamp gives up.`:`z = ${det.z.toFixed(1)}: the lamp can't tell this letter from human writing.`};
+
+/* ================= writing, editing, washing ================= */
+let tour=null,tourDone=false,washQ=null,ppl0=null;
+const SPEED=17; // tokens per second while the model writes
+function rewrite(animate){
+  stopWash();ST.toks=write(ST.seed,ST.delta,ST.gamma);
+  fit();ST.shown=animate&&!RM&&!STILL?0:ST.toks.length;ST.shown0=ST.shown;ST.writing=ST.shown<ST.toks.length;ST.newest=-1;oddsI=-2;detect();render();panel();showPpl();saveURL()}
+// the same model with no watermark, averaged over 40 letters (delta = 0 makes the key irrelevant)
+function baseline(){if(ppl0==null){let s=0;for(let k=1;k<=40;k++)s+=ppl(write(k*7919,0,.25));ppl0=s/40}return ppl0}
+function showPpl(){const p=ppl(ST.toks);$('#pp').textContent=p.toFixed(1);$('#pp0').textContent=baseline().toFixed(1)}
+let wAcc=0;
+function writeTick(dt){
+  if(!ST.writing)return;wAcc+=dt*SPEED;let ch=false;
+  while(wAcc>=1&&ST.shown<ST.toks.length){wAcc-=1;ST.shown++;ch=true}
+  if(ch){const from=ST.shown0??0;detect();for(let i=from;i<ST.shown;i++){ST.newest=i;appendTok(i)}ST.shown0=ST.shown;panel();showOdds(ST.shown-1)}
+  if(ST.shown>=ST.toks.length){ST.writing=false;ST.newest=-1;render();showPpl()}}
+function finishWriting(){if(!ST.writing)return;ST.writing=false;ST.shown=ST.shown0=ST.toks.length;ST.newest=-1;detect();render();panel();showPpl()}
+function setWord(i,w,flash=true){
+  const t=ST.toks[i];if(!t||w===t.w)return;if(t.orig==null)t.orig=t.w;t.w=w;if(t.w===t.orig)t.orig=null;
+  detect();render();refitIfNeeded();panel();showPpl();oddsI=-2;
+  if(flash&&!RM)for(const k of[i,i+1])uv.querySelector(`[data-i="${k}"]`)?.classList.add('flash')}
+function altsFor(i,ex){const ts=ST.toks,t=ts[i],[a,b]=ctxOf(ts,i);let cs=LM.cands(t.sec,a,b);if(!cs.length)cs=LM.cands(t.sec,-1,b);
+  return cs.filter(([id])=>vocab[id]!==t.w&&!(ex&&(PUNCT.has(vocab[id])||vocab[id]==='</s>')))}
+function washPlan(frac){
+  const ts=ST.toks,ok=[];for(let i=1;i<ts.length;i++)if(ts[i].sec==='BODY'&&!PUNCT.has(ts[i].w)&&ts[i].orig==null)ok.push(i);
+  for(let i=ok.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ok[i],ok[j]]=[ok[j],ok[i]]}
+  const nw=ts.filter(t=>t.sec==='BODY'&&!PUNCT.has(t.w)).length,k=Math.max(1,Math.round(frac*nw)),plan=[];
+  for(const i of ok){if(plan.length>=k)break;const cs=altsFor(i,true);if(!cs.length)continue;let tot=0;for(const[,c]of cs)tot+=c;let u=Math.random()*tot;
+    for(const[id,c]of cs){u-=c;if(u<=0){plan.push([i,vocab[id]]);break}}}
+  return plan}
+function wash(frac,animate,done){
+  stopWash();const plan=washPlan(frac);
+  if(!animate||RM){for(const[i,w]of plan)setWord(i,w,false);done&&done();return}
+  washQ={plan,k:0,t:0,done}}
+function washTick(dt){if(!washQ)return;washQ.t-=dt;if(washQ.t>0)return;const q=washQ;if(q.k>=q.plan.length){washQ=null;q.done&&q.done();return}
+  const[i,w]=q.plan[q.k++];setWord(i,w);q.t=.12;
+  if(lampMode==='tour'){const sp=day.querySelector(`[data-i="${i}"]`);if(sp){const[x,y]=toDesk(sp.offsetLeft+sp.offsetWidth/2,sp.offsetTop+sp.offsetHeight/2);LT.x=x;LT.y=y}}}
+function stopWash(){if(washQ){const q=washQ;washQ=null;for(;q.k<q.plan.length;q.k++)setWord(...q.plan[q.k],false)}}
+function restore(){stopWash();for(const t of ST.toks)if(t.orig!=null){t.w=t.orig;t.orig=null}detect();render();fit();render();panel();showPpl();oddsI=-2}
+
+/* ================= tour ================= */
+function startTour(){closePop();tour={t:0,ph:'write',z0:0};tourDone=false;lampMode='tour';rewrite(true);caption(CAP.write())}
+function stopTour(){if(!tour)return;tour=null;finishWriting();stopWash();if(lampMode==='tour')lampMode='idle';caption(CAP.idle())}
+function tourTick(dt){
+  if(!tour)return;tour.t+=dt;const T=tour;
+  if(T.ph==='write'){
+    if(lampMode==='tour'&&ST.shown){const sp=day.querySelector(`[data-i="${ST.shown-1}"]`);if(sp){const[x,y]=toDesk(sp.offsetLeft+sp.offsetWidth-30,sp.offsetTop+sp.offsetHeight*.5);LT.x=x;LT.y=y}}
+    if(!T.cross&&zCross>=0){T.cross=true;caption(CAP.cross())}
+    if(!ST.writing){T.ph='sweep';T.t0=T.t;caption(CAP.done())}}
+  else if(T.ph==='sweep'){const u=T.t-T.t0;if(lampMode==='tour'){const[x,y]=toDesk(PD.w*(.5+.34*Math.sin(u*.9)),PD.h*(.53+.28*Math.sin(u*.53+.6)));LT.x=x;LT.y=y}
+    if(u>6.5){T.ph='wash';T.z0=det.z;caption(CAP.wash());setTimeout(()=>{if(tour===T)wash(.1,true,()=>{if(tour===T){T.ph='wait';T.t1=T.t;caption(CAP.washed(T.z0,det.z))}})},1400)}}
+  else if(T.ph==='wait'){if(T.t-T.t1>6){tour=null;tourDone=true;if(lampMode==='tour')lampMode='idle';caption(CAP.turn())}}}
+
+/* ================= popover: rewrite one word ================= */
+const pop=$('#pop');let popI=-1;
+function openPop(i){
+  const t=ST.toks[i];if(!t||PUNCT.has(t.w))return;popI=i;selI=i;render();
+  const z0=det.z,key=keyOf(),cs=altsFor(i,true).slice(0,7),prev=i>0?tokId(ST.toks[i-1].w):0;
+  $('#pw').textContent=disp(ST.toks,i);$('#pz').textContent='z '+z0.toFixed(2);
+  $('#pl').innerHTML=cs.length?cs.map(([id])=>{const w=vocab[id],sav=t.w;t.w=w;const z=zAt(ST.toks,ST.gamma,key);t.w=sav;const g=i>0&&isGreen(prev,id,ST.gamma,key);
+    return`<button class="${g?'g':'r'}" data-w="${esc(w)}"><i class="d"></i><span class="w">${esc(w)}</span><span class="z">z <b>${z.toFixed(2)}</b></span></button>`}).join(''):'<div class="hint">The model has no other word for this spot. Write your own below.</div>';
+  $('#prs').classList.toggle('on',t.orig!=null);$('#pi').value='';tip.style.opacity=0;
+  pop.classList.add('on');const sp=day.querySelector(`[data-i="${i}"]`).getBoundingClientRect(),pw=pop.offsetWidth,ph=pop.offsetHeight;
+  let x=sp.left+sp.width/2-pw/2,y=sp.bottom+10;if(y+ph>innerHeight-8)y=sp.top-ph-10;
+  pop.style.left=clamp(x,8,innerWidth-pw-8)+'px';pop.style.top=clamp(y,8,innerHeight-ph-8)+'px'}
+function closePop(){if(popI<0&&!pop.classList.contains('on'))return;pop.classList.remove('on');popI=-1;selI=-1;render()}
+$('#pl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||popI<0)return;const i=popI,o=ST.toks[i].w;setWord(i,b.dataset.w);capEdit(i,o);closePop()});
+$('#pf').addEventListener('submit',e=>{e.preventDefault();if(popI<0)return;const m=($('#pi').value.match(WORD)||[])[0];if(!m)return;let w=m;if(!LM.id.has(w)&&LM.id.has(w.toLowerCase()))w=w.toLowerCase();const i=popI,o=ST.toks[i].w;setWord(i,w);capEdit(i,o);closePop()});
+$('#prs').addEventListener('click',()=>{if(popI<0)return;const i=popI,t=ST.toks[i];if(t.orig!=null)setWord(i,t.orig);closePop()});
+function capEdit(i,o){const t=ST.toks[i];caption(`“${esc(o)}” → “${esc(t.w)}”: this word is now <b>${flags[i]?'green':'red'}</b>${i+1<ST.toks.length?`, the next one ${flags[i+1]?'green':'red'}`:''}. z = ${det.z.toFixed(2)}.`)}
+
+/* ================= input ================= */
+const tip=$('#tip');
+desk.addEventListener('pointermove',e=>{
+  if(e.pointerType==='mouse'){const[x,y]=deskXY(e);LT.x=x;LT.y=y;lampMode='user'}
+  else if(drag){const[x,y]=deskXY(e);LT.x=x-drag.dx;LT.y=y-drag.dy;drag.moved+=Math.abs(e.movementX||0)+Math.abs(e.movementY||0)}
+  const sp=e.target.closest&&e.target.closest('#day .t.w');
+  if(sp&&e.pointerType==='mouse'&&ST.toks[+sp.dataset.i]&&!pop.classList.contains('on')){const i=+sp.dataset.i;tip.innerHTML=i===0?'the first word has no word before it: not scored':`<b>${flags[i]?'green':'red'}</b> after “${esc(ST.toks[i-1].w)}” · click to rewrite`;tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.style.opacity=1}
+  else tip.style.opacity=0});
+desk.addEventListener('pointerleave',()=>{tip.style.opacity=0});
+let drag=null;
+desk.addEventListener('pointerdown',e=>{
+  stopTour();
+  if(e.pointerType!=='mouse'){const[x,y]=deskXY(e),dx=x-LP.x,dy=y-LP.y;
+    if(dx*dx+dy*dy<(RL+26)**2){drag={dx,dy,moved:0,id:e.pointerId};desk.setPointerCapture(e.pointerId);e.preventDefault();lampMode='user'}}});
+desk.addEventListener('pointerup',e=>{if(drag){desk.releasePointerCapture?.(drag.id);const moved=drag.moved;drag=null;if(moved>8)return}
+  if(!pop.contains(e.target)){const el=document.elementsFromPoint(e.clientX,e.clientY).find(n=>n.closest&&n.closest('#day .t.w'));
+    if(el){const i=+el.closest('.t').dataset.i;if(e.pointerType!=='mouse'){const[x,y]=deskXY(e);LT.x=x;LT.y=y;lampMode='user'}openPop(i);e.stopPropagation()}else closePop()}});
+desk.addEventListener('pointercancel',()=>{drag=null});
+document.addEventListener('pointerdown',e=>{if(pop.classList.contains('on')&&!pop.contains(e.target)&&!desk.contains(e.target))closePop()});
+$('#dl').addEventListener('input',e=>{stopTour();closePop();ST.delta=e.target.value/10;$('#dv').textContent=ST.delta.toFixed(1);rewrite(false);caption(`δ = ${ST.delta.toFixed(1)}: <b>${det.g}</b> of ${det.T} tokens green (${pct(det.g/Math.max(1,det.T))}), z = ${det.z.toFixed(1)}.${ST.delta===0?' No watermark: the glow is chance.':''}`)});
+$('#gm').addEventListener('input',e=>{stopTour();closePop();ST.gamma=e.target.value/100;$('#gmv').textContent=pct(ST.gamma);rewrite(false);caption(`γ = ${pct(ST.gamma)}: now ${pct(ST.gamma)} of the vocabulary is green after each word. <b>${det.g}</b> of ${det.T} tokens are, z = ${det.z.toFixed(1)}.`)});
+$('#wash').addEventListener('click',()=>{stopTour();closePop();const z0=det.z;wash(.1,true,()=>caption(CAP.washed(z0,det.z)+` ${$('#ed').textContent} of the words are rewritten now.`))});
+$('#restore').addEventListener('click',()=>{stopTour();closePop();restore();caption(CAP.idle())});
+$('#new').addEventListener('click',()=>{stopTour();closePop();ST.seed=(Math.random()*4294967296)>>>0;rewrite(!RM);caption('A new letter, from a new random stream. Same key, same δ and γ.')});
+for(const b of[$('#kown'),$('#koth')])b.addEventListener('click',()=>{stopTour();closePop();ST.key=b.dataset.k;$('#kown').classList.toggle('on',ST.key==='own');$('#koth').classList.toggle('on',ST.key!=='own');detect();render();panel();
+  caption(ST.key==='own'?CAP.idle():`With the wrong key the lamp rebuilds the wrong lists: <b>${det.g}</b> of ${det.T} tokens glow, about the ${pct(ST.gamma)} you'd expect from chance. z = ${det.z.toFixed(2)}.`)});
+function setFlood(on){ST.flood=on;uv.classList.toggle('flood',on);document.body.classList.toggle('flooded',on);$('#flood').classList.toggle('on',on)}
+$('#flood').addEventListener('click',()=>{stopTour();setFlood(!ST.flood)});
+$('#tourb').addEventListener('click',()=>{startTour();if(phone)scrollTo({top:0,behavior:RM?'auto':'smooth'})});
+$('#pill').addEventListener('click',()=>$('#panel').scrollIntoView({behavior:RM?'auto':'smooth'}));
+$$('#panel input,#panel button,#panel summary').forEach(el=>el.addEventListener('pointerdown',stopTour));
+addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input'))return;if(e.key==='Escape')closePop();if(e.key==='u'||e.key==='U'){stopTour();setFlood(!ST.flood)}});
+let urlT=0;
+function saveURL(){if(STILL)return;clearTimeout(urlT);urlT=setTimeout(()=>{const u=new URL(location.href);if(ST.seed!==DEFAULT_SEED)u.searchParams.set('seed',ST.seed);else u.searchParams.delete('seed');if(ST.delta!==2)u.searchParams.set('d',ST.delta.toFixed(1));else u.searchParams.delete('d');if(ST.gamma!==.25)u.searchParams.set('g',ST.gamma.toFixed(2));else u.searchParams.delete('g');history.replaceState(null,'',u)},400)}
+document.fonts?.addEventListener?.('loadingdone',()=>{if(started&&ST.toks.length){fit();render()}});
+addEventListener('resize',()=>{const was=phone;layout();if(was!==phone&&ST.toks.length){fit();render()}else refitIfNeeded()});
+
+/* ================= the fact about this key ================= */
+function fact(){const the=I('the'),G=Math.floor(ST.gamma*V),r=rank(the,KEY),gr=LM.cands('BODY',-1,the).filter(([t])=>r[t]<G).slice(0,3).map(([t])=>vocab[t]);
+  $('#fact').innerHTML=`With this key and γ = ${pct(ST.gamma)}, the words that turn green after “the” include <i>${gr.join('</i>, <i>')}</i>. A watermarked letter keeps leaning toward them${gr.includes('cat')?', which is why the cat keeps turning up':''}.`}
+
+/* ================= start ================= */
+$('#vn').textContent=V;$('#dl').value=Math.round(ST.delta*10);$('#dv').textContent=ST.delta.toFixed(1);$('#gm').value=Math.round(ST.gamma*100);$('#gmv').textContent=pct(ST.gamma);
+let lampPark=[.44,.4];if(Q.has('lamp')){const v=Q.get('lamp').split(',').map(Number);if(v.length===2&&v.every(Number.isFinite))lampPark=v}
+let T0=0,last=performance.now(),uiAcc=0,started=false;
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  layout();parkAt(...lampPark);moveLamp(true);fact();
+  if(RM||STILL){rewrite(false);lampMode='park';caption(CAP.idle())}
+  else startTour();
+  started=true}
+function frame(now){
+  requestAnimationFrame(frame); // first, so one bad frame can't stop the page
+  const raw=Math.min(.25,(now-last)/1000),dt=Math.min(.05,raw);last=now;T0+=dt;if(!started)return;
+  writeTick(raw);washTick(dt);tourTick(dt);
+  if(lampMode==='idle'&&!RM){const u=T0*.35;const[x,y]=toDesk(PD.w*(.5+.32*Math.sin(u*.8)),PD.h*(.52+.27*Math.sin(u*.47+1.3)));LT.x=x;LT.y=y}
+  if(!RM&&!STILL){const k=1-Math.exp(-dt*(lampMode==='user'?18:4.5));LP.x+=(LT.x-LP.x)*k;LP.y+=(LT.y-LP.y)*k}
+  moveLamp(false);
+  // needle: critically damped spring
+  const zt=det.T?det.z:0;if(RM||STILL){NZ.z=zt}else{NZ.v+=((zt-NZ.z)*60-NZ.v*15.5)*dt;NZ.z+=NZ.v*dt}
+  needle.setAttribute('transform',`rotate(${(90-ang(NZ.z)*180/Math.PI).toFixed(2)} ${GC.x} ${GC.y})`);
+  uiAcc+=dt;if(uiAcc>.12){uiAcc=0;if(!ST.writing){const i=lampWord();if(i>=0)showOdds(i)}}
+}
+requestAnimationFrame(frame);start();
+// for tests: a read-only view of the letter and the detector
+window.ink={state:()=>({seed:ST.seed,delta:ST.delta,gamma:ST.gamma,key:ST.key,E:Math.exp(ST.delta),V,writing:ST.writing,shown:ST.shown,total:ST.toks.length,
+  tokens:ST.toks.slice(0,ST.shown).map(t=>t.w),sections:ST.toks.slice(0,ST.shown).map(t=>t.sec),flags:flags.slice(),T:det.T,green:det.g,z:det.z,watermarked:det.z>4,
+  edited:ST.toks.filter(t=>t.orig!=null).length,flood:ST.flood,lamp:{x:LP.x,y:LP.y,mode:lampMode},tour:!!tour,tourDone,pop:popI,font:ST.font,ppl:ST.toks.length?ppl(ST.toks):null})};
+</script>
+</body>
+</html>

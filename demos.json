@@ -1,5 +1,15 @@
 [
  {
+  "slug": "green-list-ink",
+  "title": "Green-List Ink",
+  "no": "017",
+  "date": "2026-10-17",
+  "kind": "LLM watermarking · CSS UV lamp",
+  "blurb": "A toy language model writes a letter with the green-list watermark of Kirchenbauer et al. (2023): each word, hashed with a secret key, splits the vocabulary, and the next word is nudged toward the green half. Sweep a UV lamp to see the green words glow, watch a live z-score, then rewrite words to try to wash it out.",
+  "color": "#b026ff",
+  "exhibit": "greenink"
+ },
+ {
   "slug": "compaction-shredder",
   "title": "Compaction Shredder",
   "no": "016",
