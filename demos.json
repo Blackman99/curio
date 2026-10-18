@@ -1,5 +1,15 @@
 [
  {
+  "slug": "mcts-bonsai",
+  "title": "MCTS Bonsai",
+  "no": "019",
+  "date": "2026-10-18",
+  "kind": "Tree search \u00b7 Canvas bonsai",
+  "blurb": "Play Connect Four against a real Monte Carlo tree search and watch its search tree grow as a bonsai: every playout adds a twig, branches thicken with visits, leaves show how those games went, and each move prunes the rest. Cut it to 30 playouts and it starts missing threats; turn c down and it grows tall and narrow.",
+  "color": "#5f9a3e",
+  "exhibit": "bonsai"
+ },
+ {
   "slug": "hook-bouncer",
   "title": "Hook Bouncer",
   "no": "018",

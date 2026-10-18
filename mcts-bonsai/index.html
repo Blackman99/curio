@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MCTS Bonsai — a tree search that grows a tree</title>
+<meta name="description" content="Play Connect Four against a real Monte Carlo tree search and watch its search tree grow as a bonsai: every playout adds a twig, branches thicken where it keeps looking, leaves show how those games went, and every move prunes the rest. Change its thinking budget and watch it go from blundering sapling to old pine.">
+<meta property="og:title" content="MCTS Bonsai">
+<meta property="og:description" content="A Monte Carlo tree search plays Connect Four against you, and its search tree grows as a bonsai. Every playout adds a twig; every move prunes the rest.">
+<meta property="og:image" content="https://blackman99.github.io/curio/mcts-bonsai/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MCTS Bonsai">
+<meta name="twitter:description" content="Play Connect Four against a live Monte Carlo tree search whose search tree grows, thickens and gets pruned like a bonsai.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/mcts-bonsai/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Shippori+Mincho:wght@500;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#22201c;--ink2:#5a5348;--ink3:#8b8272;--seal:#b5321e;--moss:#3f7a3e;--rust:#b0482a;--gold:#c68a12;--line:rgba(70,52,34,.17);--card:rgba(250,246,238,.8);--bk:#1d1d1f;--wt:#f4f1e8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#ebe3d3;color:var(--ink);font-family:'Shippori Mincho',Georgia,serif;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+
+#title{position:fixed;left:34px;top:26px;width:338px;z-index:3;pointer-events:none}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink2);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(250,246,238,.7);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--ink);color:#f4efe4;outline:none}
+.kick{margin-top:20px;font:500 11px/1.4 'IBM Plex Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--seal)}
+h1{margin:8px 0 12px;font-weight:800;font-size:clamp(46px,4.4vw,68px);line-height:.95;letter-spacing:-.01em;display:flex;align-items:flex-start;gap:14px}
+h1 span{display:block}
+h1 em{display:block;font-style:normal;color:var(--moss)}
+.seal{flex:none;margin-top:6px;width:44px;height:44px;border-radius:6px;background:var(--seal);color:#fbefe4;font:800 15px/1.02 'Shippori Mincho',serif;display:grid;place-items:center;text-align:center;padding:3px;box-shadow:inset 0 0 0 2px rgba(255,235,220,.35);transform:rotate(-4deg)}
+.sub{margin:0;font-size:16.5px;line-height:1.5;color:var(--ink2)}
+.sub b{color:var(--ink);font-weight:600}
+#legend{margin-top:16px;display:grid;grid-template-columns:44px 1fr;gap:6px 10px;align-items:center;font:500 11px/1.35 'IBM Plex Mono',monospace;color:var(--ink2)}
+#legend svg{width:44px;height:16px;overflow:visible}
+#legend i{font-style:normal;color:var(--ink)}
+
+#story{position:fixed;left:34px;bottom:30px;width:338px;z-index:3;pointer-events:none}
+#caption{margin:0;font:500 18.5px/1.45 'Shippori Mincho',serif;color:var(--ink);min-height:5.8em;transition:opacity .35s;text-shadow:0 0 12px rgba(239,232,218,.9),0 0 3px rgba(239,232,218,.9)}
+#caption.fade{opacity:0}
+#caption b{font-weight:800}
+#caption .g{color:var(--moss);font-weight:800}
+#caption .r{color:var(--rust);font-weight:800}
+
+#panel{position:fixed;right:20px;top:20px;bottom:20px;width:350px;z-index:5;overflow:auto;scrollbar-width:thin;
+  background:var(--card);
+  border:1px solid var(--line);border-radius:16px;padding:12px 15px 12px;box-shadow:0 24px 60px rgba(60,40,20,.16),inset 0 1px 0 rgba(255,255,255,.6)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;white-space:nowrap;font:600 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+.lab b{font:600 13px/1 'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;color:var(--ink)}
+.lab i{font:500 13px/1.2 'Shippori Mincho',serif;letter-spacing:0;text-transform:none;color:var(--ink2);overflow:hidden;text-overflow:ellipsis}
+#status{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 4px}
+#turn{font:800 19px/1.1 'Shippori Mincho',serif}
+#turn.think{color:var(--ink2)}
+.sides{display:flex;gap:10px;font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink2);white-space:nowrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+.dot.b{background:radial-gradient(circle at 35% 30%,#777,#111)}
+.dot.w{background:radial-gradient(circle at 35% 30%,#fff,#cfccc2);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+#histl{font:500 10.5px/1.2 'IBM Plex Mono',monospace;color:var(--ink3);margin:2px 0 0;min-height:13px}
+#board{display:block;width:100%;touch-action:manipulation;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 4px}
+.stats div{border-top:1px solid var(--line);padding-top:5px}
+.stats label{display:block;font:600 9px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.stats b{display:inline-block;font:600 16px/1.3 'IBM Plex Mono',monospace;color:var(--ink);white-space:nowrap}
+.stats small{display:block;font:500 10px/1.1 'IBM Plex Mono',monospace;color:var(--ink3);white-space:nowrap}
+#prog{height:3px;border-radius:3px;background:rgba(70,52,34,.1);overflow:hidden;margin:2px 0 6px}
+#prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7a9a47,#3f7a3e)}
+#planrow{display:flex;align-items:center;gap:6px;min-height:22px;font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink3);overflow:hidden;white-space:nowrap}
+#pv{display:flex;gap:3px}
+.pvm{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;font:600 10px/1 'IBM Plex Mono',monospace}
+.pvm.b{background:radial-gradient(circle at 35% 30%,#666,#151515);color:#f2efe6}
+.pvm.w{background:radial-gradient(circle at 35% 30%,#fff,#d6d3ca);color:#222;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+hr.s{border:0;border-top:1px solid var(--line);margin:8px 0}
+.presets{display:flex;gap:4px;margin:0 0 2px}
+.presets button{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.4);border-radius:999px;padding:6px 2px;font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink2);white-space:nowrap}
+.presets button:hover,.presets button:focus-visible{border-color:var(--ink2);outline:none}
+.presets button.on{background:var(--ink);border-color:var(--ink);color:#f4efe4}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#c9b48c,#6f8f45 60%,#2f6b3c);box-shadow:inset 0 1px 1px rgba(0,0,0,.2)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#c9b48c,#6f8f45 60%,#2f6b3c)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:1px solid #3d2d20;background:radial-gradient(circle at 35% 30%,#fff7e8,#d8bf91 50%,#8a6a45);box-shadow:0 2px 5px rgba(60,40,20,.35)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;border:1px solid #3d2d20;background:radial-gradient(circle at 35% 30%,#fff7e8,#d8bf91 50%,#8a6a45)}
+input[type=range]:focus-visible{outline:1px dashed var(--ink2);outline-offset:3px}
+#cexp::-webkit-slider-runnable-track{background:linear-gradient(90deg,#2f6b3c,#8a9a5a 35%,#d6b46a 70%,#c96a3a)}
+#cexp::-moz-range-track{background:linear-gradient(90deg,#2f6b3c,#8a9a5a 35%,#d6b46a 70%,#c96a3a)}
+.hint{font:500 13px/1.38 'Shippori Mincho',serif;color:var(--ink2)}
+.hint b{color:var(--ink)}
+.btns{display:flex;gap:6px;margin:8px 0 0}
+.btn{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.45);border-radius:999px;padding:8px 6px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--ink);transition:background .2s,border-color .2s;white-space:nowrap}
+.btn:hover,.btn:focus-visible{background:#fff;border-color:var(--ink2);outline:none}
+.btn.hot{border-color:var(--moss);color:var(--moss)}
+.btn:disabled{opacity:.45;cursor:default}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:14px;line-height:1.5;color:var(--ink2);margin:9px 0 0}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--ink)}
+details a,.foot a{color:var(--seal)}
+.foot{margin-top:10px;font:500 10.5px/1.6 'IBM Plex Mono',monospace;color:var(--ink3)}
+.lnk{border:0;background:none;padding:0;font:inherit;color:var(--seal);text-decoration:underline;cursor:pointer}
+#tip{position:fixed;z-index:6;pointer-events:none;padding:7px 10px;border-radius:10px;background:rgba(34,32,28,.92);color:#f3eee2;font:500 11px/1.45 'IBM Plex Mono',monospace;opacity:0;transform:translate(16px,14px);transition:opacity .15s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+#tip b{color:#ffd676}
+#tip .g{color:#a6d77a}
+#tip .r{color:#f19a77}
+
+@media (max-width:1179px) and (min-width:821px){
+  #title{width:300px}
+  .kick{margin-top:12px}
+  h1{font-size:40px;margin:6px 0 6px}
+  .sub{font-size:14.5px}
+  #legend{display:none}
+  #story{width:300px}
+  #caption{font-size:16px;min-height:0}
+  #panel{width:330px}
+  .btn{font-size:10.5px;padding:8px 4px}
+}
+@media (max-height:780px) and (min-width:821px){
+  #title{top:18px}
+  .kick{margin-top:12px}
+  h1{font-size:44px;margin:6px 0 8px}
+  .sub{font-size:15px}
+  #legend{margin-top:10px}
+  #caption{font-size:16.5px;min-height:0}
+  #story{bottom:20px}
+  #panel{top:12px;bottom:12px;padding:10px 13px}
+  details{margin-top:6px}
+}
+@media (max-height:700px) and (min-width:821px){#legend{display:none}}
+@media (max-width:820px){
+  html,body{overflow-x:hidden;overflow-y:auto;height:auto}
+  #scene{position:relative;inset:auto;height:430px;touch-action:pan-y}
+  #title{position:relative;left:auto;top:auto;width:auto;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:36px;margin:6px 0 6px}
+  .seal{width:36px;height:36px;font-size:12px}
+  .sub{font-size:15px}
+  #legend{display:none}
+  #story{position:relative;left:auto;bottom:auto;width:auto;padding:4px 16px 10px}
+  #caption{font-size:16px;min-height:4.4em}
+  #panel{position:relative;right:auto;top:auto;bottom:auto;width:auto;margin:0 12px 24px;overflow:visible}
+  #tip{display:none}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.static *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 019 · Tree search</div>
+  <h1><span>MCTS <em>Bonsai</em></span><span class="seal" aria-hidden="true">盆<br>栽</span></h1>
+  <p class="sub">A <b>Monte Carlo tree search</b> plays Connect Four against you, and its search tree grows as a bonsai. Every playout adds a twig. When it moves, everything else is <b>pruned</b>.</p>
+  <div id="legend" aria-hidden="true">
+    <svg viewBox="0 0 44 16"><path d="M2 13 C14 12 24 8 42 3" stroke="#3b2b22" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M8 13 C18 12 26 11 40 11" stroke="#3b2b22" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg><span>thickness = <i>√ playouts</i> through that move</span>
+    <svg viewBox="0 0 44 16"><defs><linearGradient id="lg"><stop offset="0" stop-color="#8e2b1c"/><stop offset=".3" stop-color="#c4552b"/><stop offset=".5" stop-color="#d0a43a"/><stop offset=".75" stop-color="#7ca843"/><stop offset="1" stop-color="#2f7a43"/></linearGradient></defs><rect x="1" y="4" width="42" height="8" rx="4" fill="url(#lg)"/></svg><span>how those games went for it: <i>lost → won</i></span>
+    <svg viewBox="0 0 44 16"><g transform="translate(12 8)" fill="#fbe6ec" stroke="#e7a9b9" stroke-width=".6"><circle cx="0" cy="-3.6" r="2.6"/><circle cx="3.4" cy="-1.1" r="2.6"/><circle cx="2.1" cy="2.9" r="2.6"/><circle cx="-2.1" cy="2.9" r="2.6"/><circle cx="-3.4" cy="-1.1" r="2.6"/><circle r="1.3" fill="#e2ad38" stroke="none"/></g><ellipse cx="32" cy="8" rx="5.5" ry="2.6" fill="#4a1d14" transform="rotate(-25 32 8)"/></svg><span><i>blossom</i>: it wins there · <i>dark leaf</i>: you do</span>
+  </div>
+</header>
+<canvas id="scene" aria-label="The search tree drawn as a bonsai in a pot. Hover a branch to see the line of play it stands for."></canvas>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+
+<aside id="panel" aria-label="The board and the search controls">
+  <div id="status"><span id="turn">Your move</span><span class="sides"><span><span class="dot b"></span><span id="bside">you</span></span><span><span class="dot w"></span><span id="wside">it</span></span></span></div>
+  <div id="histl">&nbsp;</div>
+  <canvas id="board" aria-label="Connect Four board. Click a column, or press 1 to 7, to drop a stone."></canvas>
+  <div id="prog"><i></i></div>
+  <div class="stats">
+    <div title="playouts run in this search, of the budget"><label>Playouts</label><b id="sN">0</b><small id="sB">of 3,000</small></div>
+    <div title="nodes in the tree: one twig each"><label>Twigs</label><b id="sT">1</b></div>
+    <div title="how many moves ahead its deepest line reaches"><label>Deepest</label><b id="sD">0</b></div>
+    <div title="its estimate of its chance to win, from its most-visited move"><label>Its odds</label><b id="sQ">—</b></div>
+  </div>
+  <div id="planrow"><span>its plan</span><span id="pv"></span></div>
+  <hr class="s">
+  <div class="lab"><span>Thinking budget</span><b id="bv">3,000 playouts</b></div>
+  <div class="presets" id="presets" title="A new budget or c makes it rethink its last move"><button data-b="30">30</button><button data-b="300">300</button><button data-b="3000">3,000</button><button data-b="16000">16,000</button></div>
+  <input id="budget" type="range" min="40" max="140" step="any" value="115.55" aria-label="Playouts per move">
+  <div class="lab" style="margin-top:4px"><span>Exploration c</span><b id="cv">1.41</b></div>
+  <div class="presets" id="cpresets"><button data-c="0.25" title="Trust early favourites">0.25 · tall</button><button data-c="r2" class="on" title="The classic UCB1 constant">√2</button><button data-c="3.5" title="Keep trying everything">3.5 · bushy</button></div>
+  <input id="cexp" type="range" min="5" max="400" step="1" value="141" aria-label="Exploration constant c">
+  <div class="hint" id="chint">Low c trusts its early favourites; high c keeps trying everything.</div>
+  <div class="btns"><button class="btn hot" id="rethink" title="Take back its last move and search that position again from scratch, with the budget and c above (R)">↺ Rethink its move</button><button class="btn" id="pace" title="Watch the tree grow, or let it search at full speed">Pace: watch</button></div>
+  <div class="btns"><button class="btn" id="newme">New game · you start</button><button class="btn" id="newit">New game · it starts</button></div>
+  <details>
+    <summary>What is this?</summary>
+    <p>Monte Carlo tree search chooses a move by playing thousands of quick random games. Each <b>playout</b> has four steps. <b>Select:</b> from the current position, keep stepping to the child with the highest UCB1 score, <code>W/N + c·√(ln N<sub>parent</sub> / N)</code>, which weighs moves that have won (W wins in N visits) against moves it has barely tried. <b>Expand:</b> at the first position with an untried move, add one at random to the tree. <b>Simulate:</b> play random moves to the end of the game. <b>Back up:</b> every node on the path gets one more visit, and a win if its mover won (half for a draw). When the budget is spent it plays the move with the most visits.</p>
+    <p>The bonsai is that tree, drawn as it is: every twig is one node. A branch's thickness is √visits, so its cross-section grows with the playouts through it. A node's visits are its children's visits plus the one playout that created it, so the tree obeys Leonardo da Vinci's rule for real trees: the branches' cross-sections add up to the trunk's. Leaf colour is how the playouts through that twig went for the side that searched. Blossoms are final positions where it wins; dark leaves are ones where you do.</p>
+    <p>When a move is played, every other branch is cut off and the chosen one becomes the new trunk, so the next search starts with the playouts already spent on that line (tree reuse). The knots on the trunk are those cuts.</p>
+    <p><b>Real:</b> the game, the search and every number on screen, computed live in your browser. Its randomness is seeded (mulberry32), so a game replays exactly; a separate Python implementation reproduces its visit counts to the last playout. <b>Artistic:</b> the drawing: each column sends its branch in its own direction, and the curves, sway and leaves are decoration. When you watch, the search is slowed down so you can see it grow; at full speed it runs about <span id="rate">150,000</span> playouts a second here.</p>
+    <p>It is plain UCT with uniformly random playouts and no Connect Four knowledge, so with a small budget it misses wins and threats a beginner would see. In the tour's position, 30 playouts find the block at f for 66 of 200 random seeds, 128 playouts for 176, and 512 or more for all 200. Connect Four is solved: the first player wins by starting in the middle column (Allis 1988). On an empty board this search already prefers the middle from about 1,000 playouts.</p>
+    <p>After Kocsis &amp; Szepesvári, <a href="https://doi.org/10.1007/11871842_29">Bandit Based Monte-Carlo Planning</a> (ECML 2006); Coulom, <a href="https://doi.org/10.1007/978-3-540-75538-8_7">Efficient Selectivity and Backup Operators in Monte-Carlo Tree Search</a> (2006); Browne et al., <a href="https://doi.org/10.1109/TCIAIG.2012.2186810">A Survey of Monte Carlo Tree Search Methods</a> (2012); Allis, <i>A Knowledge-based Approach of Connect-Four</i> (1988).</p>
+  </details>
+  <div class="foot">Click a column or press 1–7 · hover a branch for its line · R rethinks · <button class="lnk" id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<div id="tip"></div>
+
+<script type="module">
+/* ================= engine: Connect Four + plain UCT tree search =================
+   Cells are col*6+row, row 0 at the bottom. Player 1 is Black (moves first), 2 is White.
+   Every random number comes from one seeded mulberry32 stream, so a game replays exactly. */
+const COLS=7,ROWS=6;
+function mulberry32(seed){let a=seed|0;
+  const f=()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296};
+  f.get=()=>a>>>0;f.set=v=>{a=v|0};return f}
+// does the stone just dropped at (x,y) make four for p?
+function wins(c,x,y,p){
+  if(y>=3&&c[x*6+y-1]===p&&c[x*6+y-2]===p&&c[x*6+y-3]===p)return true;
+  let k=1,X,Y;
+  for(X=x+1;X<7&&c[X*6+y]===p;X++)k++;for(X=x-1;X>=0&&c[X*6+y]===p;X--)k++;if(k>=4)return true;
+  k=1;for(X=x+1,Y=y+1;X<7&&Y<6&&c[X*6+Y]===p;X++,Y++)k++;for(X=x-1,Y=y-1;X>=0&&Y>=0&&c[X*6+Y]===p;X--,Y--)k++;if(k>=4)return true;
+  k=1;for(X=x+1,Y=y-1;X<7&&Y>=0&&c[X*6+Y]===p;X++,Y--)k++;for(X=x-1,Y=y+1;X>=0&&Y<6&&c[X*6+Y]===p;X--,Y++)k++;return k>=4}
+// the four cells that won, for drawing the line
+function winLine(c,x,y,p){
+  for(const[dx,dy]of[[0,1],[1,0],[1,1],[1,-1]]){const L=[[x,y]];
+    for(let s=1;s<4;s++){const X=x+dx*s,Y=y+dy*s;if(X<0||X>6||Y<0||Y>5||c[X*6+Y]!==p)break;L.push([X,Y])}
+    for(let s=1;s<4;s++){const X=x-dx*s,Y=y-dy*s;if(X<0||X>6||Y<0||Y>5||c[X*6+Y]!==p)break;L.unshift([X,Y])}
+    if(L.length>=4)return L}
+  return null}
+class Pos{
+  constructor(){this.c=new Uint8Array(42);this.h=new Uint8Array(7);this.n=0;this.turn=1;this.moves=[];this.winner=0;this.over=false;this.line=null}
+  clone(){const q=new Pos();q.c.set(this.c);q.h.set(this.h);q.n=this.n;q.turn=this.turn;q.moves=this.moves.slice();q.winner=this.winner;q.over=this.over;q.line=this.line;return q}
+  legal(col){return !this.over&&col>=0&&col<7&&this.h[col]<6}
+  play(col){const y=this.h[col],p=this.turn;this.c[col*6+y]=p;this.h[col]=y+1;this.n++;this.moves.push(col);this.turn=3-p;
+    if(wins(this.c,col,y,p)){this.winner=p;this.over=true;this.line=winLine(this.c,col,y,p)}else if(this.n===42)this.over=true;
+    return y}
+  static from(moves){const q=new Pos();for(const m of moves)q.play(m);return q}
+}
+// the search tree, struct-of-arrays. pl = the player whose move led here; W counts that player's wins (draws .5)
+class Tree{
+  constructor(cap=1024){this.n=0;this.alloc(cap)}
+  alloc(cap){const o=this;const grow=(A,T,k=1)=>{const b=new T(cap*k);if(A)b.set(A);return b};
+    o.par=grow(o.par,Int32Array);o.mv=grow(o.mv,Int8Array);o.pl=grow(o.pl,Int8Array);o.term=grow(o.term,Int8Array);o.dep=grow(o.dep,Int16Array);
+    o.N=grow(o.N,Float64Array);o.W=grow(o.W,Float64Array);o.born=grow(o.born,Float64Array);o.hs=grow(o.hs,Float32Array);
+    const kid=new Int32Array(cap*7).fill(-1);if(o.kid)kid.set(o.kid);o.kid=kid;o.cap=cap}
+  add(par,mv,pl,now=0){if(this.n===this.cap)this.alloc(this.cap*2);const k=this.n++;
+    this.par[k]=par;this.mv[k]=mv;this.pl[k]=pl;this.term[k]=0;this.N[k]=0;this.W[k]=0;this.born[k]=now;this.dep[k]=par<0?0:this.dep[par]+1;
+    // a stable per-node hash (from the path of moves) for the drawing's jitter
+    if(par<0)this.hs[k]=.5;else{const x=Math.sin(this.hs[par]*127.1+mv*311.7+this.dep[k]*74.7)*43758.5453;this.hs[k]=x-Math.floor(x)}
+    if(par>=0)this.kid[par*7+mv]=k;return k}
+  // copy the subtree under k into a fresh tree (k becomes node 0); map[old]=new
+  sub(k){const t=new Tree(Math.max(1024,this.cap>>1)),map=new Int32Array(this.n).fill(-1),q=[k];
+    t.add(-1,this.mv[k],this.pl[k],this.born[k]);map[k]=0;t.term[0]=this.term[k];t.N[0]=this.N[k];t.W[0]=this.W[k];t.hs[0]=this.hs[k];
+    for(let i=0;i<q.length;i++){const o=q[i];for(let c=0;c<7;c++){const ch=this.kid[o*7+c];if(ch<0)continue;
+      const nk=t.add(map[o],c,this.pl[ch],this.born[ch]);map[ch]=nk;t.term[nk]=this.term[ch];t.N[nk]=this.N[ch];t.W[nk]=this.W[ch];t.hs[nk]=this.hs[ch];q.push(ch)}}
+    return{t,map}}
+}
+const BUF=new Uint8Array(42),HGT=new Uint8Array(7),UNT=new Int32Array(7),LEG=new Int32Array(7),PATH=new Int32Array(64);
+function rollout(c,h,turn,n,rng){
+  for(;;){let nl=0;for(let x=0;x<7;x++)if(h[x]<6)LEG[nl++]=x;
+    const col=LEG[Math.floor(rng()*nl)],y=h[col];c[col*6+y]=turn;h[col]=y+1;n++;
+    if(wins(c,col,y,turn))return turn;
+    if(n===42)return 0;
+    turn=3-turn}}
+// one playout: select by UCB1 down to a node with an untried move, add it, play randomly to the end, back the result up.
+// returns the path length (the new leaf is PATH[len-1]) and fills the optional trail with the moves of the random game
+function simulate(t,root,base,rng,C,now=0,trail=null){
+  BUF.set(base.c);HGT.set(base.h);let turn=base.turn,n=base.n,node=root,plen=1,result=0;PATH[0]=root;
+  for(;;){
+    const term=t.term[node];
+    if(term){result=term===1?t.pl[node]:0;break}
+    let nu=0;const kb=node*7;
+    for(let c=0;c<7;c++)if(HGT[c]<6&&t.kid[kb+c]<0)UNT[nu++]=c;
+    if(nu>0){
+      const col=UNT[Math.floor(rng()*nu)],y=HGT[col];BUF[col*6+y]=turn;HGT[col]=y+1;n++;
+      const k=t.add(node,col,turn,now);PATH[plen++]=k;
+      if(wins(BUF,col,y,turn)){t.term[k]=1;result=turn}
+      else if(n===42){t.term[k]=2;result=0}
+      else{if(trail){trail.c=BUF.slice();trail.from=n}result=rollout(BUF,HGT,3-turn,n,rng);if(trail){trail.end=BUF.slice();trail.result=result}}
+      break}
+    const lnN=Math.log(t.N[node]);let best=-1,bu=-Infinity;
+    for(let c=0;c<7;c++){const k=t.kid[kb+c];if(k<0)continue;const nk=t.N[k],u=t.W[k]/nk+C*Math.sqrt(lnN/nk);if(u>bu){bu=u;best=k}}
+    const col=t.mv[best],y=HGT[col];BUF[col*6+y]=turn;HGT[col]=y+1;n++;turn=3-turn;node=best;PATH[plen++]=best}
+  for(let i=0;i<plen;i++){const k=PATH[i];t.N[k]+=1;if(result===0)t.W[k]+=.5;else if(result===t.pl[k])t.W[k]+=1}
+  return plen}
+// the move it plays: most visits, ties to the lower column
+function bestKid(t,root){let b=-1,bn=-1;for(let c=0;c<7;c++){const k=t.kid[root*7+c];if(k>=0&&t.N[k]>bn){bn=t.N[k];b=k}}return b}
+function kidStats(t,root){const o=[];for(let c=0;c<7;c++){const k=t.kid[root*7+c];if(k>=0)o.push([c,t.N[k],t.W[k]])}return o}
+// follow the most-visited child
+function pvLine(t,root,max=12){const L=[];let k=root;for(let i=0;i<max;i++){const b=bestKid(t,k);if(b<0||t.N[b]<2)break;L.push(t.mv[b]);k=b}return L}
+// isolated search, no tree reuse: what window.bonsai.search() runs
+function searchFresh(moves,sims,C,seed){const pos=Pos.from(moves),t=new Tree(),rng=mulberry32(seed);t.add(-1,-1,3-pos.turn);
+  for(let i=0;i<sims;i++)simulate(t,0,pos,rng,C);const b=bestKid(t,0);return{kids:kidStats(t,0),pick:b<0?-1:t.mv[b],nodes:t.n,rng:rng.get(),tree:t}}
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still');
+const STATIC=RM||STILL;if(STATIC)document.documentElement.classList.add('static');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
+const easeOut=t=>1-(1-t)**3,easeIO=t=>t<.5?4*t*t*t:1-(-2*t+2)**3/2;
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const LET='abcdefg',TAU=Math.PI*2,UP=-Math.PI/2;
+const isPhone=()=>innerWidth<=820;
+// the tour's position: you (Black) have c1 d1 e1, so White must block at f1
+const TOUR_POS=[3,3,4,1,3,4,2],TOUR_SEED=7,TOUR_BUDGET=3000,SAPLING_SEED=33,SAPLING_SIMS=30;
+
+/* ================= state ================= */
+let simT=0;
+const G={pos:null,t:null,rng:null,seed:0,ai:2,persp:2,budget:TOUR_BUDGET,C:Math.SQRT2,pace:STATIC?'fast':'watch',
+  phase:'idle',th:null,log:[],knots:[],pick:-1,decideT:0,pauseT:0,lastAI:-1,rate:0,busyMs:0,busyN:0};
+let tour=null,probe=null,ghostA=1,hoverK=-1,hoverCol=-1;
+
+function freshTree(){const t=new Tree(4096);t.add(-1,-1,3-G.pos.turn,simT);return t}
+function newGame(moves,seed,ai){
+  G.pos=Pos.from(moves);G.seed=seed>>>0;G.rng=mulberry32(G.seed);G.ai=ai;G.persp=ai;G.t=freshTree();
+  G.log=[{k:'start',moves:moves.slice(),seed:G.seed,ai}];G.knots=[];G.start=moves.length;G.phase='idle';G.th=null;G.pick=-1;G.lastAI=-1;G.final=null;
+  FALL.length=0;DEB.length=0;FX.length=0;MORPH.n=0;probe=null;ghostA=1;hoverK=-1;
+  $('#bside').textContent=ai===2?'you':'it';$('#wside').textContent=ai===2?'it':'you'}
+const randSeed=()=>(Math.random()*4294967296)>>>0;
+const thinkTime=b=>clamp(.8+1.05*Math.log10(b/10),.9,4.6);
+function startThink(fresh,T){
+  if(fresh)G.t=freshTree();
+  G.persp=G.pos.turn;
+  G.th={t0:simT,T:T||thinkTime(G.budget),budget:G.budget,done:0,rng0:G.rng.get(),N0:G.t.N[0],fresh:!!fresh,C:G.C,moves:G.pos.moves.slice(),custom:!!T};
+  G.phase='think';G.pick=-1;TR.length=0}
+function runSims(th,t,pos,rng,todo,trail,cap=11){
+  const t0=performance.now(),tEnd=t0+(FIXED?1e9:cap);let ran=0;
+  while(todo>0){const plen=simulate(t,0,pos,rng,th.C,simT);th.done++;todo--;ran++;
+    if(trail&&todo<3)TR.push({k:PATH[plen-1],t:simT,tree:t});
+    if((ran&63)===0&&performance.now()>tEnd)break}
+  const ms=performance.now()-t0;if(ran>200){G.busyMs+=ms;G.busyN+=ran}}
+function thinkTick(){
+  const th=G.th;if(!th)return;
+  const e=G.pace==='fast'&&!th.custom?1:clamp((simT-th.t0)/th.T,0,1);
+  const want=e>=1?th.budget:Math.floor(th.budget*e**1.5);
+  if(want>th.done)runSims(th,G.t,G.pos,G.rng,want-th.done,!STATIC);
+  if(th.done>=th.budget)finishThink()}
+function finishThink(){
+  const th=G.th,b=bestKid(G.t,0);G.pick=G.t.mv[b];
+  G.log.push({k:'search',moves:th.moves,rng0:th.rng0,sims:th.done,C:th.C,N0:th.N0,fresh:th.fresh,kids:kidStats(G.t,0),pick:G.pick,nodes:G.t.n});
+  G.th=null;G.phase='decide';G.decideT=simT}
+function odds(t){const b=bestKid(t,0);if(b<0)return null;const q=t.W[b]/t.N[b];return t.pl[b]===G.ai?q:1-q}
+function commitAI(){
+  if(G.phase!=='decide')return;const col=G.pick,t=G.t,b=t.kid[col],N=t.N[b],tot=kidTotal(t),q=t.W[b]/t.N[b];
+  play(col);G.lastAI=G.pos.moves.length-1;G.log.push({k:'move',col,by:'it'});
+  if(G.pos.over)return gameOver();
+  G.phase='wait';
+  if(!tour)caption(`It plays <b>${LET[col]}</b>: ${fmt(N)} of ${fmt(tot)} playouts went there. ${verdict(q)}`)}
+function verdict(q){if(q>.92)return'It thinks it is <span class="g">winning</span>.';if(q<.08)return'It thinks it is <span class="r">lost</span>.';return`It rates its chances at <b>${Math.round(q*100)}%</b>.`}
+function kidTotal(t){let s=0;for(let c=0;c<7;c++){const k=t.kid[c];if(k>=0)s+=t.N[k]}return s}
+function humanPlay(col){
+  if(G.phase!=='wait'||!G.pos.legal(col)||G.pos.turn===G.ai)return false;
+  const t=G.t,tot=kidTotal(t),b=bestKid(t,0),k=t.kid[col];
+  const kept=k>=0?t.N[k]:0,exp=b>=0?t.mv[b]:-1;
+  play(col);G.log.push({k:'move',col,by:'you'});
+  if(G.pos.over){gameOver();return true}
+  if(tot>0)caption(exp===col?`You played <b>${LET[col]}</b>, the move it expected. <b>${Math.round(kept/tot*100)}%</b> of its tree carries over.`
+    :`You played <b>${LET[col]}</b>. It had expected <b>${LET[exp]}</b>; only <b>${Math.round(kept/tot*100)}%</b> of its tree survives the cut.`);
+  else caption(`You played <b>${LET[col]}</b>.`);
+  G.phase='pause';G.pauseT=simT;return true}
+// drop a stone and prune the tree to the chosen move
+function play(col){
+  if(!STATIC)layout(GV,G.t,G.persp,true);
+  const t=G.t,k=t.kid[col],cut=[];
+  const y=G.pos.play(col);dropStone(col,y,3-G.pos.turn);hoverK=-1;
+  // the game is over: keep the whole tree and mark the final move instead of pruning
+  if(G.pos.over){G.final={k,by:3-G.pos.turn};return}
+  for(let c=0;c<7;c++){const ch=t.kid[c];if(ch>=0&&c!==col){cut.push([c,t.N[ch]]);if(!STATIC)spawnDebris(GV,t,ch,c)}}
+  G.knots.push({cut,y:G.knots.length});
+  if(!STATIC&&cut.length)FX.push({k:'snip',t:simT});
+  if(k>=0){const {t:nt,map}=t.sub(k);if(!STATIC)startMorph(GV,t,map,nt.n);G.t=nt}
+  else G.t=freshTree();
+  hoverK=-1}
+function gameOver(){
+  G.phase='over';const w=G.pos.winner;
+  if(w===G.ai){caption('Four in a row: <b>it wins</b>. Press ↺ to make it rethink its last move, or start a new game.');if(!STATIC)burst('bloom')}
+  else if(w){caption('Four in a row: <b>you win</b>. Try a bigger budget.');if(!STATIC)burst('fall')}
+  else caption('The board is full: a draw.')}
+const shapeOf=c=>c<.6?'Low c trusts its early favourites: watch it grow tall and narrow.':c>2.2?'High c keeps trying everything: watch it grow wide and shallow.':'';
+function rethink(extra=''){
+  if(probe)return;
+  if(G.phase==='think'||G.phase==='decide'){startThink(true);caption(`Starting over from a fresh tree: ${fmt(G.budget)} playouts, c = ${G.C.toFixed(2)}. ${extra}`);return}
+  if(G.lastAI<0||G.phase==='pause')return;
+  const to=G.lastAI,all=G.pos.moves,col=all[to];
+  for(let i=to;i<all.length;i++){const r=all.slice(0,i).filter(x=>x===all[i]).length;liftStone(all[i],r,G.pos.c[all[i]*6+r])}
+  if(!STATIC)for(let c=0;c<7;c++){const ch=G.t.kid[c];if(ch>=0)spawnDebris(GV,G.t,ch,c)}
+  G.pos=Pos.from(all.slice(0,to));G.log.push({k:'undo',to});G.knots.length=Math.max(0,to-G.start);G.lastAI=-1;G.final=null;FALL.length=0;
+  startThink(true);
+  caption(`It takes back <b>${LET[col]}</b> and searches again from scratch: ${fmt(G.budget)} playouts, c = ${G.C.toFixed(2)}. ${extra}`)}
+// a new budget or c applies at once: restart a running search (c) or rethink its last move
+function autoRethink(what){
+  if(probe||tour)return'next';
+  if(G.th){if(what==='c'){startThink(true);return'restart'}return'live'}
+  if(G.lastAI>=0&&G.phase!=='pause'){rethink(what==='c'?shapeOf(G.C):G.budget<=30?'A sapling: it may miss your threats.':'');return'rethink'}
+  return'next'}
+
+/* ================= captions ================= */
+const capEl=$('#caption');let capT=null;
+function caption(html){if(capEl.innerHTML===html)return;clearTimeout(capT);
+  if(STATIC||FIXED){capEl.innerHTML=html;capEl.classList.remove('fade');return}
+  capEl.classList.add('fade');capT=setTimeout(()=>{capEl.innerHTML=html;capEl.classList.remove('fade')},230)}
+const CAP={
+  a:'<b>White to move</b>, with 3,000 playouts to spend. Each one walks down the tree, adds one twig, plays random moves to the end of the game and carries the result back up.',
+  b:'Branches thicken where it keeps coming back. Leaves show how those games went for White: <span class="g">green</span> won, <span class="r">rust</span> lost.',
+  c:'Six branches withered: each lets you drop into <b>f</b> and finish your row. One move survives.',
+  d:'And with only <b>30</b> playouts?',
+  e:p=>`A sapling can't tell its branches apart. It would play <b>${LET[p]}</b>, and you win at <b>f</b>.`,
+  f:'Back to 3,000. It plays <b>f</b> and prunes the rest; the kept branch becomes the trunk of its next search.',
+  g:'<b>Your move</b>: you are Black. Click a column, and hover a branch to see the line it stands for.',
+  rm:'It spent <b>3,000 playouts</b> on this position. Six branches withered: each lets you drop into <b>f</b> and finish your row, so it will play <b>f</b>.'+(STILL?'':' Click anywhere to let it.')};
+
+/* ================= scene: background, pot, trunk ================= */
+const cv=$('#scene'),ctx=cv.getContext('2d');
+let VW=0,VH=0,DPR=1,SC=1,GX=0,GY=0,R0x=0,R0y=0,BG=null,Z=1,Zt=1,FREE={l:0,r:0,t:0};
+function layoutScene(){
+  const r=cv.getBoundingClientRect();VW=Math.max(1,r.width);VH=Math.max(1,r.height);DPR=Math.min(2,devicePixelRatio||1);
+  cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);
+  if(isPhone()){SC=clamp(Math.min(VW/560,VH/540),.5,1);GX=VW*.5;GY=VH-100*SC;FREE={l:6,r:VW-6,t:8}}
+  else{const pr=$('#panel').getBoundingClientRect(),l=VW>=1180?380:Math.min(330,VW*.3),rr=pr.left-14;
+    SC=clamp(Math.min((rr-l)/690,VH/850),.55,1.3);GX=(l+rr)/2;GY=VH-112*SC;FREE={l:l-40,r:rr,t:14}}
+  R0x=GX+14*SC;R0y=GY-205*SC;makeAtlas();
+  BG=document.createElement('canvas');BG.width=cv.width;BG.height=cv.height;paintBG(BG.getContext('2d'))}
+function hash1(x){const s=Math.sin(x*127.1+311.7)*43758.5453;return s-Math.floor(s)}
+function paintBG(g){
+  g.setTransform(DPR,0,0,DPR,0,0);
+  const sky=g.createLinearGradient(0,0,0,VH);sky.addColorStop(0,'#f3eee3');sky.addColorStop(.55,'#ede5d5');sky.addColorStop(1,'#e2d6c0');g.fillStyle=sky;g.fillRect(0,0,VW,VH);
+  // vermilion sun behind the crown
+  const sx=GX-110*SC,sy=GY-470*SC,sr=128*SC,sg=g.createRadialGradient(sx,sy,sr*.2,sx,sy,sr*1.08);
+  sg.addColorStop(0,'rgba(212,92,58,.2)');sg.addColorStop(.9,'rgba(208,84,52,.15)');sg.addColorStop(1,'rgba(208,84,52,0)');g.fillStyle=sg;g.beginPath();g.arc(sx,sy,sr*1.1,0,TAU);g.fill();
+  // ink-wash mountains: three ridges fading into mist
+  const ridge=(base,amp,seed,col,a)=>{g.beginPath();g.moveTo(0,VH);const pts=[];
+    for(let x=0;x<=VW+8;x+=8){const u=x/Math.max(600,VW);let y=0,f=1.3,w=1;for(let o=0;o<5;o++){y+=w*Math.sin(u*f*6.3+seed*(o+1)*1.7+Math.sin(u*f*2.1+seed)*.8);f*=2.03;w*=.5}pts.push([x,base-amp*(y*.5+.5)])}
+    for(const[x,y]of pts)g.lineTo(x,y);g.lineTo(VW,VH);g.closePath();
+    const top=Math.min(...pts.map(p=>p[1])),gr=g.createLinearGradient(0,top,0,base+80*SC);gr.addColorStop(0,`rgba(${col},${a})`);gr.addColorStop(1,`rgba(${col},0)`);g.fillStyle=gr;g.fill()};
+  ridge(GY-250*SC,150*SC,2.3,'92,108,112',.16);ridge(GY-150*SC,120*SC,5.1,'80,94,96',.2);ridge(GY-40*SC,90*SC,8.7,'70,80,78',.18);
+  const mist=g.createLinearGradient(0,GY-120*SC,0,VH);mist.addColorStop(0,'rgba(240,234,222,0)');mist.addColorStop(.5,'rgba(240,234,222,.7)');mist.addColorStop(1,'rgba(230,220,202,.9)');g.fillStyle=mist;g.fillRect(0,GY-120*SC,VW,VH);
+  // paper grain
+  const n=document.createElement('canvas');n.width=n.height=160;const nx=n.getContext('2d'),id=nx.createImageData(160,160);
+  for(let i=0;i<id.data.length;i+=4){const v=hash1(i*.37)*255;id.data[i]=id.data[i+1]=id.data[i+2]=v>128?255:60;id.data[i+3]=Math.abs(v-128)*.16}
+  nx.putImageData(id,0,0);g.fillStyle=g.createPattern(n,'repeat');g.fillRect(0,0,VW,VH);
+  // a few fibres
+  g.strokeStyle='rgba(120,100,70,.07)';g.lineWidth=.7;for(let i=0;i<70;i++){const x=hash1(i)*VW,y=hash1(i+99)*VH,a=hash1(i+7)*TAU,l=12+hash1(i+3)*30;g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+Math.cos(a)*l*.6+4,y+Math.sin(a)*l*.6,x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke()}}
+function drawStand(){
+  const s=SC,pw=330*s;
+  // shadow on the floor
+  const sh=ctx.createRadialGradient(GX,GY+96*s,10,GX,GY+96*s,pw*.75);sh.addColorStop(0,'rgba(60,40,20,.28)');sh.addColorStop(1,'rgba(60,40,20,0)');
+  ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(GX,GY+96*s,pw*.75,26*s,0,0,TAU);ctx.fill();
+  // low rosewood stand
+  ctx.fillStyle='#3e271d';ctx.fillRect(GX-pw*.5-30*s,GY+62*s,pw+60*s,15*s);
+  const top=ctx.createLinearGradient(0,GY+56*s,0,GY+64*s);top.addColorStop(0,'#6b4634');top.addColorStop(1,'#432a1f');ctx.fillStyle=top;ctx.fillRect(GX-pw*.5-36*s,GY+55*s,pw+72*s,9*s);
+  ctx.fillStyle='#2f1d15';for(const sx of[-1,1]){ctx.fillRect(GX+sx*(pw*.5+18*s)-7*s,GY+76*s,14*s,20*s)}
+  ctx.fillRect(GX-pw*.5-12*s,GY+76*s,pw+24*s,5*s)}
+function drawPotBack(){
+  const s=SC,pw=330*s;
+  // soil with moss
+  ctx.fillStyle='#3a2a1e';ctx.beginPath();ctx.ellipse(GX,GY+2*s,pw*.47,10*s,0,0,TAU);ctx.fill();
+  for(let i=0;i<46;i++){const u=hash1(i*3.1)-.5,v=hash1(i*7.7)-.5;ctx.fillStyle=i%3?'rgba(98,128,62,.85)':'rgba(132,150,78,.8)';ctx.beginPath();ctx.ellipse(GX+u*pw*.86,GY+2*s+v*12*s,(6+hash1(i)*10)*s,(2+hash1(i+1)*2.5)*s,0,0,TAU);ctx.fill()}}
+function drawPotFront(){
+  const s=SC,pw=330*s,ph=56*s,y0=GY+4*s;
+  ctx.save();
+  const body=ctx.createLinearGradient(GX-pw/2,0,GX+pw/2,0);body.addColorStop(0,'#26323f');body.addColorStop(.25,'#3e5367');body.addColorStop(.55,'#33465a');body.addColorStop(1,'#1f2833');
+  ctx.fillStyle=body;ctx.beginPath();ctx.moveTo(GX-pw/2,y0);ctx.lineTo(GX+pw/2,y0);ctx.lineTo(GX+pw/2-14*s,y0+ph-6*s);ctx.quadraticCurveTo(GX+pw/2-16*s,y0+ph,GX+pw/2-24*s,y0+ph);ctx.lineTo(GX-pw/2+24*s,y0+ph);ctx.quadraticCurveTo(GX-pw/2+16*s,y0+ph,GX-pw/2+14*s,y0+ph-6*s);ctx.closePath();ctx.fill();
+  // glaze runs
+  ctx.globalAlpha=.25;for(let i=0;i<14;i++){const x=GX-pw/2+20*s+hash1(i+40)*(pw-40*s);ctx.fillStyle=i%2?'#7d99ae':'#18202a';ctx.fillRect(x,y0+8*s,(1.5+hash1(i)*3)*s,(14+hash1(i+5)*30)*s)}ctx.globalAlpha=1;
+  // rim
+  const rim=ctx.createLinearGradient(0,y0-8*s,0,y0+6*s);rim.addColorStop(0,'#6b8aa1');rim.addColorStop(.5,'#3c5064');rim.addColorStop(1,'#243039');
+  ctx.fillStyle=rim;ctx.beginPath();ctx.roundRect(GX-pw/2-7*s,y0-7*s,pw+14*s,12*s,3*s);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(GX-pw/2-4*s,y0-6*s,pw+8*s,1.5*s);
+  // feet
+  ctx.fillStyle='#1b232c';for(const fx of[-1,1])ctx.fillRect(GX+fx*(pw/2-46*s)-15*s,y0+ph,30*s,7*s);
+  ctx.restore()}
+// trunk: a fixed S-curve from the soil to R0; its knots are the cuts made by earlier moves
+function trunkPts(wTop){
+  const s=SC,P=[[GX-8*s,GY+2*s],[GX+78*s,GY-70*s],[GX-66*s,GY-138*s],[R0x,R0y]],out=[];
+  for(let i=0;i<=28;i++){const u=i/28,v=1-u;
+    const x=v*v*v*P[0][0]+3*v*v*u*P[1][0]+3*v*u*u*P[2][0]+u*u*u*P[3][0],y=v*v*v*P[0][1]+3*v*v*u*P[1][1]+3*v*u*u*P[2][1]+u*u*u*P[3][1];
+    const dx=3*v*v*(P[1][0]-P[0][0])+6*v*u*(P[2][0]-P[1][0])+3*u*u*(P[3][0]-P[2][0]),dy=3*v*v*(P[1][1]-P[0][1])+6*v*u*(P[2][1]-P[1][1])+3*u*u*(P[3][1]-P[2][1]);
+    const L=Math.hypot(dx,dy)||1,w=lerp(44*s,wTop,u**.7)*(1+.07*Math.sin(u*17+1)+.05*Math.sin(u*7.3+2)*(1-u));
+    out.push({x,y,nx:-dy/L,ny:dx/L,w,u})}
+  return out}
+function drawTrunk(wTop){
+  const s=SC,T=trunkPts(wTop);
+  // surface roots
+  ctx.fillStyle='#35271f';for(const[dx,l,a]of[[-1,62,.12],[1,70,.08],[-1,34,.32],[1,40,.28]]){const bx=T[0].x+dx*8*s,by=T[0].y-2*s;ctx.beginPath();ctx.moveTo(bx-dx*10*s,by-14*s);ctx.quadraticCurveTo(bx+dx*l*.4*s,by-4*s-a*20*s,bx+dx*l*s,by+3*s);ctx.quadraticCurveTo(bx+dx*l*.4*s,by+5*s,bx-dx*12*s,by+4*s);ctx.fill()}
+  ctx.beginPath();T.forEach((p,i)=>{const x=p.x+p.nx*p.w/2,y=p.y+p.ny*p.w/2;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  for(let i=T.length-1;i>=0;i--){const p=T[i];ctx.lineTo(p.x-p.nx*p.w/2,p.y-p.ny*p.w/2)}ctx.closePath();
+  const gr=ctx.createLinearGradient(GX-60*s,0,GX+60*s,0);gr.addColorStop(0,'#5c4637');gr.addColorStop(.45,'#3c2c22');gr.addColorStop(1,'#241911');ctx.fillStyle=gr;ctx.fill();
+  // bark lines
+  ctx.lineCap='round';for(let j=0;j<7;j++){const f=(j/6-.5)*.8;ctx.strokeStyle=j%2?'rgba(20,12,8,.35)':'rgba(140,112,88,.28)';ctx.lineWidth=(j%2?1.1:.8)*s;ctx.beginPath();
+    T.forEach((p,i)=>{const x=p.x+p.nx*p.w*(f+.04*Math.sin(i*1.7+j)),y=p.y+p.ny*p.w*(f+.04*Math.sin(i*1.7+j));i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
+  // knots: stubs of the branches cut by earlier moves
+  const K=G.knots,nk=K.length;
+  for(let i=0;i<nk;i++){const u=.32+.62*(i+1)/(nk+1),p=T[Math.round(u*28)];
+    for(const[c,N]of K[i].cut){if(N<2)continue;const side=c<3?-1:c>3?1:(i%2?1:-1),l=(4+Math.min(9,Math.sqrt(N)*.5))*s,ww=Math.min(p.w*.45,(2+Math.sqrt(N)*.12)*s);
+      const ox=p.x+p.nx*side*p.w*.42,oy=p.y+p.ny*side*p.w*.42,a=Math.atan2(p.ny*side,p.nx*side)-.5*side+(c-3)*.08;
+      ctx.strokeStyle='#33241b';ctx.lineWidth=ww;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+Math.cos(a)*l,oy+Math.sin(a)*l);ctx.stroke();
+      ctx.fillStyle='#c7a47a';ctx.beginPath();ctx.ellipse(ox+Math.cos(a)*l,oy+Math.sin(a)*l,ww*.42,ww*.3,a,0,TAU);ctx.fill()}}
+  return T}
+
+/* ================= the bonsai: layout + drawing of a search tree ================= */
+class Grove{constructor(){this.cap=0;this.ensure(4096)}
+  ensure(n){if(n<=this.cap)return;const c=Math.max(n,this.cap*2);const F=Float32Array;
+    this.X=new F(c);this.Y=new F(c);this.A=new F(c);this.L=new F(c);this.Wd=new F(c);this.V=new F(c);this.Gr=new F(c);this.ord=new Int32Array(c);this.bk=new Uint8Array(c);this.cap=c}}
+const GV=new Grove(),PV=new Grove();
+const SPREAD=[0,1.22,1,.8,.64,.56,.5,.46,.44,.42,.4],DECAY=[1,1,.84,.72,.62,.54,.48,.43,.39,.36,.34,.32,.3];
+const MORPH={n:0,t0:0,X:new Float32Array(0),Y:new Float32Array(0),W:new Float32Array(0)};
+function startMorph(gv,t,map,n){const X=new Float32Array(n),Y=new Float32Array(n),W=new Float32Array(n);
+  for(let o=0;o<t.n;o++){const k=map[o];if(k>=0&&k<n){X[k]=gv.X[o];Y[k]=gv.Y[o];W[k]=gv.Wd[o]}}
+  Object.assign(MORPH,{n,t0:simT,X,Y,W})}
+let BBOX={l:0,r:0,t:0},MAXD=0;
+function layout(gv,t,persp,isMain){
+  const n=t.n;gv.ensure(n);const{X,Y,A,L,Wd,V,Gr}=gv,N=t.N,W=t.W,par=t.par,mv=t.mv,dep=t.dep,pl=t.pl,born=t.born,hs=t.hs;
+  const N0=Math.max(1,N[0]),lnRef=Math.log(1+Math.max(N0,40)),kw=26*SC/Math.sqrt(Math.max(N0,1100)),L0=96*SC;
+  X[0]=R0x;Y[0]=R0y;A[0]=UP;Wd[0]=kw*Math.sqrt(N0);L[0]=0;Gr[0]=1;
+  V[0]=N[0]>0?(pl[0]===persp?W[0]:N[0]-W[0])/N[0]:.5;
+  const sway=!STATIC,ts=simT;let l=R0x,r=R0x,top=R0y,md=0;
+  for(let k=1;k<n;k++){
+    const p=par[k],d=dep[k],Nk=N[k],h=hs[k];
+    const age=ts-born[k],g=STATIC||age>=.45?1:age<=0?0:easeOut(age/.45);
+    const share=Nk/Math.max(1,N[p]);
+    let a=A[p]+((mv[k]-3)/3)*SPREAD[d>10?10:d]*(1.2-.5*share)+(h-.5)*(.18+.5*(1-share)*(d>1?1:.3));
+    a+=(UP-a)*(d<2?.17:.11);
+    if(d>=2)a=Math.atan2(Math.sin(a)*.8,Math.cos(a));
+    if(sway)a+=Math.sin(ts*1.1+h*TAU+d*.6)*.022*Math.min(d,6)/(1+Math.sqrt(Nk)*.08);
+    const len=L0*DECAY[d>12?12:d]*(.2+.8*Math.log(1+Nk)/lnRef)*(.78+.44*h)*g;
+    A[k]=a;L[k]=len;X[k]=X[p]+Math.cos(a)*len;Y[k]=Y[p]+Math.sin(a)*len;Wd[k]=kw*Math.sqrt(Nk)*(.35+.65*g);Gr[k]=g;
+    const wk=pl[k]===persp?W[k]:Nk-W[k];V[k]=(wk+2*V[p])/(Nk+2);
+    if(d>md)md=d}
+  if(isMain&&MORPH.n){const e=clamp((ts-MORPH.t0)/.8,0,1);
+    if(e>=1)MORPH.n=0;else{const m=Math.min(MORPH.n,n),q=easeIO(e);for(let k=0;k<m;k++){X[k]=lerp(MORPH.X[k],X[k],q);Y[k]=lerp(MORPH.Y[k],Y[k],q);Wd[k]=lerp(MORPH.W[k],Wd[k],q)}}}
+  for(let k=0;k<n;k++){const x=X[k],y=Y[k];if(x<l)l=x;if(x>r)r=x;if(y<top)top=y}
+  gv.md=md;if(isMain){BBOX={l,r,t:top};MAXD=md}}
+// leaf colour: how the playouts through a twig went for the side that searched
+const PAL=[[0,[128,36,24]],[.22,[184,70,36]],[.4,[206,136,50]],[.52,[190,174,74]],[.68,[122,166,68]],[1,[40,116,64]]];
+const LEAFC=[];for(let i=0;i<24;i++){const v=i/23;let j=0;while(j<PAL.length-2&&v>PAL[j+1][0])j++;const[a,ca]=PAL[j],[b,cb]=PAL[j+1],u=(v-a)/(b-a);LEAFC.push(`rgb(${ca.map((x,q)=>Math.round(lerp(x,cb[q],u))).join(',')})`)}
+const leafIdx=v=>Math.round(clamp(.5+(v-.5)*1.6,0,1)*23);
+// leaf sprites: 24 angles × 2 pair variants × (24 value colours + dark + grey), shadow baked in
+const NANG=24,NCOL=26;let ATL=null,BLS=null,AS=0,AD=1,ALS=1;
+const angI=a=>{let u=a/TAU;u-=Math.floor(u);return Math.round(u*NANG)%NANG};
+function makeAtlas(){AD=Math.min(2,devicePixelRatio||1);ALS=1.25*SC;AS=Math.ceil(19*ALS*AD);
+  ATL=document.createElement('canvas');ATL.width=AS*NANG*2;ATL.height=AS*NCOL;const g=ATL.getContext('2d'),rx=4.25*ALS*AD,ry=rx*.46,u=ALS*AD;
+  for(let ci=0;ci<NCOL;ci++)for(let ai=0;ai<NANG;ai++)for(let v=0;v<2;v++){
+    const ox=(ai*2+v)*AS+AS/2,oy=ci*AS+AS/2,a=ai/NANG*TAU,a2=a+(v?-1:1)*1.05,r2=rx*.78,pair=ci<24;
+    const shape=(dx,dy)=>{g.beginPath();g.ellipse(ox+Math.cos(a)*rx*.55+dx,oy+Math.sin(a)*rx*.55+dy,rx,ci===24?rx*.42:ry,a,0,TAU);
+      if(pair){const x2=ox+Math.cos(a2)*r2*.5+dx,y2=oy+Math.sin(a2)*r2*.5+dy;g.moveTo(x2+Math.cos(a2)*r2,y2+Math.sin(a2)*r2);g.ellipse(x2,y2,r2,r2*.46,a2,0,TAU)}g.fill()};
+    g.fillStyle='rgba(44,38,22,.17)';shape(.9*u,1.4*u);g.fillStyle=pair?LEAFC[ci]:ci===24?'#3f1a12':'#9b9786';shape(0,0);
+    if(pair){g.strokeStyle='rgba(255,250,220,.22)';g.lineWidth=.5*u;g.beginPath();g.moveTo(ox,oy);g.lineTo(ox+Math.cos(a)*rx*1.4,oy+Math.sin(a)*rx*1.4);g.stroke()}}
+  const rb=2.85*u;BLS=document.createElement('canvas');BLS.width=BLS.height=Math.ceil(rb*4.6);const b=BLS.getContext('2d'),c=BLS.width/2;
+  b.fillStyle='#fbe8ee';b.strokeStyle='rgba(214,128,152,.8)';b.lineWidth=.7*u;
+  for(let j=0;j<5;j++){const q=-Math.PI/2+j*TAU/5;b.beginPath();b.arc(c+Math.cos(q)*rb*1.05,c+Math.sin(q)*rb*1.05,rb,0,TAU);b.fill();b.stroke()}
+  b.fillStyle='#fbe8ee';b.beginPath();b.arc(c,c,rb*1.1,0,TAU);b.fill();b.fillStyle='#e4ae36';b.beginPath();b.arc(c,c,rb*.5,0,TAU);b.fill()}
+function barkCol(w){const u=clamp((w-.6)/5,0,1);return`rgb(${Math.round(lerp(104,52,u))},${Math.round(lerp(88,37,u))},${Math.round(lerp(64,28,u))})`}
+const BCOL=[];for(let b=0;b<80;b++)BCOL.push(barkCol(b/2));
+const CNT=new Int32Array(81),LCNT=new Int32Array(25);
+function drawGrove(gv,t,persp,alpha){
+  const n=t.n,{X,Y,A,L,Wd,V,Gr,ord,bk}=gv,par=t.par,N=t.N,term=t.term,pl=t.pl,hs=t.hs;
+  ctx.globalAlpha=alpha;ctx.lineCap='round';
+  // branches, batched by width
+  CNT.fill(0);
+  for(let k=1;k<n;k++){const w=Wd[k],b=w<.55?0:w>39?79:Math.round(w*2);bk[k]=b;CNT[b]++}
+  let acc=0;const st=new Int32Array(81);for(let b=0;b<80;b++){st[b]=acc;acc+=CNT[b]}
+  for(let k=1;k<n;k++)ord[st[bk[k]]++]=k;
+  acc=0;
+  for(let b=0;b<80;b++){const c=CNT[b];if(!c)continue;const lw=b?b/2:.55;
+    ctx.lineWidth=lw;ctx.strokeStyle=BCOL[b];if(!b)ctx.globalAlpha=alpha*.7;ctx.beginPath();
+    if(lw<1.3){ctx.lineCap='butt';for(let i=acc;i<acc+c;i++){const k=ord[i],p=par[k];ctx.moveTo(X[p],Y[p]);ctx.lineTo(X[k],Y[k])}ctx.stroke();ctx.lineCap='round'}
+    else{for(let i=acc;i<acc+c;i++){const k=ord[i],p=par[k],ca=A[p],l=L[k]*.45;ctx.moveTo(X[p],Y[p]);ctx.quadraticCurveTo(X[p]+Math.cos(ca)*l,Y[p]+Math.sin(ca)*l,X[k],Y[k])}ctx.stroke()}
+    if(!b)ctx.globalAlpha=alpha;
+    if(lw>=3){ctx.save();ctx.translate(-lw*.16,-lw*.1);ctx.lineWidth=lw*.28;ctx.strokeStyle='rgba(150,122,96,.42)';ctx.beginPath();
+      for(let i=acc;i<acc+c;i++){const k=ord[i],p=par[k],ca=A[p],l=L[k]*.45;ctx.moveTo(X[p],Y[p]);ctx.quadraticCurveTo(X[p]+Math.cos(ca)*l,Y[p]+Math.sin(ca)*l,X[k],Y[k])}
+      ctx.stroke();ctx.restore()}
+    acc+=c}
+  // leaves at the twig ends (N ≤ 3), coloured by value; blossoms and dark leaves on finished games (sprites: thousands of paths are slow to raster)
+  const N0=Math.max(1,N[0]),LS=SC*clamp(Math.sqrt(2600/Math.max(N0,300)),.62,1.25),S=AS/AD,bl=[];
+  for(let k=1;k<n;k++){
+    const tm=term[k];if(!tm&&N[k]>5)continue;
+    if(tm===1&&pl[k]===persp){bl.push(k);continue}
+    const h=hs[k],g=Gr[k],ci=tm?(tm===2?25:24):leafIdx(V[k]),sc=(tm===1?3.6+1.4*h:3.3+1.9*h)/4.25*g*LS/ALS;if(sc<.04)continue;
+    const d=S*sc;ctx.drawImage(ATL,(angI(A[k]+(h-.5)*1.3)*2+(h>.5?0:1))*AS,ci*AS,AS,AS,X[k]-d/2,Y[k]-d/2,d,d)}
+  for(const k of bl){const r=LS*(1.1+Math.min(1.6,Math.sqrt(N[k])*.3))*Gr[k]/ALS,d=BLS.width/AD*r/2.85;ctx.drawImage(BLS,X[k]-d/2,Y[k]-d/2,d,d)}
+  ctx.globalAlpha=1}
+function strokeCore(gv,t,ks,col,s){const{X,Y,A,L,Wd}=gv;ctx.strokeStyle=col;ctx.lineCap='round';
+  for(const k of ks){const p=t.par[k],ca=A[p],l=L[k]*.45;ctx.lineWidth=Math.max(1.6*s,Wd[k]*.34);ctx.beginPath();ctx.moveTo(X[p],Y[p]);ctx.quadraticCurveTo(X[p]+Math.cos(ca)*l,Y[p]+Math.sin(ca)*l,X[k],Y[k]);ctx.stroke()}}
+function pathTo(t,k){const P=[];while(k>0){P.push(k);k=t.par[k]}return P.reverse()}
+function strokePath(gv,t,ks,col,extra,alpha){
+  const{X,Y,A,L,Wd}=gv;ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineCap='round';
+  for(const k of ks){const p=t.par[k],ca=A[p],l=L[k]*.45;ctx.lineWidth=Wd[k]+extra;ctx.beginPath();ctx.moveTo(X[p],Y[p]);ctx.quadraticCurveTo(X[p]+Math.cos(ca)*l,Y[p]+Math.sin(ca)*l,X[k],Y[k]);ctx.stroke()}
+  ctx.globalAlpha=1}
+function highlight(gv,t,ks,strong,red){
+  if(!ks.length)return;const s=SC;
+  strokePath(gv,t,ks,red?'rgba(200,70,40,1)':'rgba(255,206,90,1)',6*s,strong?.2:.14);
+  strokeCore(gv,t,ks,red?'#b8401f':strong?'#e0a21e':'#e8bd52',s);
+  const k=ks[ks.length-1];ctx.fillStyle='rgba(255,226,140,.9)';ctx.beginPath();ctx.arc(gv.X[k],gv.Y[k],3.2*s,0,TAU);ctx.fill()}
+// recent playouts flash along their path
+const TR=[];
+function drawTrails(gv){
+  for(let i=TR.length-1;i>=0;i--){const tr=TR[i],age=simT-tr.t;if(age>.35||tr.tree!==G.t&&tr.tree!==probe?.t){TR.splice(i,1);continue}}
+  if(TR.length>12)TR.splice(0,TR.length-12);
+  for(const tr of TR){const t=tr.tree,g=t===G.t?GV:PV,age=simT-tr.t,a=1-age/.35;if(tr.k>=t.n)continue;
+    ctx.globalAlpha=a*.9;ctx.strokeStyle='#fff3c4';ctx.lineWidth=1.7*SC;ctx.lineCap='round';ctx.beginPath();let k=tr.k;ctx.moveTo(g.X[k],g.Y[k]);
+    while(k>0){const p=t.par[k];ctx.lineTo(g.X[p],g.Y[p]);k=p}ctx.stroke();
+    ctx.fillStyle='#fff7d6';ctx.beginPath();ctx.arc(g.X[tr.k],g.Y[tr.k],2.6*SC*(1+.6*(1-a)),0,TAU);ctx.fill()}
+  ctx.globalAlpha=1}
+// pruned branches fall away
+const DEB=[];
+function spawnDebris(gv,t,root,col){
+  const segs=[],leaves=[],q=[root],N=t.N;
+  for(let i=0;i<q.length&&q.length<60000;i++){const k=q[i];for(let c=0;c<7;c++){const ch=t.kid[k*7+c];if(ch>=0)q.push(ch)}}
+  for(const k of q){if(k>=gv.cap)continue;const p=t.par[k],ca=gv.A[p],l=gv.L[k]*.45;
+    if(gv.Wd[k]>.3)segs.push([gv.X[p],gv.Y[p],gv.X[p]+Math.cos(ca)*l,gv.Y[p]+Math.sin(ca)*l,gv.X[k],gv.Y[k],gv.Wd[k]]);
+    if(!t.term[k]&&N[k]<=3)leaves.push([gv.X[k],gv.Y[k],gv.A[k]+(t.hs[k]-.5)*1.3,SC*(3.3+1.9*t.hs[k]),leafIdx(gv.V[k])])}
+  segs.sort((a,b)=>a[6]-b[6]);leaves.sort((a,b)=>a[4]-b[4]);
+  const dir=col<3?-1:col>3?1:(Math.random()<.5?-1:1);
+  DEB.push({segs,leaves,px:gv.X[0],py:gv.Y[0],vx:dir*(40+Math.random()*50)*SC,vy:-(30+Math.random()*60)*SC,va:dir*(.5+Math.random()*.9),t0:simT})}
+function drawDebris(){
+  for(let i=DEB.length-1;i>=0;i--){const d=DEB[i],e=simT-d.t0;if(e>1.15){DEB.splice(i,1);continue}
+    ctx.save();ctx.globalAlpha=(1-e/1.15)**1.4;ctx.translate(d.px+d.vx*e,d.py+d.vy*e+1100*SC*e*e);ctx.rotate(d.va*e);ctx.translate(-d.px,-d.py);
+    let w=-1;ctx.lineCap='round';
+    for(const s of d.segs){if(Math.abs(s[6]-w)>.25){if(w>=0)ctx.stroke();w=s[6];ctx.lineWidth=w;ctx.strokeStyle=barkCol(w);ctx.beginPath()}ctx.moveTo(s[0],s[1]);ctx.quadraticCurveTo(s[2],s[3],s[4],s[5])}
+    if(w>=0)ctx.stroke();
+    const S=AS/AD;for(const f of d.leaves){const dd=S*f[3]/(4.25*ALS);ctx.drawImage(ATL,angI(f[2])*2*AS,f[4]*AS,AS,AS,f[0]-dd/2,f[1]-dd/2,dd,dd)}
+    ctx.restore()}}
+// small effects: snip sparks, blossom burst, falling leaves
+const FX=[];
+function burst(kind){const n=kind==='bloom'?70:90;for(let i=0;i<n;i++){const k=1+Math.floor(Math.random()*Math.max(1,G.t.n-1));
+  const x=GV.X[Math.min(k,GV.cap-1)]||R0x,y=GV.Y[Math.min(k,GV.cap-1)]||R0y;
+  FX.push({k:kind,t:simT+Math.random()*.6,x:x+(Math.random()-.5)*180*SC,y:y-Math.random()*120*SC,vx:(Math.random()-.5)*40*SC,ph:Math.random()*TAU,c:kind==='bloom'?0:Math.floor(Math.random()*8)})}}
+function drawFX(){
+  for(let i=FX.length-1;i>=0;i--){const f=FX[i],e=simT-f.t;if(e<0)continue;
+    if(f.k==='snip'){if(e>.45){FX.splice(i,1);continue}const r=(6+40*e)*SC;ctx.strokeStyle=`rgba(255,244,214,${.9*(1-e/.45)})`;ctx.lineWidth=2*SC;ctx.beginPath();ctx.arc(R0x,R0y,r,0,TAU);ctx.stroke();
+      ctx.fillStyle=`rgba(214,184,140,${1-e/.45})`;for(let j=0;j<10;j++){const a=j/10*TAU+.3,d=(8+70*e)*SC;ctx.fillRect(R0x+Math.cos(a)*d,R0y+Math.sin(a)*d+60*e*e*SC,2*SC,2*SC)}continue}
+    if(e>4){FX.splice(i,1);continue}
+    const x=f.x+f.vx*e+Math.sin(f.ph+e*3)*14*SC,y=f.y+(f.k==='bloom'?30:60)*SC*e+(f.k==='bloom'?0:30*SC*e*e),a=Math.min(1,(4-e)/1.2);
+    ctx.globalAlpha=a;
+    if(f.k==='bloom'){ctx.fillStyle='#fbe3ea';const r=2.6*SC;for(let j=0;j<5;j++){const q=f.ph+j*TAU/5;ctx.beginPath();ctx.arc(x+Math.cos(q)*r,y+Math.sin(q)*r,r,0,TAU);ctx.fill()}ctx.fillStyle='#e4ae36';ctx.beginPath();ctx.arc(x,y,r*.5,0,TAU);ctx.fill()}
+    else{ctx.fillStyle=LEAFC[[1,2,3,4,0,2,3,1][f.c]];ctx.beginPath();ctx.ellipse(x,y,5*SC,2.3*SC,f.ph+e*2.5,0,TAU);ctx.fill()}
+    ctx.globalAlpha=1}}
+
+/* ================= the board ================= */
+const bc=$('#board'),bx=bc.getContext('2d');
+let BW=0,BH=0,CS=40,FR=10,HT=48,BX0=0,BY0=0,BDPR=1,FRAME=null;
+const FALL=[];const LIFT=[];
+function layoutBoard(){
+  BW=Math.max(200,bc.clientWidth);BDPR=Math.min(2,devicePixelRatio||1);FR=Math.round(BW*.032);CS=Math.floor((BW-2*FR)/7);
+  const short=!isPhone()&&innerHeight<780;if(short)CS=Math.min(CS,36);
+  HT=Math.round(CS*1.16);BX0=Math.round((BW-(CS*7+2*FR))/2);BY0=HT;BH=HT+CS*6+2*FR+20;
+  bc.style.height=BH+'px';bc.width=Math.round(BW*BDPR);bc.height=Math.round(BH*BDPR);makeFrame();makeStones();boardSig=''}
+const cxB=c=>BX0+FR+CS*(c+.5),cyB=r=>BY0+FR+CS*(5-r+.5);
+function makeFrame(){
+  const w=CS*7+2*FR,h=CS*6+2*FR;FRAME=document.createElement('canvas');FRAME.width=Math.round(w*BDPR);FRAME.height=Math.round(h*BDPR);
+  const g=FRAME.getContext('2d');g.setTransform(BDPR,0,0,BDPR,0,0);
+  const wood=g.createLinearGradient(0,0,w,0);wood.addColorStop(0,'#c9a46e');wood.addColorStop(.5,'#ddbf8c');wood.addColorStop(1,'#c29a62');
+  g.fillStyle=wood;g.beginPath();g.roundRect(0,0,w,h,9);g.fill();
+  for(let i=0;i<46;i++){const x0=hash1(i+.5)*w,amp=2+hash1(i+9)*5;g.strokeStyle=`rgba(${i%3?'120,82,40':'250,230,190'},${.08+hash1(i+3)*.1})`;g.lineWidth=.6+hash1(i+1)*1.2;g.beginPath();
+    for(let y=0;y<=h;y+=6){const x=x0+Math.sin(y*.03+i)*amp+Math.sin(y*.11+i*2)*1.2;y?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()}
+  g.globalCompositeOperation='destination-out';
+  for(let c=0;c<7;c++)for(let r=0;r<6;r++){g.beginPath();g.arc(FR+CS*(c+.5),FR+CS*(5-r+.5),CS*.4,0,TAU);g.fill()}
+  g.globalCompositeOperation='source-over';
+  for(let c=0;c<7;c++)for(let r=0;r<6;r++){const x=FR+CS*(c+.5),y=FR+CS*(5-r+.5),R=CS*.4;
+    const be=g.createLinearGradient(x-R,y-R,x+R,y+R);be.addColorStop(0,'rgba(70,44,20,.55)');be.addColorStop(1,'rgba(255,240,210,.55)');g.strokeStyle=be;g.lineWidth=1.6;g.beginPath();g.arc(x,y,R+.6,0,TAU);g.stroke()}
+  g.strokeStyle='rgba(90,60,30,.5)';g.lineWidth=1;g.beginPath();g.roundRect(.5,.5,w-1,h-1,9);g.stroke()}
+const STN=[null,null,null];
+function makeStones(){for(const p of[1,2]){const R=CS*.4,s=Math.ceil(2*R*BDPR)+2,c=document.createElement('canvas');c.width=c.height=s;const g=c.getContext('2d'),o=s/2,r=R*BDPR;
+  const gr=g.createRadialGradient(o-r*.35,o-r*.4,r*.1,o,o,r);
+  if(p===1){gr.addColorStop(0,'#6d6d6f');gr.addColorStop(.5,'#232325');gr.addColorStop(1,'#0d0d0e')}else{gr.addColorStop(0,'#ffffff');gr.addColorStop(.6,'#efece3');gr.addColorStop(1,'#c8c4b8')}
+  g.fillStyle=gr;g.beginPath();g.arc(o,o,r,0,TAU);g.fill();STN[p]=c}}
+function stone(x,y,p,a,R){R=R||CS*.4;const c=STN[p],d=c.width/BDPR*R/(CS*.4);bx.globalAlpha=a;bx.drawImage(c,x-d/2,y-d/2,d,d);bx.globalAlpha=1}
+function dropStone(c,r,p){if(STATIC)return;const y0=HT*.45,y1=cyB(r);FALL.push({c,r,p,t0:simT,y0,y1,T:Math.sqrt(2*(y1-y0)/5200)})}
+function liftStone(c,r,p){if(STATIC||r<0||!p)return;LIFT.push({c,r,p,t0:simT})}
+function ghostLine(){
+  if(G.phase==='over')return[];
+  // the line to preview: the hovered branch, else its plan while deciding/waiting
+  if(probe)return probe.done?probe.line:[];
+  let ks=null;if(hoverK>0&&hoverK<G.t.n)ks=pathTo(G.t,hoverK);
+  else if(G.phase==='decide')return pvLine(G.t,0,6).map((c,i)=>({c,i}));
+  return ks?ks.map((k,i)=>({c:G.t.mv[k],i})):[]}
+let boardSig='',boardT=0;
+function drawBoard(){
+  // redraw only when something on it changed (at most ~12 times a second while the bars move)
+  const busy=FALL.length||LIFT.length||(G.pos.over&&!STATIC),sig=[G.pos.moves.join(''),hoverCol,hoverK,G.phase,probe?probe.th.done+':'+probe.done:'',G.t.N[0],G.t.n].join('|');
+  if(!busy&&sig===boardSig)return;if(!busy&&G.th&&simT-boardT<.08&&sig.split('|').slice(0,5).join()===boardSig.split('|').slice(0,5).join())return;boardSig=sig;boardT=simT;
+  bx.setTransform(BDPR,0,0,BDPR,0,0);bx.clearRect(0,0,BW,BH);
+  const t=probe?probe.t:G.t,pos=G.pos;
+  // where the playouts went (or where it expects you to play), above each column
+  let tot=0;for(let c=0;c<7;c++){const k=t.kid[c];if(k>=0)tot+=t.N[k]}
+  const persp=probe?2:G.persp;
+  for(let c=0;c<7;c++){const k=t.kid[c];if(k<0||!tot)continue;const sh=t.N[k]/tot,h=Math.max(1.5,sh*(HT-18)),x=cxB(c),v=(t.pl[k]===persp?t.W[k]:t.N[k]-t.W[k])/t.N[k];
+    bx.fillStyle=LEAFC[leafIdx(v)];bx.beginPath();bx.roundRect(x-CS*.2,HT-4-h,CS*.4,h,[3,3,0,0]);bx.fill();
+    if(sh>=.06){bx.fillStyle='#5a5348';bx.font=`500 ${Math.round(CS*.24)}px "IBM Plex Mono",monospace`;bx.textAlign='center';bx.fillText(Math.round(sh*100)+'%',x,HT-7-h)}}
+  bx.fillStyle='#2b2119';bx.beginPath();bx.roundRect(BX0+3,BY0+3,CS*7+2*FR-6,CS*6+2*FR-6,8);bx.fill();
+  const falling=new Set(FALL.map(f=>f.c*6+f.r)),lifting=new Set(LIFT.map(f=>f.c*6+f.r));
+  for(let c=0;c<7;c++)for(let r=0;r<6;r++){const p=pos.c[c*6+r];if(p&&!falling.has(c*6+r))stone(cxB(c),cyB(r),p,1)}
+  for(let i=LIFT.length-1;i>=0;i--){const f=LIFT[i],e=(simT-f.t0)/.35;if(e>=1){LIFT.splice(i,1);continue}if(f.p&&!pos.c[f.c*6+f.r])stone(cxB(f.c),cyB(f.r)-e*CS*.6,f.p,1-e)}
+  for(let i=FALL.length-1;i>=0;i--){const f=FALL[i],e=simT-f.t0;let y;
+    if(e<f.T)y=f.y0+.5*5200*e*e;else{const b=e-f.T;if(b>.16){FALL.splice(i,1);stone(cxB(f.c),cyB(f.r),f.p,1);continue}y=f.y1-Math.sin(b/.16*Math.PI)*CS*.12}
+    stone(cxB(f.c),Math.min(y,f.y1),f.p,1)}
+  // preview line: numbered ghost stones
+  const L=ghostLine(),rings=[];
+  if(L&&L.length){const h=Array.from(pos.h);let p=pos.turn;bx.font=`600 ${Math.round(CS*.3)}px "IBM Plex Mono",monospace`;bx.textAlign='center';bx.textBaseline='middle';
+    for(const{c,i,win}of L){if(h[c]>=6)break;const r=h[c]++;stone(cxB(c),cyB(r),p,.55,CS*.33);
+      if(win)rings.push([cxB(c),cyB(r)]);
+      bx.fillStyle=p===1?'#f4efe4':'#2a2723';bx.fillText(String(i+1),cxB(c),cyB(r)+1);p=3-p}
+    bx.textBaseline='alphabetic'}
+  bx.drawImage(FRAME,BX0,BY0,CS*7+2*FR,CS*6+2*FR);
+  // the winning reply it missed: a red ring on the frame
+  for(const[x,y]of rings){bx.strokeStyle='#c0391f';bx.lineWidth=3;bx.beginPath();bx.arc(x,y,CS*.46,0,TAU);bx.stroke()}
+  if(pos.over&&pos.line&&!FALL.length){const P=pos.line,pulse=.6+.4*Math.sin(simT*5);bx.strokeStyle=`rgba(232,170,40,${STATIC?.95:pulse})`;bx.lineWidth=CS*.16;bx.lineCap='round';bx.beginPath();
+    bx.moveTo(cxB(P[0][0]),cyB(P[0][1]));bx.lineTo(cxB(P[P.length-1][0]),cyB(P[P.length-1][1]));bx.stroke()}
+  if(hoverCol>=0&&G.phase==='wait'&&pos.turn!==G.ai&&pos.legal(hoverCol))stone(cxB(hoverCol),HT*.45,pos.turn,.85,CS*.36);
+  bx.font=`500 ${Math.round(CS*.27)}px "IBM Plex Mono",monospace`;bx.textAlign='center';
+  for(let c=0;c<7;c++){bx.fillStyle=c===hoverCol?'#22201c':'#8b8272';bx.fillText(LET[c],cxB(c),BY0+CS*6+2*FR+15)}}
+
+/* ================= tour ================= */
+function startProbe(){const t=new Tree(256),pos=Pos.from(TOUR_POS);t.add(-1,-1,3-pos.turn,simT);
+  probe={t,pos,rng:mulberry32(SAPLING_SEED),th:{t0:simT,T:1.5,budget:SAPLING_SIMS,done:0,C:Math.SQRT2},done:false}}
+function probeTick(){if(!probe||probe.done)return;const th=probe.th,e=STATIC?1:clamp((simT-th.t0)/th.T,0,1),want=e>=1?th.budget:Math.floor(th.budget*e**1.3);
+  if(want>th.done)runSims(th,probe.t,probe.pos,probe.rng,want-th.done,!STATIC);
+  if(th.done>=th.budget){const b=bestKid(probe.t,0);probe.pick=probe.t.mv[b];probe.done=true;
+    probe.line=[{c:probe.pick,i:0},{c:5,i:1,win:true}];
+    G.log.push({k:'probe',moves:TOUR_POS.slice(),seed:SAPLING_SEED,sims:th.done,C:th.C,kids:kidStats(probe.t,0),pick:probe.pick,nodes:probe.t.n})}}
+function dropProbe(){if(!probe)return;if(!STATIC)for(let c=0;c<7;c++){const ch=probe.t.kid[c];if(ch>=0)spawnDebris(PV,probe.t,ch,c)}probe=null}
+function startTour(){
+  newGame(TOUR_POS,TOUR_SEED,2);G.budget=TOUR_BUDGET;G.C=Math.SQRT2;syncControls();
+  tour={t:0,step:0};startThink(true,5);caption(CAP.a)}
+function tourTick(dt){
+  if(!tour||tour.hold)return;tour.t+=dt;const T=tour;
+  if(T.step===0){if(!T.b&&T.t>2.6){T.b=1;caption(CAP.b)}if(G.phase==='decide'){T.step=1;T.t1=T.t;caption(CAP.c)}}
+  else if(T.step===1){if(T.t-T.t1>3.1){T.step=2;startProbe();caption(CAP.d)}}
+  else if(T.step===2){if(probe&&probe.done){T.step=3;T.t3=T.t;caption(CAP.e(probe.pick))}}
+  else if(T.step===3){if(T.t-T.t3>3.6){T.step=4;T.t4=T.t;dropProbe();caption(CAP.f)}}
+  else if(T.step===4){if(T.t-T.t4>1.1){T.step=5;T.t5=T.t;commitAI()}}
+  else if(T.step===5){if(T.t-T.t5>1.4){tour=null;caption(CAP.g)}}}
+// any touch ends the tour: finish its search, let it play f, and hand over the board
+function stopTour(){
+  if(!tour)return;const was=tour;tour=null;
+  if(G.th){runSims(G.th,G.t,G.pos,G.rng,G.th.budget-G.th.done,false,1e9);finishThink()}
+  if(probe){probe.done||(probe.th.done=probe.th.budget);dropProbe()}
+  if(G.phase==='decide')commitAI();
+  caption(was.hold?'It played <b>f</b>. <b>Your move</b>: you are Black. Click a column.':CAP.g)}
+
+/* ================= panel ================= */
+const NICE=v=>{const d=Math.pow(10,Math.floor(Math.log10(v))-1);return Math.round(v/d)*d};
+const budgetOf=v=>clamp(NICE(Math.pow(2,v/10)),16,16000);
+function syncControls(){$('#budget').value=(Math.log2(G.budget)*10).toFixed(2);$('#bv').textContent=fmt(G.budget)+' playouts';
+  $$('#presets button').forEach(b=>b.classList.toggle('on',+b.dataset.b===G.budget));
+  $('#cexp').value=Math.round(G.C*100);$('#cv').textContent=G.C.toFixed(2);$$('#cpresets button').forEach(b=>b.classList.toggle('on',Math.abs((b.dataset.c==='r2'?Math.SQRT2:+b.dataset.c)-G.C)<1e-9));$('#pace').textContent='Pace: '+(G.pace==='fast'?'fast':'watch')}
+let uiAcc=0;
+function panel(){
+  const t=G.t,ph=G.phase,turn=$('#turn');
+  const msg=probe?(probe.done?`The sapling plays ${LET[probe.pick]}`:'A sapling is thinking…'):ph==='think'||ph==='pause'?'It is thinking…':ph==='decide'?`It plays ${LET[G.pick]}`:ph==='over'?(G.pos.winner===G.ai?'It wins':G.pos.winner?'You win!':'A draw'):ph==='wait'?'Your move':'…';
+  if(turn.textContent!==msg)turn.textContent=msg;turn.classList.toggle('think',ph==='think'||ph==='pause');
+  const th=G.th,tot=kidTotal(t);
+  $('#sN').textContent=fmt(th?th.done:probe?probe.th.done:G.log.filter(e=>e.k==='search').slice(-1)[0]?.sims||0);
+  $('#sB').textContent='of '+fmt(th?th.budget:probe?probe.th.budget:G.budget);
+  $('#prog i').style.width=(th?th.done/th.budget*100:probe?probe.th.done/probe.th.budget*100:0)+'%';
+  $('#sT').textContent=fmt(probe?probe.t.n:t.n);$('#sD').textContent=probe?PV.md||0:MAXD;
+  const q=ph==='over'?(G.pos.winner===G.ai?1:G.pos.winner?0:.5):odds(probe?probe.t:t);$('#sQ').textContent=q==null?'—':Math.round(q*100)+'%';
+  $('#histl').textContent=probe?'where the sapling’s 30 playouts went':ph==='over'?' ':ph==='wait'?'where it expects you to play':tot?'where its playouts went':' ';
+  const pv=pvLine(probe?probe.t:t,0,7);let p=G.pos.turn;
+  $('#pv').innerHTML=pv.map(c=>{const s=`<span class="pvm ${p===1?'b':'w'}">${LET[c]}</span>`;p=3-p;return s}).join('');
+  $('#rethink').disabled=!tour&&(G.phase==='pause'||(G.phase!=='think'&&G.phase!=='decide'&&G.lastAI<0));
+  if(G.busyN>2000){G.rate=G.busyN/G.busyMs*1000;$('#rate').textContent=fmt(NICE(G.rate))}}
+
+/* ================= input ================= */
+function poke(){if(tour)stopTour()}
+const colAt=x=>{const c=Math.floor((x-BX0-FR)/CS);return c>=0&&c<7?c:-1};
+bc.addEventListener('pointermove',e=>{const r=bc.getBoundingClientRect();hoverCol=colAt(e.clientX-r.left)});
+bc.addEventListener('pointerleave',()=>{hoverCol=-1});
+bc.addEventListener('click',e=>{const r=bc.getBoundingClientRect(),c=colAt(e.clientX-r.left);if(c<0)return;poke();if(!humanPlay(c)&&G.phase==='over')caption('The game is over: start a new one, or press ↺ to make it rethink.')});
+$$('#panel input,#panel button,#panel summary,#board').forEach(el=>el.addEventListener('pointerdown',poke));
+function setBudget(b){G.budget=b;$('#bv').textContent=fmt(b)+' playouts';$$('#presets button').forEach(x=>x.classList.toggle('on',+x.dataset.b===b));
+  if(G.th){G.th.budget=b;if(!G.th.custom)G.th.T=thinkTime(b)}}
+function budgetChanged(){const r=autoRethink('b');
+  if(r==='live')caption(`Budget: <b>${fmt(G.budget)}</b> playouts for this search.`);
+  else if(r==='next')caption(`Budget: <b>${fmt(G.budget)}</b> playouts a move, from its next search.`)}
+$('#budget').addEventListener('input',e=>{poke();setBudget(budgetOf(+e.target.value))});
+$('#budget').addEventListener('change',budgetChanged);
+$$('#presets button').forEach(b=>b.addEventListener('click',()=>{poke();setBudget(+b.dataset.b);syncControls();budgetChanged()}));
+function setC(c){G.C=c;syncControls();const r=autoRethink('c');
+  if(r==='restart')caption(`c = <b>${G.C.toFixed(2)}</b>: searching again from a fresh tree. ${shapeOf(G.C)}`);
+  else if(r==='next')caption(`c = <b>${G.C.toFixed(2)}</b>, from its next search. ${shapeOf(G.C)}`)}
+$('#cexp').addEventListener('input',e=>{poke();$('#cv').textContent=(+e.target.value/100).toFixed(2)});
+$('#cexp').addEventListener('change',e=>setC(+e.target.value/100));
+$$('#cpresets button').forEach(b=>b.addEventListener('click',()=>{poke();setC(b.dataset.c==='r2'?Math.SQRT2:+b.dataset.c)}));
+$('#rethink').addEventListener('click',()=>{poke();rethink()});
+$('#pace').addEventListener('click',()=>{poke();G.pace=G.pace==='fast'?'watch':'fast';syncControls()});
+$('#newme').addEventListener('click',()=>{poke();newGame([],Q.has('seed')?+Q.get('seed'):randSeed(),2);G.phase='wait';caption('New game. <b>Your move</b>: you are Black and go first.')});
+$('#newit').addEventListener('click',()=>{poke();newGame([],Q.has('seed')?+Q.get('seed'):randSeed(),1);startThink(true);caption('New game. It is Black and goes first; you are White.')});
+$('#tourb').addEventListener('click',()=>{tour=null;STATIC?staticStart():startTour()});
+addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input'))return;
+  if(e.key>='1'&&e.key<='7'){poke();humanPlay(+e.key-1)}else if(e.key==='r'||e.key==='R'){poke();rethink()}});
+// hover a branch: its line of play, its playouts, how they went
+const tip=$('#tip');
+function nearest(px,py){const t=probe?probe.t:G.t,gv=probe?PV:GV,X=gv.X,Y=gv.Y;const x=GX+(px-GX)/Z,y=GY+(py-GY)/Z;let best=-1,bd=(16/Z)**2;
+  for(let k=1;k<t.n;k++){const dx=X[k]-x,dy=Y[k]-y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=k}}return best}
+let mouse=null;
+cv.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;const r=cv.getBoundingClientRect();mouse={x:e.clientX-r.left,y:e.clientY-r.top,cx:e.clientX,cy:e.clientY}});
+cv.addEventListener('pointerleave',()=>{mouse=null;hoverK=-1;tip.style.opacity=0});
+cv.addEventListener('pointerdown',e=>{poke();const r=cv.getBoundingClientRect();mouse={x:e.clientX-r.left,y:e.clientY-r.top,cx:e.clientX,cy:e.clientY,tap:e.pointerType==='touch',t:simT}});
+function hoverTick(){
+  if(!mouse){return}if(mouse.tap&&simT-mouse.t>3){mouse=null;hoverK=-1;return}
+  const t=probe?probe.t:G.t,k=nearest(mouse.x,mouse.y);hoverK=probe?-1:k;
+  if(k<0){tip.style.opacity=0;return}
+  const ks=pathTo(t,k);let p=G.pos.turn;const line=ks.map(q=>{const s=`${p===1?'●':'○'}${LET[t.mv[q]]}`;p=3-p;return s}).join(' ');
+  const persp=probe?2:G.persp,v=(t.pl[k]===persp?t.W[k]:t.N[k]-t.W[k])/t.N[k];
+  const end=t.term[k]===1?(t.pl[k]===persp?' · <span class="g">it wins here</span>':' · <span class="r">you win here</span>'):t.term[k]===2?' · draw':'';
+  tip.innerHTML=`<b>${line}</b>${end}<br>${fmt(t.N[k])} playout${t.N[k]>1?'s':''} · it won <span class="${v>=.5?'g':'r'}">${Math.round(v*100)}%</span>`;
+  tip.style.left=mouse.cx+'px';tip.style.top=mouse.cy+'px';tip.style.opacity=1}
+
+/* ================= frame ================= */
+function update(dt){
+  simT+=dt;
+  thinkTick();probeTick();tourTick(dt);
+  if(G.phase==='decide'&&!tour&&simT-G.decideT>(STATIC?0:.5))commitAI();
+  if(G.phase==='pause'&&simT-G.pauseT>(STATIC?0:.85))startThink(false);
+  ghostA=lerp(ghostA,probe?.14:1,STATIC?1:Math.min(1,dt*6))}
+function render(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.drawImage(BG,0,0,VW,VH);
+  layout(GV,G.t,G.persp,true);if(probe)layout(PV,probe.t,2,false);
+  // keep the crown on screen
+  const need=Math.min(1.12,(GY-FREE.t)/Math.max(1,GY-BBOX.t),BBOX.l<GX?(GX-FREE.l)/Math.max(1,GX-BBOX.l):9,BBOX.r>GX?(FREE.r-GX)/Math.max(1,BBOX.r-GX):9);
+  Zt=clamp(need,.45,1.12);Z=STATIC?Zt:lerp(Z,Zt,Zt<Z?.08:.02);
+  ctx.save();ctx.translate(GX,GY);ctx.scale(Z,Z);ctx.translate(-GX,-GY);
+  drawStand();drawPotBack();
+  const wTop=Math.max(9*SC,GV.Wd[0]);drawTrunk(wTop);
+  if(G.t.n<2&&!MORPH.n){ctx.fillStyle='#6f9a44';ctx.beginPath();ctx.ellipse(R0x,R0y-5*SC,4.2*SC,6.5*SC,.2,0,TAU);ctx.fill();ctx.fillStyle='#9cc25e';ctx.beginPath();ctx.ellipse(R0x-1.2*SC,R0y-7*SC,1.6*SC,3*SC,.2,0,TAU);ctx.fill()}
+  if(MORPH.n){ctx.strokeStyle='#33251d';ctx.lineWidth=GV.Wd[0];ctx.lineCap='round';ctx.beginPath();ctx.moveTo(R0x,R0y);ctx.lineTo(GV.X[0],GV.Y[0]);ctx.stroke()}
+  drawGrove(GV,G.t,G.persp,ghostA);
+  if(!probe){if(G.phase==='decide'&&G.pick>=0){const k=G.t.kid[G.pick];if(k>=0){const ks=[k];let q=k;for(let i=0;i<4;i++){const b=bestKid(G.t,q);if(b<0||G.t.N[b]<3)break;ks.push(b);q=b}highlight(GV,G.t,ks,true)}}
+    else if(G.phase==='over'&&G.final&&G.final.k>0&&G.final.k<G.t.n)highlight(GV,G.t,[G.final.k],true,G.final.by!==G.ai)
+    else if(hoverK>0&&hoverK<G.t.n)highlight(GV,G.t,pathTo(G.t,hoverK),false)}
+  if(probe){drawGrove(PV,probe.t,2,1);if(probe.done){const k=probe.t.kid[probe.pick];if(k>=0)highlight(PV,probe.t,[k],true)}}
+  drawTrails();drawDebris();drawFX();
+  drawPotFront();
+  ctx.restore();
+  drawBoard()}
+let last=0,started=false,lastR=-1;window.__frame=0;
+function frame(ts){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the page
+  const now=FIXED?last+1000/60:(ts||performance.now());const dt=FIXED?1/60:clamp((now-last)/1000,0,.25);last=now;window.__frame++;
+  if(!started)return;
+  update(dt);hoverTick();if(!STATIC||mouse||simT-lastR>.25||G.phase!=='decide'){render();lastR=simT}
+  uiAcc+=dt;if(uiAcc>.1||FIXED){uiAcc=0;panel()}
+  window.__state={t:+simT.toFixed(3),frame:window.__frame,phase:G.phase,tour:tour?tour.step:null,moves:G.pos.moves.join(''),sims:G.th?G.th.done:null,nodes:G.t.n,probe:probe?probe.th.done:null}}
+function resize(){layoutScene();layoutBoard()}
+// reduced motion / ?still: the finished search on the tour position, its choice highlighted, nothing moving
+function staticStart(){newGame(TOUR_POS,TOUR_SEED,2);G.budget=TOUR_BUDGET;G.C=Math.SQRT2;syncControls();startThink(true);runSims(G.th,G.t,G.pos,G.rng,G.budget,false,1e9);finishThink();tour={t:0,step:1,hold:true};caption(CAP.rm)}
+addEventListener('resize',()=>{resize();if(STATIC)render()});
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  resize();syncControls();
+  if(STATIC)staticStart();
+  else if(Q.has('play')){newGame([],Q.has('seed')?+Q.get('seed'):randSeed(),2);G.phase='wait';caption(CAP.g)}
+  else{startTour();if(FIXED){for(let i=0;i<200;i++)update(1/60)}}
+  started=true}
+window.step=n=>{if(!FIXED)return;for(let i=0;i<(n||1);i++)frame()};
+(async()=>{await start();if(FIXED){frame()}else{last=performance.now();requestAnimationFrame(frame)}})();
+// for tests: a read-only view of the game, the search and its log
+window.bonsai={
+  state:()=>{if(!G.pos)return{ready:false,phase:'loading',tour:'loading',moves:[],log:[]};const t=G.t;return{ready:true,moves:G.pos.moves.slice(),turn:G.pos.turn,ai:G.ai,over:G.pos.over,winner:G.pos.winner,phase:G.phase,tour:tour?tour.step:null,
+    budget:G.budget,C:G.C,pace:G.pace,seed:G.seed,thinking:G.th?{done:G.th.done,budget:G.th.budget}:null,pick:G.pick,
+    root:{N:t.N[0],kids:kidStats(t,0)},nodes:t.n,depth:MAXD,pv:pvLine(t,0,10),odds:odds(t),knots:G.knots.length,
+    probe:probe?{done:probe.done,sims:probe.th.done,pick:probe.pick??null}:null,zoom:Z,log:JSON.parse(JSON.stringify(G.log))}},
+  search:(moves,sims,C,seed)=>{const r=searchFresh(moves,sims,C,seed);return{kids:r.kids,pick:r.pick,nodes:r.nodes,rng:r.rng}},
+  audit:()=>{const t=G.t,S=new Float64Array(t.n);for(let k=1;k<t.n;k++)S[t.par[k]]+=t.N[k];let bad=0;
+    // da Vinci: visits = children's visits + the playout that made the node (+0 for a fresh root); finished games have no children
+    for(let k=0;k<t.n;k++){if(t.term[k]){if(S[k])bad++}else if(k?t.N[k]!==S[k]+1:(t.N[0]!==S[0]&&t.N[0]!==S[0]+1))bad++}
+    return{davinci:bad===0,bad,nodes:t.n,rootN:t.N[0]}}};
+</script>
+</body>
+</html>
