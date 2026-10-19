@@ -1,5 +1,15 @@
 [
  {
+  "slug": "budget-fuse-box",
+  "title": "Budget Fuse Box",
+  "no": "021",
+  "date": "2026-10-19",
+  "kind": "Agent spend caps \u00b7 Monospace fuse box",
+  "blurb": "The same agent retry loop on two circuits of a car fuse box, drawn in monospace characters. A --max-turns 10 fuse blows; the circuit with a paperclip in the slot keeps spending. A whole-repo read shows how a budget cap checked between turns gets passed. Toy simulation, toy prices.",
+  "color": "#ff6a2a",
+  "exhibit": "fusebox"
+ },
+ {
   "slug": "photocopy-collapse",
   "title": "Photocopy Collapse",
   "no": "020",

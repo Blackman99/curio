@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Budget Fuse Box — agent spend caps as car fuses</title>
+<meta name="description" content="A toy simulation drawn in monospace characters: AI agent runs wired through a car fuse box. A turn limit and a budget limit blow like blade fuses. The same retry loop with a paperclip in the slot keeps spending.">
+<meta property="og:title" content="Budget Fuse Box">
+<meta property="og:description" content="Same retry loop, two circuits. One has a 10-turn fuse. One has a paperclip. Toy simulation in Curio.">
+<meta property="og:image" content="https://blackman99.github.io/curio/budget-fuse-box/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Budget Fuse Box">
+<meta name="twitter:description" content="Agent runs wired through a car fuse box. Turn and budget limits blow like fuses. The paperclip circuit keeps spending.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/budget-fuse-box/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+<link rel="preload" href="FiraCode-VF.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:'Fira Code';src:url(FiraCode-VF.woff2) format('woff2-variations'),url(FiraCode-VF.woff2) format('woff2');font-weight:300 700;font-display:block}
+:root{
+  --legend:#e6e2d6; --dim:#8f9298; --faint:#5c6066;
+  --hot:#ffb347; --ok:#4fb466; --bad:#ff4b33; --amber:#f2b33d; --steel:#c3c8ce;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;color:var(--legend);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{font-family:'Fira Code',ui-monospace,Menlo,Consolas,monospace;font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0;
+  background:radial-gradient(1200px 760px at 50% 42%,#17191c 0%,#0d0e10 70%,#08090a 100%)}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+pre{margin:0;font:inherit;white-space:pre}
+a{color:inherit}
+#wrap{position:fixed;inset:0;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:50% 50%;transform:translate(-50%,-50%)}
+
+header{position:absolute;left:34px;right:34px;top:16px;height:50px;display:flex;align-items:flex-end;gap:26px}
+h1{margin:0;font-family:Michroma,sans-serif;font-weight:400;font-size:28px;letter-spacing:.06em;line-height:1}
+.kick{font-size:12.5px;color:var(--dim);margin-bottom:7px}
+.kick b{color:var(--legend);font-weight:500}
+.hright{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12.5px}
+.tag{border:1.5px solid var(--amber);color:var(--amber);padding:5px 9px 4px;border-radius:3px;letter-spacing:.08em;font-weight:600}
+.hbtn,.act{border:1.5px solid #3b3f45;padding:5px 10px 4px;border-radius:3px;background:#15171a;white-space:nowrap}
+.hbtn:hover,.act:hover{border-color:var(--legend)}
+.hbtn[aria-pressed="true"]{border-color:var(--amber);color:var(--amber)}
+.back{color:var(--dim);text-decoration:none;padding:5px 2px}.back:hover{color:var(--legend)}
+
+/* ---- the moulded fuse box (black ABS, white printed legend) ---- */
+.box{position:absolute;border-radius:20px;
+  background:repeating-radial-gradient(circle at 30% 20%,rgba(255,255,255,.013) 0 1px,transparent 1px 3px),linear-gradient(180deg,#212428,#1a1c1f 60%,#17191b);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.06),inset 0 -3px 0 rgba(0,0,0,.5),0 0 0 2px #0a0b0c,0 18px 40px rgba(0,0,0,.6)}
+#hero{left:24px;right:24px;top:76px;height:398px}
+#minis{left:24px;right:24px;top:486px;height:126px}
+.htitle{position:absolute;left:34px;top:16px;display:flex;gap:16px;align-items:baseline}
+.htitle b{font-family:Michroma,sans-serif;font-weight:400;font-size:14px;letter-spacing:.08em}
+.htitle span{font-size:12.5px;color:var(--dim)}
+pre.bus{position:absolute;left:34px;right:34px;top:44px;font-size:18px;line-height:20px;overflow:hidden}
+.buslab{position:absolute;right:36px;top:18px;font-size:11px;color:var(--faint);letter-spacing:.1em}
+.divider{position:absolute;left:50%;top:80px;bottom:18px;width:1px;background:repeating-linear-gradient(180deg,#34383e 0 6px,transparent 6px 12px)}
+
+.hp{position:absolute;top:64px;width:600px;height:320px}
+.hp.L{left:14px}.hp.R{right:14px}
+.hp .heat{position:absolute;inset:-4px 0 0 0;border-radius:14px;background:radial-gradient(260px 220px at 120px 150px,rgba(255,120,30,.22),rgba(255,120,30,0));opacity:0;pointer-events:none}
+pre.drop{position:absolute;left:113px;top:-2px;font-size:18px;line-height:20px}
+.sock{position:absolute;left:24px;top:70px;width:190px;height:200px}
+.sock::before{content:"";position:absolute;z-index:2;left:14px;right:14px;top:150px;height:30px;border-radius:5px;background:#060708;box-shadow:inset 0 3px 6px rgba(0,0,0,.95),0 1px 0 rgba(255,255,255,.05)}
+.fuse{position:absolute;left:12px;top:8px;width:166px;height:160px;--fc:#d8332b;cursor:pointer}
+.fuse .body{position:absolute;left:0;right:0;top:0;height:116px;border-radius:12px 12px 6px 6px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 94%,#fff 6%) 0 26px,color-mix(in srgb,var(--fc) 66%,transparent) 26px 100%);
+  box-shadow:inset 3px 0 0 rgba(255,255,255,.2),inset -3px 0 0 rgba(0,0,0,.25),inset 0 -3px 0 rgba(0,0,0,.28),inset 0 26px 0 -24px rgba(0,0,0,.4),0 4px 10px rgba(0,0,0,.55)}
+.fuse .amp{position:absolute;left:0;right:0;top:4px;text-align:center;font-family:Michroma,sans-serif;font-size:14px;line-height:18px;color:rgba(0,0,0,.6);letter-spacing:.04em}
+.fuse pre.link{position:absolute;left:0;right:0;top:44px;font-size:22px;line-height:26px;font-weight:700;text-align:center}
+.fuse .legs{position:absolute;left:0;right:0;top:112px;height:56px}
+.fuse .legs i{position:absolute;top:0;width:26px;height:56px;background:linear-gradient(90deg,#868c93,#e4e8ec 45%,#959ba2);border-radius:0 0 3px 3px}
+.fuse .legs i:first-child{left:22px}.fuse .legs i:last-child{right:22px}
+.fuse .scorch{position:absolute;left:34px;right:34px;top:34px;height:72px;border-radius:50%;background:radial-gradient(closest-side,rgba(12,6,3,.9),rgba(12,6,3,0));opacity:0}
+.fuse .flash{position:absolute;left:-40px;right:-40px;top:-40px;height:200px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,252,232,1),rgba(255,206,100,.55) 45%,rgba(255,150,40,0));opacity:0;pointer-events:none}
+.fuse.out{opacity:0;pointer-events:none}
+pre.clip{position:absolute;z-index:1;left:2px;top:68px;font-size:24px;line-height:24px;font-weight:700;color:var(--steel);transform:rotate(-6deg);transform-origin:50% 50%}
+pre.scorchc{position:absolute;left:-40px;top:58px;font-size:14px;line-height:14px;color:#050302;opacity:0}
+
+.side{position:absolute;left:228px;top:14px;width:372px}
+.ttl{display:flex;align-items:baseline;gap:12px;white-space:nowrap}
+.ttl b{font-family:Michroma,sans-serif;font-weight:400;font-size:17.5px;letter-spacing:.05em}
+.flagl{font-size:14px;font-weight:600;color:var(--amber)}
+.flagl.no{color:#ff8a6a}
+.info{margin-top:10px;font-size:13px;color:var(--dim);white-space:nowrap;height:17px}
+.info b{color:var(--legend);font-weight:600}.info .warn{color:#ff9a7a}
+.odo{margin-top:12px;display:inline-flex;align-items:stretch;background:#050506;border-radius:5px;padding:4px;box-shadow:inset 0 2px 5px rgba(0,0,0,.9),0 0 0 1.5px #383c42;font-weight:600;--h:80px;font-size:64px}
+.odo .cur{display:grid;place-items:center;width:.62em;color:var(--dim);font-size:.55em}
+.odo .d{position:relative;width:.7em;height:var(--h);overflow:hidden;background:linear-gradient(180deg,#0a0a0b,#222326 42%,#222326 58%,#0a0a0b);margin:0 1px;border-radius:2px;color:#f2efe7}
+.odo .d.c{background:linear-gradient(180deg,#aba699,#efebdf 42%,#efebdf 58%,#aba699);color:#111}
+.odo .d i{position:absolute;left:0;right:0;top:0;font-style:normal;text-align:center;line-height:var(--h)}
+.odo .pt{width:.3em;display:grid;place-items:end center;color:#f2efe7;padding-bottom:.12em;font-size:.8em}
+.srow{margin-top:12px;display:flex;gap:10px;align-items:center;height:30px}
+.stat{font-size:13px;font-weight:700;letter-spacing:.06em;padding:5px 9px 4px;border-radius:3px;border:1.5px solid currentColor;white-space:nowrap}
+.stat.run{color:var(--amber)}.stat.ok{color:var(--ok)}.stat.bad{color:var(--bad);background:rgba(255,75,51,.09)}.stat.idle{color:var(--dim)}
+.ctl{display:flex;gap:8px;align-items:center;font-size:12px}
+.rate{display:flex;align-items:center;border:1.5px solid #3b3f45;border-radius:3px;background:#15171a}
+.rate button{width:24px;height:25px;font-size:15px;line-height:1}.rate button:hover{background:#2a2d31}
+.rate span{min-width:30px;text-align:center;font-weight:600}
+.act{font-size:12px;padding:4px 8px 3px}
+.act.hot{border-color:var(--bad);color:#ffd5cb}
+[hidden]{display:none!important}
+pre.wire{position:absolute;left:214px;top:225px;width:386px;font-size:18px;line-height:20px;overflow:hidden}
+.bars{position:absolute;left:228px;top:254px;display:flex;gap:10px;align-items:flex-end}
+.bars .lab{font-size:10.5px;color:var(--dim);line-height:1.2;width:40px;padding-bottom:4px}
+pre.bar{font-size:32px;line-height:34px;letter-spacing:.04em}
+
+/* ---- the two small circuits ---- */
+.mini{position:absolute;top:0;height:126px;width:606px;display:grid;grid-template-columns:208px 88px 1fr 164px;align-items:center}
+.mini.m1{left:0}.mini.m2{right:0}
+.mini.m2::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:1px;background:repeating-linear-gradient(180deg,#34383e 0 6px,transparent 6px 12px)}
+.mleg{display:flex;gap:10px;align-items:flex-start;padding-left:22px}
+.num{flex:none;width:26px;height:26px;border:2px solid var(--legend);border-radius:50%;display:grid;place-items:center;font-family:Michroma,sans-serif;font-size:11px;line-height:1;padding-top:1px}
+.mleg b{display:block;font-family:Michroma,sans-serif;font-weight:400;font-size:12px;letter-spacing:.05em;line-height:1.35}
+.mleg small{display:block;margin-top:4px;font-size:11.5px;line-height:1.35;color:var(--dim)}
+.mleg .flagl{font-size:12px;margin-top:4px;display:block}
+.mini .sock{position:relative;left:auto;top:auto;width:84px;height:96px}
+.mini .sock::before{left:8px;right:8px;top:72px;height:16px;border-radius:3px}
+.mini .fuse{left:6px;top:6px;width:72px;height:80px}
+.mini .fuse .body{height:54px;border-radius:7px 7px 4px 4px;background:linear-gradient(180deg,color-mix(in srgb,var(--fc) 94%,#fff 6%) 0 14px,color-mix(in srgb,var(--fc) 66%,transparent) 14px 100%)}
+.mini .fuse .amp{font-size:9px;line-height:12px;top:1px}
+.mini .fuse pre.link{top:22px;font-size:10px;line-height:12px}
+.mini .fuse .legs{top:52px;height:26px}.mini .fuse .legs i{width:12px;height:26px}
+.mini .fuse .legs i:first-child{left:10px}.mini .fuse .legs i:last-child{right:10px}
+.mini .fuse .scorch{left:12px;right:12px;top:16px;height:36px}
+.mini .fuse .flash{left:-26px;right:-26px;top:-26px;height:110px}
+.mrun{display:flex;flex-direction:column;gap:6px;padding:0 10px 0 8px;min-width:0}
+.mrun .info{margin:0;font-size:11.5px;height:16px;overflow:hidden}
+.mrun pre.wire{position:static;width:auto;font-size:14px;line-height:16px}
+.mrun .bars{position:static}
+.mrun pre.bar{font-size:20px;line-height:22px}
+.mrun .bars .lab{display:none}
+.mmeter{display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+.mmeter .odo{margin:0;--h:32px;font-size:24px;padding:3px}
+.mmeter .stat{font-size:11px;padding:3px 7px 2px}
+.mmeter .ctl{gap:6px}
+.mmeter .act{font-size:11px;padding:3px 6px 2px}
+
+/* ---- footer ---- */
+footer{position:absolute;left:34px;right:34px;top:624px;height:90px;display:grid;grid-template-columns:590px 1fr;gap:30px}
+.glab{font-size:10.5px;color:var(--dim);letter-spacing:.12em}
+.cmd{margin-top:6px;display:flex;align-items:center;gap:10px;background:#050506;border:1.5px solid #30343a;border-radius:4px;padding:7px 10px 6px;font-size:13.5px}
+.cmd code{font:inherit;white-space:nowrap}
+.cmd code .f{color:var(--amber)}
+.cmd .cp{margin-left:auto;font-size:11px;color:var(--dim);border:1px solid #3b3f45;border-radius:3px;padding:2px 6px}
+.cmd .cp:hover{color:var(--legend);border-color:var(--legend)}
+.gnote{margin-top:6px;font-size:11px;color:var(--dim);line-height:1.4}
+#caption{font-size:15px;line-height:1.38;min-height:42px}
+#caption b{color:var(--hot);font-weight:600}
+.toy{margin-top:6px;font-size:10.5px;color:var(--faint);line-height:1.42}
+
+#fx{position:absolute;inset:0;pointer-events:none;z-index:5}
+#fx span{position:absolute;left:0;top:0;font-weight:700;white-space:pre;line-height:1}
+#ghost{position:absolute;left:0;top:0;width:22px;height:30px;z-index:6;pointer-events:none;opacity:0;transition:opacity .3s}
+#ghost.on{opacity:1}
+#ghost::before,#ghost::after{content:"";position:absolute;inset:0;clip-path:polygon(0 0,0 78%,24% 61%,40% 98%,55% 92%,40% 57%,72% 57%)}
+#ghost::before{background:#fff;z-index:1}
+#ghost::after{background:#000;transform:translate(1.5px,1.5px)}
+.gtag{position:absolute;left:24px;top:24px;font-size:10px;color:#111;background:var(--amber);padding:1px 4px;border-radius:2px;white-space:nowrap;letter-spacing:.06em;font-weight:700;z-index:2}
+#ring{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border:2px solid var(--amber);border-radius:50%;opacity:0;z-index:6;pointer-events:none}
+
+/* ---- phone portrait: stacked ---- */
+@media (max-width:820px) and (orientation:portrait){
+  html,body{overflow:auto;height:auto}
+  #wrap{position:static;display:block;overflow:visible}
+  #stage{position:relative;left:auto;top:auto;width:100%;max-width:820px;margin:0 auto;height:auto;transform:none!important;padding:14px 12px 30px}
+  header{position:static;flex-wrap:wrap;height:auto;gap:6px 10px;align-items:center}
+  header>.kick.wide{display:none}
+  h1{font-size:21px}
+  .hright{margin-left:0;flex-wrap:wrap}
+  .box{position:relative;left:auto!important;right:auto!important;top:auto!important;height:auto!important;margin-top:14px}
+  #hero{padding:84px 0 6px}
+  .htitle{left:16px;right:12px;flex-wrap:wrap;gap:2px 10px}
+  .buslab,.divider,pre.bus{display:none}
+  .hp{position:relative;left:auto!important;right:auto!important;top:auto;width:600px;height:300px;zoom:.58;margin:0 auto 6px}
+  #minis{padding:4px 0}
+  .mini{position:relative;width:auto;grid-template-columns:84px 1fr;grid-template-rows:auto auto auto;padding:10px 12px;height:auto;gap:6px 10px}
+  .mini.m2::before{display:none}
+  .mleg{grid-column:1/-1;padding-left:0}
+  .mini .sock{grid-column:1}
+  .mmeter{grid-column:2;grid-row:2}
+  .mrun{grid-column:1/-1;padding:0}
+  footer{position:static;display:block;height:auto;margin-top:14px}
+  .cmd{font-size:11.5px;overflow-x:auto}
+  #caption{margin-top:12px}
+}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+<header>
+  <div><div class="kick"><b>Curio No. 021</b> · agent spend caps</div><h1>BUDGET FUSE BOX</h1></div>
+  <div class="kick wide" style="max-width:300px">AI agent runs wired through a car fuse box. A turn limit or a budget limit blows like a fuse.</div>
+  <div class="hright">
+    <span class="tag">TOY SIMULATION</span>
+    <button class="hbtn" id="runAll" title="Space">Run all again</button>
+    <button class="hbtn" id="snd" aria-pressed="false">Sound: off</button>
+    <a class="back" href="../">← Curio</a>
+  </div>
+</header>
+
+<section class="box" id="hero" aria-label="The same retry loop on two circuits">
+  <div class="htitle"><b>SAME RETRY LOOP</b><span>the agent reads the failing test log and tries again, forever</span></div>
+  <div class="buslab">FEED · AGENT TURNS</div>
+  <pre class="bus" id="bus"></pre>
+  <div class="divider"></div>
+</section>
+<section class="box" id="minis" aria-label="Two more circuits"></section>
+
+<footer>
+  <div>
+    <div class="glab">COPY-PASTE GUARD · CLAUDE CODE</div>
+    <div class="cmd"><code id="cmdText">claude -p <span class="f">--max-turns 10</span> <span class="f">--max-budget-usd 5</span> "fix the flaky test"</code><button class="cp" id="copy">copy</button></div>
+    <div class="gnote">Both flags are real and work in print mode (-p) only. Claude Code's docs say spend can pass the budget cap, so leave headroom.</div>
+  </div>
+  <div>
+    <div id="caption" aria-live="polite"></div>
+    <div class="toy">Toy simulation: made-up runs, toy prices ($15 per 1M input tokens, $75 per 1M output, no caching). Each turn re-sends the whole chat so far; the budget is checked between turns. Blade colours follow the real mini-fuse colour code. Nothing leaves your browser.</div>
+  </div>
+</footer>
+<div id="fx" aria-hidden="true"></div>
+<div id="ghost" aria-hidden="true"><span class="gtag">AUTOPILOT</span></div>
+<div id="ring" aria-hidden="true"></div>
+</div></div>
+
+<script>
+(()=>{
+const Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed'), STILL=Q.has('still');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const QUIET=RM||STILL;
+const SEED=(parseInt(Q.get('seed'))>>>0)||7;
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+let rng=mulberry32(SEED);
+const rnd=(a=0,b=1)=>a+rng()*(b-a);
+const $=s=>document.querySelector(s);
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ---------- toy cost model ---------- */
+// Every turn sends the whole chat so far as input and writes some output. Toy prices, no caching.
+const P_IN=15/1e6, P_OUT=75/1e6, WINDOW=200000, TURN_S=0.42;
+const FC={2:'#8b9097',5:'#c8a173',10:'#d8332b',15:'#2f6fd6',20:'#efc22f',30:'#2f9a4a'}; // real mini blade fuse colours
+const TASKS={
+  loop:{ctx0:22000,out:1500,add:()=>6000,done:null},              // flaky test: never passes
+  repo:{ctx0:30000,out:1200,add:i=>i===5?150000:10000,done:null},  // turn 5's tool call reads the whole repo
+  typo:{ctx0:16000,out:800,add:()=>3000,done:4},
+};
+const ROWS=[
+  {id:'B',hero:'L',title:'WITH A FUSE',task:'loop',fuse:{type:'turns',rating:10}},
+  {id:'D',hero:'R',title:'WITH A PAPERCLIP',task:'loop',fuse:null},
+  {id:'C',mini:1,name:'READ THE WHOLE REPO',sub:'one tool call pulls 150k tokens into the chat',task:'repo',fuse:{type:'usd',rating:5}},
+  {id:'A',mini:2,name:'FIX A TYPO',sub:'a normal small task, done in 4 turns',task:'typo',fuse:{type:'turns',rating:10}},
+];
+const RATINGS={turns:[5,10,15,20,30],usd:[2,5,10,15,20,30]};
+const flagText=f=>f?(f.type==='turns'?`--max-turns ${f.rating}`:`--max-budget-usd ${f.rating}`):'no cap';
+
+function newRun(r){
+  const T=TASKS[r.task];
+  Object.assign(r,{status:'running',turn:0,ctx:T.ctx0,spent:0,costs:[],cur:0,tt:0,flashT:0,over:0,redraw:0,fitT:0,stopNote:'',fitStop:false});
+  r.wasClip=r.wasClip||!r.fuse;
+  startTurn(r);
+}
+function turnCost(r){return Math.min(r.ctx,WINDOW)*P_IN+TASKS[r.task].out*P_OUT}
+function startTurn(r){r.turn++;r.tt=0;r.cur=turnCost(r);r.dur=TURN_S*(r.task==='repo'&&r.turn===6?2.4:1)}
+function endTurn(r){
+  const T=TASKS[r.task];
+  r.spent+=r.cur;r.costs.push(r.cur);
+  r.ctx=Math.min(WINDOW,r.ctx+T.add(r.turn)+T.out);
+  if(T.done&&r.turn>=T.done){r.status='done';r.cur=0;return}
+  if(r.fuse){ // the cap is checked between turns
+    if(r.fuse.type==='turns'&&r.turn>=r.fuse.rating){blow(r);return}
+    if(r.fuse.type==='usd'&&r.spent>=r.fuse.rating){r.over=r.spent-r.fuse.rating;blow(r);return}
+  }
+  startTurn(r);
+}
+const shown=r=>r.spent+(r.status==='running'?r.cur*clamp(r.tt/r.dur):0);
+
+/* ---------- DOM ---------- */
+const FUSE_HTML=`<div class="fuse"><div class="body"><span class="amp"></span></div><pre class="link"></pre><div class="legs"><i></i><i></i></div><div class="scorch"></div><div class="flash"></div></div>`;
+const ODO_HTML=`<div class="odo"><span class="cur">$</span>${'<span class="d"><i></i></span>'.repeat(4)}<span class="pt">.</span>${'<span class="d c"><i></i></span>'.repeat(2)}</div>`;
+const CTL_HTML=`<div class="ctl"><div class="rate"><button class="dn" aria-label="Lower the cap">−</button><span class="rv"></span><button class="up" aria-label="Raise the cap">+</button></div><button class="act rerun">Replace</button><button class="act fit hot" hidden>Fit a fuse</button><button class="act clipb" hidden>Paperclip</button></div>`;
+ROWS.forEach((r,i)=>{
+  const el=document.createElement('div');
+  if(r.hero){
+    el.className='hp '+r.hero;
+    el.innerHTML=`<div class="heat"></div><pre class="drop">┃\n┃\n┃\n┃</pre>
+      <div class="sock"><pre class="scorchc"></pre>${FUSE_HTML}<pre class="clip"></pre></div>
+      <pre class="wire"></pre>
+      <div class="side"><div class="ttl"><b>${r.title}</b><span class="flagl"></span></div><div class="info"></div>${ODO_HTML}<div class="srow"><div class="stat"></div>${CTL_HTML}</div></div>
+      <div class="bars"><span class="lab">$ per turn</span><pre class="bar"></pre></div>`;
+    $('#hero').appendChild(el);
+  }else{
+    el.className='mini m'+r.mini;
+    el.innerHTML=`<div class="mleg"><span class="num">${i+1}</span><div><b>${r.name}</b><small>${r.sub}</small><span class="flagl"></span></div></div>
+      <div class="sock">${FUSE_HTML}</div>
+      <div class="mrun"><div class="info"></div><pre class="wire"></pre><div class="bars"><pre class="bar"></pre></div></div>
+      <div class="mmeter">${ODO_HTML}<div class="srow" style="margin:0;height:auto;gap:8px"><div class="stat"></div></div>${CTL_HTML}</div>`;
+    $('#minis').appendChild(el);
+  }
+  r.el=el;r.q=s=>el.querySelector(s);
+  r.drums=[...el.querySelectorAll('.odo .d i')];
+  r.drums.forEach(d=>{d.innerHTML='0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>0'});
+  r.q('.dn').onclick=()=>{user();bump(r,-1)};
+  r.q('.up').onclick=()=>{user();bump(r,1)};
+  r.q('.rerun').onclick=()=>{user();rerun(r)};
+  r.q('.fit').onclick=()=>{user();fitFuse(r)};
+  r.q('.clipb').onclick=()=>{user();r.fuse=null;rerun(r);caption(`Paperclip back in. <b>No cap</b> on this loop.`)};
+  r.q('.fuse').onclick=()=>{if(r.status!=='running'&&r.fuse){user();rerun(r)}};
+});
+const rowNo=r=>ROWS.indexOf(r)+1;
+function bump(r,d){
+  if(!r.fuse)return;const L=RATINGS[r.fuse.type];r.fuse.rating=L[clamp(L.indexOf(r.fuse.rating)+d,0,L.length-1)];
+  caption(`Cap is now <b>${flagText(r.fuse)}</b>.`+(r.status==='running'?' A lower cap blows at the next check.':' Press <b>Replace</b> to run it again.'));
+}
+function rerun(r){newRun(r);r.redraw=QUIET?0:.45}
+function fitFuse(r){if(r.status!=='running'){r.fuse={type:'turns',rating:10};rerun(r);return}r.fuse={type:'turns',rating:10};r.fitT=QUIET?0:.3;sfx('snap')}
+
+/* ---------- character art ---------- */
+const LINK_OK=['  ╭╮╭╮╭╮╭╮  ','━━╯╰╯╰╯╰╯╰━━'];
+const LINK_BLOWN=['  ╭╮╭   ╭╮  ','━━╯╰╯ ·· ╰━━'];
+const CLIP=[
+ '╭──────────────╮',
+ '│ ╶─────────╮  │',
+ '╰───────────╯  │',
+ '  ╶────────────╯'];
+function hex(c){return[1,3,5].map(i=>parseInt(c.slice(i,i+2),16))}
+function mix(a,b,t){a=hex(a);b=hex(b);return`rgb(${a.map((v,i)=>Math.round(lerp(v,b[i],t))).join(',')})`}
+const ramp=L=>h=>{h=clamp(h)*(L.length-1);const i=Math.min(L.length-2,Math.floor(h));return mix(L[i],L[i+1],h-i)};
+const heatCol=ramp(['#5a3f2a','#9a4a24','#e0611f','#ff9d3a','#ffe2a0','#fff8e6']);
+const steelCol=ramp(['#c3c8ce','#c99a90','#d8502f','#ff8a2a','#ffd88a','#fff7e0']);
+const BARS=' ▁▂▃▄▅▆▇█';
+const MAXCOST=WINDOW*P_IN+1500*P_OUT;
+let busHTML='';
+
+function fuseFrac(r){
+  if(!r.fuse)return 0;
+  if(r.fuse.type==='turns')return clamp((r.turn-1+(r.status==='running'?clamp(r.tt/r.dur):1))/r.fuse.rating);
+  return clamp(shown(r)/r.fuse.rating);
+}
+function drawRow(r,t){
+  const blown=r.status==='blown', clip=!r.fuse||r.fitT>0, live=r.status==='running';
+  const fz=r.q('.fuse');
+  if(r.fuse){
+    fz.classList.remove('out');
+    fz.style.setProperty('--fc',FC[r.fuse.rating]||'#d8332b');
+    r.q('.amp').textContent=r.fuse.type==='turns'?r.fuse.rating+(r.hero?' TURNS':''):'$'+r.fuse.rating;
+    const f=r.fitT>0?clamp(r.fitT/.3):0;
+    fz.style.transform=f?`translateY(${-f*70}px)`:'';fz.style.opacity=f?1-f*.7:'';
+  }else fz.classList.add('out');
+  // the fuse link heats as the run nears its cap; a blown link shows the gap
+  let html='';
+  if(r.fuse){
+    const L=blown?LINK_BLOWN:LINK_OK, f=fuseFrac(r), red=r.redraw>0?clamp(1-r.redraw/.45):1;
+    for(let y=0;y<2;y++){for(let x=0;x<12;x++){
+      const ch=L[y][x];
+      if(ch===' '||(red<1&&Math.abs(x-5.5)>red*6.4)){html+=' ';continue}
+      let col;
+      if(blown)col=ch==='·'?'#ffb347':'#3b2a1f';
+      else{const h=clamp(f*1.3-Math.abs(x-5.5)/5.5*.6);col=h<.03?'#d7dbdf':heatCol(.3+h*.7)}
+      html+=`<span style="color:${col}">${ch}</span>`;
+    }if(!y)html+='\n'}
+  }
+  r.q('.link').innerHTML=html;
+  r.q('.scorch').style.opacity=blown?.92:0;
+  r.q('.flash').style.opacity=r.flashT>0?clamp(r.flashT/.2):0;
+  const fl=r.q('.flagl');fl.textContent=r.fuse&&!(r.fitT>0)?flagText(r.fuse):'no cap';fl.classList.toggle('no',!r.fuse);
+  // paperclip
+  const cl=r.q('.clip');
+  if(cl){
+    const h=clip&&live?clamp(r.cur/MAXCOST):0;
+    if(clip){
+      cl.style.display='';cl.textContent=CLIP.join('\n');
+      cl.style.color=steelCol(h*.97);
+      cl.style.textShadow=h>.4?`0 0 ${Math.round((h-.4)*30)}px rgba(255,140,40,${((h-.4)*1.5).toFixed(2)})`:'none';
+    }else cl.style.display='none';
+    const sc=r.q('.scorchc');
+    if(!sc.textContent){ // soot on the moulding around the slot: a dithered ellipse of shade characters
+      const R=mulberry32(99);let s='';
+      for(let y=0;y<10;y++){for(let x=0;x<32;x++){const dx=(x-15.5)/16,dy=(y-6)/5.2,v=Math.sqrt(dx*dx+dy*dy)+(R()-.5)*.28;s+=v<.45?'▓':v<.7?'▒':v<.95?'░':' '}s+='\n'}
+      sc.textContent=s}
+    r.scorchLv=Math.max(r.scorchLv||0,clip&&live?clamp(h*1.2-.25):0);
+    sc.style.opacity=(r.scorchLv*.62).toFixed(3);
+    r.q('.heat').style.opacity=clip&&live?clamp(h*1.1-.2).toFixed(3):0;
+    r.heatNow=h;
+  }
+  // controls
+  r.q('.rate').hidden=!r.fuse||r.fitStop||(r.wasClip&&!live);
+  r.q('.rv').textContent=r.fuse?(r.fuse.type==='usd'?'$'+r.fuse.rating:r.fuse.rating):'';
+  r.q('.rerun').hidden=!(r.fuse&&!live&&!r.fitStop);
+  r.q('.fit').hidden=!(!r.fuse);
+  r.q('.clipb').hidden=!(r.wasClip&&r.fuse&&!live);
+  // info line
+  const k=n=>Math.round(Math.min(n,WINDOW)/1000)+'k';
+  let info='idle';
+  if(r.hero){
+    if(live)info=`turn <b>${r.turn}</b> · chat <b>${k(r.ctx)}</b> tokens · this turn <b>$${r.cur.toFixed(2)}</b>`;
+    else if(blown)info=r.stopNote||`stopped at the <b>${r.fuse.rating}-turn</b> limit · chat ${k(r.ctx)} tokens`;
+    else if(r.status==='done')info=`finished in <b>${r.turn}</b> turns`;
+  }else{
+    if(live)info=(r.task==='repo'&&r.turn===6)?`<span class="warn">turn ${r.turn}: whole repo</span>`:`turn <b>${r.turn}</b> · chat <b>${k(r.ctx)}</b>`;
+    else if(r.status==='done')info=`done in <b>${r.turn}</b> turns`;
+    else if(blown)info=r.fuse.type==='usd'?`<b>$${r.spent.toFixed(2)}</b> vs $${r.fuse.rating} cap`:`stopped at turn <b>${r.turn}</b>`;
+  }
+  r.q('.info').innerHTML=info;
+  // wire: current flows as bright dashes, heat colours the copper
+  const N=r.hero?21:30, amps=live?clamp(r.cur/MAXCOST):0;
+  let w='';
+  for(let i=0;i<N;i++){
+    if(!live&&!(r.fitT>0)){w+='<span style="color:#33373c">─</span>';continue}
+    const ph=((i*.9-t*(8+amps*14))%5+5)%5, pulse=ph<1.5;
+    const ch=(amps>.85&&((i*7+Math.floor(t*7))%8===0))?'╍':'━';
+    w+=`<span style="color:${pulse?heatCol(.45+amps*.55):heatCol(.08+amps*.5)}">${ch}</span>`;
+  }
+  r.q('.wire').innerHTML=w;
+  // $ per turn bars
+  const M=r.hero?10:12, arr=r.costs.slice(-(live?M-1:M));
+  let b='';
+  const cell=(v,dim)=>`<span style="color:${heatCol(.32+v*.66)}">${BARS[Math.max(1,Math.round(v*8))]}</span>`;
+  for(const c of arr)b+=cell(c/MAXCOST);
+  if(live)b+=cell(r.cur/MAXCOST*clamp(r.tt/r.dur));
+  for(let i=arr.length+(live?1:0);i<M;i++)b+='<span style="color:#2b2e33">▁</span>';
+  r.q('.bar').innerHTML=b;
+  // odometer drums (the last one rolls smoothly while running)
+  const cents=live?shown(r)*100:Math.round(shown(r)*100), pw=[100000,10000,1000,100,10,1];
+  r.drums.forEach((d,j)=>{const p=pw[j],digit=Math.floor(cents/p)%10;const frac=j===5?(cents%1):clamp((cents%p)-(p-1));d.style.transform=`translateY(${(-(digit+frac)*100/11).toFixed(3)}%)`});
+  // status
+  const st=r.q('.stat');let cls='idle',txt='IDLE';
+  if(live){if(!r.fuse){cls='bad';txt='STILL SPENDING'}else{cls='run';txt='RUNNING'}}
+  else if(r.status==='done'){cls='ok';txt='DONE · FUSE HELD'}
+  else if(blown){cls='bad';txt=r.fitStop?'FUSE FITTED · STOPPED':r.fuse.type==='turns'?`BLOWN AT TURN ${r.turn}`:`BLOWN · $${r.over.toFixed(2)} OVER`}
+  st.className='stat '+cls;st.textContent=txt;
+}
+function drawBus(t){
+  // battery feed: current flows along the top bus into both loop circuits
+  const N=112;let s='';
+  for(let i=0;i<N;i++){const ph=((i*.8-t*10)%6+6)%6;s+=`<span style="color:${ph<1.6?'#e8a465':'#6b4a2e'}">━</span>`}
+  if(s!==busHTML){$('#bus').innerHTML=s;busHTML=s}
+}
+
+/* ---------- fx: sparks and smoke are characters ---------- */
+const stage=$('#stage'),fxEl=$('#fx'),POOL=[],FX=[];
+for(let i=0;i<240;i++){const s=document.createElement('span');s.style.opacity=0;fxEl.appendChild(s);POOL.push(s)}
+let SCALE=1;
+function at(el){const a=el.getBoundingClientRect(),b=stage.getBoundingClientRect(),k=SCALE||1;return{x:(a.left+a.width/2-b.left)/k,y:(a.top+a.height/2-b.top)/k,w:a.width/k,h:a.height/k}}
+const SPK='**++x×··\'.,';
+const sparkCol=ramp(['#ffffff','#fff1b0','#ffc457','#ff8a2a','#d9401c']);
+function sparks(r,big){
+  if(QUIET)return;
+  const p=at(r.q('.fuse .body')), s=(r.hero?1:.6)*(big||1), n=Math.round((r.hero?64:34)*(big||1));
+  for(let i=0;i<n;i++){
+    const a=-Math.PI/2+rnd(-1.5,1.5), sp=rnd(160,620)*s;
+    const life=rnd(.45,1.1);
+    FX.push({k:'s',x:p.x+rnd(-10,10)*s,y:p.y+rnd(-6,10)*s,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life,max:life,streak:rng()<.62,ch:SPK[Math.floor(rnd(0,SPK.length))],sz:rnd(16,34)*s,c:'#fff'});
+  }
+  // a ring of dots blown outward
+  for(let i=0;i<20;i++){const a=i/20*Math.PI*2;FX.push({k:'r',x:p.x,y:p.y,vx:Math.cos(a)*360*s,vy:Math.sin(a)*240*s,life:.38,max:.38,ch:'·',sz:26*s,c:'#ffd27a'})}
+  for(let i=0;i<10;i++)FX.push({k:'m',x:p.x+rnd(-20,20)*s,y:p.y-10*s,vx:rnd(-16,16),vy:rnd(-50,-26),life:rnd(1.2,2.1),max:2.1,ch:'~()°.'[i%5],sz:rnd(16,24)*s,c:'#9ea2a8',sway:rnd(0,6.28)});
+}
+function smoke(r,h,dt){
+  if(QUIET||h<.3)return;
+  r.smk=(r.smk||0)+dt*h*12;
+  const p=at(r.q('.clip'));
+  while(r.smk>1){r.smk--;FX.push({k:'m',x:p.x+rnd(-60,60),y:p.y-16,vx:rnd(-12,12),vy:rnd(-70,-38),life:rnd(1.4,2.4),max:2.4,ch:'~~()°.'[Math.floor(rnd(0,6))],sz:rnd(16,26),c:'#a6aab0',sway:rnd(0,6.28)})}
+}
+function fxTick(dt){fxPhys(dt);fxDraw()}
+function fxPhys(dt){
+  for(let i=FX.length-1;i>=0;i--){const f=FX[i];f.life-=dt;if(f.life<=0){FX.splice(i,1);continue}
+    if(f.k==='s'){f.vy+=980*dt;f.vx*=.986}else if(f.k==='m'){f.vx+=Math.sin(f.sway+f.life*3)*14*dt}
+    f.x+=f.vx*dt;f.y+=f.vy*dt}
+  if(FX.length>POOL.length)FX.splice(0,FX.length-POOL.length);
+}
+function fxDraw(){
+  for(let i=0;i<POOL.length;i++){const s=POOL[i],f=FX[i];
+    if(!f){if(s._on){s.style.opacity=0;s._on=0}continue}
+    s._on=1;
+    if(f.k==='s'){ // sparks cool from white to red; streaks point along their flight
+      if(f.streak){const a=Math.atan2(f.vy,f.vx),q=((Math.round(a/(Math.PI/4))%4)+4)%4;f.ch='-\\|/'[q]}
+      f.c=sparkCol(1-f.life/f.max)}
+    if(s._ch!==f.ch){s.textContent=f.ch;s._ch=f.ch}
+    const a=f.k==='m'?clamp(f.life/f.max*1.3)*.7:clamp(f.life/f.max*2.2);
+    s.style.opacity=a.toFixed(3);s.style.color=f.c;s.style.fontSize=f.sz.toFixed(1)+'px';
+    const sc=f.k==='m'?1+(1-f.life/f.max)*1.3:1;
+    s.style.transform=`translate(${f.x.toFixed(1)}px,${f.y.toFixed(1)}px) translate(-50%,-50%) scale(${sc.toFixed(3)})`;
+  }
+}
+
+/* ---------- events ---------- */
+function blow(r){
+  r.status='blown';r.flashT=QUIET?0:.2;r.cur=0;
+  sparks(r,r.fitStop?1.2:1);sfx('pop');
+  if(r.fitStop)return;
+  if(r.fuse.type==='turns'&&r.task==='loop'){r.spentAtBlow=r.spent;caption(`The <b>10-turn fuse</b> blew at <b>$${r.spent.toFixed(2)}</b>. The paperclip circuit is the same loop, still going.`)}
+  else if(r.fuse.type==='usd')caption(`Circuit 3 put the whole repo in the chat. Checked between turns, it went <b>$${r.over.toFixed(2)} past its $${r.fuse.rating} cap</b> before the fuse blew.`);
+  else caption(`Circuit ${rowNo(r)} hit its <b>${flagText(r.fuse)}</b> fuse at <b>$${r.spent.toFixed(2)}</b>.`);
+}
+function caption(h){$('#caption').innerHTML=h}
+
+/* ---------- sound (off by default) ---------- */
+let AC=null,SOUND=false;
+$('#snd').onclick=()=>{SOUND=!SOUND;$('#snd').setAttribute('aria-pressed',SOUND);$('#snd').textContent='Sound: '+(SOUND?'on':'off');if(SOUND&&!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}};
+function sfx(k){
+  if(!SOUND||!AC||FIXED)return;
+  const len=k==='pop'?.2:.05,buf=AC.createBuffer(1,Math.floor(AC.sampleRate*len),AC.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++){const e=1-i/d.length;d[i]=(Math.random()*2-1)*e*e*e}
+  const s=AC.createBufferSource();s.buffer=buf;const f=AC.createBiquadFilter();f.type=k==='pop'?'lowpass':'highpass';f.frequency.value=k==='pop'?2200:3200;
+  const g=AC.createGain();g.gain.value=k==='pop'?.4:.25;s.connect(f).connect(g).connect(AC.destination);s.start();
+}
+$('#copy').onclick=()=>{const txt=$('#cmdText').textContent;const ok=()=>{$('#copy').textContent='copied'},no=()=>{$('#copy').textContent='select it'};try{navigator.clipboard.writeText(txt).then(ok,no)}catch(e){no()}setTimeout(()=>$('#copy').textContent='copy',1500)};
+
+/* ---------- opening pose: payoff already on screen ---------- */
+function ff(r,turns,into){newRun(r);for(let i=0;i<turns&&r.status==='running';i++){r.tt=r.dur;endTurn(r)}if(r.status==='running')r.tt=r.dur*(into||0)}
+function bootstrap(){
+  rng=mulberry32(SEED);FX.length=0;
+  const [B,D,C,A]=ROWS;
+  B.fuse={type:'turns',rating:10};D.fuse=null;C.fuse={type:'usd',rating:5};A.fuse={type:'turns',rating:10};
+  ROWS.forEach(r=>{r.wasClip=false;r.scorchLv=0});
+  ff(D,30,.35);D.scorchLv=.7;
+  ff(C,3,.3);ff(A,3,.55);
+  ff(B,9,1);B.tt=B.dur;endTurn(B);          // B's 10th turn ends: the fuse is mid-blow at frame 0
+  B.flashT=QUIET?0:.12;
+  if(!QUIET){
+    // let the burst open a little, and give the paperclip a smoke plume that is already rising
+    const sp=FX.splice(0);
+    for(let i=0;i<70;i++){smoke(D,clamp(D.cur/MAXCOST),1/30);fxPhys(1/30)}
+    FX.push(...sp);for(let i=0;i<3;i++)fxPhys(1/30);
+  }
+  caption('Same retry loop, two circuits. The <b>10-turn fuse</b> just blew at <b>$'+B.spent.toFixed(2)+'</b>. The other one has a <b>paperclip</b> in the slot.');
+}
+
+/* ---------- autopilot tour ---------- */
+const ghost=$('#ghost'),ring=$('#ring');
+let tour=null;
+function user(){if(tour){tour=null;ghost.classList.remove('on');ring.style.opacity=0}}
+function startTour(){if(QUIET)return;tour={t:0,ev:{},g:{x:640,y:330},ring:0};ghost.classList.add('on')}
+function tgt(r,sel){const el=r.q(sel);if(!el||el.hidden)return null;const p=at(el);return{x:p.x-6,y:p.y-4}}
+function tourTick(dt){
+  if(!tour)return;const T=(tour.t+=dt),[B,D,C,A]=ROWS;
+  const once=(k,fn)=>{if(!tour.ev[k]){tour.ev[k]=1;fn()}};
+  let goal={x:640,y:330};
+  if(T>1.4&&T<3.4)goal=tgt(B,'.rerun')||goal;
+  else if(T>=3.4&&T<6.6)goal={x:660,y:250+Math.sin(T*1.3)*24};
+  else if(T>=6.6&&T<8.6)goal=tgt(D,'.fit')||tour.g;
+  else if(T>=8.6)goal={x:1060,y:430};
+  const k=1-Math.pow(.02,dt);
+  tour.g.x=lerp(tour.g.x,goal.x,k);tour.g.y=lerp(tour.g.y,goal.y,k);
+  if(T>2.9)once('b',()=>{tour.ring=.45;rerun(B);caption('New fuse, same loop. Each turn re-sends the whole chat, so <b>each turn costs more</b> than the one before.')});
+  if(T>7.9)once('d',()=>{tour.ring=.45;D.fitStop=true;fitFuse(D)});
+  if(T>12.5&&!FIXED){bootstrap();tour.t=0;tour.ev={}}
+  ghost.style.transform=`translate(${tour.g.x.toFixed(1)}px,${tour.g.y.toFixed(1)}px)`;
+  if(tour.ring>0){tour.ring-=dt;const a=clamp(tour.ring/.45);ring.style.opacity=a.toFixed(3);ring.style.transform=`translate(${(tour.g.x+3).toFixed(1)}px,${(tour.g.y+3).toFixed(1)}px) scale(${(1.7-a*.9).toFixed(3)})`}else ring.style.opacity=0;
+}
+
+/* ---------- sim tick ---------- */
+function simTick(dt){
+  for(const r of ROWS){
+    if(r.redraw>0)r.redraw=Math.max(0,r.redraw-dt);
+    if(r.flashT>0)r.flashT=Math.max(0,r.flashT-dt);
+    if(r.fitT>0){r.fitT=Math.max(0,r.fitT-dt);
+      if(r.fitT===0&&r.status==='running'){ // a fuse dropped into a running overload blows at once
+        r.spent=shown(r);r.costs.push(r.cur*clamp(r.tt/r.dur));r.fitStop=true;blow(r);
+        const ref=ROWS[0].spentAtBlow;
+        r.stopNote=`fuse fitted at turn <b>${r.turn}</b> · chat full at ${Math.round(WINDOW/1000)}k tokens`;
+        caption(`Fuse fitted: stopped at <b>$${r.spent.toFixed(2)}</b>. The same loop with <b>--max-turns 10</b> stopped at <b>$${(ref||0).toFixed(2)}</b>.`);
+      }}
+    if(r.status==='running'&&r.redraw===0&&r.fitT===0){r.tt+=dt;if(r.tt>=r.dur)endTurn(r)}
+    if(r.hero&&r.status==='running'&&(!r.fuse||r.fitT>0))smoke(r,clamp(r.cur/MAXCOST),dt);
+  }
+}
+
+/* ---------- layout ---------- */
+function fit(){
+  const phone=matchMedia('(max-width:820px) and (orientation:portrait)').matches;
+  SCALE=phone?1:Math.min(innerWidth/1280,innerHeight/720);
+  stage.style.transform=phone?'none':`translate(-50%,-50%) scale(${SCALE})`;
+}
+addEventListener('resize',fit);fit();
+addEventListener('keydown',e=>{if(e.code==='Space'&&(e.target===document.body||e.target===document.documentElement)){e.preventDefault();$('#runAll').click()}});
+$('#runAll').onclick=()=>{user();FX.length=0;ROWS.forEach(r=>{r.scorchLv=0;rerun(r)});caption('All four from turn 0. Watch which fuse goes first.')};
+
+/* ---------- main loop ---------- */
+let T0=0,last=0,started=false;
+window.__frame=0;
+function frame(now){
+  if(!FIXED&&!STILL)requestAnimationFrame(frame);
+  const dt=FIXED?1/30:Math.min(.05,Math.max(0,((now||0)-last)/1000));
+  last=now||0;
+  if(!started)return;
+  if(!STILL){T0+=dt;simTick(dt);tourTick(dt)}
+  window.__frame++;
+  drawBus(T0);
+  for(const r of ROWS)drawRow(r,T0);
+  fxTick(STILL?0:dt);
+  window.__state={t:+T0.toFixed(3),frame:window.__frame,seed:SEED,tour:tour?+tour.t.toFixed(2):null,fx:FX.length,
+    rows:ROWS.map(r=>({id:r.id,status:r.status,turn:r.turn,spent:+shown(r).toFixed(2),chat:Math.min(r.ctx,WINDOW),cap:flagText(r.fuse)}))};
+}
+window.step=n=>{if(!FIXED)return;for(let i=0;i<(n||1);i++)frame()};
+(async()=>{
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,2500))])}catch(e){}
+  fit();started=true;bootstrap();
+  if(FIXED){startTour();frame()}
+  else if(QUIET){frame();if(!STILL){caption('Reduced motion: no sparks, no autopilot. Use the buttons to run a circuit.');last=performance.now();requestAnimationFrame(frame)}}
+  else{startTour();last=performance.now();requestAnimationFrame(frame)}
+})();
+})();
+</script>
+</body>
+</html>
