@@ -459,7 +459,7 @@ const TOUR_SEED=6371,FIXED_PRERUN=540;
 const COL=['#e8892b','#e3cc40','#d6cfbb','#2f7bd8','#b5342a','#2c2823','#99cf84'];
 const PLURAL=['Monarchs','Brimstones','Cabbage Whites','Blue Morphos','Peacocks','Swallowtails','Luna moths'];
 const NAMES=['Monarch','Brimstone','Cabbage White','Blue Morpho','Peacock','Swallowtail','Luna moth'];
-const KCH={0:'none',2:'2 of 48',5:'5 of 48 · 10%',12:'12 of 48 · 25%'};
+const KCH={0:'none',2:'2 of 48',5:'5 of 48',12:'12 of 48'};
 let simT=0,restarts=0;
 const S={run:null,view:0,T:1,k:0,acc:false,auto:false,autoAcc:0,rate:5,shown:-1,dirty:true};
 let tour=null,SLIDE=null,SCAN=null,PEND=null;
@@ -576,7 +576,7 @@ function tourTick(dt){const T=tour;if(!T)return;T.t+=dt;const e=T.t-T.mark,r=S.r
     case 7:{if(e<1.5)break;T.busy=true;S.rate=9;T.acc+=dt*9;
       while(T.acc>=1&&r.g<360){T.acc-=1;doCopy()}
       const al=r.stats[r.g].alive;if(r.g>=318&&al>=5&&!T.said.h){T.said.h=1;caption(CAP.h(al))}
-      if(r.g>=360){if(!T.said.h)caption(CAP.h(al));nextStep(8)}break}
+      if(r.g>=360){caption(CAP.h(al));nextStep(8)}break}
     case 8:if(e>2.4){caption(CAP.i);tour=null;S.rate=5;syncControls()}break}}
 
 /* ================= ledger ================= */
