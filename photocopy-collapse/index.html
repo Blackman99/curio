@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Photocopy Collapse — a copier that only learns from its last copy</title>
+<meta name="description" content="A plate of 48 butterflies goes through a copier that is really a generative model: each copy is printed by a model fit only to the copy before it. Rare species vanish first, then every species shrinks to clones. Mix in fresh specimens from the wild and watch them come back.">
+<meta property="og:title" content="Photocopy Collapse">
+<meta property="og:description" content="Model collapse, live: each copy is printed by a model trained only on the copy before it. The rare species go first, then everything turns into clones.">
+<meta property="og:image" content="https://blackman99.github.io/curio/photocopy-collapse/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Photocopy Collapse">
+<meta name="twitter:description" content="A copier that is really a generative model, fit only to its own last copy. Watch a plate of butterflies collapse into clones, then rescue it with real data.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/photocopy-collapse/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500;1,600&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1e1b17;--ink2:#575047;--ink3:#8b8376;--red:#c4322a;--green:#2f8f57;--line:rgba(62,50,34,.16);--card:rgba(251,249,243,.84);--paper:#fbfaf6}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(130% 100% at 55% -10%,#efebe2 0%,#e2dccf 55%,#d3cbbb 100%);color:var(--ink);font-family:'Fraunces',Georgia,serif;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+#wrap{display:grid;height:100%;grid-template-columns:minmax(290px,330px) minmax(0,1fr) minmax(318px,364px);grid-template-rows:auto auto minmax(0,1fr);column-gap:26px;padding:20px 22px 18px 30px}
+#title{grid-column:1;grid-row:1}
+#ledger{grid-column:1;grid-row:2;margin-top:14px}
+#story{grid-column:1;grid-row:3;align-self:end}
+#stage{grid-column:2;grid-row:1/4;position:relative;min-height:0}
+#panel{grid-column:3;grid-row:1/4;min-height:0;overflow:auto;scrollbar-width:thin;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 15px;box-shadow:0 24px 60px rgba(60,44,22,.14),inset 0 1px 0 rgba(255,255,255,.7)}
+
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--ink2);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(251,249,243,.7);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--ink);color:#f6f2ea;outline:none}
+.kick{margin-top:18px;font:500 11px/1.4 'IBM Plex Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
+h1{margin:8px 0 10px;font-weight:800;font-size:clamp(42px,3.9vw,58px);line-height:.94;letter-spacing:-.015em;font-variation-settings:'opsz' 144}
+h1 em{display:block;font-style:normal;color:#8e877b;letter-spacing:.012em;text-shadow:2px 1.5px 0 rgba(30,27,23,.09),-1px -.5px 0 rgba(255,255,255,.35)}
+.stamp{display:inline-block;vertical-align:.38em;margin-left:10px;font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:var(--red);border:2px solid var(--red);border-radius:5px;padding:5px 6px 4px 8px;transform:rotate(-8deg);opacity:.85}
+.sub{margin:0;font-size:16px;line-height:1.48;color:var(--ink2)}
+.sub b{color:var(--ink);font-weight:600}
+
+#ledger{display:grid;gap:3px}
+.lrow{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:8px;min-height:31px;padding:2px 4px 2px 2px;border-radius:8px;position:relative;transition:opacity .4s}
+.lrow svg{width:40px;height:30px;overflow:visible}
+.lrow .nm{font:600 14.5px/1.1 'Fraunces',serif;white-space:nowrap}
+.lrow .nm i{display:block;font:italic 500 13px/1.1 'Cormorant Garamond',serif;color:var(--ink3)}
+.lrow .ct{font:600 15px/1 'IBM Plex Mono',monospace;color:var(--ink);text-align:right;min-width:42px}
+.lrow .ct small{font-size:10px;color:var(--ink3);font-weight:500}
+.lrow.gone{opacity:.42}
+.lrow.gone .ct{color:var(--ink3)}
+.lrow .tag{position:absolute;right:52px;top:50%;transform:translateY(-50%) rotate(-7deg);font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--red);border:1.5px solid var(--red);border-radius:4px;padding:4px 5px 3px;background:rgba(247,240,232,.7);white-space:nowrap;opacity:0}
+.lrow.gone .tag{opacity:1}
+.lrow.ret .tag{opacity:1;color:var(--green);border-color:var(--green);background:rgba(247,244,236,.55)}
+.lrow.gone .tag,.lrow.ret .tag{z-index:1}
+.lrow.gone{opacity:1}
+.lrow.gone svg,.lrow.gone .nm{opacity:.38}
+
+#caption{margin:0;font:400 18px/1.45 'Fraunces',serif;font-variation-settings:'opsz' 24;color:var(--ink);min-height:6em;transition:opacity .35s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600}
+#caption .r{color:var(--red);font-weight:600}
+#caption .g{color:var(--green);font-weight:600}
+.pin{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--red);vertical-align:.08em;box-shadow:inset -1px -1px 0 rgba(0,0,0,.25)}
+
+#rig{position:absolute;left:50%;top:0;transform-origin:0 0}
+#copier{position:absolute;left:0;top:0;width:640px;height:150px;z-index:3;overflow:visible;will-change:transform}
+#copier .led{font:600 22px/1 'IBM Plex Mono',monospace;fill:#ff5a3c;letter-spacing:2px}
+#copier .plab{font:600 7.5px/1 'IBM Plex Mono',monospace;fill:#bdb4a5;letter-spacing:1.4px}
+#copier .brand{font:600 11px/1 'IBM Plex Mono',monospace;fill:#6d6455;letter-spacing:3px}
+#copier .brand2{font:italic 500 13px/1 'Cormorant Garamond',serif;fill:#857b6a}
+#copier #go{cursor:pointer}
+#stack{position:absolute;left:20px;top:134px;width:600px;height:820px;z-index:1}
+#stack div{position:absolute;inset:0;background:#f3f1ea;border:1px solid rgba(70,60,45,.18);box-shadow:0 2px 6px rgba(60,44,22,.12);opacity:0;transition:opacity .4s}
+#sheets{position:absolute;left:20px;top:134px;width:600px;height:832px;overflow:hidden;z-index:2}
+.sheet{position:absolute;left:0;top:0;width:600px;height:820px;box-shadow:0 10px 26px rgba(60,44,22,.2),0 1px 2px rgba(60,44,22,.2);will-change:transform}
+.sheet svg{display:block;width:600px;height:820px}
+#tip{position:fixed;z-index:9;pointer-events:none;padding:7px 10px;border-radius:10px;background:rgba(30,27,23,.93);color:#f4efe6;font:500 11px/1.45 'IBM Plex Mono',monospace;opacity:0;transform:translate(16px,14px);transition:opacity .15s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+#tip b{color:#ffd77a}
+#tip .w{color:#ff8f86}
+
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 6px}
+.readout div{border-top:1px solid var(--line);padding-top:5px}
+.readout label{display:block;font:600 9px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.readout b{display:inline-block;font:600 22px/1.2 'IBM Plex Mono',monospace;color:var(--ink);white-space:nowrap}
+.readout small{font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--ink3);margin-left:3px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;white-space:nowrap;font:600 9.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin:9px 0 5px}
+.lab b{font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;color:var(--ink)}
+.lab i{font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;font-style:normal}
+#muller,#vline{display:block;width:100%;height:auto;touch-action:none;cursor:pointer}
+#muller{border-radius:6px;background:rgba(255,255,255,.35)}
+#scrubrow{display:flex;align-items:center;gap:8px;margin:4px 0 0;font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--ink3)}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:22px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#d8cfbf,#9e9483);box-shadow:inset 0 1px 1px rgba(0,0,0,.2)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#d8cfbf,#9e9483)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;border:1px solid #3d3326;background:radial-gradient(circle at 35% 30%,#fff,#d9cfbd 55%,#8f8270);box-shadow:0 2px 5px rgba(60,40,20,.3)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;border:1px solid #3d3326;background:#d9cfbd}
+input[type=range]:focus-visible{outline:1px dashed var(--ink2);outline-offset:3px}
+.btns{display:flex;gap:6px;margin:8px 0 0}
+.btn{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.5);border-radius:999px;padding:9px 6px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--ink);transition:background .2s,border-color .2s;white-space:nowrap}
+.btn:hover,.btn:focus-visible{background:#fff;border-color:var(--ink2);outline:none}
+.btn.hot{background:var(--ink);border-color:var(--ink);color:#f6f2ea}
+.btn.hot:hover,.btn.hot:focus-visible{background:#3a342c}
+.btn.on{border-color:var(--green);color:var(--green);background:rgba(47,143,87,.08)}
+.presets{display:flex;gap:4px}
+.presets button{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.42);border-radius:999px;padding:7px 2px;font:500 11px/1 'IBM Plex Mono',monospace;color:var(--ink2);white-space:nowrap}
+.presets button:hover,.presets button:focus-visible{border-color:var(--ink2);outline:none}
+.presets button.on{background:var(--ink);border-color:var(--ink);color:#f6f2ea}
+.hint{font:400 13px/1.4 'Fraunces',serif;color:var(--ink2);margin:5px 0 0}
+details{margin-top:11px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:13.5px;line-height:1.5;color:var(--ink2);margin:9px 0 0}
+details b{color:var(--ink);font-weight:600}
+details a,.foot a{color:var(--red)}
+.foot{margin-top:10px;font:500 10.5px/1.6 'IBM Plex Mono',monospace;color:var(--ink3)}
+.lnk{border:0;background:none;padding:0;font:inherit;color:var(--red);text-decoration:underline;cursor:pointer}
+.ph{font:600 15px 'IBM Plex Mono',monospace;letter-spacing:3px;fill:#2a251f}
+.ph2{font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:1.5px;fill:#7d7466}
+.pf{font:italic 600 19px 'Cormorant Garamond',serif;fill:#3b342b}
+.pf2{font:500 9px 'IBM Plex Mono',monospace;letter-spacing:1.3px;fill:#7d7466}
+
+@media (max-height:820px) and (min-width:1180px){
+  #wrap{padding-top:14px;padding-bottom:12px}
+  .kick{margin-top:12px}
+  h1{font-size:44px;margin:6px 0 8px}
+  .sub{font-size:14.5px;line-height:1.42}
+  #ledger{margin-top:10px;gap:1px}
+  .lrow{min-height:27px}
+  .lrow svg{height:26px}
+  .lrow .nm{font-size:13.5px}
+  .lrow .nm i{display:none}
+  #caption{font-size:16px;min-height:5.6em}
+  #panel{padding:10px 13px}
+  .lab{margin:7px 0 4px}
+  .readout b{font-size:19px}
+  details{margin-top:8px}
+}
+@media (max-height:700px) and (min-width:1180px){.sub{display:none}}
+@media (max-width:1179px){
+  html,body{overflow-x:hidden;overflow-y:auto;height:auto}
+  #wrap{display:block;height:auto;padding:14px 14px 24px;max-width:760px;margin:0 auto}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:40px;margin:6px 0 6px}
+  .stamp{font-size:10px}
+  .sub{font-size:15px}
+  #stage{margin:14px 0 6px}
+  #rig{position:relative;left:0}
+  #story{margin:6px 2px 8px}
+  #caption{font-size:16.5px;min-height:4.4em}
+  #ledger{grid-template-columns:1fr 1fr;column-gap:10px;margin:0 0 14px}
+  .lrow .nm i{display:none}
+  .lrow .tag{right:46px}
+  #panel{overflow:visible}
+  #tip{display:none}
+}
+@media (max-width:420px){
+  #ledger{grid-template-columns:1fr}
+  .lrow .nm i{display:block}
+}
+@media (prefers-reduced-motion:reduce){#caption,.lrow,.lrow .tag,#stack div{transition:none}}
+.static *{transition:none!important}
+</style>
+</head>
+<body>
+<div id="wrap">
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 020 · Model collapse</div>
+  <h1>Photocopy <em>Collapse</em></h1>
+  <p class="sub">This copier is a <b>generative model</b>. It studies a plate of butterflies and prints a new one from what it learned, then learns the next copy from <b>its own last copy</b>. Watch what it forgets.</p>
+</header>
+
+<main id="stage" aria-label="The copier and the latest copy of the plate. Hover a butterfly to see its traits.">
+  <div id="rig">
+    <div id="stack" aria-hidden="true"><div></div><div></div><div></div></div>
+    <div id="sheets"></div>
+    <svg id="copier" viewBox="0 0 640 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="cbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2ece0"/><stop offset=".55" stop-color="#e4dac7"/><stop offset="1" stop-color="#cbbfa6"/></linearGradient>
+        <linearGradient id="clid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57534d"/><stop offset="1" stop-color="#2e2c29"/></linearGradient>
+        <linearGradient id="cglass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1712"/><stop offset=".5" stop-color="#1b2a22"/><stop offset="1" stop-color="#0c140f"/></linearGradient>
+        <linearGradient id="cscan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#79ffb0" stop-opacity="0"/><stop offset=".45" stop-color="#b9ffd6" stop-opacity=".95"/><stop offset=".55" stop-color="#e9fff2"/><stop offset="1" stop-color="#79ffb0" stop-opacity="0"/></linearGradient>
+        <radialGradient id="cbtn" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#9bf0b5"/><stop offset=".55" stop-color="#2f9c58"/><stop offset="1" stop-color="#16502d"/></radialGradient>
+        <radialGradient id="sheen" cx=".15" cy=".45" r=".95"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".55" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></radialGradient>
+      </defs>
+      <ellipse cx="320" cy="146" rx="318" ry="6" fill="rgba(50,38,20,.18)"/>
+      <rect x="36" y="3" width="568" height="26" rx="9" fill="url(#clid)"/>
+      <rect x="40" y="5" width="560" height="3" rx="1.5" fill="#7a756d" opacity=".6"/>
+      <rect x="8" y="20" width="624" height="120" rx="15" fill="url(#cbody)" stroke="#b5a88c"/>
+      <rect x="9" y="108" width="622" height="31" rx="0" fill="#c9bc9f" opacity=".55"/>
+      <path d="M9 108H631" stroke="#b3a585" stroke-width="1"/>
+      <rect x="38" y="36" width="420" height="26" rx="5" fill="url(#cglass)" stroke="#8e8370"/>
+      <g id="lampg" opacity="0"><rect id="lamp" x="38" y="36" width="44" height="26" fill="url(#cscan)"/><rect id="lampbar" x="58" y="36" width="4" height="26" fill="#f2fff7"/></g>
+      <rect x="38" y="36" width="420" height="9" rx="5" fill="#fff" opacity=".07"/>
+      <text class="brand" x="40" y="84">MODEL 48 · GENERATIVE COPIER</text>
+      <text class="brand2" x="40" y="101">prints what it learned from the last page it saw</text>
+      <rect x="480" y="30" width="132" height="72" rx="9" fill="#2b2925" stroke="#1b1a17"/>
+      <rect x="492" y="40" width="72" height="32" rx="4" fill="#120907" stroke="#3d3a35"/>
+      <text id="led" class="led" x="528" y="64" text-anchor="middle">000</text>
+      <text class="plab" x="528" y="86" text-anchor="middle">COPY No.</text>
+      <g id="go" role="button" aria-label="Copy once"><circle cx="588" cy="56" r="14" fill="#173a24"/><circle cx="588" cy="55" r="12" fill="url(#cbtn)"/></g>
+      <text class="plab" x="588" y="86" text-anchor="middle">PRINT</text>
+      <circle id="ready" cx="494" cy="94" r="2.6" fill="#62d17a"/>
+      <text id="readyt" class="plab" x="501" y="96.6">READY</text>
+      <rect x="18" y="126" width="604" height="11" rx="3.5" fill="#1d1b18"/>
+      <rect x="18" y="126" width="604" height="3" rx="1.5" fill="#000" opacity=".5"/>
+    </svg>
+  </div>
+</main>
+
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+
+<section id="ledger" aria-label="The seven species and how many are on the page"></section>
+
+<aside id="panel" aria-label="Copier controls and the history of the copies">
+  <div class="readout">
+    <div title="how many times the plate has been through the copier"><label>Copy</label><b id="rG">0</b></div>
+    <div title="species still on this page"><label>Species</label><b id="rS">7</b><small>of 7</small></div>
+    <div title="how much butterflies of the same species differ, compared with plate 0"><label>Variety</label><b id="rV">100%</b></div>
+  </div>
+  <div class="lab"><span>Each page, by species</span><i id="mlab">plate 0 → copy 0</i></div>
+  <svg id="muller" viewBox="0 0 360 132" aria-label="Share of each species on every copy so far. Click to look back at a copy."></svg>
+  <div class="lab" style="margin-top:6px"><span>Variety within species</span><i>100% = plate 0</i></div>
+  <svg id="vline" viewBox="0 0 360 54" aria-label="Variety within species on every copy so far"></svg>
+  <div id="scrubrow"><span>look back</span><input id="scrub" type="range" min="0" max="0" step="1" value="0" aria-label="Look back at an earlier copy"><span id="scrubv">copy 0</span></div>
+  <div class="btns"><button class="btn hot" id="copy1" title="Copy the page once (Space)">Copy once</button><button class="btn" id="auto" title="Keep copying, five copies a second">▶ Keep copying</button><button class="btn" id="restart" title="Back to plate 0, with a new random stream">↺ Start over</button></div>
+  <div class="lab"><span>Fresh specimens from the wild, per copy</span><b id="kv">none</b></div>
+  <div class="presets" id="kp"><button data-k="0" class="on">0</button><button data-k="2">2 of 48</button><button data-k="5">5 · 10%</button><button data-k="12">12 · 25%</button></div>
+  <div class="lab"><span>Contrast · sampling temperature</span><b id="tv">T = 1.0</b></div>
+  <div class="presets" id="tp"><button data-t="1" class="on">1.0 faithful</button><button data-t="0.9">0.9</button><button data-t="0.8">0.8 sharp</button></div>
+  <div class="lab"><span>The copier learns from</span><b id="av">the last page</b></div>
+  <div class="presets" id="ap"><button data-a="0" class="on">the last page</button><button data-a="1">every page so far</button></div>
+  <p class="hint" id="hint">Settings apply from the next copy.</p>
+  <details>
+    <summary>What is this?</summary>
+    <p>The copier is a small <b>generative model</b>. To make a copy it fits itself to the page in front of it: how common each species is (a categorical distribution), and for each species the mean and spread of five traits (wingspan, hue, lightness, wing shape, how strong the markings are). The spread is the usual <b>unbiased</b> variance; one specimen alone gives zero spread. Then it prints 48 new butterflies by sampling that model. They are new samples, not copies of the drawings. The next copy is fitted to this copy, and so on.</p>
+    <p>A species that makes up a share q of the page is missing from the next copy with probability (1 − q)<sup>48</sup>, and once it is missing the model gives it probability zero, so it can never come back. Rare species go first. In 4,000 runs from this plate, the median copy at which each species first disappeared was: Luna moth (2 of 48) <b>5</b>, Swallowtail (3) <b>8</b>, Peacock (4) <b>12</b>, Blue Morpho (6) <b>18</b>, Cabbage White (9) <b>30</b>, Brimstone (10) <b>34</b>, Monarch (14) <b>52</b>. Every run ended with a single species, after a median of <b>72</b> copies (quartiles 49–106). Which species survives is a lottery weighted by how common it was: Monarchs, 29% of plate 0, survived in 28% of runs, and Luna moths, 4%, in 4.5%.</p>
+    <p>Inside each species the spread is re-estimated from a finite sample every time. Each estimate is right on average, but the errors compound, and the spread drains away: variety was a median <b>70%</b> of plate 0 after 10 copies, <b>40%</b> after 40, <b>20%</b> after 100 and <b>3%</b> after 300. The averages drift too, so the last clones need not look like a typical original. This is the late stage of <b>model collapse</b>: low variance, and little resemblance to where it started.</p>
+    <p><b>What helps.</b> Fresh specimens from the wild (drawn from the real population, red pins) put back what the copier forgot. With 5 of 48 per copy (10%), runs still had a median of <b>6</b> species and <b>101%</b> of the variety after 300 copies; with 2 of 48, 5 species and 90%; with 12 of 48, all 7 and 103%. Learning from <b>every page so far</b> instead of the last one also holds: 7 species and 89% variety after 300 copies, because plate 0 never leaves the training data. <b>What hurts:</b> sharper sampling. At temperature 0.9 the median run was down to one species after <b>23</b> copies, at 0.8 after <b>13</b>, and the commonest species won more often (49%, 64%). Text generators often sample below T = 1, or cut off the unlikely tail (top-p), which does the same.</p>
+    <p><b>Real:</b> the fitting, the sampling and every number on screen, computed live from one seeded random stream (mulberry32); a separate Python implementation reproduces every copy, and the statistics above come from 2,000 to 4,000 runs per setting of a vectorised version of it. <b>Simulated:</b> the butterflies. They are drawings made from the five traits, styled after real species, and the "wild" is a made-up population. The tour uses a fixed random stream.</p>
+    <p>After Shumailov et al., <a href="https://doi.org/10.1038/s41586-024-07566-y">AI models collapse when trained on recursively generated data</a> (Nature, 2024), which proves the single-species version (a Gaussian refit to its own samples loses its variance with probability 1) and shows that in the discrete case the survivor is drawn with its original probability. Keeping data: Gerstgrasser et al., <a href="https://arxiv.org/abs/2404.01413">Is Model Collapse Inevitable?</a> (2024). Fresh data: Alemohammad et al., <a href="https://arxiv.org/abs/2307.01850">Self-Consuming Generative Models Go MAD</a> (ICLR 2024). The species shares follow the same maths as gene frequencies on a small island (Wright–Fisher drift).</p>
+  </details>
+  <div class="foot">Space copies once · hover a butterfly · click the chart to look back · <button class="lnk" id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+</div>
+<div id="tip"></div>
+
+<script>
+/* ================= engine: the copier's model =================
+   A plate holds 48 specimens: {s: species, x: [wingspan mm, hue shift °, lightness shift, wing shape, marking], w: 1 if wild}.
+   To make a copy, the copier fits a model to the page it is given: each species' share of the page (a categorical),
+   and for each species and trait an unbiased mean and variance (a Gaussian; one specimen gives zero variance).
+   Then it prints 48 new specimens by sampling that model. Plate 0 has its own seed; every copy draws from one
+   mulberry32 stream, so a run replays exactly. */
+const NP=48,ND=5;
+const SP=[
+  {k:'monarch',name:'Monarch',latin:'Danaus plexippus',n:14,mu:[96,0,0,0,0],sd:[7,6,.045,.15,.2]},
+  {k:'brimstone',name:'Brimstone',latin:'Gonepteryx rhamni',n:10,mu:[62,0,0,0,0],sd:[4.5,5,.045,.15,.2]},
+  {k:'white',name:'Cabbage White',latin:'Pieris rapae',n:9,mu:[54,0,0,0,0],sd:[4,10,.03,.15,.2]},
+  {k:'morpho',name:'Blue Morpho',latin:'Morpho menelaus',n:6,mu:[124,0,0,0,0],sd:[9,8,.05,.15,.2]},
+  {k:'peacock',name:'Peacock',latin:'Aglais io',n:4,mu:[60,0,0,0,0],sd:[4.5,6,.045,.15,.2]},
+  {k:'swallowtail',name:'Swallowtail',latin:'Papilio machaon',n:3,mu:[84,0,0,0,0],sd:[6,5,.045,.15,.2]},
+  {k:'luna',name:'Luna Moth',latin:'Actias luna',n:2,mu:[108,0,0,0,0],sd:[8,8,.045,.15,.2]}];
+const K=SP.length,PLATE_SEED=7;
+function mulberry32(seed){let a=seed|0;
+  const f=()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296};
+  f.get=()=>a>>>0;f.set=v=>{a=v|0};return f}
+// Box–Muller, cosine half only: two uniforms per normal
+function normal(rng){const u1=1-rng(),u2=rng();return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2)}
+function trueTraits(s,rng){const S=SP[s],x=new Array(ND);for(let j=0;j<ND;j++)x[j]=S.mu[j]+S.sd[j]*normal(rng);return x}
+// plate 0: drawn from life, an exact census of the seven species
+function originalPlate(seed=PLATE_SEED){const rng=mulberry32(seed),P=[];
+  for(let s=0;s<K;s++)for(let i=0;i<SP[s].n;i++)P.push({s,x:trueTraits(s,rng),w:0});return P}
+// a fresh specimen from the wild: species in the original proportions, traits from the true distribution
+function wildSpecimen(rng){const u=rng();let s=0,c=0;for(;s<K-1;s++){c+=SP[s].n/NP;if(u<c)break}return{s,x:trueTraits(s,rng),w:1}}
+// fit the model to a list of plates (one plate, or every plate so far), two passes in page order
+function fit(plates){
+  const c=new Array(K).fill(0),mean=[],vr=[];let M=0;
+  for(let s=0;s<K;s++){mean.push(new Array(ND).fill(0));vr.push(new Array(ND).fill(0))}
+  for(const P of plates)for(const p of P){c[p.s]++;M++;const m=mean[p.s];for(let j=0;j<ND;j++)m[j]+=p.x[j]}
+  for(let s=0;s<K;s++)if(c[s])for(let j=0;j<ND;j++)mean[s][j]/=c[s];
+  for(const P of plates)for(const p of P){const m=mean[p.s],v=vr[p.s];for(let j=0;j<ND;j++){const d=p.x[j]-m[j];v[j]+=d*d}}
+  for(let s=0;s<K;s++)for(let j=0;j<ND;j++)vr[s][j]=c[s]>1?vr[s][j]/(c[s]-1):0;
+  return{c,M,mean,vr}}
+// species weights for printing; temperature T<1 sharpens them like low-temperature sampling
+function weights(F,T){const w=new Array(K);let z=0;
+  for(let s=0;s<K;s++){const q=F.c[s]/F.M;w[s]=F.c[s]?(T===1?q:Math.pow(q,1/T)):0;z+=w[s]}
+  for(let s=0;s<K;s++)w[s]/=z;return w}
+function pick(w,u){let c=0,last=-1;for(let s=0;s<K;s++){if(!(w[s]>0))continue;last=s;c+=w[s];if(u<c)return s}return last}
+// print one copy: k fresh wild specimens first, then 48-k from the model (traits spread scaled by T)
+function printPlate(F,rng,T,k){const P=[];
+  for(let i=0;i<k;i++)P.push(wildSpecimen(rng));
+  const w=weights(F,T);
+  for(let i=k;i<NP;i++){const s=pick(w,rng()),x=new Array(ND),m=F.mean[s],v=F.vr[s];
+    for(let j=0;j<ND;j++)x[j]=m[j]+T*Math.sqrt(v[j])*normal(rng);
+    P.push({s,x,w:0})}
+  return P}
+function census(P){const c=new Array(K).fill(0);for(const p of P)c[p.s]++;return c}
+// within-species variety: each species' spread in units of the real population's, averaged over the five traits and
+// weighted by count (a lone specimen counts as 0); shown relative to plate 0
+function spread(P){const F=fit([P]);let num=0,den=0;
+  for(let s=0;s<K;s++){if(!F.c[s])continue;den+=F.c[s];if(F.c[s]<2)continue;let r=0;
+    for(let j=0;j<ND;j++)r+=Math.sqrt(F.vr[s][j])/SP[s].sd[j];num+=F.c[s]*r/ND}
+  return den?num/den:0}
+// a run: plate 0, then one copy per call. log[g] = what made plate g (rng state before it, settings, the fit it sampled)
+class Run{
+  constructor(seed,plateSeed=PLATE_SEED){this.seed=seed>>>0;this.plateSeed=plateSeed;this.rng=mulberry32(this.seed);
+    this.plates=[originalPlate(plateSeed)];this.S0=spread(this.plates[0]);
+    this.log=[{g:0,plateSeed}];this.stats=[this.statOf(this.plates[0])]}
+  statOf(P){const c=census(P);return{c,alive:c.filter(n=>n>0).length,variety:spread(P)/this.S0,wild:P.filter(p=>p.w).length}}
+  copy(T=1,k=0,acc=false){
+    const rng0=this.rng.get(),F=fit(acc?this.plates:[this.plates[this.plates.length-1]]);
+    const P=printPlate(F,this.rng,T,k);this.plates.push(P);
+    this.log.push({g:this.plates.length-1,rng0,T,k,acc,fit:{c:F.c.slice(),M:F.M,mean:F.mean.map(a=>a.slice()),vr:F.vr.map(a=>a.slice())}});
+    const st=this.statOf(P);this.stats.push(st);return P}
+  // go back to plate g and continue from there; the random stream carries on
+  truncate(g){this.plates.length=g+1;this.log.length=g+1;this.stats.length=g+1}
+  get g(){return this.plates.length-1}
+}
+/* ================= drawing: one specimen, as SVG =================
+   Pure function of (species, traits): the copier only ever changes the five traits, so clones draw identically.
+   Coordinates: the right half of the insect, half-wingspan = 1, y down; the left half is a mirrored <use>. */
+const TAU=Math.PI*2;
+const r3=v=>Math.round(v*1000)/1000;
+const sat=(v,a)=>a*Math.tanh(v/a); // soft limit, so a drifted trait still draws
+// closed (or open) Catmull–Rom through points → cubic Bézier path
+function crPath(P,closed=true){const n=P.length;let d=`M${r3(P[0][0])} ${r3(P[0][1])}`;
+  const at=i=>closed?P[(i+n)%n]:P[Math.max(0,Math.min(n-1,i))];const m=closed?n:n-1;
+  for(let i=0;i<m;i++){const p0=at(i-1),p1=at(i),p2=at(i+1),p3=at(i+2);
+    d+=`C${r3(p1[0]+(p2[0]-p0[0])/6)} ${r3(p1[1]+(p2[1]-p0[1])/6)} ${r3(p2[0]-(p3[0]-p1[0])/6)} ${r3(p2[1]-(p3[1]-p1[1])/6)} ${r3(p2[0])} ${r3(p2[1])}`}
+  return closed?d+'Z':d}
+const hsl=(h,s,l)=>`hsl(${r3(((h%360)+360)%360)},${r3(Math.max(0,Math.min(100,s)))}%,${r3(Math.max(0,Math.min(100,l)))}%)`;
+const circ=(x,y,r,f,extra='')=>`<circle cx="${r3(x)}" cy="${r3(y)}" r="${r3(r)}" fill="${f}"${extra}/>`;
+const line=(P,w,c,extra='')=>`<path d="${crPath(P,false)}" fill="none" stroke="${c}" stroke-width="${r3(w)}" stroke-linecap="round"${extra}/>`;
+// point along a polyline-ish outline (index-based, for spots along a margin)
+function lerpPts(A,B,t){return[A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t]}
+// shrink a point toward a centre: for rows of spots just inside the margin
+const toward=(p,c,k)=>[c[0]+(p[0]-c[0])*k,c[1]+(p[1]-c[1])*k];
+const rim=(P,a,b,w,c)=>`<path d="${crPath(P.slice(a,b),false)}" fill="none" stroke="${c}" stroke-width="${r3(w)}" stroke-linecap="round"/>`;
+
+// wing outlines per species, right side (x ≥ 0), y down
+const LOOK={
+  monarch:{h:27,s:90,l:53,body:'#191512',ant:'#191512',
+    fw:[[.04,-.1],[.3,-.42],[.62,-.64],[.9,-.72],[1,-.6],[.9,-.3],[.72,-.02],[.52,.1],[.24,.08],[.06,.05]],
+    hw:[[.04,0],[.36,-.07],[.62,.07],[.7,.3],[.6,.54],[.36,.68],[.16,.6],[.05,.2]]},
+  brimstone:{h:55,s:86,l:66,body:'#7c7a3c',ant:'#8a6a4a',
+    fw:[[.04,-.1],[.28,-.45],[.58,-.7],[.84,-.82],[.9,-.66],[.88,-.38],[.7,-.05],[.45,.09],[.06,.05]],
+    hw:[[.04,0],[.38,-.05],[.63,.13],[.75,.38],[.56,.56],[.3,.66],[.12,.52],[.05,.18]]},
+  white:{h:46,s:32,l:94,body:'#2e2c2a',ant:'#2e2c2a',
+    fw:[[.04,-.1],[.3,-.45],[.6,-.66],[.86,-.67],[.96,-.46],[.86,-.15],[.66,.05],[.36,.1],[.06,.05]],
+    hw:[[.04,0],[.36,-.05],[.62,.11],[.67,.35],[.5,.56],[.28,.62],[.12,.5],[.05,.18]]},
+  morpho:{h:211,s:88,l:50,body:'#2a2118',ant:'#2a2118',
+    fw:[[.04,-.1],[.3,-.5],[.6,-.74],[.9,-.79],[1,-.62],[.94,-.34],[.78,-.06],[.55,.08],[.25,.08],[.06,.05]],
+    hw:[[.04,0],[.4,-.07],[.7,.09],[.79,.36],[.68,.6],[.42,.76],[.19,.67],[.05,.22]]},
+  peacock:{h:7,s:70,l:40,body:'#22140f',ant:'#22140f',
+    fw:[[.04,-.1],[.3,-.46],[.62,-.7],[.88,-.72],[.95,-.57],[.84,-.43],[.87,-.22],[.7,0],[.4,.1],[.06,.05]],
+    hw:[[.04,0],[.36,-.06],[.62,.07],[.71,.3],[.61,.42],[.63,.54],[.42,.66],[.2,.62],[.05,.2]]},
+  swallowtail:{h:50,s:86,l:71,body:'#1b1712',ant:'#1b1712',
+    fw:[[.04,-.1],[.3,-.46],[.62,-.71],[.92,-.79],[.99,-.67],[.86,-.36],[.66,-.04],[.4,.08],[.06,.05]],
+    hw:[[.04,0],[.34,-.06],[.6,.06],[.69,.28],[.61,.48],[.46,.57],[.44,.9],[.38,.92],[.35,.62],[.18,.62],[.05,.22]]},
+  luna:{h:96,s:46,l:74,body:'#f4f0e4',ant:'#a88b5c',
+    fw:[[.04,-.1],[.28,-.44],[.58,-.66],[.85,-.71],[.93,-.6],[.86,-.33],[.68,-.02],[.42,.1],[.06,.05]],
+    hw:[[.04,0],[.36,-.04],[.6,.1],[.64,.3],[.53,.5],[.43,.66],[.41,1.02],[.47,1.2],[.36,1.15],[.3,.82],[.22,.6],[.05,.24]]}};
+const KEYS=Object.keys(LOOK);
+
+// traits → drawing parameters
+function looks(s,x){const k=KEYS[s],L=LOOK[k];
+  const sh=Math.tanh(x[3]/.3),mk=Math.exp(sat(x[4],.6));
+  return{k,L,h:L.h+sat(x[1],30),l:L.l+100*sat(x[2],.14),sh,mk}}
+function shapePts(P,sh,fore){return P.map(([x,y])=>fore?[x*(1+.08*sh*x*x),y*(1+.12*sh*x*x)]:[x*(1-.03*sh),y>.7?.7+(y-.7)*(1+.5*sh):y*(1+.05*sh)])}
+
+// patterns, drawn inside the clipped wing (right side)
+function patterns(q,F,H){const{k,h,l,mk}=q;let f='',g='';
+  if(k==='monarch'){const ink='#17120e',dot='#fbf6ea';
+    // veins from the base, black margin with two rows of white dots, black apex with pale spots
+    for(const t of[.18,.38,.58,.78])f+=line([[.06,-.02],lerpPts([.32,-.2],[.62,.02],t),lerpPts(F[3],F[6],t*1.05)],.035*mk,ink);
+    f+=line([[.06,-.06],[.4,-.36],[.86,-.62]],.04*mk,ink);
+    f+=rim(F,1,8,.15*mk,ink);
+    f+=circ(F[3][0]-.02,F[3][1]+.02,.15*mk,ink);
+    for(let i=4;i<8;i++){const p=toward(lerpPts(F[i],F[i+1],.5),[.5,-.25],.92);f+=circ(p[0],p[1],.018*mk,dot)}
+    for(const p of[[.78,-.58],[.84,-.5],[.7,-.52]])f+=circ(p[0],p[1],.022*mk,hsl(h+8,80,72));
+    for(const t of[.25,.55,.85])g+=line([[.06,.06],lerpPts([.34,.12],[.3,.4],t),lerpPts(H[2],H[5],t)],.03*mk,ink);
+    g+=rim(H,1,7,.16*mk,ink);
+    for(let i=2;i<6;i++){const p=toward(lerpPts(H[i],H[i+1],.5),[.3,.3],.93);g+=circ(p[0],p[1],.017*mk,dot)}}
+  else if(k==='brimstone'){const vein=hsl(h-6,55,l-14);
+    for(const t of[.25,.5,.75])f+=line([[.06,-.02],lerpPts(F[3],F[6],t)],.012,vein,' opacity=".55"');
+    f+=circ(.5,-.32,.04*mk,hsl(h-30,88,52));g+=circ(.42,.28,.05*mk,hsl(h-30,88,54));
+    f+=`<path d="${crPath(F)}" fill="none" stroke="${hsl(h-25,60,48)}" stroke-width=".035"/>`}
+  else if(k==='white'){const tip='#3e3c39';
+    f+=circ(F[3][0],F[3][1]+.04,.24*mk,tip,' opacity=".92"');
+    f+=circ(.54,-.24,.045*mk,tip)+circ(.44,-.04,.04*mk,tip,' opacity=".8"');
+    f+=circ(.05,-.02,.32,'#8d8a84',' opacity=".22"');g+=circ(.05,.05,.3,'#8d8a84',' opacity=".18"');
+    g+=circ(.36,-.02,.04*mk,tip,' opacity=".75"')}
+  else if(k==='morpho'){const ink='#0b1220';
+    f+=rim(F,1,9,.26*mk,ink);
+    f+=circ(F[3][0],F[3][1],.24*mk,ink);
+    for(const p of[[.8,-.6],[.86,-.48],[.72,-.66],[.78,-.36]])f+=circ(p[0],p[1],.022,'#e9f2ff');
+    g+=rim(H,1,8,.22*mk,ink);
+    for(let i=2;i<6;i++){const p=toward(lerpPts(H[i],H[i+1],.5),[.3,.3],.86);g+=circ(p[0],p[1],.018,'#cfe0ff',' opacity=".8"')}}
+  else if(k==='peacock'){const ink='#1f120d';
+    f+=rim(F,1,9,.13,ink);
+    for(let i=0;i<5;i++){const p=lerpPts([.2,-.38],[.74,-.68],i/4);f+=circ(p[0],p[1],.04,i%2?ink:hsl(46,80,62))}
+    const e=[.7,-.48],R=.17*mk;
+    f+=circ(e[0],e[1],R,ink)+circ(e[0],e[1],R*.8,hsl(44,85,66))+circ(e[0]-.01,e[1]+.01,R*.55,hsl(230,55,52))+circ(e[0]+.02,e[1]-.02,R*.32,ink)+circ(e[0]-.04,e[1]+.04,R*.16,'#f3efe8');
+    g+=rim(H,1,8,.14,ink);
+    const E2=[.47,.34],R2=.17*mk;
+    g+=circ(E2[0],E2[1],R2,'#6b5a52')+circ(E2[0],E2[1],R2*.82,ink)+circ(E2[0],E2[1],R2*.6,hsl(222,60,50))+circ(E2[0]+.03,E2[1]-.03,R2*.16,'#eef2f7')+circ(E2[0]-.04,E2[1]+.03,R2*.12,'#eef2f7')}
+  else if(k==='swallowtail'){const ink='#16120d';
+    for(const t of[.08,.3,.5])f+=`<path d="M${r3(.12+t*.7)} ${r3(-.3-t*.42)}L${r3(.22+t*.64)} ${r3(-.47-t*.42)}L${r3(.2+t*.45)} ${r3(.06)}L${r3(.1+t*.45)} ${r3(.08)}Z" fill="${ink}" opacity=".92"/>`;
+    f+=rim(F,2,8,.22*mk,ink);
+    for(let i=4;i<7;i++){const p=toward(lerpPts(F[i],F[i+1],.5),[.5,-.3],.9);f+=circ(p[0],p[1],.024,hsl(h,90,74))}
+    g+=rim(H,1,10,.28*mk,ink);
+    for(let i=2;i<6;i++){const p=toward(lerpPts(H[i],H[i+1],.5),[.28,.28],.82);g+=circ(p[0],p[1],.026,hsl(216,70,58))}
+    g+=circ(.14,.52,.06*mk,hsl(10,85,52))+circ(.14,.52,.03*mk,'#1d3f8f')}
+  else if(k==='luna'){const rim=hsl(338,30,38);
+    f+=line([[.06,-.1],[.3,-.42],[.6,-.64],[.86,-.7]],.07,rim);
+    const e=[.56,-.3];f+=circ(e[0],e[1],.075*mk,hsl(40,70,55))+circ(e[0],e[1],.058*mk,hsl(340,35,32))+circ(e[0],e[1],.04*mk,hsl(h,40,86))+circ(e[0]+.012,e[1]-.01,.016*mk,'#fff');
+    const e2=[.36,.32];g+=circ(e2[0],e2[1],.078*mk,hsl(40,70,55))+circ(e2[0],e2[1],.06*mk,hsl(340,35,32))+circ(e2[0],e2[1],.042*mk,hsl(h,40,86))+circ(e2[0]+.012,e2[1]-.01,.016*mk,'#fff');
+    g+=`<path d="${crPath(H)}" fill="none" stroke="${hsl(h+250,25,72)}" stroke-width=".05" opacity=".7"/>`}
+  return[f,g]}
+
+// one specimen at the origin, half-wingspan 1; id must be unique in the document
+function specimenSVG(s,x,id){const q=looks(s,x),L=q.L;
+  const F=shapePts(L.fw,q.sh,true),H=shapePts(L.hw,q.sh,false);
+  const fill=hsl(q.h,L.s,q.l),fillH=hsl(q.h+(q.k==='morpho'?6:0),L.s,q.l-(q.k==='monarch'?2:q.k==='morpho'?4:0));
+  const fd=crPath(F),hd=crPath(H);const[pf,ph]=patterns(q,F,H);
+  const edge=q.k==='white'?'#8b857a':'#2a211a';
+  let o=`<defs><clipPath id="${id}f"><path d="${fd}"/></clipPath><clipPath id="${id}h"><path d="${hd}"/></clipPath></defs>`;
+  o+=`<g id="${id}r">`;
+  o+=`<path d="${hd}" fill="${fillH}"/><g clip-path="url(#${id}h)">${ph}<path d="${hd}" fill="url(#sheen)"/></g><path d="${hd}" fill="none" stroke="${edge}" stroke-width=".018" opacity=".7"/>`;
+  o+=`<path d="${fd}" fill="${fill}"/><g clip-path="url(#${id}f)">${pf}<path d="${fd}" fill="url(#sheen)"/></g><path d="${fd}" fill="none" stroke="${edge}" stroke-width=".018" opacity=".75"/>`;
+  o+=`</g><use href="#${id}r" transform="scale(-1 1)"/>`;
+  // body: abdomen, thorax, head, antennae
+  const fat=q.k==='luna'?1.35:q.k==='morpho'?1.1:1;
+  o+=`<ellipse cx="0" cy=".2" rx="${r3(.045*fat)}" ry=".25" fill="${L.body}"/><ellipse cx="0" cy="-.07" rx="${r3(.065*fat)}" ry=".11" fill="${L.body}"/><circle cx="0" cy="-.2" r="${r3(.048*fat)}" fill="${L.body}"/>`;
+  if(q.k==='luna')o+=`<path d="M-.02 -.24C-.08 -.34 -.14 -.4 -.2 -.44M.02 -.24C.08 -.34 .14 -.4 .2 -.44" fill="none" stroke="${L.ant}" stroke-width=".05" stroke-linecap="round"/>`;
+  else o+=`<path d="M-.015 -.24C-.06 -.38 -.14 -.5 -.24 -.6M.015 -.24C.06 -.38 .14 -.5 .24 -.6" fill="none" stroke="${L.ant}" stroke-width=".014" stroke-linecap="round"/>`+circ(-.245,-.605,.022,L.ant)+circ(.245,-.605,.022,L.ant);
+  if(q.k==='monarch')o+=circ(-.022,-.1,.012,'#f6f1e6')+circ(.022,-.06,.012,'#f6f1e6')+circ(0,-.2,.01,'#f6f1e6');
+  return o}
+// how tall the drawing is, top and bottom, in half-wingspans (for fitting it in a cell)
+function extent(s,x){const q=looks(s,x),L=q.L,H=shapePts(L.hw,q.sh,false),F=shapePts(L.fw,q.sh,true);
+  let t=-.62,b=.45;for(const p of F)t=Math.min(t,p[1]);for(const p of H)b=Math.max(b,p[1]);return{t,b}}
+// wingspan in mm → drawn half-span, squashed so a Blue Morpho and a Cabbage White both fit a cell
+const halfSpan=(mm,cell)=>cell*.47*Math.pow(Math.max(20,mm)/130,.55);
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still');
+const STATIC=RM||STILL;if(STATIC)document.documentElement.classList.add('static');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
+const easeOut=t=>1-(1-t)**3;
+const pct=v=>Math.round(v*100)+'%';
+const isPhone=()=>innerWidth<1180;
+const TOUR_SEED=6371,FIXED_PRERUN=540;
+// chart colours, in species order
+const COL=['#e8892b','#e3cc40','#d6cfbb','#2f7bd8','#b5342a','#2c2823','#99cf84'];
+const PLURAL=['Monarchs','Brimstones','Cabbage Whites','Blue Morphos','Peacocks','Swallowtails','Luna moths'];
+const NAMES=['Monarch','Brimstone','Cabbage White','Blue Morpho','Peacock','Swallowtail','Luna moth'];
+const KCH={0:'none',2:'2 of 48',5:'5 of 48 · 10%',12:'12 of 48 · 25%'};
+let simT=0,restarts=0;
+const S={run:null,view:0,T:1,k:0,acc:false,auto:false,autoAcc:0,rate:5,shown:-1,dirty:true};
+let tour=null,SLIDE=null,SCAN=null,PEND=null;
+
+/* ================= the plate ================= */
+const CW=90,CH=87,GX0=30,GY0=46;
+let sheetN=0;
+function orderOf(P){return P.map((p,i)=>i).sort((a,b)=>P[a].s-P[b].s||a-b)}
+function plateSVG(g){const r=S.run,P=r.plates[g],id='p'+(++sheetN),ord=orderOf(P),orig=g===0,e=r.log[g],st=r.stats[g];
+  let o=`<rect width="600" height="820" fill="${orig?'#f6f0e1':'#fbfaf7'}"/>`;
+  if(orig)o+='<rect x="13" y="13" width="574" height="794" fill="none" stroke="#cbbd9b" stroke-width="1.2"/><rect x="17" y="17" width="566" height="786" fill="none" stroke="#dccfb0" stroke-width=".6"/>';
+  else o+='<rect x="3" y="3" width="594" height="814" fill="none" stroke="rgba(70,66,60,.07)" stroke-width="6"/><rect x="0" y="0" width="600" height="7" fill="rgba(60,58,55,.05)"/>';
+  const left=orig?'PLATE 0':`COPY ${g}`;
+  const right=orig?'LEPIDOPTERA · DRAWN FROM LIFE':(e.acc?`LEARNED FROM ALL ${g} PAGES BEFORE IT`:`LEARNED FROM COPY ${g-1} ONLY`)+(e.T!==1?` · T ${e.T}`:'');
+  o+=`<text class="ph" x="30" y="32">${left}</text><text class="ph2" x="570" y="31" text-anchor="end">${right}</text><path d="M30 39H570" stroke="${orig?'#c9bb98':'#d9d6cf'}" stroke-width="1"/>`;
+  ord.forEach((i,j)=>{const p=P[i],c=j%6,rw=Math.floor(j/6),cx=GX0+CW*(c+.5),cy=GY0+CH*(rw+.5);
+    const hs=halfSpan(p.x[0],CW),ex=extent(p.s,p.x),sc=Math.min(hs,CH*.86/(ex.b-ex.t)),oy=cy-(ex.t+ex.b)/2*sc;
+    o+=`<g transform="translate(${cx} ${oy.toFixed(2)}) scale(${sc.toFixed(3)})">${specimenSVG(p.s,p.x,id+'s'+j)}</g>`;
+    const py=(oy-.08*sc).toFixed(2);
+    o+=`<circle cx="${cx}" cy="${py}" r="2.3" fill="${p.w?'#c4322a':'#1c1916'}"/><circle cx="${cx-.7}" cy="${(+py-.7).toFixed(2)}" r=".7" fill="#fff" opacity=".7"/>`});
+  const n=st.alive;
+  o+=`<path d="M30 750H570" stroke="${orig?'#c9bb98':'#d9d6cf'}" stroke-width="1"/>`;
+  o+=`<text class="pf" x="30" y="776">Lepidoptera — ${n} species${n===1&&st.variety<.1?', all alike':''}</text>`;
+  o+=`<text class="pf2" x="30" y="796">48 SPECIMENS · VARIETY ${pct(st.variety)}${st.wild?` · ${st.wild} FRESH FROM THE WILD (RED PINS)`:''}</text>`;
+  o+=`<text class="pf2" x="570" y="796" text-anchor="end">${orig?'ORIGINAL':'MODEL 48'}</text>`;
+  return o}
+const sheetsEl=$('#sheets');
+function showPage(g,anim){const html=`<svg viewBox="0 0 600 820">${plateSVG(g)}</svg>`;S.shown=g;
+  if(!anim&&!SLIDE&&sheetsEl.children.length===1){const el=sheetsEl.firstElementChild;el.innerHTML=html;el.dataset.g=g;return}
+  const el=document.createElement('div');el.className='sheet';el.innerHTML=html;el.dataset.g=g;sheetsEl.appendChild(el);
+  if(anim&&!STATIC){SLIDE={el,t0:simT,dur:.62};el.style.transform='translateY(-101%)'}
+  else{if(SLIDE)SLIDE=null;for(const c of[...sheetsEl.children])if(c!==el)c.remove()}}
+function slideTick(){if(!SLIDE)return;const p=clamp((simT-SLIDE.t0)/SLIDE.dur,0,1);
+  SLIDE.el.style.transform=p<1?`translateY(${(-101*(1-easeOut(p))).toFixed(2)}%)`:'';
+  if(p>=1){const el=SLIDE.el;SLIDE=null;for(const c of[...sheetsEl.children])if(c!==el)c.remove()}}
+
+/* ================= copier ================= */
+const lampg=$('#lampg'),lamp=$('#lamp'),lampbar=$('#lampbar'),led=$('#led'),ready=$('#ready'),readyt=$('#readyt');
+const DOMV=new Map();
+function setA(el,k,v){const key=el.id+'.'+k;if(DOMV.get(key)===v)return;DOMV.set(key,v);if(k==='text')el.textContent=v;else el.setAttribute(k,v)}
+function copierTick(){
+  let x=null;
+  if(SCAN){const p=(simT-SCAN.t0)/SCAN.dur;if(p>=1)SCAN=null;else x=p}
+  else if(S.auto||(tour&&tour.busy))x=(simT*S.rate*.999)%1;
+  setA(lampg,'opacity',x===null?'0':'1');
+  if(x!==null){const X=38+x*(420-44);setA(lamp,'x',X.toFixed(1));setA(lampbar,'x',(X+20).toFixed(1))}
+  const busy=x!==null||!!SLIDE||!!PEND;setA(ready,'fill',busy?'#f2a93b':'#62d17a');setA(readyt,'text',busy?'COPYING':'READY')}
+function setLED(g){const s=String(g);setA(led,'text',s.length<3?s.padStart(3,'0'):s);setA(led,'style',s.length>3?'font-size:17px':'')}
+
+/* ================= copying ================= */
+function continueFromView(){if(S.view<S.run.g){S.run.truncate(S.view);S.dirty=true;return true}return false}
+// one copy through the model; the drawing catches up in render()
+function doCopy(){const r=S.run,prev=r.stats[r.g].c;r.copy(S.T,S.k,S.acc);S.view=r.g;S.dirty=true;
+  const c=r.stats[r.g].c,lost=[],back=[];for(let s=0;s<K;s++){if(prev[s]>0&&c[s]===0)lost.push([s,prev[s]]);if(prev[s]===0&&c[s]>0)back.push(s)}
+  return{g:r.g,lost,back}}
+function copyOnce(anim){
+  if(PEND)finishPending();
+  const cut=continueFromView();
+  if(anim&&!STATIC){PEND={t0:simT,scan:.42,cut};SCAN={t0:simT,dur:.42};return}
+  report(doCopy(),cut)}
+function finishPending(){const p=PEND;PEND=null;const ev=doCopy();showPage(S.view,!STATIC&&!FASTNOW());S.dirty=true;if(!tour)report(ev,p.cut)}
+const FASTNOW=()=>S.auto||(tour&&tour.step>=4);
+function pendTick(){if(PEND&&simT-PEND.t0>=PEND.scan)finishPending()}
+function report(ev,cut){if(tour)return;const st=S.run.stats[ev.g],pre=cut?`Picking up from the copy you were looking at. `:'';
+  if(ev.lost.length)caption(pre+`<b>Copy ${ev.g}</b>: ${ev.lost.map(([s])=>`the ${NAMES[s]}`).join(' and ')} ${ev.lost.length>1?'are':'is'} <span class="r">gone</span>. ${st.alive===1?`Only ${PLURAL[st.c.findIndex(n=>n>0)]} left.`:`${st.alive} species left.`}`);
+  else if(ev.back.length)caption(pre+`<b>Copy ${ev.g}</b>: the ${ev.back.map(s=>NAMES[s]).join(' and ')} ${ev.back.length>1?'are':'is'} <span class="g">back</span>, thanks to a fresh specimen from the wild.`);
+  else caption(pre+`<b>Copy ${ev.g}</b>: ${st.alive} species, variety ${pct(st.variety)} of plate 0.`)}
+function autoTick(dt){if(!S.auto)return;S.autoAcc+=dt*S.rate;let n=0,last=null;
+  while(S.autoAcc>=1&&n<8){S.autoAcc-=1;n++;const ev=doCopy();if(ev.lost.length||ev.back.length)last=ev;
+    if(S.run.g>=5000){S.auto=false;syncControls();break}}
+  if(last)report(last,false)}
+
+/* ================= captions ================= */
+const capEl=$('#caption');let capT=null;
+function caption(html){if(capEl.innerHTML===html)return;clearTimeout(capT);
+  if(STATIC||FIXED){capEl.innerHTML=html;capEl.classList.remove('fade');return}
+  capEl.classList.add('fade');capT=setTimeout(()=>{capEl.innerHTML=html;capEl.classList.remove('fade')},220)}
+const missPct=c=>Math.round(Math.pow(1-c/48,48)*100);
+const CAP={
+  a:'<b>Plate 0</b>: 48 butterflies drawn from life, seven species. The copier studies the page: how common each species is, and the average and spread of each one\'s size, colour, wing shape and markings.',
+  b:'<b>Copy 1.</b> It doesn\'t copy the drawings: it prints 48 new butterflies from what it learned. From now on, its own last copy is all it ever learns from.',
+  c:(g,s,c)=>`<b>Copy ${g}</b>: no more ${PLURAL[s]}. With ${c} of 48 on the page before, a copy misses them ${missPct(c)}% of the time, and the copier can't print what it no longer sees.`,
+  d:(g,n)=>`<b>Copy ${g}</b>: ${n} species lost, <span class="r">rarest first</span>. The tails of the distribution are the first thing it forgets.`,
+  d2:g=>`<b>Copy ${g}</b>: two species left. Inside each, the spread is re-estimated from a finite sample every time, and it keeps leaking away.`,
+  e:(g,s)=>`<b>Copy ${g}</b>: ${PLURAL[s]} only. Which species survives is a lottery, weighted by how common it was on plate 0.`,
+  f:(g,s,v)=>`<b>Copy ${g}</b>: 48 near-identical ${PLURAL[s]}, variety ${pct(v)} of plate 0. Every fit was unbiased, and it still collapsed. This is <b>model collapse</b>.`,
+  g:'Now let <b>5 of every 48</b> be fresh specimens from the wild <span class="pin"></span>, drawn from the real population…',
+  h:n=>`…and the lost species come back: <span class="g">${n} species</span> on the page again. Only real data can put back what the copier forgot.`,
+  i:'<b>Your turn.</b> Set fresh specimens to 0 and press <b>Keep copying</b>, sharpen the contrast, or let the copier learn from every page so far.'};
+
+/* ================= tour ================= */
+function freshRun(seed){S.run=new Run(seed);S.view=0;S.dirty=true;PEND=null;SCAN=null}
+function startTour(){S.T=1;S.k=0;S.acc=false;S.auto=false;freshRun(TOUR_SEED);syncControls();showPage(0,false);
+  tour={t:0,step:0,mark:0,acc:0,lostN:0,said:{}};caption(CAP.a)}
+function stopTour(){if(!tour)return;tour=null;PEND&&finishPending()}
+function nextStep(step,fn){tour.step=step;tour.mark=tour.t;tour.acc=0;if(fn)fn()}
+function tourEvent(ev){const r=S.run,st=r.stats[ev.g],T=tour;
+  for(const[s,c]of ev.lost){T.lostN++;if(!T.said.c){T.said.c=1;caption(CAP.c(ev.g,s,c))}}
+  if(T.lostN>=4&&!T.said.d){T.said.d=1;caption(CAP.d(ev.g,T.lostN))}
+  else if(st.alive===2&&T.said.d&&!T.said.d2){T.said.d2=1;caption(CAP.d2(ev.g))}}
+function tourTick(dt){const T=tour;if(!T)return;T.t+=dt;const e=T.t-T.mark,r=S.run;T.busy=false;
+  switch(T.step){
+    case 0:if(e>1.15&&!T.scanned){T.scanned=1;SCAN={t0:simT,dur:1.1}}if(e>2.6)nextStep(1,()=>{copyOnce(true);caption(CAP.b)});break;
+    case 1:if(e>1.9)nextStep(2,()=>copyOnce(true));break;
+    case 2:if(e>1.15)nextStep(3,()=>copyOnce(true));break;
+    case 3:if(e>1.0&&!PEND&&!SLIDE)nextStep(4);break;
+    case 4:{T.busy=true;S.rate=lerp(3.5,14,clamp(e/4,0,1));T.acc+=dt*S.rate;
+      while(T.acc>=1){T.acc-=1;const ev=doCopy();tourEvent(ev);
+        if(r.stats[r.g].alive===1||r.g>=140){const s=r.stats[r.g].c.findIndex(n=>n>0);nextStep(5,()=>caption(r.stats[r.g].alive===1?CAP.e(r.g,s):CAP.d2(r.g)));break}}
+      break}
+    case 5:{if(e<1.7)break;T.busy=true;S.rate=40;let n=0;while(r.g<300&&n<5){doCopy();n++}
+      if(r.g>=300){const st=r.stats[r.g];nextStep(6,()=>caption(CAP.f(r.g,st.c.indexOf(Math.max(...st.c)),st.variety)))}break}
+    case 6:if(e>3.8)nextStep(7,()=>{S.k=5;syncControls();caption(CAP.g)});break;
+    case 7:{if(e<1.5)break;T.busy=true;S.rate=9;T.acc+=dt*9;
+      while(T.acc>=1&&r.g<360){T.acc-=1;doCopy()}
+      const al=r.stats[r.g].alive;if(r.g>=318&&al>=5&&!T.said.h){T.said.h=1;caption(CAP.h(al))}
+      if(r.g>=360){if(!T.said.h)caption(CAP.h(al));nextStep(8)}break}
+    case 8:if(e>2.4){caption(CAP.i);tour=null;S.rate=5;syncControls()}break}}
+
+/* ================= ledger ================= */
+const ledgerEl=$('#ledger');
+SP.forEach((sp,s)=>{const ex=extent(s,sp.mu),t=ex.t-.06,b=ex.b+.06;
+  const row=document.createElement('div');row.className='lrow';row.dataset.s=s;
+  row.innerHTML=`<svg viewBox="-1.12 ${t.toFixed(2)} 2.24 ${(b-t).toFixed(2)}" aria-hidden="true">${specimenSVG(s,sp.mu,'L'+s)}</svg><div class="nm">${sp.name}<i>${sp.latin}</i></div><div class="ct" title="on this page (plate 0 had ${sp.n})"><span>${sp.n}</span></div><span class="tag"></span>`;
+  ledgerEl.appendChild(row)});
+function ledgerUpdate(){const r=S.run,v=S.view,c=r.stats[v].c;
+  $$('.lrow').forEach(row=>{const s=+row.dataset.s;row.querySelector('.ct span').textContent=c[s];
+    let tag='',cls='';
+    if(c[s]===0){let g=v;while(g>0&&r.stats[g-1].c[s]===0)g--;cls='gone';tag=g>0?`LOST · COPY ${g}`:'LOST'}
+    else{let g=v;while(g>0&&r.stats[g-1].c[s]>0)g--;if(g>0){cls='ret';tag=`BACK · COPY ${g}`}}
+    row.classList.toggle('gone',cls==='gone');row.classList.toggle('ret',cls==='ret');row.querySelector('.tag').textContent=tag})}
+
+/* ================= charts ================= */
+const mul=$('#muller'),vl=$('#vline');
+const MW=360,MH=132,VH=54,MX0=3,MX1=357;
+const gMax=()=>Math.max(60,S.run.g);
+const xOf=g=>MX0+(MX1-MX0)*g/gMax();
+function chartsUpdate(){const r=S.run,G=r.g,step=Math.max(1,Math.floor(G/360));const gs=[];for(let g=0;g<=G;g+=step)gs.push(g);if(gs[gs.length-1]!==G)gs.push(G);
+  let o='';const base=gs.map(()=>0);
+  for(let s=0;s<K;s++){const lo=base.slice(),hi=gs.map((g,i)=>base[i]+r.stats[g].c[s]/NP);
+    if(hi.some((h,i)=>h>lo[i])){let d='M';gs.forEach((g,i)=>{d+=`${xOf(g).toFixed(1)} ${(MH-2-(MH-4)*hi[i]).toFixed(1)}L`});
+      for(let i=gs.length-1;i>=0;i--)d+=`${xOf(gs[i]).toFixed(1)} ${(MH-2-(MH-4)*lo[i]).toFixed(1)}${i?'L':'Z'}`;
+      o+=`<path d="${d}" fill="${COL[s]}"/>`}
+    gs.forEach((g,i)=>base[i]=hi[i])}
+  const xv=xOf(S.view).toFixed(1);
+  o+=`<path d="M${xv} 0V${MH}" stroke="#1e1b17" stroke-width="1.4"/><path d="M${xv} 0V${MH}" stroke="#fff" stroke-width=".5" stroke-dasharray="2 3"/>`;
+  mul.innerHTML=o;
+  let d='';gs.forEach((g,i)=>{d+=(i?'L':'M')+xOf(g).toFixed(1)+' '+(VH-3-(VH-8)*clamp(r.stats[g].variety,0,1.25)/1.25).toFixed(1)});
+  const y100=(VH-3-(VH-8)/1.25).toFixed(1);
+  vl.innerHTML=`<path d="M${MX0} ${y100}H${MX1}" stroke="#a49b8c" stroke-width=".8" stroke-dasharray="3 3"/><path d="${d}" fill="none" stroke="#1e1b17" stroke-width="1.6" stroke-linejoin="round"/><path d="M${xv} 0V${VH}" stroke="#1e1b17" stroke-width="1" opacity=".5"/><circle cx="${xv}" cy="${(VH-3-(VH-8)*clamp(r.stats[S.view].variety,0,1.25)/1.25).toFixed(1)}" r="3" fill="#c4322a"/>`;
+  $('#mlab').textContent=`plate 0 → copy ${G}`}
+function readoutUpdate(){const st=S.run.stats[S.view];$('#rG').textContent=S.view;$('#rS').textContent=st.alive;$('#rV').textContent=pct(st.variety);setLED(S.view);
+  const sc=$('#scrub');sc.max=S.run.g;sc.value=S.view;$('#scrubv').textContent=S.view===S.run.g?`copy ${S.view}`:`copy ${S.view} of ${S.run.g}`}
+function lookAt(g){g=clamp(Math.round(g),0,S.run.g);if(g===S.view)return;S.view=g;S.dirty=true;
+  if(!tour)caption(g<S.run.g?`Looking back at <b>${g?'copy '+g:'plate 0'}</b>. Copying from here continues from this page and discards the ${S.run.g-g} after it.`:`Back to the latest copy.`)}
+function chartPick(e,el){const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*MW;lookAt((x-MX0)/(MX1-MX0)*gMax())}
+for(const el of[mul,vl]){el.addEventListener('pointerdown',e=>{poke();el.setPointerCapture(e.pointerId);chartPick(e,el)});el.addEventListener('pointermove',e=>{if(e.buttons)chartPick(e,el)})}
+$('#scrub').addEventListener('input',e=>{poke();lookAt(+e.target.value)});
+
+/* ================= controls ================= */
+function syncControls(){
+  $$('#kp button').forEach(b=>b.classList.toggle('on',+b.dataset.k===S.k));$('#kv').textContent=KCH[S.k];
+  $$('#tp button').forEach(b=>b.classList.toggle('on',+b.dataset.t===S.T));$('#tv').textContent=`T = ${S.T.toFixed(1)}`;
+  $$('#ap button').forEach(b=>b.classList.toggle('on',+b.dataset.a===+S.acc));$('#av').textContent=S.acc?'every page so far':'the last page';
+  const a=$('#auto');a.textContent=S.auto?'❚❚ Pause':'▶ Keep copying';a.classList.toggle('on',S.auto)}
+function poke(){if(tour)stopTour()}
+$$('#panel button,#panel input,#panel summary,#go').forEach(el=>el.addEventListener('pointerdown',poke));
+$('#copy1').addEventListener('click',()=>{poke();if(S.auto){S.auto=false;syncControls()}copyOnce(true)});
+$('#go').addEventListener('click',()=>{poke();if(S.auto){S.auto=false;syncControls()}copyOnce(true)});
+$('#auto').addEventListener('click',()=>{poke();S.auto=!S.auto;S.rate=5;S.autoAcc=1;if(S.auto&&continueFromView())caption('Picking up from the copy you were looking at.');syncControls()});
+$('#restart').addEventListener('click',()=>{poke();S.auto=false;restarts++;freshRun(Q.has('seed')?(+Q.get('seed'))>>>0:FIXED?1000+restarts:(Math.random()*4294967296)>>>0);showPage(0,false);syncControls();
+  caption('Back to <b>plate 0</b>, with a new random stream. Press <b>Copy once</b> or <b>Keep copying</b>.')});
+$$('#kp button').forEach(b=>b.addEventListener('click',()=>{poke();S.k=+b.dataset.k;syncControls();
+  caption(S.k?`From the next copy, <b>${S.k} of every 48</b> are fresh specimens from the wild <span class="pin"></span>: species in their real proportions, traits from the real population.`:'No more fresh specimens: from the next copy, the copier learns only from what it printed.')}));
+$$('#tp button').forEach(b=>b.addEventListener('click',()=>{poke();S.T=+b.dataset.t;syncControls();
+  caption(S.T===1?'Contrast 1.0: the copier samples exactly what it learned.':`Contrast ${S.T.toFixed(1)}: common species get even more common and every spread shrinks by ${S.T.toFixed(1)}, like a chatbot sampling below temperature 1.`)}));
+$$('#ap button').forEach(b=>b.addEventListener('click',()=>{poke();S.acc=b.dataset.a==='1';syncControls();
+  caption(S.acc?'The copier now learns from <b>every page so far</b>, plate 0 included, instead of only the last one.':'The copier learns only from <b>the last page</b> again.')}));
+$('#tourb').addEventListener('click',()=>{if(STATIC)staticStart();else startTour()});
+addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,button,summary'))return;
+  if(e.code==='Space'){e.preventDefault();poke();if(S.auto){S.auto=false;syncControls()}copyOnce(true)}});
+
+/* ================= hover a butterfly ================= */
+const tip=$('#tip');let hoverAt=null;
+sheetsEl.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;hoverAt={x:e.clientX,y:e.clientY}});
+sheetsEl.addEventListener('pointerleave',()=>{hoverAt=null;tip.style.opacity=0});
+function hoverTick(){if(!hoverAt||isPhone()){return}
+  const top=sheetsEl.lastElementChild;if(!top){tip.style.opacity=0;return}
+  const rc=top.getBoundingClientRect(),vx=(hoverAt.x-rc.left)/rc.width*600,vy=(hoverAt.y-rc.top)/rc.height*820;
+  const c=Math.floor((vx-GX0)/CW),rw=Math.floor((vy-GY0)/CH),g=+top.dataset.g,P=S.run.plates[g];
+  if(!P||c<0||c>5||rw<0||rw>7){tip.style.opacity=0;return}
+  const p=P[orderOf(P)[rw*6+c]],sp=SP[p.s];
+  const sg=v=>(v>=0?'+':'−')+Math.abs(v);
+  tip.innerHTML=`<b>${sp.name}</b> · ${p.w?'<span class="w">fresh from the wild</span>':g?'printed by the copier':'drawn from life'}<br>wingspan ${p.x[0].toFixed(0)} mm <span style="opacity:.6">(wild ${sp.mu[0]} ± ${sp.sd[0]})</span><br>hue ${sg(Math.round(p.x[1]))}° · light ${sg(Math.round(p.x[2]*100))} · shape ${sg(+p.x[3].toFixed(2))} · marks ${sg(+p.x[4].toFixed(2))}`;
+  tip.style.left=hoverAt.x+'px';tip.style.top=hoverAt.y+'px';tip.style.opacity=1}
+
+/* ================= layout ================= */
+const rig=$('#rig'),stage=$('#stage');const RIG_W=640,RIG_H=968;let SCALE=1;
+function layout(){
+  if(isPhone()){SCALE=stage.clientWidth/RIG_W;stage.style.height=(RIG_H*SCALE).toFixed(0)+'px';rig.style.transform=`scale(${SCALE})`;rig.style.top='0px'}
+  else{stage.style.height='';const W=stage.clientWidth,H=stage.clientHeight;SCALE=Math.min(W/RIG_W,H/RIG_H,1.3);
+    rig.style.transform=`translate(${(-RIG_W/2*SCALE).toFixed(1)}px,0) scale(${SCALE.toFixed(4)})`;rig.style.top=Math.max(0,(H-RIG_H*SCALE)/2).toFixed(0)+'px'}
+  rig.style.width=RIG_W+'px';rig.style.height=RIG_H+'px'}
+addEventListener('resize',layout);
+
+/* ================= frame ================= */
+function render(){
+  if(S.dirty){S.dirty=false;
+    if(S.shown!==S.view&&!(SLIDE&&+SLIDE.el.dataset.g===S.view)&&!PEND)showPage(S.view,false);
+    else if(!SLIDE&&S.shown===S.view&&sheetsEl.lastElementChild&&+sheetsEl.lastElementChild.dataset.g!==S.view)showPage(S.view,false);
+    ledgerUpdate();chartsUpdate();readoutUpdate();
+    const st=$$('#stack div'),g=S.view;st.forEach((d,i)=>{d.style.opacity=g>i?1:0;d.style.transform=`translate(${(i+1)*3}px,${(i+1)*4}px) rotate(${[.5,-.7,1][i]}deg)`})}
+  slideTick();copierTick();hoverTick()}
+function update(dt){simT+=dt;pendTick();tourTick(dt);autoTick(dt)}
+let last=0,started=false;window.__frame=0;
+function frame(ts){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the page
+  const now=FIXED?last+1000/60:(ts||performance.now());const dt=FIXED?1/60:clamp((now-last)/1000,0,.25);last=now;window.__frame++;
+  if(!started)return;
+  update(dt);render();
+  window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tour?tour.step:null,copy:S.run.g,view:S.view,alive:S.run.stats[S.view].alive,variety:+S.run.stats[S.view].variety.toFixed(4),auto:S.auto}}
+// reduced motion / ?still: the tour's run, already copied 300 times (or ?at=N), nothing moving
+function staticStart(){tour=null;S.T=1;S.k=0;S.acc=false;S.auto=false;freshRun(TOUR_SEED);
+  const at=clamp(Q.has('at')?+Q.get('at'):300,0,2000);for(let i=0;i<at;i++)S.run.copy(1,0,false);S.view=at;syncControls();showPage(at,false);S.dirty=true;
+  const st=S.run.stats[at],lost=st.c.filter(n=>n===0).length;
+  caption(at?`<b>Copy ${at}</b>, each printed by a model fit only to the copy before. ${lost} species ${lost===1?'was':'were'} lost, <span class="r">rarest first</span>${st.alive===1?`, and the ${PLURAL[st.c.findIndex(n=>n>0)]} that remain are down to ${pct(st.variety)} of their variety`:''}. This is <b>model collapse</b>. Look back with the slider, or press <b>Copy once</b>.`:CAP.a)}
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  layout();syncControls();
+  if(STATIC)staticStart();
+  else{startTour();if(FIXED){for(let i=0;i<FIXED_PRERUN;i++){update(1/60);slideTick()}}}
+  render();started=true}
+window.step=n=>{if(!FIXED)return;for(let i=0;i<(n||1);i++)frame()};
+(async()=>{await start();if(FIXED){frame()}else{last=performance.now();requestAnimationFrame(frame)}})();
+// for tests: a read-only view of the run, every fit it sampled, and the page on show
+window.collapse={
+  state:()=>{if(!S.run)return{ready:false,tour:'loading',log:[],stats:[]};const r=S.run;return{ready:true,seed:r.seed,plateSeed:r.plateSeed,g:r.g,view:S.view,shown:S.shown,
+    T:S.T,k:S.k,acc:S.acc,auto:S.auto,tour:tour?tour.step:null,census:r.stats[S.view].c.slice(),alive:r.stats[S.view].alive,variety:r.stats[S.view].variety,
+    log:JSON.parse(JSON.stringify(r.log)),stats:JSON.parse(JSON.stringify(r.stats)),plate:r.plates[S.view].map(p=>({s:p.s,x:p.x.slice(),w:p.w})),caption:capEl.textContent}},
+  species:()=>SP.map(s=>({k:s.k,n:s.n,mu:s.mu.slice(),sd:s.sd.slice()}))};
+</script>
+</body>
+</html>

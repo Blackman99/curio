@@ -1,5 +1,15 @@
 [
  {
+  "slug": "photocopy-collapse",
+  "title": "Photocopy Collapse",
+  "no": "020",
+  "date": "2026-10-19",
+  "kind": "Model collapse \u00b7 SVG photocopier",
+  "blurb": "A copier that is really a generative model: each copy of a plate of 48 butterflies is printed by a model fit only to the copy before it. Rare species vanish first, then every species shrinks to near-identical clones. Mix in fresh specimens from the wild, or keep every page, and watch them come back.",
+  "color": "#3df587",
+  "exhibit": "copier"
+ },
+ {
   "slug": "mcts-bonsai",
   "title": "MCTS Bonsai",
   "no": "019",
