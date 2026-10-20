@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Backprop Waterworks — values flow down as water, gradients flow back up as dye</title>
+<meta name="description" content="A hydraulic computer for any formula you type. Each glass tank holds one intermediate value; water runs down from the inputs to f. Then dye is pumped back up every pipe, multiplied by each pipe's local derivative, and the colour that collects in each tank is ∂f/∂ that tank. Real reverse-mode automatic differentiation, after the MONIAC.">
+<meta property="og:title" content="Backprop Waterworks">
+<meta property="og:description" content="Type a formula and it becomes a board of glass tanks: values run down as water, gradients are pumped back up as dye. Real reverse-mode autodiff, after the 1949 MONIAC.">
+<meta property="og:image" content="https://blackman99.github.io/curio/backprop-waterworks/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Backprop Waterworks">
+<meta name="twitter:description" content="Backpropagation as plumbing: water carries the values down, dye carries the gradients back up, and where two pipes meet the dye adds.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/backprop-waterworks/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#06080d;--iv:#ece4d2;--iv2:#b9b09c;--brass:#d6ad62;--line:rgba(214,173,98,.3);--panel:rgba(9,11,17,.8);--water:#7fd0e6;--dyep:#ff3d64;--dyen:#7a7cff}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--iv);font-family:'Fraunces',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#stage{position:fixed;inset:0;overflow:hidden}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#c.lift{cursor:ns-resize}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#labels>div{position:absolute;left:0;top:0;will-change:transform;white-space:nowrap}
+.sym{font:italic 600 var(--fs,24px)/1 'Fraunces',serif;color:#fff8ea;text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 12px rgba(0,0,0,.65);transform-origin:50% 50%}
+.sym.in{font-size:calc(var(--fs,24px)*1.15)}
+.sym.op1{font-size:calc(var(--fs,24px)*1.5);font-style:normal;font-weight:400}
+.rd{font:500 11px/1.35 'IBM Plex Mono',monospace;text-align:left;text-shadow:0 1px 2px #000,0 0 6px #000,0 0 2px #000}
+.rd .v{display:block;color:var(--iv)}
+.rd .g{display:block;font-weight:600}
+.rd.sel .v{color:#fff}
+.et:empty{display:none}
+.et{opacity:0;font:600 10px/1 'IBM Plex Mono',monospace;padding:3px 5px 2px;border-radius:999px;background:rgba(6,8,13,.78);border:1px solid rgba(255,255,255,.08);transition:opacity .3s}
+.et.hot{border-color:currentColor;font-size:11px;box-shadow:0 0 14px rgba(0,0,0,.6)}
+.ring{width:var(--d,60px);height:var(--d,60px);margin:calc(var(--d,60px)/-2) 0 0 calc(var(--d,60px)/-2);border-radius:50%}
+
+#title{position:fixed;left:34px;top:26px;max-width:430px;z-index:2;pointer-events:none}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(6,8,13,.6);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--brass);color:#140e04;outline:none}
+.kick{margin-top:20px;font:500 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--brass)}
+h1{margin:10px 0 12px;font-weight:800;font-size:clamp(40px,4.3vw,64px);line-height:.92;letter-spacing:-.015em;font-variation-settings:'opsz' 144;text-shadow:0 4px 30px rgba(0,0,0,.7)}
+h1 em{display:block;font-style:italic;font-weight:500;color:var(--water)}
+h1 em b{font-weight:500;color:var(--dyep)}
+.sub{margin:0;font-size:16.5px;line-height:1.45;color:var(--iv2);max-width:360px;text-shadow:0 1px 3px #000,0 2px 14px #000}
+.sub b{font-weight:600}
+.sub .w{color:var(--water)}.sub .d{color:var(--dyep)}
+
+#legend{margin-top:16px;display:grid;gap:7px;font:500 11px/1.3 'IBM Plex Mono',monospace;color:var(--iv2);text-shadow:0 1px 3px #000}
+#legend small{font-size:10px;opacity:.7}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.sw.w{background:#3fa9c9}.sw.p{background:#e0002c;margin-right:2px}.sw.n{background:#3a2cff}
+#story{position:fixed;left:34px;bottom:28px;width:410px;z-index:2;pointer-events:none}
+#caption{margin:0;font:400 17.5px/1.45 'Fraunces',serif;font-variation-settings:'opsz' 24;color:#f4ecda;text-shadow:0 1px 3px #000,0 2px 18px #000;min-height:5.8em;transition:opacity .4s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .w{color:var(--water)}#caption .d{color:var(--dyep)}#caption .n{color:var(--dyen)}
+#caption .m{font:500 .86em 'IBM Plex Mono',monospace}
+
+#panel{position:fixed;right:20px;top:20px;bottom:20px;width:356px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;padding:15px 16px 14px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,236,190,.07)}
+.sec{margin-bottom:12px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin-bottom:8px}
+.lab b{font:600 13px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--iv);text-transform:none}
+#ff{display:flex;gap:6px}
+#fx{flex:1;min-width:0;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:9px;padding:8px 9px;font:500 13px/1.2 'IBM Plex Mono',monospace;color:#fff8ea;outline:none}
+#fx:focus{border-color:var(--brass)}
+#fx.bad{border-color:var(--dyep)}
+#ferr{min-height:0;font:500 11px/1.35 'IBM Plex Mono',monospace;color:var(--dyep);margin-top:5px}
+#ferr:empty{display:none}
+.plates{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chip,.btn{border:1px solid var(--line);background:rgba(214,173,98,.06);border-radius:999px;padding:6px 9px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--iv);transition:background .2s,border-color .2s}
+.chip:hover,.btn:hover,.chip:focus-visible,.btn:focus-visible{background:rgba(214,173,98,.2);border-color:var(--brass);outline:none}
+.chip.on,.btn.on{background:var(--brass);color:#140e04;border-color:var(--brass)}
+.btn{border-radius:9px;padding:8px 8px}
+.btns{display:grid;grid-template-columns:1fr 1.25fr;gap:6px}
+#ins{display:grid;gap:2px}
+.irow{display:grid;grid-template-columns:22px 1fr 64px;align-items:center;gap:8px}
+.irow .nm{font:italic 600 18px/1 'Fraunces',serif;color:var(--water)}
+.irow .val{font:500 12.5px/1 'IBM Plex Mono',monospace;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:5px;background:linear-gradient(90deg,#1c3a46,#6fb6c9 60%,#cdeff7);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:5px;border-radius:5px;background:linear-gradient(90deg,#1c3a46,#6fb6c9 60%,#cdeff7)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;border:1px solid #5a4318;background:radial-gradient(circle at 35% 30%,#fff3cf,#d6ad62 45%,#7a5a26);box-shadow:0 3px 10px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:1px solid #5a4318;background:radial-gradient(circle at 35% 30%,#fff3cf,#d6ad62 45%,#7a5a26)}
+input[type=range]:focus-visible{outline:1px dashed var(--brass);outline-offset:3px}
+input[type=range].eta::-webkit-slider-runnable-track{background:linear-gradient(90deg,#3a2c15,#c9a25c 60%,#f3d79a)}
+input[type=range].eta::-moz-range-track{background:linear-gradient(90deg,#3a2c15,#c9a25c 60%,#f3d79a)}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.fbig{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.fbig span{font:italic 500 22px/1 'Fraunces',serif;color:var(--iv2)}
+.fbig b{font:600 28px/1 'IBM Plex Mono',monospace;color:#fff8ea}
+#grads{display:flex;flex-wrap:wrap;gap:4px 14px;margin:9px 0 2px;font:500 12.5px/1.3 'IBM Plex Mono',monospace}
+#grads i{font:italic 600 15px/1 'Fraunces',serif;color:var(--water);margin-right:5px}
+.bar{text-decoration:overline;text-decoration-thickness:1px;text-underline-offset:2px}
+#chk{font:500 10.5px/1.45 'IBM Plex Mono',monospace;color:var(--iv2);margin-top:6px}
+#chk b{color:var(--iv);font-weight:600}
+#chartBox{margin-top:10px}
+#chart{display:block;width:100%;height:58px}
+#insp{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px 11px;background:rgba(0,0,0,.22);font:500 11.5px/1.5 'IBM Plex Mono',monospace;color:var(--iv2);min-height:92px}
+#insp h3{margin:0 0 6px;font:600 15px/1.1 'Fraunces',serif;color:var(--iv)}
+#insp h3 i{color:var(--water)}
+#insp .ln{display:flex;gap:6px;align-items:baseline}
+#insp .ln>span:first-child{flex:none;width:14px;text-align:center}
+#insp .dw{color:var(--water)}
+#insp .tot{color:#fff;font-weight:600}
+#insp .hint{font:italic 400 14px/1.35 'Fraunces',serif;color:var(--iv2)}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:14.5px;line-height:1.45;color:var(--iv2);margin:10px 0 0}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--iv)}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:12px;font:500 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(236,228,210,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+#tip{position:fixed;z-index:5;pointer-events:none;padding:8px 10px;border-radius:10px;background:rgba(9,11,17,.92);border:1px solid var(--line);font:500 11px/1.45 'IBM Plex Mono',monospace;color:var(--iv);opacity:0;transform:translate(14px,14px);transition:opacity .15s;white-space:nowrap}
+#tip b{color:var(--brass)}
+#nogl{display:none;position:absolute;left:34px;top:50%;max-width:420px;font:italic 500 18px/1.4 'Fraunces',serif;color:var(--iv2)}
+.nogl #nogl{display:block}
+.nogl #c{display:none}
+
+@media (max-height:760px) and (min-width:821px){.sub{display:none}#legend{margin-top:10px}#caption{min-height:4.4em;font-size:16px}h1{font-size:clamp(36px,3.8vw,52px)}#chartBox{display:none}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:36px;margin:6px 0 6px}
+  h1 em{display:inline}
+  .sub{font-size:15px;max-width:none}
+  #legend{margin-top:10px;font-size:10.5px}
+  #story{position:static;width:auto;padding:8px 16px 0}
+  #caption{font-size:15.5px;min-height:6.4em}
+  #stage{position:relative;inset:auto;height:min(72vh,620px);min-height:440px;margin-top:2px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(12,14,21,.96)}
+  #tip{display:none}
+  .rd{font-size:10px}
+  .et{font-size:9px;padding:2px 4px 1px}
+}
+@media (prefers-reduced-motion:reduce){#caption,.et{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 022 · Autodiff</div>
+  <h1>Backprop <em>Water<b>works</b></em></h1>
+  <p class="sub">A hydraulic computer for one formula. The values run down as <b class="w">water</b>; the gradients are pumped back up as <b class="d">dye</b>.</p>
+  <div id="legend" class="mono"><span><i class="sw w"></i>↓ level = value <small>(0 at the brass line)</small></span><span><i class="sw p"></i><i class="sw n"></i>↑ dye = ∂f/∂ that tank <small>(red +, blue −)</small></span></div>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A wooden board of glass tanks joined by glass pipes: one tank per step of the formula, water levels for values, dye colour for gradients"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <p id="nogl">This exhibit draws its tanks with WebGL, which this browser didn't give us. The arithmetic still runs: the readouts below are live.</p>
+</div>
+
+<aside id="panel" aria-label="Controls and readouts">
+  <div class="sec">
+    <div class="lab"><span>Formula</span><b id="nops"></b></div>
+    <form id="ff" autocomplete="off"><input id="fx" spellcheck="false" aria-label="Formula" value="ln(x) + x*y - sin(y)"><button class="btn" type="submit">Build</button></form>
+    <div id="ferr" role="alert"></div>
+    <div class="plates" id="presets"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Reservoirs</span><b class="mono" style="color:var(--iv2)">drag a tank or a slider</b></div>
+    <div id="ins"></div>
+  </div>
+  <div class="btns"><button class="btn" id="pump" title="Drain the board and run both passes again">Pump again ↻</button><button class="btn" id="valve" title="Gradient descent: move every input against its dye, step after step">Open the valve ▾</button></div>
+  <div class="sec" style="margin-top:8px">
+    <div class="lab"><span>Valve step η</span><b id="etav">0.10</b></div>
+    <input id="eta" class="eta" type="range" min="0" max="100" value="50" aria-label="Valve step size">
+  </div>
+  <hr>
+  <div class="fbig"><span>f =</span><b id="fv">—</b></div>
+  <div id="grads"></div>
+  <div id="chk"></div>
+  <div id="chartBox"><div class="lab" style="margin:8px 0 2px"><span>f at each valve step</span><b id="stepn">0 steps</b></div><canvas id="chart" aria-label="f after each gradient-descent step"></canvas></div>
+  <div id="insp" aria-live="polite"></div>
+  <details>
+    <summary>What is this?</summary>
+    <p>Type a formula and it is taken apart into one tank per operation, in the order a computer would do the arithmetic: a <i>tape</i>, or computational graph. The reservoirs at the top are its inputs.</p>
+    <p><b>Forward pass</b>: water runs down; each tank's level is its value, on a logarithmic gauge with 0 at the brass mid-line (marks at ±1, ±10, ±100).</p>
+    <p><b>Backward pass</b>: dye goes in at the bottom, <code>f̄ = 1</code>, and is pumped back up. Each pipe multiplies the dye it carries by its <i>local derivative</i> (through <code>sin</code>, by <code>cos</code> of its input; through <code>×</code>, by the other factor). Where a value fed several pipes, their dye adds up. The colour that collects in a tank is <code>∂f/∂</code> that tank: <span style="color:var(--dyep)">red</span> positive, <span style="color:var(--dyen)">blue</span> negative, stronger for larger. That is reverse-mode automatic differentiation, which is what backpropagation is.</p>
+    <p>All of it is real arithmetic in your browser, in double precision. The check line under the gradient nudges each input by a millionth either way and compares. <b>Open the valve</b> runs gradient descent: every input moves against its own dye, <code>x ← x − η·x̄</code>.</p>
+    <p>The default formula is the worked example in Baydin, Pearlmutter, Radul &amp; Siskind, <a href="https://jmlr.org/papers/v18/17-468.html">Automatic Differentiation in Machine Learning: a Survey</a> (JMLR, 2018), Table 3. The board is after Bill Phillips's <a href="https://en.wikipedia.org/wiki/MONIAC">MONIAC</a> (1949), which computed the British economy with water. Ours only pretends to be wet.</p>
+    <p>Functions: <code>sin cos tan exp ln sqrt tanh sigmoid relu abs</code>, with <code>+ − * / ^</code>, brackets, <code>pi</code> and up to four one-letter inputs. AD differentiates the arithmetic as written, so <code>sqrt(x − x)</code> reads NaN where the plain function is flat.</p>
+  </details>
+  <div class="foot">Drag a reservoir to change it · click a tank to read it · drag the board to tilt it · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+/* ================= engine: read a formula, build its tape, run it forward and backward (real reverse-mode autodiff, float64) ================= */
+const FNS={sin:'sin',cos:'cos',tan:'tan',exp:'exp',log:'log',ln:'log',sqrt:'sqrt',tanh:'tanh',sigmoid:'sigmoid',relu:'relu',abs:'abs'};
+const MAXOPS=16,MAXVARS=4;
+class FormulaError extends Error{constructor(msg,at){super(msg);this.at=at}}
+function lex(s){
+  s=s.replace(/[·×∙⋅]/g,'*').replace(/[−–]/g,'-').replace(/÷/g,'/').replace(/\*\*/g,'^').replace(/σ/g,'sigmoid').replace(/π/g,'pi').replace(/√/g,'sqrt');
+  const out=[];let i=0;
+  while(i<s.length){const c=s[i];
+    if(/\s/.test(c)){i++;continue}
+    if(/[0-9.]/.test(c)){const m=/^(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?/.exec(s.slice(i));if(!m)throw new FormulaError('a number is malformed',i);out.push({t:'num',v:parseFloat(m[0]),i});i+=m[0].length;continue}
+    if(/[A-Za-z_]/.test(c)){const m=/^[A-Za-z_][A-Za-z_0-9]*/.exec(s.slice(i));out.push({t:'id',v:m[0],i});i+=m[0].length;continue}
+    if('+-*/^()'.includes(c)){out.push({t:c,i});i++;continue}
+    throw new FormulaError(`can't read “${c}”`,i)}
+  out.push({t:'end',i:s.length});return out}
+// precedence: + − < × ÷ (and juxtaposition, 2x) < unary − < ^ (right-assoc); so −x^2 = −(x^2), 2^−x = 2^(−x)
+function parse(src){
+  const T=lex(src);let p=0;const peek=()=>T[p];
+  const take=t=>{if(T[p].t!==t)throw new FormulaError(T[p].t==='end'?`missing “${t}”`:`expected “${t}”`,T[p].i);return T[p++]};
+  function expr(){let a=term();while(peek().t==='+'||peek().t==='-'){const op=T[p++].t;a={k:'bin',op,a,b:term()}}return a}
+  function term(){let a=unary();for(;;){const t=peek().t;
+    if(t==='*'||t==='/'){p++;a={k:'bin',op:t,a,b:unary()}}
+    else if(t==='num'||t==='id'||t==='('){a={k:'bin',op:'*',a,b:power()}}
+    else return a}}
+  function unary(){if(peek().t==='-'){p++;return{k:'neg',a:unary()}}if(peek().t==='+'){p++;return unary()}return power()}
+  function power(){const a=atom();if(peek().t==='^'){p++;return{k:'bin',op:'^',a,b:unary()}}return a}
+  function atom(){const t=T[p++];
+    if(t.t==='num')return{k:'num',v:t.v};
+    if(t.t==='('){const e=expr();take(')');return e}
+    if(t.t==='id'){
+      if(FNS[t.v]){if(peek().t!=='(')throw new FormulaError(`${t.v} needs brackets: ${t.v}(…)`,peek().i);p++;const e=expr();take(')');return{k:'fn',f:FNS[t.v],a:e}}
+      if(t.v==='pi')return{k:'num',v:Math.PI};
+      if(!/^[A-Za-z][0-9]?$/.test(t.v))throw new FormulaError(`unknown name “${t.v}” (inputs are one letter, like x or w1)`,t.i);
+      return{k:'var',n:t.v}}
+    throw new FormulaError(t.t==='end'?'the formula ends too soon':`unexpected “${t.t}”`,t.i)}
+  const e=expr();if(peek().t!=='end'){const q=peek();throw new FormulaError(`unexpected “${q.t==='num'?q.v:q.t==='id'?q.v:q.t}”`,q.i)}
+  return e}
+
+// one tank's arithmetic: value from its inputs, and the local derivative of that value with respect to each input pipe
+function fwd1(op,c,a,b){switch(op){
+  case'add':return a+b;case'sub':return a-b;case'mul':return a*b;case'div':return a/b;case'pow':return Math.pow(a,b);
+  case'neg':return-a;case'sin':return Math.sin(a);case'cos':return Math.cos(a);case'tan':return Math.tan(a);case'exp':return Math.exp(a);
+  case'log':return Math.log(a);case'sqrt':return Math.sqrt(a);case'tanh':return Math.tanh(a);case'sigmoid':return 1/(1+Math.exp(-a));
+  case'relu':return a>0?a:a<=0?0:NaN;case'abs':return Math.abs(a);
+  case'addc':return a+c;case'subc':return a-c;case'rsubc':return c-a;case'mulc':return c*a;case'divc':return a/c;case'rdivc':return c/a;
+  case'powc':return Math.pow(a,c);case'rpowc':return Math.pow(c,a)}
+  throw new Error('op '+op)}
+function local(op,c,a,b,y){switch(op){
+  case'add':return[1,1];case'sub':return[1,-1];case'mul':return[b,a];case'div':return[1/b,-a/(b*b)];case'pow':return[b*Math.pow(a,b-1),y*Math.log(a)];
+  case'neg':return[-1];case'sin':return[Math.cos(a)];case'cos':return[-Math.sin(a)];case'tan':{const q=Math.cos(a);return[1/(q*q)]}
+  case'exp':return[y];case'log':return[1/a];case'sqrt':return[.5/y];case'tanh':return[1-y*y];case'sigmoid':return[y*(1-y)];
+  case'relu':return[a>0?1:a<=0?0:NaN];case'abs':return[a>0?1:a<0?-1:a===0?0:NaN];
+  case'addc':case'subc':return[1];case'rsubc':return[-1];case'mulc':return[c];case'divc':return[1/c];case'rdivc':return[-c/(a*a)];
+  case'powc':return[c*Math.pow(a,c-1)];case'rpowc':return[y*Math.log(c)]}
+  throw new Error('op '+op)}
+const BIN={'+':(a,b)=>a+b,'-':(a,b)=>a-b,'*':(a,b)=>a*b,'/':(a,b)=>a/b,'^':(a,b)=>Math.pow(a,b)};
+const fmtC=v=>{if(Math.abs(v-Math.PI)<1e-12)return'π';const s=Math.abs(v)>=1e4||(Math.abs(v)<1e-3&&v)?v.toExponential(2):String(+v.toFixed(3));return s.replace('-','−')};
+const SYM={add:'+',sub:'−',mul:'×',div:'÷',pow:'^',neg:'−',sin:'sin',cos:'cos',tan:'tan',exp:'exp',log:'ln',sqrt:'√',tanh:'tanh',sigmoid:'σ',relu:'relu',abs:'|·|'};
+const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','.':'·','−':'⁻'};
+function label(op,c){const k=c==null?'':fmtC(c);switch(op){
+  case'addc':return'+'+k;case'subc':return'−'+k;case'rsubc':return k+'−';case'mulc':return'×'+k;case'divc':return'÷'+k;case'rdivc':return k+'÷';
+  case'powc':return/^[−0-9.]+$/.test(k)&&k.length<=3?'(·)'+[...k].map(q=>SUP[q]).join(''):'^'+k;case'rpowc':return k+'^'}
+  return SYM[op]}
+
+// the tape: every input once (the reservoirs), then one tank per operation, in the order they are computed
+function build(src){
+  const ast=parse(src),isC=n=>n.k==='num';
+  const K=v=>{if(!Number.isFinite(v))throw new FormulaError('a constant part of the formula works out to '+(v!==v?'NaN':'∞'),0);return{k:'num',v}};
+  const fold=n=>{switch(n.k){case'num':case'var':return n;
+    case'neg':{const a=fold(n.a);return isC(a)?K(-a.v):{k:'neg',a}}
+    case'fn':{const a=fold(n.a);return isC(a)?K(fwd1(n.f,0,a.v)):{k:'fn',f:n.f,a}}
+    case'bin':{const a=fold(n.a),b=fold(n.b);return isC(a)&&isC(b)?K(BIN[n.op](a.v,b.v)):{k:'bin',op:n.op,a,b}}}};
+  const root=fold(ast);
+  if(isC(root))throw new FormulaError('there is no input to vary: add a letter like x',0);
+  if(root.k==='var')throw new FormulaError('a single reservoir needs at least one operation after it',0);
+  const nodes=[],vars={};let ops=0;
+  const add=nd=>{if(++ops>MAXOPS)throw new FormulaError(`more than ${MAXOPS} operations: the board only holds ${MAXOPS} tanks`,0);nd.label=label(nd.op,nd.c);nodes.push(nd);return nodes.length-1};
+  const emit=n=>{
+    if(n.k==='var'){if(!(n.n in vars)){if(Object.keys(vars).length>=MAXVARS)throw new FormulaError(`at most ${MAXVARS} inputs`,0);vars[n.n]=nodes.length;nodes.push({op:'in',name:n.n,args:[],c:null,label:n.n})}return vars[n.n]}
+    if(n.k==='neg')return add({op:'neg',args:[emit(n.a)],c:null});
+    if(n.k==='fn')return add({op:n.f,args:[emit(n.a)],c:null});
+    if(isC(n.a))return add({op:{'+':'addc','-':'rsubc','*':'mulc','/':'rdivc','^':'rpowc'}[n.op],c:n.a.v,args:[emit(n.b)]});
+    if(isC(n.b))return add({op:{'+':'addc','-':'subc','*':'mulc','/':'divc','^':'powc'}[n.op],c:n.b.v,args:[emit(n.a)]});
+    const a=emit(n.a),b=emit(n.b);return add({op:{'+':'add','-':'sub','*':'mul','/':'div','^':'pow'}[n.op],args:[a,b],c:null})};
+  const out=emit(root);
+  const inputs=Object.keys(vars);
+  // when each tank fills on the way down (forward) and when its dye is complete on the way up (backward), in pipe-lengths
+  const N=nodes.length,depth=new Array(N).fill(0),up=new Array(N).fill(0),users=nodes.map(()=>[]);
+  nodes.forEach((nd,i)=>{nd.args.forEach((a,k)=>users[a].push([i,k]));if(nd.args.length)depth[i]=1+Math.max(...nd.args.map(a=>depth[a]))});
+  for(let i=N-1;i>=0;i--)if(i!==out)up[i]=1+Math.max(...users[i].map(([u])=>up[u]));
+  return{src,nodes,out,inputs,vars,depth,up,users}}
+
+function run(G,inp){
+  const N=G.nodes.length,v=new Float64Array(N),g=new Float64Array(N),d=[],flows=[];
+  G.nodes.forEach((nd,i)=>{v[i]=nd.op==='in'?+inp[nd.name]:fwd1(nd.op,nd.c,v[nd.args[0]],v[nd.args[1]])});
+  G.nodes.forEach((nd,i)=>{d[i]=nd.op==='in'?[]:local(nd.op,nd.c,v[nd.args[0]],v[nd.args[1]],v[i])});
+  g[G.out]=1; // seed: df/df = 1
+  for(let i=G.out;i>=0;i--){const nd=G.nodes[i];nd.args.forEach((a,k)=>{const c=g[i]*d[i][k];g[a]+=c;flows.push({from:i,to:a,k,local:d[i][k],carried:c,sum:g[a]})})}
+  const grad={};G.inputs.forEach(n=>grad[n]=g[G.vars[n]]);
+  return{v,g,d,flows,f:v[G.out],grad}}
+// the same derivative by nudging each input a little either way (to check the dye against)
+function fdCheck(G,inp){const out={};
+  for(const n of G.inputs){const x=+inp[n],h=1e-6*Math.max(1,Math.abs(x)),p={...inp},m={...inp};p[n]=x+h;m[n]=x-h;
+    const fp=run(G,p).f,fm=run(G,m).f;out[n]=(fp-fm)/(2*h)}
+  return out}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=RM||STILL;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const minus=s=>s.replace(/-/g,'−');
+const fmt=v=>v==null?'—':v!==v?'NaN':!isFinite(v)?(v>0?'∞':'−∞'):minus(Math.abs(v)>=1e4||(v!==0&&Math.abs(v)<1e-3)?v.toExponential(2):(Math.abs(v)<5e-4?0:v).toFixed(3));
+const fmt2=v=>v!==v?'NaN':!isFinite(v)?(v>0?'∞':'−∞'):minus(Math.abs(v)>=1e3||(v!==0&&Math.abs(v)<1e-2)?v.toExponential(1):v.toFixed(2));
+
+/* ---------- the gauge: water level is a signed log scale, 0 at the brass mid-line, ±1000 at the rims ---------- */
+const DEC=3,EMPTY=.018;
+const lev=v=>v!==v?EMPTY:clamp(.5+.5*Math.sign(v)*Math.log10(1+Math.abs(v))/DEC,.03,.975);
+const unlev=L=>{const s=(clamp(L,.03,.975)-.5)/.5;return Math.sign(s)*(Math.pow(10,Math.abs(s)*DEC)-1)};
+const dyeAmt=g=>g!==g?1:g===0?0:clamp(.28+.72*Math.log10(1+Math.abs(g))/Math.log10(21),0,1);
+
+const PRESETS=[
+  {key:'baydin',name:'Baydin’s example',f:'ln(x) + x*y - sin(y)',in:{x:2,y:5},eta:.1},
+  {key:'neuron',name:'One neuron',f:'(tanh(1.5w + b) - 0.8)^2',in:{w:-1,b:.5},eta:.3},
+  {key:'cube',name:'x·x·x',f:'x*x*x',in:{x:1.5},eta:.05},
+  {key:'relu',name:'Dead ReLU',f:'relu(3x - y) + relu(y - x)',in:{x:1,y:4},eta:.1},
+  {key:'bump',name:'Sigmoid bump',f:'sigmoid(2x - y) * exp(-y^2/4)',in:{x:.5,y:1},eta:.5},
+];
+const S={G:null,src:'',inp:{},R:null,fd:null,eta:.1,valve:false,valveT:0,steps:0,hist:[],sel:-1,preset:'baydin',why:''};
+const LOG=[],DESC=[];
+let simT=0,evals=0,ARR=[],FLOW=new Map();
+
+/* ---------- running the tape ---------- */
+function evaluate(why){
+  const R=run(S.G,S.inp);S.R=R;S.fd=fdCheck(S.G,S.inp);evals++;
+  LOG.push({n:evals,why,expr:S.src,inputs:{...S.inp},f:R.f,grad:{...R.grad},t:+simT.toFixed(3)});if(LOG.length>500)LOG.shift();
+  // when (in pipe-lengths after the backward pump starts) each tank receives each squirt of dye
+  ARR=S.G.nodes.map(()=>[]);FLOW=new Map();
+  for(const q of R.flows){ARR[q.to].push({u:S.G.up[q.from]+1,c:q.carried,from:q.from});FLOW.set(q.from+':'+q.k,q)}
+  ARR.forEach(a=>a.sort((p,q)=>p.u-q.u));
+  uiDirty=true;
+}
+const A={fwd0:-1e9,bwd0:-1e9,FT:.6,BT:.6,quick:true};
+const maxDepth=()=>Math.max(...S.G.depth),maxUp=()=>Math.max(...S.G.up);
+function pump(at,ft=.6){A.fwd0=at;A.FT=A.BT=ft;A.bwd0=at+maxDepth()*ft+.9;A.quick=STATIC}
+const pumpEnd=()=>A.bwd0+(maxUp()+1)*A.BT;
+const settled=()=>A.quick||simT>=pumpEnd()+.2;
+function quick(why){A.quick=true;evaluate(why)}
+
+function setFormula(src,inputs,why,opt={}){
+  let G;try{G=build(src)}catch(e){$('#ferr').textContent=e.message;$('#fx').classList.add('bad');return false}
+  $('#ferr').textContent='';$('#fx').classList.remove('bad');
+  const old=S.inp;S.G=G;S.src=src;S.inp={};
+  for(const n of G.inputs)S.inp[n]=inputs&&n in inputs?inputs[n]:n in old?old[n]:1;
+  S.sel=-1;S.steps=0;S.hist=[];setValve(false);
+  if($('#fx').value!==src)$('#fx').value=src;
+  evaluate(why);buildInputs();if(scene)scene.rebuild();
+  if(STATIC||opt.instant)A.quick=true;else pump(simT+(opt.at??.3),opt.ft??.6);
+  return true}
+function applyPreset(i,opt){const P=PRESETS[i];S.preset=P.key;setEta(P.eta);setFormula(P.f,P.in,'preset:'+P.key,opt);syncChips()}
+
+/* ---------- gradient descent through the drain valve ---------- */
+const VSTEP=.42;
+function setValve(on){S.valve=on;S.valveT=0;const b=$('#valve');b.classList.toggle('on',on);b.textContent=on?'Close the valve ▴':'Open the valve ▾'}
+function valveStep(){
+  const before={...S.inp},g={...S.R.grad},f0=S.R.f;
+  if(!Object.values(g).every(Number.isFinite)||!Number.isFinite(f0)){setValve(false);$('#ferr').textContent='The dye reads NaN or ∞ here, so the valve has nowhere to go.';return}
+  for(const n of S.G.inputs)S.inp[n]=before[n]-S.eta*g[n];
+  if(S.G.inputs.some(n=>Math.abs(S.inp[n])>1e6)){S.inp=before;setValve(false);$('#ferr').textContent='The reservoirs ran off the gauge: try a smaller η.';return}
+  S.steps++;quick('valve');
+  DESC.push({step:S.steps,expr:S.src,before,grad:g,eta:S.eta,after:{...S.inp},f_before:f0,f_after:S.R.f});if(DESC.length>400)DESC.shift();
+  S.hist.push(S.R.f);if(S.hist.length>80)S.hist.shift();
+  syncInputs();
+}
+const etaOf=v=>Math.pow(10,-2+2*v/100);
+function setEta(e){S.eta=e;$('#eta').value=Math.round((Math.log10(e)+2)*50);$('#etav').textContent=e<.1?e.toFixed(3):e.toFixed(2)}
+
+/* ---------- panel ---------- */
+let uiDirty=true;
+$('#presets').innerHTML=PRESETS.map((p,i)=>`<button class="chip" data-p="${i}">${p.name}</button>`).join('');
+const syncChips=()=>$$('#presets .chip').forEach(b=>b.classList.toggle('on',PRESETS[+b.dataset.p].key===S.preset&&PRESETS[+b.dataset.p].f===S.src));
+function buildInputs(){
+  $('#ins').innerHTML=S.G.inputs.map(n=>`<div class="irow"><span class="nm">${n}</span><input type="range" min="-600" max="600" step="1" data-v="${n}" aria-label="input ${n}"><span class="val" data-o="${n}"></span></div>`).join('');
+  $$('#ins input').forEach(el=>el.addEventListener('input',()=>{poke();const n=el.dataset.v;S.inp[n]=+el.value/100;quick('slider');syncInputs(el)}));
+  syncInputs();$('#nops').textContent=`${S.G.inputs.length} in · ${S.G.nodes.length-S.G.inputs.length} tanks`}
+function syncInputs(skip){for(const n of S.G.inputs){const el=$(`#ins input[data-v="${n}"]`);if(el&&el!==skip)el.value=Math.round(clamp(S.inp[n],-6,6)*100);const o=$(`#ins [data-o="${n}"]`);if(o)o.textContent=fmt(S.inp[n])}}
+$$('#presets .chip').forEach(b=>b.addEventListener('click',()=>{poke();applyPreset(+b.dataset.p)}));
+$('#ff').addEventListener('submit',e=>{e.preventDefault();poke();if(setFormula($('#fx').value.trim(),null,'typed')){S.preset='';syncChips()}});
+$('#fx').addEventListener('focus',poke);
+$('#pump').addEventListener('click',()=>{poke();setValve(false);A.quick=false;pump(simT+.15)});
+$('#valve').addEventListener('click',()=>{poke();setValve(!S.valve);if(S.valve){A.quick=true;S.valveT=VSTEP*.6}});
+$('#eta').addEventListener('input',e=>{poke();setEta(etaOf(+e.target.value))});
+$('#tourb').addEventListener('click',()=>startTour());
+
+const dyeCss=g=>g!==g?'#8b8577':g===0?'#9aa6ad':g>0?'var(--dyep)':'var(--dyen)';
+const RULE={add:['1','1'],sub:['1','−1'],mul:['v','u'],div:['1/v','−u/v²'],pow:['v·u^(v−1)','u^v·ln u'],neg:['−1'],sin:['cos u'],cos:['−sin u'],tan:['1/cos²u'],exp:['exp u'],log:['1/u'],sqrt:['1/(2√u)'],
+  tanh:['1 − tanh²u'],sigmoid:['σ(1 − σ)'],relu:['u > 0 ? 1 : 0'],abs:['sign u'],addc:['1'],subc:['1'],rsubc:['−1'],mulc:['c'],divc:['1/c'],rdivc:['−c/u²'],powc:['c·u^(c−1)'],rpowc:['c^u·ln c']};
+function fwdText(nd,v){const a=fmt(v[nd.args[0]]),b=nd.args.length>1?fmt(v[nd.args[1]]):'',c=nd.c==null?'':fmt2(nd.c).replace(/\.?0+$/,'');
+  const T={add:`${a} + ${b}`,sub:`${a} − ${b}`,mul:`${a} × ${b}`,div:`${a} ÷ ${b}`,pow:`${a} ^ ${b}`,neg:`−(${a})`,addc:`${a} + ${c}`,subc:`${a} − ${c}`,rsubc:`${c} − ${a}`,mulc:`${c} × ${a}`,divc:`${a} ÷ ${c}`,rdivc:`${c} ÷ ${a}`,powc:`${a} ^ ${c}`,rpowc:`${c} ^ ${a}`};
+  return T[nd.op]||`${nd.label}(${a})`}
+const tankName=i=>{const nd=S.G.nodes[i];return nd.op==='in'?`<i>${nd.name}</i>`:nd.label};
+function inspector(){
+  const el=$('#insp'),i=S.sel,G=S.G,R=S.R;
+  if(i<0||!G||i>=G.nodes.length){el.innerHTML=`<div class="hint">Click any tank to read how its water and its dye were worked out.</div>`;return}
+  const nd=G.nodes[i],gs=R.g[i];let h='';
+  h+=nd.op==='in'?`<h3>Reservoir <i>${nd.name}</i></h3>`:`<h3>Tank ${i} · ${nd.label}${i===G.out?' · the outlet, f':''}</h3>`;
+  h+=`<div class="ln dw"><span>↓</span><span>${nd.op==='in'?`<i>${nd.name}</i> = ${fmt(R.v[i])}`:`${fwdText(nd,R.v)} = <b>${fmt(R.v[i])}</b>`}</span></div>`;
+  if(i===G.out)h+=`<div class="ln" style="color:${dyeCss(1)}"><span>↑</span><span>dye goes in here: f̄ = ∂f/∂f = 1</span></div>`;
+  else{const us=G.users[i];
+    us.forEach(([u,k])=>{const q=FLOW.get(u+':'+k);h+=`<div class="ln"><span style="color:${dyeCss(q.carried)}">↑</span><span>from ${tankName(u)}: ${fmt(R.g[u])} × <span title="local derivative">${fmt(q.local)}</span> = <b style="color:${dyeCss(q.carried)}">${fmt(q.carried)}</b> <span style="opacity:.6">(${RULE[G.nodes[u].op][k]})</span></span></div>`});
+    h+=`<div class="ln tot"><span style="color:${dyeCss(gs)}">Σ</span><span>∂f/∂${nd.op==='in'?`<i>${nd.name}</i>`:'(this tank)'} = ${us.length>1?us.map(([u,k])=>fmt(FLOW.get(u+':'+k).carried)).join(' + ').replace(/\+ −/g,'− ')+' = ':''}<span style="color:${dyeCss(gs)}">${fmt(gs)}</span></span></div>`}
+  el.innerHTML=h}
+function ui(){
+  const G=S.G,R=S.R;
+  $('#fv').textContent=fmt(R.f);
+  $('#grads').innerHTML=G.inputs.map(n=>`<span><i class="bar">${n}</i><b style="color:${dyeCss(R.grad[n])}">${fmt(R.grad[n])}</b></span>`).join('');
+  const worst=Math.max(...G.inputs.map(n=>Math.abs(R.grad[n]-S.fd[n])/Math.max(1,Math.abs(R.grad[n]))));
+  $('#chk').innerHTML=`nudge check (x ± 10⁻⁶): ${G.inputs.map(n=>`∂f/∂${n} ≈ <b>${fmt(S.fd[n])}</b>`).join(' · ')}${Number.isFinite(worst)?` · differs from the dye by ${worst<1e-12?'&lt; 1e-12':worst.toExponential(0)}`:''}`;
+  $('#stepn').textContent=S.steps+(S.steps===1?' step':' steps');
+  inspector();syncChips();drawChart()}
+const fit2d=c=>{const d=Math.min(devicePixelRatio,2),w=c.clientWidth,h=c.clientHeight;if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return[g,w,h]};
+function drawChart(){
+  const c=$('#chart');if(!c.clientWidth)return;const[g,w,h]=fit2d(c),H=S.hist;
+  g.strokeStyle='rgba(214,173,98,.25)';g.beginPath();g.moveTo(0,h-.5);g.lineTo(w,h-.5);g.stroke();
+  if(H.length<2){g.fillStyle='rgba(236,228,210,.45)';g.font='italic 13px Fraunces,serif';g.fillText('Open the valve to log f here.',4,h/2+4);return}
+  const lo=Math.min(...H),hi=Math.max(...H),sp=Math.max(1e-9,hi-lo),X=k=>4+(w-8)*k/Math.max(1,H.length-1),Y=v=>4+(h-10)*(1-(v-lo)/sp);
+  g.strokeStyle='#9fd9e8';g.lineWidth=1.6;g.beginPath();H.forEach((v,k)=>k?g.lineTo(X(k),Y(v)):g.moveTo(X(k),Y(v)));g.stroke();
+  g.fillStyle='#fff8ea';g.beginPath();g.arc(X(H.length-1),Y(H[H.length-1]),2.6,0,7);g.fill();
+  g.font='500 10px "IBM Plex Mono",monospace';g.fillStyle='rgba(236,228,210,.6)';g.textAlign='right';g.fillText(fmt(H[H.length-1]),w-2,Math.min(h-12,Y(H[H.length-1])-5)<10?20:Math.min(h-12,Y(H[H.length-1])-5))}
+
+/* ================= the board, in three.js ================= */
+let R3=null;
+try{R3=new THREE.WebGLRenderer({canvas:$('#c'),antialias:true,powerPreference:'high-performance'})}catch(e){R3=null}
+if(!R3)document.body.classList.add('nogl');
+const scene=R3?makeScene():null;
+
+function makeScene(){
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(30,1,.1,200);
+  sc.background=new THREE.Color(0x06080d);
+  R3.setPixelRatio(Math.min(devicePixelRatio,2));R3.toneMapping=THREE.ACESFilmicToneMapping;R3.toneMappingExposure=1.08;
+  { // a dark room with a few warm windows, prefiltered for the brass
+    const e=new THREE.Scene();e.add(new THREE.Mesh(new THREE.BoxGeometry(12,12,12),new THREE.MeshBasicMaterial({color:new THREE.Color(.02,.018,.016),side:THREE.BackSide})));
+    const L=(r,g,b,x,y,z,w,h)=>{const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),side:THREE.DoubleSide}));p.position.set(x,y,z);p.lookAt(0,0,0);e.add(p)};
+    L(7,5.2,3.4,-2,5.5,3,5,2.5);L(1.4,1.9,2.6,5.5,1,2,2,5);L(3,2.2,1.4,-5.5,0,1,2,4);L(.6,.45,.3,0,-5.5,0,8,8);
+    const pm=new THREE.PMREMGenerator(R3);sc.environment=pm.fromScene(e,.04).texture;pm.dispose()}
+  sc.add(new THREE.HemisphereLight(0xcfd8ff,0x2a1a0c,.55));
+  const key=new THREE.DirectionalLight(0xffe0b8,2.1);key.position.set(-4,7,8);sc.add(key);
+  const rim=new THREE.DirectionalLight(0x8fb8ff,.9);rim.position.set(6,3,-2);sc.add(rim);
+
+  // walnut board, with a pool of lamplight baked in
+  const wood=(()=>{const c=document.createElement('canvas');c.width=c.height=1024;const g=c.getContext('2d');
+    g.fillStyle='#2b1a0f';g.fillRect(0,0,1024,1024);let s=11;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+    for(let i=0;i<520;i++){const y0=r()*1024,a=4+r()*16,f=.004+r()*.01,ph=r()*6.3,lw=.6+r()*2.4,l=r();
+      g.strokeStyle=l<.5?`rgba(14,7,3,${.18+r()*.3})`:`rgba(120,74,38,${.07+r()*.14})`;g.lineWidth=lw;g.beginPath();
+      for(let x=-8;x<=1032;x+=16){const y=y0+Math.sin(x*f+ph)*a+Math.sin(x*f*3.1+ph*2)*a*.25;x<0?g.moveTo(x,y):g.lineTo(x,y)}g.stroke()}
+    const gr=g.createRadialGradient(470,420,40,512,512,720);gr.addColorStop(0,'rgba(255,214,150,.22)');gr.addColorStop(.55,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.6)');g.fillStyle=gr;g.fillRect(0,0,1024,1024);
+    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t})();
+  const boardM=new THREE.MeshStandardMaterial({map:wood,roughness:.62,metalness:0,envMapIntensity:.4});
+  const brass=new THREE.MeshStandardMaterial({color:0xd0a456,metalness:1,roughness:.3});
+  const brassD=new THREE.MeshStandardMaterial({color:0x8a6630,metalness:1,roughness:.45});
+  // glass: an additive fresnel shell with a window streak, cheap enough for software GL
+  const glassM=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,uniforms:{uA:{value:1}},
+    vertexShader:`varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`varying vec3 vN;varying vec3 vV;uniform float uA;void main(){vec3 n=normalize(vN);float f=pow(1.-abs(dot(n,vV)),2.4);
+      float s=smoothstep(.62,.7,-n.x)*smoothstep(.86,.72,-n.x)*.7+smoothstep(.83,.9,n.x)*.25;
+      vec3 c=vec3(.62,.8,.9)*(.035+.5*f)+vec3(1.,.97,.9)*s*.32;gl_FragColor=vec4(c*uA,1.);}`});
+  const waterBase=new THREE.Color(0x8cc4d2),dyeP=new THREE.Color(0xe0002c),dyeN=new THREE.Color(0x3a2cff),sludge=new THREE.Color(0x4a4238);
+  const dyeCol=(g,out=new THREE.Color())=>{if(g!==g)return out.copy(sludge);const a=dyeAmt(g);return out.copy(waterBase).lerp(g>0?dyeP:dyeN,1-(1-a)*(1-a)).multiplyScalar(1-.3*a)};
+  const coreG=new THREE.MeshStandardMaterial({color:waterBase,emissive:waterBase,emissiveIntensity:.25,roughness:.2,transparent:true,opacity:.92});
+  const beadG=new THREE.SphereGeometry(1,10,8);
+  const BMAX=160,beads=new THREE.InstancedMesh(beadG,new THREE.MeshBasicMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}),BMAX);
+  beads.frustumCulled=false;beads.renderOrder=4;for(let i=0;i<BMAX;i++)beads.setColorAt(i,new THREE.Color(0,0,0));beads.count=0;sc.add(beads);
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(1,.035,8,64),new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));halo.rotation.x=Math.PI/2;halo.visible=false;sc.add(halo);
+
+  let rig=null,TK=[],ED=[],board=null,wheel=null,B={};
+  const camS={yaw:.15,pitch:.06,yv:0,pv:0,dist:12,tgt:new THREE.Vector3(),zoom:1};
+  const labels=$('#labels');
+  const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+  const dispose=o=>o.traverse(q=>{if(q.geometry&&q.geometry!==beadG)q.geometry.dispose();if(q.material&&q.material.dispose&&![brass,brassD,glassM,boardM,coreG].includes(q.material))q.material.dispose()});
+
+  function rebuild(){
+    if(rig){sc.remove(rig);dispose(rig)}rig=new THREE.Group();sc.add(rig);labels.innerHTML='';TK=[];ED=[];
+    const G=S.G,N=G.nodes.length,D=G.depth,mD=Math.max(...D),SP=1.62,LS=1.95;
+    // ---- layout: one row per depth, each tank under the mean of what feeds it, at least SP apart
+    const X=new Array(N).fill(0),rows=[];for(let d=0;d<=mD;d++)rows.push([]);G.nodes.forEach((n,i)=>rows[D[i]].push(i));
+    rows[0].forEach((i,k)=>X[i]=(k-(rows[0].length-1)/2)*SP*1.08);
+    for(let d=1;d<=mD;d++){const o=rows[d].map(i=>[G.nodes[i].args.reduce((s,a)=>s+X[a],0)/G.nodes[i].args.length,i]).sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+      const xs=o.map(p=>p[0]);for(let it=0;it<60;it++)for(let k=1;k<xs.length;k++){const gap=xs[k]-xs[k-1];if(gap<SP){const m=(SP-gap)/2;xs[k]+=m;xs[k-1]-=m}}
+      o.forEach((p,k)=>X[p[1]]=xs[k])}
+    const mx=(Math.min(...X)+Math.max(...X))/2;
+    const size=i=>G.nodes[i].op==='in'?[.46,1.12]:i===G.out?[.5,1.2]:[.37,.98];
+    for(let i=0;i<N;i++){
+      const nd=G.nodes[i],[r,h]=size(i),x=X[i]-mx,y=-D[i]*LS,g=new THREE.Group();g.position.set(x,y,0);rig.add(g);
+      const glass=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,48,1,true),glassM);glass.renderOrder=3;glass.userData.tank=i;g.add(glass);
+      for(const s of[-1,1]){const t=new THREE.Mesh(new THREE.TorusGeometry(r+.012,.03,10,64),brass);t.rotation.x=Math.PI/2;t.position.y=s*h/2;g.add(t)}
+      const base=new THREE.Mesh(new THREE.CylinderGeometry(r+.05,r+.09,.1,48),brassD);base.position.y=-h/2-.07;g.add(base);
+      const wm=new THREE.MeshStandardMaterial({color:waterBase,emissive:waterBase,emissiveIntensity:.18,roughness:.18,metalness:0,transparent:true,opacity:.6});
+      const wg=new THREE.CylinderGeometry(r*.94,r*.94,1,48);wg.translate(0,.5,0);
+      const water=new THREE.Mesh(wg,wm);water.position.y=-h/2+.01;water.renderOrder=1;g.add(water);
+      const surf=new THREE.Mesh(new THREE.TorusGeometry(r*.93,.012,6,48),new THREE.MeshBasicMaterial({color:0xe8fbff,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false}));surf.rotation.x=Math.PI/2;surf.renderOrder=2;g.add(surf);
+      if(nd.op==='in'){const fun=new THREE.Mesh(new THREE.CylinderGeometry(r*.98,r*.55,.26,40,1,true),brass);fun.position.y=h/2+.16;g.add(fun);
+        const lip=new THREE.Mesh(new THREE.TorusGeometry(r*.98,.022,8,48),brass);lip.rotation.x=Math.PI/2;lip.position.y=h/2+.29;g.add(lip)}
+      if(i===G.out){wheel=new THREE.Group();wheel.position.set(r+.33,-h/2+.06,.05);g.add(wheel);
+        const stub=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.36,12),brassD);stub.rotation.z=Math.PI/2;stub.position.set(-.17,0,0);wheel.parent.add(stub);stub.position.add(wheel.position);
+        const wh=new THREE.Group();wheel.add(wh);wheel.userData.wh=wh;wh.add(new THREE.Mesh(new THREE.TorusGeometry(.15,.022,8,32),brass));
+        for(let k=0;k<4;k++){const sp=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.3,6),brass);sp.rotation.z=k*Math.PI/4;wh.add(sp)}
+        wh.position.z=.06}
+      // gauge marks at 0, ±1, ±10, ±100
+      for(const v of[0,1,-1,10,-10,100,-100]){const t=new THREE.Mesh(new THREE.TorusGeometry(r+.004,v===0?.011:.0055,4,48,Math.PI*1.1),new THREE.MeshBasicMaterial({color:v===0?0xe7c27a:0xb59050,transparent:true,opacity:v===0?.85:.5,depthWrite:false}));
+        t.rotation.x=Math.PI/2;t.rotation.z=-Math.PI*.05;t.position.y=-h/2+lev(v)*h;t.renderOrder=2;g.add(t)}
+      const sym=document.createElement('div');sym.className='sym'+(nd.op==='in'?' in':'')+(/^[+−×÷^]$/.test(nd.label)?' op1':'');sym.textContent=nd.op==='in'?nd.name:nd.label;labels.appendChild(sym);
+      const rd=document.createElement('div');rd.className='rd';rd.innerHTML='<span class="v"></span><span class="g"></span>';labels.appendChild(rd);
+      TK.push({i,g,r,h,water,wm,surf,glass,sym,rd,amt:0,vEl:rd.firstChild,gEl:rd.lastChild,lev:nd.op==='in'?lev(S.R.v[i]):EMPTY,col:waterBase.clone(),tLev:0,tCol:new THREE.Color(),txt:['',''],cc:''})}
+    // ---- pipes: out of the bottom of a tank, back behind the board line, down into the top of the next
+    const outs=G.nodes.map(()=>[]);G.nodes.forEach((nd,i)=>nd.args.forEach((a,k)=>outs[a].push([i,k])));
+    outs.forEach(o=>o.sort((p,q)=>TK[p[0]].g.position.x-TK[q[0]].g.position.x));
+    G.nodes.forEach((nd,i)=>nd.args.forEach((a,k)=>{
+      const pa=TK[a],pc=TK[i],j=outs[a].findIndex(p=>p[0]===i&&p[1]===k),m=outs[a].length,n2=nd.args.length;
+      const oa=(j-(m-1)/2)*Math.min(.17,pa.r*1.3/Math.max(1,m-1)),oc=(k-(n2-1)/2)*.22;
+      const s=V(pa.g.position.x+oa,pa.g.position.y-pa.h/2-.12,0),e=V(pc.g.position.x+oc,pc.g.position.y+pc.h/2+.2,0);
+      const zb=-.62-.08*((i+a)%3),dy=s.y-e.y;
+      const curve=new THREE.CatmullRomCurve3([s,V(s.x,s.y-.22,-.12),V(s.x+(e.x-s.x)*.12,s.y-Math.min(.55,dy*.28),zb),V(e.x-(e.x-s.x)*.12,e.y+Math.min(.55,dy*.28),zb),V(e.x,e.y+.25,-.1),e],false,'centripetal');
+      const TS=72,gl=new THREE.Mesh(new THREE.TubeGeometry(curve,TS,.055,10,false),glassM);gl.renderOrder=3;rig.add(gl);
+      const wc=new THREE.Mesh(new THREE.TubeGeometry(curve,TS,.033,8,false),coreG);wc.renderOrder=1;rig.add(wc);
+      const rev=new THREE.CatmullRomCurve3(curve.points.slice().reverse(),false,'centripetal');
+      const dm=new THREE.MeshStandardMaterial({color:dyeP,emissive:dyeP,emissiveIntensity:.45,roughness:.25,transparent:true,opacity:.95});
+      const dc=new THREE.Mesh(new THREE.TubeGeometry(rev,TS,.037,8,false),dm);dc.renderOrder=1;rig.add(dc);
+      for(const p of[s,e]){const cpl=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.07,14),brass);cpl.position.copy(p);rig.add(cpl)}
+      const tag=document.createElement('div');tag.className='et';labels.appendChild(tag);
+      ED.push({a,i,k,curve,wc,dc,dm,TS,tag,ph:(i*.37+k*.19+a*.11)%1,txt:'',cc:'',op:-1})}));
+    // ---- the board behind it all
+    const xs=TK.map(t=>t.g.position.x),ys=TK.map(t=>t.g.position.y);
+    B={x0:Math.min(...xs)-1.05,x1:Math.max(...xs)+1.05+(wheel?.25:0),y0:Math.min(...ys)-1.15,y1:Math.max(...ys)+1.15};
+    const bw=Math.max(B.x1-B.x0,4.2)+.8,bh=B.y1-B.y0+.8,cx=(B.x0+B.x1)/2,cy=(B.y0+B.y1)/2;
+    board=new THREE.Group();board.position.set(cx,cy,-1.02);rig.add(board);
+    const pl=new THREE.Mesh(new THREE.PlaneGeometry(bw,bh),boardM);board.add(pl);
+    for(const[w2,h2,x2,y2]of[[bw+.16,.08,0,bh/2],[bw+.16,.08,0,-bh/2],[.08,bh,-bw/2,0],[.08,bh,bw/2,0]]){const f=new THREE.Mesh(new THREE.BoxGeometry(w2,h2,.08),brassD);f.position.set(x2,y2,.04);board.add(f)}
+    for(const[x2,y2]of[[-1,1],[1,1],[-1,-1],[1,-1]]){const rv=new THREE.Mesh(new THREE.SphereGeometry(.05,12,8),brass);rv.position.set(x2*(bw/2-.22),y2*(bh/2-.22),.02);board.add(rv)}
+    B.cx=cx;B.cy=cy;B.w=Math.max(B.x1-B.x0,3.6);B.h=B.y1-B.y0;
+    camS.tgt.set(cx,cy,-.3);resize();
+  }
+
+  let W=1,H=1,ppu=60,labelsDirty=true;
+  function resize(){
+    const st=$('#stage'),w=st.clientWidth,h=st.clientHeight,desk=innerWidth>820;W=w;H=h;R3.setSize(w,h,false);cam.aspect=w/h;
+    // the box the machine should fill, in canvas px
+    const bx0=desk?Math.min(470,w*.33):8,bx1=desk?w-396:w-8,by0=desk?22:10,by1=h-(desk?20:10);
+    const bw=Math.max(200,bx1-bx0),bh=by1-by0,tn=Math.tan(cam.fov*Math.PI/360);
+    ppu=Math.min(bh/(B.h||8),bw/(B.w||5))*.97;
+    camS.dist=h/(2*tn*ppu);
+    cam.clearViewOffset();cam.setViewOffset(w,h,w/2-(bx0+bx1)/2,h/2-(by0+by1)/2,w,h);cam.updateProjectionMatrix();labelsDirty=true}
+  const tmp=new THREE.Vector3(),m4=new THREE.Matrix4(),q4=new THREE.Quaternion(),s4=new THREE.Vector3(),c4=new THREE.Color();
+  const scr=(p,out)=>{tmp.copy(p).project(cam);out[0]=(tmp.x+1)/2*W;out[1]=(1-tmp.y)/2*H;return out};
+  const xy=[0,0],xy2=[0,0];
+  let lastCam='';
+  function update(dt){
+    // camera: a gentle three-quarter view; drag to tilt
+    camS.yaw=clamp(camS.yaw+camS.yv,-.45,.55);camS.pitch=clamp(camS.pitch+camS.pv,-.12,.3);camS.yv*=.85;camS.pv*=.85;
+    if(Math.abs(camS.yv)<1e-5)camS.yv=0;if(Math.abs(camS.pv)<1e-5)camS.pv=0;
+    const d=camS.dist*camS.zoom,T=camS.tgt;
+    cam.position.set(T.x+Math.sin(camS.yaw)*Math.cos(camS.pitch)*d,T.y+Math.sin(camS.pitch)*d,T.z+Math.cos(camS.yaw)*Math.cos(camS.pitch)*d);cam.lookAt(T);cam.updateMatrixWorld();
+    const ck=camS.yaw.toFixed(4)+camS.pitch.toFixed(4)+d.toFixed(3)+W+'x'+H;if(ck!==lastCam){lastCam=ck;labelsDirty=true}
+    const G=S.G,R=S.R,q=settled(),kL=STATIC?1:1-Math.exp(-dt*4.2),kC=STATIC?1:1-Math.exp(-dt*3.5);
+    // ---- tanks: water level (value) and colour (dye collected so far)
+    for(const tk of TK){const i=tk.i,nd=G.nodes[i];
+      const tv=nd.op==='in'?A.fwd0:A.fwd0+G.depth[i]*A.FT,vOn=q||simT>=tv;
+      tk.tLev=nd.op==='in'||vOn?lev(R.v[i]):EMPTY;
+      let g=0,any=false;
+      if(q){g=R.g[i];any=true}
+      else{if(i===G.out&&simT>=A.bwd0){g=1;any=true}for(const ar of ARR[i])if(simT>=A.bwd0+(ar.u-.15)*A.BT){g+=ar.c;any=true}}
+      dyeCol(any?g:0,tk.tCol);
+      tk.lev+=(tk.tLev-tk.lev)*kL;tk.col.lerp(tk.tCol,kC);tk.amt+=((any?dyeAmt(g):0)-tk.amt)*kC;tk.wm.opacity=.5+.48*tk.amt;
+      const hh=Math.max(.004,tk.lev*(tk.h-.02));tk.water.scale.y=hh;tk.wm.color.copy(tk.col);tk.wm.emissive.copy(tk.col);
+      tk.wm.emissiveIntensity=.14+.6*tk.amt;
+      tk.surf.position.y=-tk.h/2+.01+hh;tk.surf.visible=tk.lev>.03;
+      const vt=(i===G.out?'↓ f = ':'↓ ')+(vOn||nd.op==='in'?fmt(R.v[i]):'—'),gt=any?(i===G.out?'↑ f̄ = ':'↑ ')+fmt(g):'';
+      if(vt!==tk.txt[0]){tk.txt[0]=vt;tk.vEl.textContent=vt}
+      if(gt!==tk.txt[1]){tk.txt[1]=gt;tk.gEl.textContent=gt}
+      const cc=any?dyeCss(g):'';if(cc!==tk.cc){tk.cc=cc;tk.gEl.style.color=cc}
+      const sel=i===S.sel;if(sel!==tk.isSel){tk.isSel=sel;tk.rd.classList.toggle('sel',sel)}}
+    // ---- pipes: water fills them on the way down, dye on the way up
+    let nb=0;
+    for(const e of ED){const fl=FLOW.get(e.i+':'+e.k),c=fl?fl.carried:0;
+      const uw=q?1:clamp((simT-(A.fwd0+(G.depth[e.i]-1)*A.FT))/(A.FT*.85),0,1);
+      const ud=q?1:clamp((simT-(A.bwd0+G.up[e.i]*A.BT))/(A.BT*.85),0,1);
+      const nw=Math.round(uw*e.TS)*8*6,nd2=Math.round(ud*e.TS)*8*6;
+      e.wc.geometry.setDrawRange(0,nw);e.wc.visible=nw>0;e.dc.geometry.setDrawRange(0,nd2);e.dc.visible=nd2>0;
+      dyeCol(c,c4);e.dm.color.copy(c4);e.dm.emissive.copy(c4);
+      // beads: a bright front while a pass is running, a slow trickle of dye afterwards
+      if(!STATIC){const front=uw>0&&uw<1?['w',uw]:ud>0&&ud<1?['d',ud]:null;
+        for(let j=0;j<4&&nb<160;j++){let p,sz,col;
+          if(front){const u=front[1]-j*.05;if(u<0)continue;p=front[0]==='w'?u:1-u;sz=.05-j*.007;col=front[0]==='w'?c4.set(0xd8f6ff):dyeCol(c,c4).multiplyScalar(1.4)}
+          else if(ud>=1){p=1-((simT*.16+e.ph+j/4)%1);sz=.03;col=dyeCol(c,c4).multiplyScalar(.85)}
+          else if(uw>=1){p=(simT*.16+e.ph+j/4)%1;sz=.026;col=c4.set(0x6fa9ba)}
+          else continue;
+          e.curve.getPointAt(clamp(p,0,1),tmp);m4.compose(tmp,q4,s4.set(sz,sz,sz));beads.setMatrixAt(nb,m4);beads.setColorAt(nb,col);nb++}}
+      const show=ud>=1;const tt=show?fmt2(c):'';if(tt!==e.txt){e.txt=tt;e.tag.textContent=tt}
+      const cc=dyeCss(c);if(cc!==e.cc){e.cc=cc;e.tag.style.color=cc}
+      const hot=S.sel===e.a,op=show?(S.sel<0||hot||S.sel===e.i?1:.25):0;if(op!==e.op){e.op=op;e.tag.style.opacity=op;e.tag.classList.toggle('hot',hot&&show)}}
+    beads.count=nb;beads.instanceMatrix.needsUpdate=true;if(beads.instanceColor)beads.instanceColor.needsUpdate=true;
+    // ---- the selected tank wears a brass halo; the drain valve's wheel turns while it is open
+    if(S.sel>=0&&TK[S.sel]){const tk=TK[S.sel];halo.visible=true;halo.position.set(tk.g.position.x,tk.g.position.y+tk.h/2+(G.nodes[S.sel].op==='in'?.3:0),0);halo.scale.setScalar(tk.r+.07);halo.material.opacity=STATIC?.8:.55+.3*Math.sin(simT*4)}else halo.visible=false;
+    if(wheel&&S.valve)wheel.userData.wh.rotation.z-=dt*2.4;
+    if(labelsDirty)placeLabels();
+  }
+  function placeLabels(){
+    labelsDirty=false;const fs=clamp(ppu*.3,13,27);
+    for(const tk of TK){const p=tk.g.position;
+      scr(tmp.set(p.x,p.y,tk.r),xy);tk.sym.style.setProperty('--fs',fs.toFixed(1)+'px');tk.sym.style.transform=`translate(${xy[0].toFixed(1)}px,${xy[1].toFixed(1)}px) translate(-50%,-50%)`;
+      scr(tmp.set(p.x+tk.r+.07,p.y-tk.h*.08,0),xy);tk.rd.style.transform=`translate(${xy[0].toFixed(1)}px,${xy[1].toFixed(1)}px) translate(0,-50%)`}
+    for(const e of ED){e.curve.getPointAt(.5,tmp);scr(tmp,xy);e.tag.style.transform=`translate(${xy[0].toFixed(1)}px,${xy[1].toFixed(1)}px) translate(-50%,-50%)`}}
+  const ray=new THREE.Raycaster(),pv=new THREE.Vector2();
+  function pick(cx,cy){const r=R3.domElement.getBoundingClientRect();pv.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(pv,cam);
+    const hit=ray.intersectObjects(TK.map(t=>t.glass),false)[0];return hit?hit.object.userData.tank:-1}
+  // a reservoir's water surface follows the pointer
+  function tankPx(i){const tk=TK[i],p=tk.g.position;scr(tmp.set(p.x,p.y-tk.h/2,0),xy);scr(tmp.set(p.x,p.y+tk.h/2,0),xy2);return Math.max(20,xy[1]-xy2[1])}
+  return{rebuild,resize,update,pick,tankPx,camS,render:()=>R3.render(sc,cam),tk:()=>TK,ed:()=>ED,cam,setDirty:()=>{labelsDirty=true}};
+}
+
+/* ---------- pointer ---------- */
+const tip=$('#tip');
+function select(i){S.sel=i;uiDirty=true}
+if(scene){
+  const cv=$('#c');let drag=null;
+  cv.addEventListener('pointerdown',e=>{poke();const i=scene.pick(e.clientX,e.clientY),lift=i>=0&&S.G.nodes[i].op==='in'&&e.pointerType!=='touch';
+    drag={x:e.clientX,y:e.clientY,moved:0,i,lift};cv.setPointerCapture(e.pointerId);cv.classList.add(lift?'lift':'drag');if(lift)select(i)});
+  cv.addEventListener('pointermove',e=>{
+    if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;
+      if(drag.lift){const n=S.G.nodes[drag.i].name;drag.L=clamp((drag.L??lev(S.inp[n]))-dy*.5/scene.tankPx(drag.i),.03,.975);const v=unlev(drag.L);S.inp[n]=Math.abs(v)<10?Math.round(v*100)/100:Math.round(v*10)/10;quick('drag');syncInputs()}
+      else{scene.camS.yv=clamp(dx*.004,-.03,.03);scene.camS.pv=clamp(dy*.0025,-.02,.02)}
+      tip.style.opacity=0;return}
+    const i=scene.pick(e.clientX,e.clientY);if(i<0){tip.style.opacity=0;cv.style.cursor='';return}
+    const nd=S.G.nodes[i];cv.style.cursor=nd.op==='in'?'ns-resize':'pointer';
+    tip.innerHTML=`<b>${nd.op==='in'?nd.name:nd.label}</b> · value ${fmt(S.R.v[i])}<br>∂f/∂ this ${fmt(S.R.g[i])}${nd.op==='in'?'<br>drag up or down to change it':''}`;
+    tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.style.opacity=1});
+  const end=e=>{if(drag&&drag.moved<6)select(drag.i);drag=null;cv.classList.remove('drag','lift')};
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',()=>{drag=null;cv.classList.remove('drag','lift')});
+  cv.addEventListener('pointerleave',()=>{tip.style.opacity=0});
+  cv.addEventListener('wheel',e=>{if(innerWidth<=820)return;e.preventDefault();poke();scene.camS.zoom=clamp(scene.camS.zoom*(1+e.deltaY*.001),.7,1.5)},{passive:false});
+  addEventListener('resize',()=>{scene.resize();uiDirty=true});
+}
+
+/* ---------- captions and the tour ---------- */
+let shownCap='',capTimer=0;
+function cap(html,soft){if(html===shownCap)return;const el=$('#caption'),fading=el.classList.contains('fade');shownCap=html;
+  if(STATIC||FIXED||(soft&&!fading)){el.innerHTML=html;el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{el.innerHTML=shownCap;el.classList.remove('fade')},380)}
+const m=s=>`<span class="m">${s}</span>`,bar=s=>`<span class="bar">${s}</span>`;
+const CAP={
+  fwd:()=>`<b>Forward pass.</b> One tank per step of ${m('ln x + x·y − sin y')}. <span class="w">Water</span> runs down from the reservoirs, x = ${fmt(S.inp.x)} and y = ${fmt(S.inp.y)}, and each tank fills to its value. The outlet settles at f = ${fmt(S.R.f)}.`,
+  bwd:()=>`<b>Backward pass.</b> <span class="d">Dye</span> goes in at the outlet, ${bar('f')} = 1, and is pumped back up. Every pipe multiplies the dye it carries by its local derivative: up through ${m('sin')} it is scaled by cos y = ${fmt(Math.cos(S.inp.y))}.`,
+  fan:()=>{const G=S.G,x=G.vars.x,fl=G.users[x].map(([u,k])=>FLOW.get(u+':'+k).carried);return`<b>x</b> fed two pipes, so its dye comes back twice and adds: <span style="white-space:nowrap">${bar('x')} = 1/x + y</span> = ${fl.map(fmt).join(' + ')} = <span class="d">${fmt(S.R.g[x])}</span>. Summing over every path back from f is all reverse mode does.`},
+  move:()=>`Lower y and the whole board resettles. One pass down and one pass up give the gradient for every input at once, however many inputs there are: ${bar('x')} = ${fmt(S.R.grad.x)}, ${bar('y')} = ${fmt(S.R.grad.y)}.`,
+  neuron:()=>`Now one neuron's squared error, ${m('(tanh(1.5w + b) − 0.8)²')} = ${fmt(S.R.f)}. Both reservoirs carry <span class="n">blue</span> dye: raising w or b would lower the error.`,
+  valve:()=>{const n=S.G.inputs[0];return`<b>The drain valve is open:</b> every reservoir moves against its own dye, ${m(n+' ← '+n+' − η·'+bar(n))}, and the outlet tank drains. That is gradient descent: ${S.steps} step${S.steps===1?'':'s'}, f = ${fmt(S.R.f)}.`},
+  you:()=>`Your turn: type any formula, drag a reservoir up or down, or open the valve.`,
+};
+let tour=null,tourDone=false,tween=null;
+const TOUR=[
+  [0,()=>{applyPreset(0,{at:.45,ft:.6});select(-1);cap(CAP.fwd())}],
+  [3.0,()=>cap(CAP.bwd())],
+  [5.75,()=>{select(S.G.vars.x);cap(CAP.fan())}],
+  [10.2,()=>{tween={n:'y',a:S.inp.y,b:1.2,t0:simT,t1:simT+2.2};cap(CAP.move())}],
+  [14.6,()=>{applyPreset(1,{at:.35,ft:.45});select(-1);cap(CAP.neuron())}],
+  [21.0,()=>{setValve(true);S.valveT=VSTEP*.9;select(S.G.out)}],
+  [27.6,()=>{setValve(false);cap(CAP.you())}],
+  [28.4,()=>{tour=null;tourDone=true}],
+];
+function startTour(){tour={t0:simT,k:0};tourDone=false;tween=null}
+function poke(){if(tour){tour=null;tween=null;cap(CAP.you())}}
+function tourTick(){
+  if(tween){const u=clamp((simT-tween.t0)/(tween.t1-tween.t0),0,1),e=u*u*(3-2*u);S.inp[tween.n]=+(tween.a+(tween.b-tween.a)*e).toFixed(4);quick('tour');syncInputs();if(u>=1){tween=null;cap(CAP.move())}}
+  if(!tour)return;const t=simT-tour.t0;
+  while(tour&&tour.k<TOUR.length&&t>=TOUR[tour.k][0]){const f=TOUR[tour.k][1];tour.k++;f()}
+  }
+
+/* ---------- the loop ---------- */
+function update(dt){
+  simT+=dt;tourTick();
+  if(S.valve){S.valveT+=dt;while(S.valve&&S.valveT>=VSTEP){S.valveT-=VSTEP;valveStep()}if(S.valve)cap(CAP.valve(),S.steps>0)}
+  if(scene)scene.update(dt);
+  if(uiDirty){uiDirty=false;ui()}
+}
+let last=0;window.__frame=0;
+function frame(ts,skipDraw){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the board
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.25);last=now;window.__frame++;
+  update(dt);if(scene&&!skipDraw)scene.render();
+  window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,formula:S.src,f:S.R.f,steps:S.steps,valve:S.valve,sel:S.sel,settled:settled()};
+}
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  setEta(.1);
+  const want=Q.get('f');
+  if(want&&setFormula(want,Object.fromEntries([...Q].filter(([k])=>/^[A-Za-z][0-9]?$/.test(k)).map(([k,v])=>[k,+v])),'url',{instant:STATIC})){S.preset='';syncChips();cap(CAP.you())}
+  else if(STATIC){applyPreset(0,{instant:true});select(S.G.vars.x);cap(CAP.fan());if(scene)scene.update(1)}
+  else{startTour();if(FIXED){for(let i=0;i<372;i++)update(1/60)}}
+  ready=true;
+}
+let ready=false;
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+(async()=>{await start();if(FIXED){frame()}else{last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the machine
+window.waterworks={state:()=>{if(!ready||!S.G)return{ready:false};const G=S.G,R=S.R;return{ready:true,formula:S.src,preset:S.preset,inputs:{...S.inp},
+  nodes:G.nodes.map((n,i)=>({op:n.op,c:n.c,args:[...n.args],name:n.name||null,label:n.label,depth:G.depth[i],up:G.up[i],v:R.v[i],g:R.g[i]})),out:G.out,
+  f:R.f,grad:{...R.grad},fd:{...S.fd},flows:R.flows.map(q=>({...q})),eta:S.eta,valve:S.valve,steps:S.steps,selected:S.sel,tour:tour?tour.k:null,tourDone,
+  settled:settled(),simT:+simT.toFixed(3),err:$('#ferr').textContent,log:LOG.map(e=>({...e})),descent:DESC.map(e=>({...e})),
+  levels:scene?scene.tk().map(t=>+t.lev.toFixed(4)):null,caption:$('#caption').textContent}}};
+</script>
+</body>
+</html>

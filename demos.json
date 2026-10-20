@@ -1,5 +1,15 @@
 [
  {
+  "slug": "backprop-waterworks",
+  "title": "Backprop Waterworks",
+  "no": "022",
+  "date": "2026-10-20",
+  "kind": "Autodiff \u00b7 three.js waterworks",
+  "blurb": "Type a formula and it becomes a walnut board of glass tanks, one per operation. Water carries the values down to f; then dye is pumped back up every pipe, scaled by its local derivative, and where pipes meet the dye adds. The colour in each tank is \u2202f/\u2202 that tank: real reverse-mode autodiff. Open the valve for gradient descent.",
+  "color": "#ee2bc7",
+  "exhibit": "waterworks"
+ },
+ {
   "slug": "budget-fuse-box",
   "title": "Budget Fuse Box",
   "no": "021",
