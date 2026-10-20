@@ -46,6 +46,9 @@ export async function startHall({list,V,openExhibit,esc}){
  if(hi){const rt=new THREE.WebGLRenderTarget(innerWidth*PR,innerHeight*PR,{type:THREE.HalfFloatType,samples:4});
   comp=new EffectComposer(R,rt);comp.setPixelRatio(PR);comp.setSize(innerWidth,innerHeight);comp.addPass(new RenderPass(S,cam));
   bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.42,.55,.92);comp.addPass(bloom);comp.addPass(new OutputPass());
+  // a single NaN/Inf texel fed to the blur chain grows into a screen-sized black rectangle: drop non-finite texels before bloom sees them
+  {const hp=bloom.materialHighPassFilter;hp.fragmentShader=hp.fragmentShader.replace('vec4 texel = texture2D( tDiffuse, vUv );',
+   'vec4 texel = texture2D( tDiffuse, vUv ); if ( any( equal( floatBitsToUint( texel ) & 0x7f800000u, uvec4( 0x7f800000u ) ) ) ) texel = vec4( 0.0 );');hp.needsUpdate=true}
   fin=new ShaderPass({uniforms:{tDiffuse:{value:null},t:{value:0},vig:{value:1}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
    fragmentShader:`uniform sampler2D tDiffuse;uniform float t,vig;varying vec2 vUv;float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){vec4 c=texture2D(tDiffuse,vUv);vec2 d=vUv-.5;float v=1.-dot(d,d)*.9*vig;c.rgb*=v;c.rgb+=(h(vUv*vec2(1731.,977.)+t)-.5)*.022;gl_FragColor=c;}`});comp.addPass(fin)}

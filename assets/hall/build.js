@@ -59,7 +59,7 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
  const glassMat=()=>{const m=std({color:0,metalness:0,roughness:.035,transparent:true,depthWrite:false,side:T.DoubleSide,envMapIntensity:1.8});
   m.blending=T.CustomBlending;m.blendSrc=T.OneFactor;m.blendDst=T.OneMinusSrcAlphaFactor;m.blendSrcAlpha=T.OneFactor;m.blendDstAlpha=T.OneMinusSrcAlphaFactor;
   m.onBeforeCompile=s=>{s.fragmentShader=s.fragmentShader.replace('#include <opaque_fragment>',
-   '#include <opaque_fragment>\n float nv=abs(dot(normalize(vViewPosition),normal));gl_FragColor.a=mix(.03,.55,pow(1.-nv,5.));')};
+   '#include <opaque_fragment>\n float nv=abs(dot(normalize(vViewPosition),normal));gl_FragColor.a=mix(.03,.55,pow(max(1.-nv,0.),5.));')};
   m.customProgramCacheKey=()=>'curio-glass';return m};
  M.glass=glassMat();M.glassSky=glassMat();M.glassSky.envMapIntensity=.03;M.glassSky.roughness=.2;
  const plasterMat=(color,lm,ao,silk)=>std({color:new T.Color(color),map:silk?cl(X.damask,1/.72):cl(X.plaster.map,1/2.4),normalMap:cl(X.plaster.normal,1/2.4),normalScale:new T.Vector2(.35,.35),
@@ -515,8 +515,9 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
   fragmentShader:`varying vec2 vUv;varying float vS;varying vec3 vW;varying vec3 vN;uniform float t,k;
    float h1(float x){return fract(sin(x*127.1)*43758.5453);}float n1(float x){float i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(h1(i),h1(i+1.),f);}
    void main(){vec3 V=normalize(cameraPosition-vW);float view=smoothstep(.04,.6,abs(dot(normalize(vN),V)));float dist=smoothstep(.5,3.5,length(cameraPosition-vW));
-    float edge=pow(sin(3.14159*vUv.x),1.6),st=.35+.65*n1(vUv.x*9.+vS*37.+t*.03)*n1(vUv.x*23.+vS*11.-t*.05);
-    float vert=smoothstep(0.,.3,vUv.y)*(.45+.55*vUv.y)*smoothstep(1.,.9,vUv.y);
+    vec2 uv=clamp(vUv,0.,1.); // MSAA edge samples extrapolate vUv past 0..1; pow() of a negative sine is NaN on Apple GPUs and bloom smears it into black blocks
+    float edge=pow(max(sin(3.14159*uv.x),0.),1.6),st=.35+.65*n1(uv.x*9.+vS*37.+t*.03)*n1(uv.x*23.+vS*11.-t*.05);
+    float vert=smoothstep(0.,.3,uv.y)*(.45+.55*uv.y)*smoothstep(1.,.9,uv.y);
     float a=edge*st*vert*view*dist*k*(.85+.15*sin(t*.4+vS*6.));gl_FragColor=vec4(vec3(.55,.66,1.)*a*.05,1.);
     #include <colorspace_fragment>
    }`});
