@@ -1,4 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<script>/* loaded inside the hall's own exhibit viewer: close the viewer instead of nesting a second hall in it */
+(function(){try{var P=parent,h=function(p){return p.replace(/index\.html$/,'')};if(P!==self&&P.__viewer&&P.__viewer.open>=0&&h(P.location.pathname)===h(location.pathname)){document.documentElement.style.background='#0b0806';stop();P.__viewer.bounce()}}catch(e){}})()</script>
 <title>Curio · A cabinet of AI curiosities</title>
 <meta name="description" content="A growing cabinet of small, hands-on AI experiments that run in your browser. Walk the archive and open a case.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -92,12 +94,23 @@ document.getElementById('ul').innerHTML=list.map(d=>`<li><a href="${esc(d.slug)}
 const V={el:document.getElementById('viewer'),if:null,open:-1,pushed:false,enter:null,exit:null};
 const slugIdx=sl=>list.findIndex(d=>d.slug===sl);
 const baseURL=()=>{const u=new URL(location.href);u.searchParams.delete('exhibit');return u.pathname+u.search};
-function showViewer(i){const d=list[i];if(!d)return;V.open=i;const src='./'+encodeURIComponent(d.slug)+'/';
+function showViewer(i){const d=list[i];if(!d)return;V.open=i;V.len=history.length;const src='./'+encodeURIComponent(d.slug)+'/';
  const f=document.createElement('iframe');f.id='vif';f.title=d.title;f.allow='autoplay; fullscreen; microphone; camera; accelerometer; gyroscope';f.allowFullscreen=true;f.src=src;
- f.addEventListener('load',()=>{try{f.contentWindow.addEventListener('keydown',e=>{if(e.key==='Escape'&&V.open>=0){e.preventDefault();closeExhibit()}})}catch(_){}});
- const slot=document.getElementById('vslot');slot.replaceChildren(f);V.if=f;document.getElementById('vno').textContent='No. '+d.no;document.getElementById('vtitle').textContent=d.title;
+ f.addEventListener('load',()=>wireFrame(f));
+ const slot=document.getElementById('vslot');slot.replaceChildren(f);V.if=f;(function tick(){if(V.if!==f)return;wireFrame(f);requestAnimationFrame(tick)})();document.getElementById('vno').textContent='No. '+d.no;document.getElementById('vtitle').textContent=d.title;
  document.getElementById('vkind').textContent=d.kind||'';document.getElementById('vnew').href=src;
  V.el.classList.add('on');void V.el.offsetWidth;setTimeout(()=>{if(V.open===i)V.el.classList.add('show')},20);setTimeout(()=>{try{V.if.focus()}catch(_){}},400);document.title=d.title+' · Curio'}
+// Hook each page the frame loads as soon as it exists, so an early click is caught too.
+const hallPath=p=>p.replace(/index\.html$/,'');
+function wireFrame(f){let w,d;try{w=f.contentWindow;d=f.contentDocument}catch(_){return}if(!d||d.__curio||d.URL==='about:blank')return;d.__curio=1;
+ w.addEventListener('keydown',e=>{if(e.key==='Escape'&&V.open>=0){e.preventDefault();closeExhibit()}});
+ d.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href]');
+  if(!a||V.open<0||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.hasAttribute('download')||(a.getAttribute('target')||'_self').toLowerCase()!=='_self')return;
+  let u;try{u=new URL(a.getAttribute('href'),d.baseURI)}catch(_){return}
+  if(u.origin===location.origin&&hallPath(u.pathname)===hallPath(location.pathname)){e.preventDefault();closeExhibit()} // the exhibit's "← Curio": close the viewer, don't load the hall inside it
+  else if(u.origin!==location.origin&&/^https?:$/.test(u.protocol)){a.target='_blank';a.rel='noopener'}})} // papers and GitHub refuse to be framed
+// The frame reached the hall some other way (see <head>): rewind past its own history entries too, as a normal close would.
+V.bounce=()=>{if(V.open<0)return;const n=history.length-V.len;if(V.pushed&&n>0&&history.state&&history.state.exhibit)history.go(-n-1);else{history.replaceState(null,'',baseURL());doClose()}};
 function hideViewer(cb){if(V.open<0){cb&&cb();return}const i=V.open;V.open=-1;V.el.classList.remove('show');document.title='Curio · A cabinet of AI curiosities';
  setTimeout(()=>{V.el.classList.remove('on');document.getElementById('vslot').replaceChildren();V.if=null;cb&&cb(i)},450)}
 function openExhibit(i,{push=true,instant=false}={}){if(i<0||!list[i]||V.open>=0||V.busy)return;
