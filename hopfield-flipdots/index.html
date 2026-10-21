@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hopfield Flip-Dots — a flip-disc sign that remembers pictures in its wiring</title>
+<meta name="description" content="A 960-disc electromagnetic flip-dot sign wired as a Hopfield network. Scramble the picture and the discs clack back to the nearest memory, energy falling all the way; teach it too many look-alike pictures and it settles on ghosts nobody stored. Real asynchronous Hopfield dynamics, Hebb and projection rules, in your browser.">
+<meta property="og:title" content="Hopfield Flip-Dots">
+<meta property="og:description" content="A flip-disc sign wired as a Hopfield network: scramble it and the discs clack back to the nearest memory. Teach it too many pictures and it dreams up ghosts.">
+<meta property="og:image" content="https://blackman99.github.io/curio/hopfield-flipdots/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hopfield Flip-Dots">
+<meta name="twitter:description" content="Associative memory you can hear: 960 flip discs, 460,320 wires, a few pictures stored in the wiring. Scramble it and it remembers.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/hopfield-flipdots/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#08090a;--iv:#ece6d6;--iv2:#b4ad9c;--dot:#dcf53a;--dot2:#a9c21c;--brass:#d6ad62;--line:rgba(214,173,98,.28);--panel:rgba(14,15,16,.86);--ghost:#ff7a9a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--iv);font-family:'Fraunces',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden;background:radial-gradient(120% 90% at 35% 45%,#17191a 0%,#0b0c0d 55%,#060707 100%)}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#app{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 384px}
+#main{display:flex;flex-direction:column;min-width:0;min-height:0;padding:22px 18px 20px 34px}
+#title{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:28px;align-items:end}
+#title .top{grid-column:1/-1;display:flex;align-items:center;gap:16px}
+.backlink{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(8,9,10,.6);transition:background .2s,color .2s}
+.backlink:hover,.backlink:focus-visible{background:var(--brass);color:#140e04;outline:none}
+.kick{font:500 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--brass)}
+h1{margin:12px 0 0;font-weight:800;font-size:clamp(40px,4.1vw,60px);line-height:.92;letter-spacing:-.015em;font-variation-settings:'opsz' 144;white-space:nowrap}
+h1 em{font-style:italic;font-weight:500;color:var(--dot)}
+.sub{margin:0 0 3px;font-size:15.5px;line-height:1.42;color:var(--iv2);max-width:440px}
+.sub b{font-weight:600;color:var(--iv)}
+#stage{flex:1;min-height:0;position:relative;margin:14px 0 10px}
+#stage canvas{position:absolute;left:0;top:0;display:block}
+#discs{touch-action:none;cursor:crosshair}
+#glare{position:absolute;pointer-events:none;border-radius:6px;background:linear-gradient(118deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.012) 34%,rgba(255,255,255,0) 35%,rgba(255,255,255,0) 100%),radial-gradient(90% 70% at 30% 0%,rgba(255,250,220,.05),rgba(0,0,0,0) 70%)}
+#ring{position:absolute;pointer-events:none;border:1.5px solid rgba(255,248,210,.75);border-radius:50%;opacity:0;transition:opacity .15s;box-shadow:0 0 10px rgba(220,245,58,.35)}
+#story{flex:none;order:3;max-width:860px}
+#caption{margin:0;font:400 17px/1.45 'Fraunces',serif;font-variation-settings:'opsz' 24;color:#f2ecdc;min-height:4.35em;transition:opacity .4s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .y{color:var(--dot)}#caption .g{color:var(--ghost)}
+#caption .m{font:500 .86em 'IBM Plex Mono',monospace}
+
+#panel{margin:20px 20px 20px 0;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 15px 13px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,236,190,.06)}
+.sec{margin-bottom:12px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin-bottom:8px}
+.lab b{font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--iv2);text-transform:none}
+#cards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.card{position:relative;display:block;padding:4px 4px 5px;border:1px dashed rgba(236,230,214,.18);border-radius:8px;background:rgba(0,0,0,.25);text-align:left;transition:border-color .2s,background .2s}
+.card canvas{display:block;width:100%;aspect-ratio:5/3;border-radius:3px;opacity:.38;transition:opacity .2s}
+.card .nm{display:block;margin-top:4px;font:500 10px/1 'IBM Plex Mono',monospace;color:var(--iv2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .mt{display:block;height:3px;margin-top:4px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden}
+.card .mt i{display:block;height:100%;width:0;background:var(--dot2)}
+.card.on{border:1px solid rgba(220,245,58,.5);background:rgba(220,245,58,.06)}
+.card.on canvas{opacity:1}
+.card.on .nm{color:var(--iv)}
+.card.hit{border-color:var(--dot);box-shadow:0 0 0 1px var(--dot),0 0 16px rgba(220,245,58,.25)}
+.card.hit .mt i{background:var(--dot)}
+.card:hover,.card:focus-visible{border-color:var(--brass);outline:none}
+.chip{border:1px solid var(--line);background:rgba(214,173,98,.06);border-radius:999px;padding:5px 9px;font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--brass);letter-spacing:0;text-transform:none;transition:background .2s}
+.chip:hover,.chip:focus-visible{background:rgba(214,173,98,.2);outline:none}
+.chip:disabled{opacity:.4;cursor:default}
+.lab span b{margin-left:6px;color:var(--iv2)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 6px 7px;font:500 11.5px/1.15 'IBM Plex Mono',monospace;color:var(--iv2);transition:background .2s,color .2s}
+.seg button small{display:block;font-size:9.5px;opacity:.75;margin-top:2px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--brass);color:#140e04}
+.seg button:not(.on):hover,.seg button:focus-visible{background:rgba(214,173,98,.16);outline:none}
+.row{display:flex;gap:6px;align-items:center}
+.row+.row{margin-top:7px}
+.btn{flex:1;border:1px solid var(--line);background:rgba(214,173,98,.06);border-radius:9px;padding:8px 8px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--iv);transition:background .2s,border-color .2s;white-space:nowrap}
+.btn:hover,.btn:focus-visible{background:rgba(214,173,98,.2);border-color:var(--brass);outline:none}
+.btn.hot{background:var(--brass);color:#140e04;border-color:var(--brass)}
+.btn.hot:hover{background:#e7c27c}
+select{flex:1.2;min-width:0;appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:rgba(0,0,0,.35) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23d6ad62'/%3E%3C/svg%3E") no-repeat right 9px center;border-radius:9px;padding:8px 24px 8px 9px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--iv);cursor:pointer}
+select:focus-visible{outline:none;border-color:var(--brass)}
+.nz{display:grid;grid-template-columns:auto 1fr 38px;gap:8px;align-items:center;font:500 11px/1 'IBM Plex Mono',monospace;color:var(--iv2)}
+.nz b{color:var(--iv);font-weight:500;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#2b2f1a,#8fa22a 60%,#dcf53a);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#2b2f1a,#8fa22a 60%,#dcf53a)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:1px solid #5a4318;background:radial-gradient(circle at 35% 30%,#fff3cf,#d6ad62 45%,#7a5a26);box-shadow:0 3px 10px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;border:1px solid #5a4318;background:radial-gradient(circle at 35% 30%,#fff3cf,#d6ad62 45%,#7a5a26)}
+input[type=range]:focus-visible{outline:1px dashed var(--brass);outline-offset:3px}
+#power{flex:none;display:flex;align-items:center;gap:7px;padding:8px 10px}
+#power i{width:8px;height:8px;border-radius:50%;background:#3a3d2a;box-shadow:inset 0 0 0 1px rgba(0,0,0,.5)}
+#power.run i{background:var(--dot);box-shadow:0 0 8px var(--dot)}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+#verdict{font:600 19px/1.2 'Fraunces',serif;color:#fff8ea;min-height:1.2em}
+#verdict .g{color:var(--ghost)}
+#verdict .y{color:var(--dot)}
+#vsub{margin-top:5px;font:500 11px/1.45 'IBM Plex Mono',monospace;color:var(--iv2);min-height:2.9em}
+#vsub b{color:var(--iv);font-weight:600}
+#chartBox{margin-top:8px}
+#chart{display:block;width:100%;height:96px}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:14.5px;line-height:1.45;color:var(--iv2);margin:10px 0 0}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--iv)}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:12px;font:500 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(236,230,214,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+#snd{flex:none;border:1px solid var(--line);background:rgba(0,0,0,.3);border-radius:999px;padding:6px 10px;font:500 10.5px/1 'IBM Plex Mono',monospace;color:var(--iv2);letter-spacing:.04em}
+#snd.on{color:#140e04;background:var(--dot);border-color:var(--dot)}
+#snd:focus-visible{outline:1px dashed var(--brass);outline-offset:2px}
+#note{min-height:0;margin-top:6px;font:500 10.5px/1.4 'IBM Plex Mono',monospace;color:var(--ghost)}
+#note:empty{display:none}
+
+@media (max-height:780px) and (min-width:821px){.sub{display:none}#cards{grid-template-columns:repeat(6,1fr);gap:5px}.card{padding:3px 3px 4px}.card .nm{font-size:9px;margin-top:3px}.card .mt{margin-top:3px}h1{font-size:clamp(36px,3.6vw,48px);margin-top:8px}#caption{font-size:15.5px;min-height:4.4em}#chart{height:76px}#vsub{min-height:1.45em}#main{padding-top:16px}}
+@media (max-width:1180px) and (min-width:821px){#app{grid-template-columns:minmax(0,1fr) 340px}#title{grid-template-columns:1fr}.sub{margin-top:8px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #app{position:static;display:block}
+  #main{display:block;padding:14px 0 0}
+  #title{display:block;padding:0 16px}
+  #title .top{gap:12px}
+  .kick{font-size:9.5px;letter-spacing:.18em}
+  h1{font-size:38px;margin:12px 0 8px;white-space:normal}
+  .sub{font-size:15px;max-width:none}
+  #story{padding:10px 16px 0}
+  #caption{font-size:15.5px;min-height:5.8em}
+  #stage{margin:6px 8px 4px;height:auto}
+  #panel{margin:6px 10px calc(14px + env(safe-area-inset-bottom));background:rgba(16,17,18,.97)}
+  #ring{display:none}
+}
+@media (prefers-reduced-motion:reduce){#caption,.card,.card canvas,#ring{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="main">
+<header id="title">
+  <div class="top"><a class="backlink" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 023 · Associative memory</span></div>
+  <h1>Hopfield <em>Flip-Dots</em></h1>
+  <p class="sub">A flip-disc sign with no picture memory, only <b>460,320 wires</b> between its 960 discs. Scramble it and every disc flips to agree with its wires until a stored picture comes back.</p>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="stage">
+  <canvas id="bg" aria-hidden="true"></canvas>
+  <canvas id="discs" aria-label="A flip-dot sign, 40 by 24 discs. Drag across it to flip discs; when the network is running they flip back towards the nearest stored picture."></canvas>
+  <div id="glare"></div>
+  <div id="ring"></div>
+</div>
+</div>
+
+<aside id="panel" aria-label="Controls and readouts">
+  <div class="sec">
+    <div class="lab"><span>Memories <b id="nmem"></b></span><button id="memo" class="chip" title="Store whatever is on the board as a new memory">+ memorize the board</button></div>
+    <div id="cards"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Wiring rule</span><b id="rulehint"></b></div>
+    <div class="seg" id="rules"><button data-r="hebb">Hebb<small>Hopfield 1982</small></button><button data-r="projection">Projection<small>Personnaz 1985</small></button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>The board</span><button id="snd" title="Flip-disc clatter, synthesised">♪ sound off</button></div>
+    <div class="row"><select id="pick" aria-label="Put a picture on the board"></select><button class="btn" id="show">Show</button></div>
+    <div class="row"><button class="btn hot" id="scr">Scramble</button><div class="nz" style="flex:1.6"><span>by</span><input id="noise" type="range" min="5" max="50" value="30" aria-label="How many discs to flip"><b id="nzv">30%</b></div></div>
+    <div class="row"><button class="btn" id="blank" title="Every disc black">Blank</button><button class="btn" id="rand" title="Every disc a coin toss">Coin toss</button><button class="btn" id="power" title="Hold the network to draw without it flipping back"><i></i><span>Running</span></button></div>
+    <div id="note" role="status"></div>
+  </div>
+  <hr>
+  <div id="verdict" aria-live="polite"></div>
+  <div id="vsub"></div>
+  <div id="chartBox"><div class="lab" style="margin:10px 0 2px"><span>Energy, this run</span><b id="ev"></b></div><canvas id="chart" aria-label="Energy of the board after each update in this run, with the energy of each stored picture marked"></canvas></div>
+  <details>
+    <summary>What is this?</summary>
+    <p>A <b>Hopfield network</b> (John Hopfield, <a href="https://www.pnas.org/doi/10.1073/pnas.79.8.2554">PNAS 1982</a>): 960 two-state units, one per disc, every pair joined by a symmetric wire of weight <code>w<sub>ij</sub></code>. Nothing else is stored. Pictures live in the weights.</p>
+    <p><b>Recall.</b> Discs are visited one at a time in a fresh random order each sweep. A disc adds up every other disc's state times the wire between them, and turns yellow if the sum is positive, black if negative. Each flip lowers the energy <code>E = −½ Σ w<sub>ij</sub> s<sub>i</sub> s<sub>j</sub></code>, so the board must stop somewhere: a valley. A sweep with no flips ends the run.</p>
+    <p><b>Hebb's rule</b> wires the pictures in by adding them up, <code>w<sub>ij</sub> = Σ ξ<sub>i</sub>ξ<sub>j</sub></code>. It assumes the pictures look nothing alike. For random pictures this board could hold about 0.138 × 960 ≈ 132 (Amit, Gutfreund &amp; Sompolinsky, 1985); measured here, a stored random picture left to settle stays 99.9% intact on average with 100 stored, 99.2% at 132, and only 69% at 180, little better than a coin toss. These drawings share a dark background, so they interfere much sooner: Hebb keeps both pictures of a pair stable in 66 of the 66 pairs, all three of a trio in 163 of 220, all four in 4 of 495, and five or more in none (0 of 792 fives). The board then settles on <span style="color:var(--ghost)">spurious states</span>, valleys between the memories that nobody stored, and the real pictures stop being valleys at all.</p>
+    <p><b>The projection rule</b> (Personnaz, Guyon &amp; Dreyfus, 1985) first takes out what the pictures share, <code>W = Ξ C⁻¹ Ξᵀ / N</code> with <code>C</code> their overlaps. Every stored picture is then exactly a valley. With all twelve stored it brought every picture back from 30% scrambled in 240/240 tries, and from 40% in 237/240.</p>
+    <p>All of it is computed in your browser: the weights, every update and the energy. Each picture's photo-negative is a valley too (flip every disc and nothing in <code>E</code> changes). The sign runs one sweep a second so you can watch; the arithmetic itself takes milliseconds. The clatter is synthesised noise, one click per flip, thinned out when hundreds flip at once.</p>
+  </details>
+  <div class="foot">Drag across the board to flip discs · click a memory to teach or forget it · press space to scramble · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+</div>
+
+<script>
+/* ================= Hopfield engine (shared with the Python reference via node) ================= */
+const HF=(()=>{
+const W=40,H=24,N=W*H;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ---- pictures: little vector drawings rasterised onto the 40×24 board (4×4 supersampling) ---- */
+const circ=(cx,cy,r)=>(x,y)=>(x-cx)**2+(y-cy)**2<=r*r;
+const ell=(cx,cy,rx,ry)=>(x,y)=>((x-cx)/rx)**2+((y-cy)/ry)**2<=1;
+const box=(x0,y0,x1,y1)=>(x,y)=>x>=x0&&x<=x1&&y>=y0&&y<=y1;
+const seg=(ax,ay,bx,by,w)=>(x,y)=>{const dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy))),ex=ax+t*dx-x,ey=ay+t*dy-y;return ex*ex+ey*ey<=w*w/4};
+const poly=pts=>(x,y)=>{let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const[xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c};
+const or=(...f)=>(x,y)=>f.some(g=>g(x,y));
+const minus=(a,...b)=>(x,y)=>a(x,y)&&!b.some(g=>g(x,y));
+const star=(cx,cy,r)=>or(box(cx-.5,cy-r,cx+.5,cy+r),box(cx-r,cy-.5,cx+r,cy+.5));
+const rays=(cx,cy,r0,r1,n,w,ph)=>or(...Array.from({length:n},(_,k)=>{const a=ph+k*2*Math.PI/n;return seg(cx+r0*Math.cos(a),cy+r0*Math.sin(a),cx+r1*Math.cos(a),cy+r1*Math.sin(a),w)}));
+
+const PICS=[
+ {id:'moon',name:'Moon',f:or(minus(circ(15,12.5,10.6),circ(20.3,9.3,9.4)),star(29,5,1.6),star(35.5,12,1.6),star(28.5,18.5,1.6),star(6.5,3.5,1.1))},
+ {id:'key',name:'Key',f:or(minus(circ(9.5,12,7),circ(9.5,12,3.4)),box(16,10,37,14),box(30,14,32.6,19.5),box(34.4,14,37,18))},
+ {id:'cat',name:'Cat',f:minus(or(ell(20,14.5,11.5,8.6),poly([[9.4,13],[10.6,1.2],[17.6,7.6]]),poly([[30.6,13],[29.4,1.2],[22.4,7.6]])),ell(15.2,13.2,1.6,2.6),ell(24.8,13.2,1.6,2.6),poly([[18.5,17],[21.5,17],[20,18.7]]),seg(11,18,3,17,.9),seg(29,18,37,17,.9))},
+ {id:'boat',name:'Sailboat',f:or(poly([[19,1.5],[19,16],[7,16]]),poly([[21,4],[21,16],[31,16]]),poly([[5,17.5],[35,17.5],[31,21.5],[9,21.5]]))},
+ {id:'eye',name:'Eye',f:minus(or(minus(poly([[1,12],[8,5.5],[20,3],[32,5.5],[39,12],[32,18.5],[20,21],[8,18.5]]),poly([[4.2,12],[10,7.4],[20,5.4],[30,7.4],[35.8,12],[30,16.6],[20,18.6],[10,16.6]])),circ(20,12,6.4)),circ(20,12,2.6),circ(22.3,9.6,1.3))},
+ {id:'heart',name:'Heart',f:or(circ(14.5,9,6.6),circ(25.5,9,6.6),poly([[8.6,12],[31.4,12],[20,23]]),box(14.5,8,25.5,13))},
+ {id:'anchor',name:'Anchor',f:or(minus(circ(20,3.8,2.9),circ(20,3.8,1.3)),box(18.8,6.4,21.2,21),box(13,8.6,27,10.6),minus(circ(20,11.5,11),circ(20,11.5,8.6),box(0,0,40,14.5)),poly([[6.5,13],[11.5,13.5],[8.2,17]]),poly([[33.5,13],[28.5,13.5],[31.8,17]]))},
+ {id:'fish',name:'Fish',f:minus(or(ell(17,12,12,7.6),poly([[27,12],[38,4],[38,20]])),circ(10,10,1.6),seg(21,6,23,18,1))},
+ {id:'house',name:'House',f:minus(or(poly([[20,1.5],[37,11],[3,11]]),box(6.5,11,33.5,22.5),box(27,3,30,9)),box(17,15,23,22.5),box(9.5,13.5,14.5,18),box(25.5,13.5,30.5,18))},
+ {id:'bolt',name:'Bolt',f:poly([[23,0.5],[11,13.5],[19.2,13.5],[15,23.5],[29,9.8],[20.8,9.8],[25.6,0.5]])},
+ {id:'note',name:'Note',f:or(ell(12.5,18.5,4.4,3.2),ell(28.5,16.5,4.4,3.2),box(15.4,4,17.4,18),box(31.4,2,33.4,16),poly([[15.4,4],[33.4,2],[33.4,6.2],[15.4,8.2]]))},
+ {id:'tree',name:'Pine',f:or(poly([[20,0.5],[27.5,8],[12.5,8]]),poly([[20,4.5],[30.5,14],[9.5,14]]),poly([[20,9.5],[34,20],[6,20]]),box(18,20,22,23.5))},
+];
+function raster(f){const p=new Int8Array(N);for(let y=0;y<H;y++)for(let x=0;x<W;x++){let k=0;for(let a=0;a<4;a++)for(let b=0;b<4;b++)if(f(x+(a+.5)/4,y+(b+.5)/4))k++;p[y*W+x]=k>=8?1:-1}return p}
+const PAT={};for(const q of PICS)PAT[q.id]=raster(q.f);
+
+/* ---- learning rules ---- */
+// Hebb (Hopfield 1982): W_ij = Σ_μ ξ_i ξ_j, integers, zero diagonal (the 1/N is left out: it doesn't change any sign)
+function hebb(pats){const w=new Float64Array(N*N);for(const p of pats)for(let i=0;i<N;i++){const pi=p[i],r=i*N;for(let j=0;j<N;j++)w[r+j]+=pi*p[j]}for(let i=0;i<N;i++)w[i*N+i]=0;return w}
+// projection / pseudo-inverse (Personnaz, Guyon & Dreyfus 1985): W = Ξ C⁻¹ Ξᵀ / N with C_μν = ξ^μ·ξ^ν / N, zero diagonal
+function invert(C,P){const A=C.map((r,i)=>[...r,...Array.from({length:P},(_,j)=>i===j?1:0)]);
+  for(let c=0;c<P;c++){let piv=c;for(let r=c+1;r<P;r++)if(Math.abs(A[r][c])>Math.abs(A[piv][c]))piv=r;if(Math.abs(A[piv][c])<1e-9)return null;[A[c],A[piv]]=[A[piv],A[c]];
+    const d=A[c][c];for(let k=0;k<2*P;k++)A[c][k]/=d;for(let r=0;r<P;r++)if(r!==c&&A[r][c]!==0){const m=A[r][c];for(let k=0;k<2*P;k++)A[r][k]-=m*A[c][k]}}
+  return A.map(r=>r.slice(P))}
+function projection(pats){const P=pats.length,w=new Float64Array(N*N);if(!P)return w;
+  const C=pats.map(a=>pats.map(b=>{let s=0;for(let i=0;i<N;i++)s+=a[i]*b[i];return s/N})),Ci=invert(C,P);if(!Ci)return null;
+  const A=new Float64Array(N*P);for(let i=0;i<N;i++)for(let m=0;m<P;m++){let s=0;for(let n=0;n<P;n++)s+=Ci[m][n]*pats[n][i];A[i*P+m]=s/N} // A = Ξ C⁻¹ / N  (row i: Σ_n Ci[m][n] ξ^n_i / N)
+  for(let i=0;i<N;i++){const r=i*N;for(let j=0;j<N;j++){if(i===j)continue;let s=0;for(let m=0;m<P;m++)s+=A[i*P+m]*pats[m][j];w[r+j]=s}}
+  return w}
+function train(pats,rule){return rule==='hebb'?hebb(pats):projection(pats)}
+const scale=(rule)=>rule==='hebb'?1/N:1;                 // energy is reported with Hebb's 1/N put back
+function fields(w,s){const h=new Float64Array(N);for(let i=0;i<N;i++){let a=0;const r=i*N;for(let j=0;j<N;j++)a+=w[r+j]*s[j];h[i]=a}return h}
+function energy(w,s,rule){const h=fields(w,s);let e=0;for(let i=0;i<N;i++)e+=s[i]*h[i];return -.5*e*scale(rule)}
+function overlap(a,b){let s=0;for(let i=0;i<N;i++)s+=a[i]*b[i];return s/N}
+
+/* ---- asynchronous dynamics: random order each sweep, a unit takes the sign of its field (ties keep) ---- */
+function perm(rng){const p=new Int32Array(N);for(let i=0;i<N;i++)p[i]=i;for(let i=N-1;i>0;i--){const j=Math.floor(rng()*(i+1)),t=p[i];p[i]=p[j];p[j]=t}return p}
+class Run{
+  constructor(w,s,seed,rule){this.w=w;this.s=Int8Array.from(s);this.seed=seed>>>0;this.rule=rule;this.rng=mulberry32(this.seed);this.h=fields(w,this.s);
+    this.order=perm(this.rng);this.pos=0;this.sweep=0;this.sweepFlips=0;this.flips=0;this.updates=0;this.done=false;this.minMargin=Infinity}
+  // one unit update; returns the index if it flipped, else -1
+  next(){if(this.done)return -1;const i=this.order[this.pos],hi=this.h[i];this.updates++;
+    if(this.rule!=='hebb'){const m=Math.abs(hi);if(m<this.minMargin)this.minMargin=m}
+    const want=hi>0?1:hi<0?-1:this.s[i];let flipped=-1;
+    if(want!==this.s[i]){this.s[i]=want;const d=2*want,w=this.w;for(let j=0;j<N;j++)this.h[j]+=d*w[j*N+i];this.flips++;this.sweepFlips++;flipped=i}
+    if(++this.pos===N){this.sweep++;if(this.sweepFlips===0)this.done=true;else{this.order=perm(this.rng);this.pos=0;this.sweepFlips=0}}
+    return flipped}
+  energy(){let e=0;for(let i=0;i<N;i++)e+=this.s[i]*this.h[i];return -.5*e*scale(this.rule)}
+  toEnd(max=1e7){while(!this.done&&this.updates<max)this.next();return this}
+}
+function corrupt(s,frac,seed){const r=mulberry32(seed>>>0),o=Int8Array.from(s),k=Math.round(frac*N),p=perm(r);for(let i=0;i<k;i++)o[p[i]]=-o[p[i]];return o}
+const bits=s=>Array.from(s,v=>v>0?'1':'0').join('');
+const unbits=b=>Int8Array.from(b,c=>c==='1'?1:-1);
+return{W,H,N,PICS,PAT,mulberry32,raster,hebb,projection,train,fields,energy,overlap,perm,Run,corrupt,bits,unbits,scale};
+})();
+/* ================= page ================= */
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=(RM||STILL)&&!FIXED;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const {W,H,N}=HF;
+const RATE=960;            // unit updates per second: one sweep of the board a second
+const DUR=.085;            // seconds a disc takes to flip over
+const K=9;                 // sprite frames: 0 = yellow face up … K-1 = black face up
+const SEED=(+(Q.get('seed')||7))>>>0;
+const master=HF.mulberry32(SEED);
+const nextSeed=()=>Math.floor(master()*4294967296)>>>0;
+const fmtE=v=>(v<0?'−':'')+Math.abs(v).toFixed(1);
+
+/* ---------- memories and the machine ---------- */
+const MEM=HF.PICS.map(q=>({id:q.id,name:q.name,p:HF.PAT[q.id],custom:false}));
+const byId=id=>MEM.find(m=>m.id===id);
+const S={stored:new Set(['cat','moon','key']),rule:'hebb',s:Int8Array.from(HF.PAT.cat),w:null,list:[],memE:{},run:null,meta:null,trace:[],running:true,
+  pendingAt:null,pendingWhy:'',runs:[],scrambles:[],drawing:null,last:'',budget:0,nCustom:0};
+let simT=0;
+function storedList(){return MEM.filter(m=>S.stored.has(m.id))}
+function retrain(){S.list=storedList();const w=HF.train(S.list.map(m=>m.p),S.rule);if(!w)return false;S.w=w;S.memE={};for(const m of S.list)S.memE[m.id]=HF.energy(w,m.p,S.rule);return true}
+function logRun(done,why){const r=S.run,M=S.meta;S.runs.push({...M,end:HF.bits(r.s),flips:r.flips,sweeps:r.sweep,updates:r.updates,done,E1:+r.energy().toFixed(6),stop:why||''});if(S.runs.length>400)S.runs.shift()}
+function interrupt(why){if(S.run&&!S.run.done)logRun(false,why);S.run=null;S.pendingAt=null}
+function schedule(delay,why){interrupt(why);if(S.running){S.pendingAt=simT+delay;S.pendingWhy=why;if(STATIC&&ready){startRun();drawDiscs();ui();drawChart()}}dirtyUI=true} // reduced motion: settle at once, no waiting for a frame
+function startRun(){S.pendingAt=null;if(!S.running||!S.w)return;const seed=nextSeed(),r=new HF.Run(S.w,S.s,seed,S.rule);S.s=r.s;S.run=r;
+  S.meta={k:S.runs.length?S.runs[S.runs.length-1].k+1:0,seed,rule:S.rule,stored:S.list.map(m=>m.id),start:HF.bits(r.s),E0:+r.energy().toFixed(6),why:S.pendingWhy};
+  S.trace=[[0,S.meta.E0]];S.budget=0;
+  if(STATIC){while(!r.done){r.next();if(r.updates%24===0)S.trace.push([r.updates,r.energy()])}runDone()}
+  dirtyUI=true}
+function runDone(){logRun(true);S.trace.push([S.run.updates,S.run.energy()]);dirtyUI=true;chartDirty=true;
+  if(tour&&tour.onDone){const f=tour.onDone;tour.onDone=null;f()}}
+function changed(from,stag){ // animate every disc that differs from `from`
+  if(STATIC){return}for(let i=0;i<N;i++)if(from[i]!==S.s[i])anims.set(i,{t0:simT+(stag?stag(i):0),to:S.s[i]})}
+const wave=i=>(i%W)*.007+((i*2654435761>>>0)%97)/97*.06;
+function showPic(id,why){interrupt(why||'show');const m=byId(id),old=S.s;S.s=Int8Array.from(m.p);changed(old,wave);S.last=`Put up the ${m.name.toLowerCase()}`;schedule(.55,why||'show')}
+function scramble(frac,why){interrupt(why||'scramble');const seed=nextSeed(),old=S.s;S.s=HF.corrupt(old,frac,seed);
+  S.scrambles.push({seed,frac,before:HF.bits(old),after:HF.bits(S.s)});changed(old,i=>((i*2246822519>>>0)%89)/89*.22);
+  S.last=`Scrambled ${Math.round(frac*N)} discs (${Math.round(frac*100)}%)`;schedule(.75,why||'scramble')}
+function cover(id,why){interrupt(why);const m=byId(id),old=S.s;S.s=Int8Array.from(m.p);for(let i=0;i<N/2;i++)S.s[i]=-1;changed(old,wave);S.last=`Half a ${m.name.toLowerCase()}`;schedule(.8,why)}
+function setRule(r,why){if(r===S.rule)return;interrupt(why||'rule');S.rule=r;retrain();syncRule();schedule(.35,why||'rule')}
+function setStored(id,on,why){interrupt(why||'memory');if(on)S.stored.add(id);else S.stored.delete(id);if(!retrain()){S.stored.delete(id);retrain();note('Those pictures are too alike to tell apart.')}syncCards();schedule(.35,why||'memory')}
+
+/* ---------- reading the board ---------- */
+function overlaps(){const o={};for(const m of MEM)o[m.id]=HF.overlap(S.s,m.p);return o}
+function verdict(){const o=overlaps();let best=null;for(const m of S.list)if(!best||Math.abs(o[m.id])>Math.abs(o[best.id]))best=m;
+  const off=best?Math.round(N*(1-Math.abs(o[best.id]))/2):0;
+  let kind;if(!S.list.length)kind='empty';else if(S.drawing)kind='drawing';else if(S.run&&!S.run.done)kind='settling';else if(S.pendingAt!==null)kind='pending';
+  else if(!S.running)kind='held';else if(off===0)kind='recalled';else if(S.run&&S.run.done)kind='ghost';else kind='held';
+  return{kind,id:best?best.id:null,m:best?o[best.id]:0,neg:best?o[best.id]<0:false,off,o}}
+
+/* ---------- the sign: two canvases, a static housing and the discs ---------- */
+const bg=$('#bg'),dc=$('#discs'),bx=bg.getContext('2d'),dx=dc.getContext('2d');
+const L={c:20,dpr:1,ox:0,oy:0,mx:0,my:0,bw:0,bh:0,S:0};
+const anims=new Map();
+let lastK=new Int8Array(N).fill(-1),atlas=null,ledState='';
+function layout(){const st=$('#stage'),phone=innerWidth<=820;L.dpr=Math.min(devicePixelRatio||1,2);
+  const aw=st.clientWidth,ah=phone?1e9:st.clientHeight;
+  let c=Math.min(aw/(W+2.2),ah/(H+3.1));c=Math.max(4,Math.floor(c*2)/2);L.c=c;
+  L.mx=1.1*c;L.my=1.1*c;L.bw=Math.round((W+2.2)*c);L.bh=Math.round((H+3.1)*c);
+  if(phone)st.style.height=L.bh+'px';else st.style.height='';
+  const sh=phone?L.bh:st.clientHeight;L.ox=Math.round((aw-L.bw)/2);L.oy=Math.max(0,Math.round((sh-L.bh)/2));
+  for(const cv of[bg,dc]){cv.width=Math.round(L.bw*L.dpr);cv.height=Math.round(L.bh*L.dpr);cv.style.width=L.bw+'px';cv.style.height=L.bh+'px';cv.style.left=L.ox+'px';cv.style.top=L.oy+'px'}
+  const g=$('#glare');g.style.left=(L.ox+L.mx-.3*c)+'px';g.style.top=(L.oy+L.my-.3*c)+'px';g.style.width=(W*c+.6*c)+'px';g.style.height=(H*c+.6*c)+'px';
+  const r=$('#ring');r.style.width=r.style.height=(c*.98)+'px';
+  drawHousing();makeAtlas();lastK.fill(-1);ledState=''}
+const cellX=x=>L.mx+x*L.c,cellY=y=>L.my+y*L.c;
+function drawHousing(){const g=bx,c=L.c,d=L.dpr;g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,L.bw,L.bh);
+  const rr=(x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
+  // painted steel housing
+  let gr=g.createLinearGradient(0,0,0,L.bh);gr.addColorStop(0,'#2a2e2c');gr.addColorStop(.5,'#1c1f1e');gr.addColorStop(1,'#131514');
+  rr(.5,.5,L.bw-1,L.bh-1,.7*c);g.fillStyle=gr;g.fill();g.lineWidth=1;g.strokeStyle='rgba(255,255,255,.09)';g.stroke();
+  rr(3.5,3.5,L.bw-7,L.bh-7,.6*c);g.strokeStyle='rgba(0,0,0,.55)';g.stroke();
+  // the face
+  const fx=L.mx-.32*c,fy=L.my-.32*c,fw=W*c+.64*c,fh=H*c+.64*c;rr(fx,fy,fw,fh,.25*c);g.fillStyle='#050606';g.fill();
+  g.strokeStyle='rgba(0,0,0,.9)';g.lineWidth=2;g.stroke();g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=1;rr(fx-1.5,fy-1.5,fw+3,fh+3,.27*c);g.stroke();
+  // module seams every 8 discs
+  g.strokeStyle='rgba(255,255,255,.035)';g.lineWidth=1;g.beginPath();
+  for(let x=8;x<W;x+=8){const X=Math.round(cellX(x))+.5;g.moveTo(X,fy+2);g.lineTo(X,fy+fh-2)}
+  for(let y=8;y<H;y+=8){const Y=Math.round(cellY(y))+.5;g.moveTo(fx+2,Y);g.lineTo(fx+fw-2,Y)}g.stroke();
+  // recesses and axles
+  const r=.46*c;g.fillStyle='#010101';g.beginPath();
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const cx=cellX(x+.5),cy=cellY(y+.5);g.moveTo(cx+r,cy);g.arc(cx,cy,r,0,6.2832)}g.fill();
+  if(c>=7){g.strokeStyle='rgba(255,255,255,.06)';g.lineWidth=Math.max(.6,c*.04);g.beginPath();
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const cx=cellX(x+.5),cy=cellY(y+.5);g.moveTo(cx+r*.92,cy+r*.38);g.arc(cx,cy,r*.98,.4,2.74)}g.stroke()}
+  g.strokeStyle='#2b2d2c';g.lineWidth=Math.max(.7,c*.06);g.beginPath();
+  for(let y=0;y<H;y++){const cy=cellY(y+.5);for(let x=0;x<W;x++){const cx=cellX(x+.5);g.moveTo(cx-r*.98,cy);g.lineTo(cx+r*.98,cy)}}g.stroke();
+  // bolts
+  for(const[x,y]of[[.45*c,.45*c],[L.bw-.45*c,.45*c],[.45*c,L.bh-.45*c],[L.bw-.45*c,L.bh-.45*c]]){const b=g.createRadialGradient(x-c*.06,y-c*.06,0,x,y,c*.2);b.addColorStop(0,'#cfc7b3');b.addColorStop(1,'#4a463c');g.fillStyle=b;g.beginPath();g.arc(x,y,c*.18,0,6.2832);g.fill();
+    g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=Math.max(1,c*.04);g.beginPath();g.moveTo(x-c*.11,y-c*.05);g.lineTo(x+c*.11,y+c*.05);g.stroke()}
+  // brass maker's plate
+  const ph=c*1.05,pw=Math.min(L.bw*.62,c*26),px=(L.bw-pw)/2,py=L.my+H*c+.62*c;
+  gr=g.createLinearGradient(px,py,px,py+ph);gr.addColorStop(0,'#e3c27f');gr.addColorStop(.55,'#b8904b');gr.addColorStop(1,'#8a6a32');rr(px,py,pw,ph,.15*c);g.fillStyle=gr;g.fill();
+  g.strokeStyle='rgba(60,40,10,.8)';g.lineWidth=1;g.stroke();
+  g.fillStyle='#2a1c08';g.textAlign='center';g.textBaseline='middle';
+  const fs=Math.max(6,Math.min(c*.5,14));g.font=`600 ${fs}px 'IBM Plex Mono',monospace`;
+  const txt=c>=14?'HOPFIELD SIGNAL Co. · 960 DISCS · 460,320 WIRES':'HOPFIELD SIGNAL Co. · 960 DISCS';
+  g.fillText(txt,L.bw/2,py+ph/2+.5,pw-c*.6);
+  L.plate={px,py,pw,ph}}
+function makeAtlas(){const c=L.c,d=L.dpr,S=Math.ceil(c*d);L.S=S;atlas=document.createElement('canvas');atlas.width=S*K;atlas.height=S;const g=atlas.getContext('2d');
+  const r=.415*c*d;
+  for(let k=0;k<K;k++){const th=Math.PI*k/(K-1),sy=Math.cos(th),cx=k*S+S/2,cy=S/2,ry=r*Math.max(Math.abs(sy),.08),up=sy>=0;
+    g.save();g.beginPath();g.ellipse(cx,cy,r,ry,0,0,6.2832);
+    let gr;if(up){gr=g.createRadialGradient(cx-r*.35,cy-ry*.45,r*.05,cx,cy,r*1.05);gr.addColorStop(0,'#fbffb8');gr.addColorStop(.35,'#e6fb4a');gr.addColorStop(.8,'#c4dd22');gr.addColorStop(1,'#8ea514')}
+    else{gr=g.createRadialGradient(cx-r*.3,cy-ry*.5,r*.05,cx,cy,r*1.05);gr.addColorStop(0,'#3a3c3d');gr.addColorStop(.45,'#1c1d1e');gr.addColorStop(1,'#0d0d0e')}
+    g.fillStyle=gr;g.fill();
+    // the rim catches light as it turns edge-on
+    const edge=1-Math.abs(sy);if(edge>.15){g.lineWidth=Math.max(1,d*.8);g.strokeStyle=up?`rgba(80,90,10,${.6*edge})`:`rgba(150,150,140,${.35*edge})`;g.stroke()}
+    if(up&&Math.abs(sy)>.6){g.globalCompositeOperation='lighter';const h=g.createRadialGradient(cx-r*.3,cy-ry*.4,0,cx-r*.3,cy-ry*.4,r*.6);h.addColorStop(0,'rgba(255,255,230,.22)');h.addColorStop(1,'rgba(255,255,230,0)');g.fillStyle=h;g.fill()}
+    g.restore()}}
+let clicksUp=0,clicksDown=0;
+function wantK(i){const a=anims.get(i);if(!a)return S.s[i]>0?0:K-1;const p=(simT-a.t0)/DUR;
+  if(p<=0)return a.to>0?K-1:0;
+  if(!a.started){a.started=true;if(a.to>0)clicksUp++;else clicksDown++}
+  if(p>=1){anims.delete(i);return a.to>0?0:K-1}
+  return a.to>0?Math.round((1-p)*(K-1)):Math.round(p*(K-1))}
+function drawDiscs(){const g=dx,S2=L.S,d=L.dpr;g.setTransform(1,0,0,1,0,0);
+  for(let i=0;i<N;i++){const k=wantK(i);if(k===lastK[i])continue;lastK[i]=k;const x=i%W,y=(i/W)|0;
+    const X=Math.round(cellX(x+.5)*d-S2/2),Y=Math.round(cellY(y+.5)*d-S2/2);g.clearRect(X,Y,S2,S2);g.drawImage(atlas,k*S2,0,S2,S2,X,Y,S2,S2)}
+  const led=(S.run&&!S.run.done)||S.pendingAt!==null?'run':S.running?'idle':'hold';
+  if(led!==ledState){ledState=led;const P=L.plate,c=L.c;g.setTransform(d,0,0,d,0,0);
+    const lx=P.px+P.pw+c*.9,ly=P.py+P.ph/2;g.clearRect(lx-c*.6,ly-c*.6,c*1.2,c*1.2);
+    if(lx+c*.5<L.bw){const on=led==='run',hold=led==='hold';const gr=g.createRadialGradient(lx,ly,0,lx,ly,c*.5);
+      gr.addColorStop(0,on?'#f6ffb0':hold?'#ffcf8a':'#5d6340');gr.addColorStop(.45,on?'rgba(220,245,58,.9)':hold?'rgba(230,140,40,.85)':'rgba(70,74,50,.9)');gr.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gr;g.beginPath();g.arc(lx,ly,c*.5,0,6.2832);g.fill()}}}
+
+/* ---------- sound: one synthesised clack per flip, thinned when hundreds flip at once ---------- */
+const SND={ac:null,on:false,buf:null,out:null};
+function sndInit(){if(SND.ac)return true;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return false;const ac=new AC(),n=Math.floor(ac.sampleRate*.03),b=ac.createBuffer(1,n,ac.sampleRate),ch=b.getChannelData(0);
+  for(let i=0;i<n;i++)ch[i]=(Math.random()*2-1)*Math.exp(-i/(n*.09));SND.ac=ac;SND.buf=b;const comp=ac.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=6;
+  SND.out=ac.createGain();SND.out.gain.value=.55;SND.out.connect(comp).connect(ac.destination);return true}
+function clack(when,up,vol){const ac=SND.ac,src=ac.createBufferSource();src.buffer=SND.buf;src.playbackRate.value=.9+Math.random()*.25;
+  const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=(up?3400:2300)*(.85+Math.random()*.3);bp.Q.value=2.2;
+  const hp=ac.createBiquadFilter();hp.type='highpass';hp.frequency.value=700;const g=ac.createGain();g.gain.value=vol;
+  src.connect(hp).connect(bp).connect(g).connect(SND.out);src.start(when);src.stop(when+.035)}
+function sndFrame(dt){const up=clicksUp,dn=clicksDown;clicksUp=clicksDown=0;if(!SND.on||!SND.ac||FIXED||SND.ac.state!=='running')return;const tot=up+dn;if(!tot)return;
+  const k=Math.min(tot,8),vol=.55*Math.min(1.6,Math.sqrt(tot/k)),t0=SND.ac.currentTime+.01;
+  for(let j=0;j<k;j++)clack(t0+Math.random()*Math.max(dt,.016),j<k*up/tot,vol*(.7+Math.random()*.3))}
+function setSound(on){if(on&&!sndInit())return;SND.on=on;if(on&&SND.ac.state!=='running')SND.ac.resume();const b=$('#snd');b.classList.toggle('on',on);b.textContent=on?'♪ sound on':'♪ sound off'}
+
+/* ---------- the energy chart ---------- */
+let chartDirty=true;
+function drawChart(){chartDirty=false;const cv=$('#chart'),w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;const d=Math.min(devicePixelRatio||1,2);
+  if(cv.width!==Math.round(w*d)){cv.width=Math.round(w*d);cv.height=Math.round(h*d)}const g=cv.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);
+  const tr=S.trace;if(!tr.length){return}
+  const v=verdict(),lines=S.list.map(m=>({id:m.id,name:m.name,e:S.memE[m.id],hit:m.id===v.id}));
+  let lo=Math.min(...tr.map(p=>p[1]),...lines.map(l=>l.e)),hi=Math.max(...tr.map(p=>p[1]));if(hi-lo<1)hi=lo+1;const pad=(hi-lo)*.1;lo-=pad;hi+=pad;
+  const xmax=Math.max(N,tr[tr.length-1][0]),LW=w-46,X=u=>2+u/xmax*(LW-4),Y=e=>4+(hi-e)/(hi-lo)*(h-14);
+  g.font="500 9px 'IBM Plex Mono',monospace";g.textBaseline='middle';
+  // sweep ticks
+  g.strokeStyle='rgba(236,230,214,.07)';g.lineWidth=1;g.beginPath();for(let u=N;u<xmax;u+=N){g.moveTo(Math.round(X(u))+.5,2);g.lineTo(Math.round(X(u))+.5,h-10)}g.stroke();
+  g.fillStyle='rgba(236,230,214,.35)';g.textAlign='left';g.fillText('sweeps →',2,h-4);
+  // each stored picture's valley
+  let usedY=[];for(const l of lines.sort((a,b)=>b.hit-a.hit)){const y=Y(l.e);g.setLineDash(l.hit?[]:[3,3]);g.strokeStyle=l.hit?'rgba(220,245,58,.6)':'rgba(236,230,214,.22)';g.beginPath();g.moveTo(2,Math.round(y)+.5);g.lineTo(LW,Math.round(y)+.5);g.stroke();
+    if(!usedY.some(u=>Math.abs(u-y)<9)){usedY.push(y);g.fillStyle=l.hit?'#dcf53a':'rgba(236,230,214,.5)';g.fillText(l.name.toLowerCase(),LW+4,y)}}
+  g.setLineDash([]);
+  // the run
+  g.strokeStyle=v.kind==='ghost'?'#ff7a9a':'#f2ecdc';g.lineWidth=1.6;g.beginPath();tr.forEach(([u,e],j)=>j?g.lineTo(X(u),Y(e)):g.moveTo(X(u),Y(e)));g.stroke();
+  const[u1,e1]=tr[tr.length-1];g.fillStyle=g.strokeStyle;g.beginPath();g.arc(X(u1),Y(e1),2.6,0,6.2832);g.fill()}
+
+/* ---------- panel ---------- */
+let dirtyUI=true;
+function thumb(cv,p){cv.width=80;cv.height=48;const g=cv.getContext('2d');g.fillStyle='#0a0b0b';g.fillRect(0,0,80,48);g.fillStyle='#dcf53a';for(let i=0;i<N;i++)if(p[i]>0)g.fillRect((i%W)*2,((i/W)|0)*2,2,2)}
+function buildCards(){const box=$('#cards');box.innerHTML='';
+  for(const m of MEM){const b=document.createElement('button');b.className='card';b.dataset.id=m.id;b.title=`${m.name}: click to ${'teach or forget'}`;
+    b.innerHTML=`<canvas></canvas><span class="nm">${m.name}</span><span class="mt"><i></i></span>`;thumb(b.querySelector('canvas'),m.p);
+    b.addEventListener('click',()=>{poke();setStored(m.id,!S.stored.has(m.id))});box.appendChild(b)}
+  const sel=$('#pick'),cur=sel.value;sel.innerHTML=MEM.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');sel.value=cur&&byId(cur)?cur:'cat';
+  syncCards()}
+function syncCards(){document.querySelectorAll('.card[data-id]').forEach(b=>b.classList.toggle('on',S.stored.has(b.dataset.id)));
+  const n=S.list.length;$('#nmem').textContent=`${n} stored`;$('#memo').disabled=S.nCustom>=4;dirtyUI=true}
+function syncRule(){document.querySelectorAll('#rules button').forEach(b=>b.classList.toggle('on',b.dataset.r===S.rule));$('#rulehint').textContent=S.rule==='hebb'?'add the pictures up':'take out what they share'}
+function memorize(){const p=Int8Array.from(S.s);for(const m of MEM){const o=HF.overlap(p,m.p);if(Math.abs(o)>.98){note(`Already remembered: that is ${o<0?'the negative of ':''}the ${m.name.toLowerCase()}.`);return}}
+  let n=0;for(const v of p)if(v>0)n++;if(n<12){note('Draw something first: yellow discs on the board.');return}
+  S.nCustom++;const m={id:'yours'+S.nCustom,name:'Yours '+S.nCustom,p,custom:true};MEM.push(m);S.stored.add(m.id);if(!retrain()){MEM.pop();S.stored.delete(m.id);S.nCustom--;retrain();note('Too close to what it already knows.');return}
+  buildCards();note('');schedule(.35,'memorize')}
+let noteT=0;function note(t){$('#note').textContent=t;noteT=t?simT+5:0}
+let lastV='';
+function ui(){const v=verdict(),el=$('#verdict'),sub=$('#vsub'),name=id=>byId(id).name,r=S.run;let a='',b='';
+  if(v.kind==='empty'){a='Nothing stored';b='Every wire is zero, so no disc has a reason to flip.'}
+  else if(v.kind==='drawing'){a='Drawing…';b=`network held while your finger is down`}
+  else if(v.kind==='settling'){a='Settling…';b=`<b>${r.flips}</b> flips · sweep ${r.sweep+1} · closest so far: ${name(v.id)}, ${v.off} discs off`}
+  else if(v.kind==='pending'){a=S.last||'…';b=`closest memory: ${name(v.id)}, <b>${v.off}</b> discs off`}
+  else if(v.kind==='recalled'){a=`Recalled: <span class="y">${name(v.id)}</span>${v.neg?' <small>(in negative)</small>':''}`;
+    b=r&&r.done?`<b>${r.flips}</b> flips in ${r.sweep} sweep${r.sweep===1?'':'s'} · energy ${fmtE(S.meta.E0)} → ${fmtE(r.energy())}`:'a stored picture, exactly'}
+  else if(v.kind==='ghost'){a=`<span class="g">A ghost</span>: nothing it stored`;b=`closest is ${name(v.id)}${v.neg?' (negative)':''}, <b>${v.off}</b> discs off · energy ${fmtE(r.energy())}, ${name(v.id).toLowerCase()}'s valley ${fmtE(S.memE[v.id])}`}
+  else{a=S.running?'At rest':'Held';b=`closest memory: ${name(v.id)}, <b>${v.off}</b> discs off${S.running?'':' · press Running to let it settle'}`}
+  const key=a+'|'+b;if(key!==lastV){lastV=key;el.innerHTML=a;sub.innerHTML=b}
+  document.querySelectorAll('.card[data-id]').forEach(c=>{const id=c.dataset.id,m=Math.abs(v.o[id]||0);c.querySelector('.mt i').style.width=(m*100).toFixed(1)+'%';c.classList.toggle('hit',S.stored.has(id)&&id===v.id&&(v.kind==='recalled'))});
+  $('#ev').textContent=S.trace.length?`E ${fmtE(S.trace[S.trace.length-1][1])}`:'';
+  const p=$('#power');p.classList.toggle('run',S.running);p.querySelector('span').textContent=S.running?'Running':'Held';
+  if(noteT&&simT>noteT)note('')}
+
+/* ---------- drawing on the board ---------- */
+function cellAt(e){const r=dc.getBoundingClientRect(),x=Math.floor((e.clientX-r.left-L.mx)/L.c),y=Math.floor((e.clientY-r.top-L.my)/L.c);return x>=0&&x<W&&y>=0&&y<H?{x,y}:null}
+function paint(x,y){const i=y*W+x;if(S.s[i]===S.drawing.val)return;S.s[i]=S.drawing.val;if(!STATIC)anims.set(i,{t0:simT,to:S.drawing.val});S.drawing.n++}
+function wire(){
+  dc.addEventListener('pointerdown',e=>{const c=cellAt(e);if(!c)return;e.preventDefault();poke();dc.setPointerCapture(e.pointerId);interrupt('draw');
+    S.drawing={val:-S.s[c.y*W+c.x],x:c.x,y:c.y,n:0};paint(c.x,c.y);dirtyUI=true});
+  dc.addEventListener('pointermove',e=>{const c=cellAt(e),ring=$('#ring');
+    if(c&&e.pointerType==='mouse'){ring.style.left=(L.ox+cellX(c.x+.5)-L.c*.49)+'px';ring.style.top=(L.oy+cellY(c.y+.5)-L.c*.49)+'px';ring.style.opacity=1}else ring.style.opacity=0;
+    if(!S.drawing||!c)return;let{x,y}=S.drawing;const n=Math.max(Math.abs(c.x-x),Math.abs(c.y-y));
+    for(let k=1;k<=n;k++)paint(Math.round(x+(c.x-x)*k/n),Math.round(y+(c.y-y)*k/n));S.drawing.x=c.x;S.drawing.y=c.y;dirtyUI=true});
+  const up=()=>{if(!S.drawing)return;S.last=`You flipped ${S.drawing.n} disc${S.drawing.n===1?'':'s'}`;S.drawing=null;schedule(.4,'draw')};
+  dc.addEventListener('pointerup',up);dc.addEventListener('pointercancel',up);dc.addEventListener('pointerleave',()=>{$('#ring').style.opacity=0});
+  $('#show').addEventListener('click',()=>{poke();showPic($('#pick').value)});
+  $('#pick').addEventListener('change',()=>{poke();showPic($('#pick').value)});
+  $('#scr').addEventListener('click',()=>{poke();scramble(+$('#noise').value/100)});
+  $('#noise').addEventListener('input',()=>{poke();$('#nzv').textContent=$('#noise').value+'%'});
+  $('#blank').addEventListener('click',()=>{poke();interrupt('blank');const old=S.s;S.s=new Int8Array(N).fill(-1);changed(old,wave);S.last='Blank board';schedule(.5,'blank')});
+  $('#rand').addEventListener('click',()=>{poke();interrupt('coin');const seed=nextSeed(),r=HF.mulberry32(seed),old=S.s;S.s=Int8Array.from({length:N},()=>r()<.5?1:-1);
+    S.scrambles.push({seed,frac:'coin',before:HF.bits(old),after:HF.bits(S.s)});changed(old,i=>((i*2246822519>>>0)%89)/89*.22);S.last='Every disc a coin toss';schedule(.75,'coin')});
+  $('#power').addEventListener('click',()=>{poke();S.running=!S.running;if(S.running)schedule(.1,'power');else interrupt('hold');dirtyUI=true});
+  document.querySelectorAll('#rules button').forEach(b=>b.addEventListener('click',()=>{poke();setRule(b.dataset.r)}));
+  $('#snd').addEventListener('click',()=>setSound(!SND.on));
+  $('#tourb').addEventListener('click',()=>{startTour()});
+  $('#memo').addEventListener('click',()=>{poke();memorize()});
+  let size='';addEventListener('resize',()=>{const k=innerWidth+'x'+innerHeight+'x'+devicePixelRatio;if(k===size)return;size=k;layout();chartDirty=true;if(ready){drawDiscs();drawChart()}});
+  addEventListener('keydown',e=>{if(e.key===' '&&e.target===document.body){e.preventDefault();poke();scramble(+$('#noise').value/100)}});
+}
+
+/* ---------- captions and the tour ---------- */
+let shownCap='',capTimer=0;
+function cap(html,soft){if(html===shownCap)return;const el=$('#caption'),fading=el.classList.contains('fade');shownCap=html;
+  if(STATIC||FIXED||(soft&&!fading)){el.innerHTML=html;el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{el.innerHTML=shownCap;el.classList.remove('fade')},380)}
+const m=s=>`<span class="m">${s}</span>`;
+const lastRun=()=>S.runs[S.runs.length-1];
+const CAP={
+  intro:()=>`This sign has no picture memory. Its 960 discs are joined by 460,320 wires, and three pictures are stored in the wiring with <b>Hebb's rule</b>: a cat, a moon and a key.`,
+  scr:()=>`<b>Scramble 30% of the discs.</b> Now each disc in turn adds up what its wires tell it and turns to agree. Every flip lowers the board's energy, so it has to come to rest somewhere.`,
+  rec:()=>{const r=lastRun();return`The <span class="y">cat</span> is back: ${r.flips} flips, energy down from ${fmtE(r.E0)} to ${fmtE(r.E1)}. Nothing kept a note of which discs were scrambled; the wiring alone pulled them back.`},
+  cue:()=>`<b>Black out the top half of the key.</b> Half a key is enough: the board finishes the picture from memory.`,
+  more:()=>`Now teach it two more pictures, a house and a note. Five memories on 960 discs, while random pictures would fit about 132…`,
+  ghost0:()=>`Put up a perfect cat…`,
+  ghost:()=>{const r=lastRun();return`…and a perfect cat won't hold. ${r.flips} discs flip and it settles on <span class="g">a ghost</span>: a cat with the house's door cut into its chin, which nobody stored. These drawings share too much dark board for Hebb's rule, and the ghost's energy, ${fmtE(r.E1)}, is lower than the real cat's, ${fmtE(S.memE.cat)}.`},
+  proj:()=>`Same five pictures, rewired with the <b>projection rule</b>, which takes out what the pictures share before storing them. The ghost stops being a valley and slides back into the cat.`,
+  proj2:()=>`Scramble 35% this time. With projection wiring every stored picture is an exact valley again.`,
+  proj3:()=>{const r=lastRun();return`Back to the <span class="y">cat</span> in ${r.flips} flips. With projection wiring every stored picture is an exact valley again.`},
+  you:()=>`Your turn: drag across the board to flip discs, scramble it, or teach it more pictures — even your own drawing.`,
+  still:()=>`Scrambled by 30%, the board flipped its discs one by one until the <span class="y">cat</span> came back: each disc agrees with the sum of its wires, and every flip lowers the energy. Drag across the board, scramble it, or teach it more pictures.`,
+};
+let tour=null,tourDone=false;
+const TOUR=[
+  [0,()=>{S.running=true;S.stored=new Set(['cat','moon','key']);S.rule='hebb';retrain();syncCards();syncRule();interrupt('tour');const old=S.s;S.s=Int8Array.from(HF.PAT.cat);changed(old,wave);S.last='The cat';cap(CAP.intro())}],
+  [2.0,()=>{scramble(.3,'tour');cap(CAP.scr());tour.onDone=()=>cap(CAP.rec())}],
+  [7.0,()=>{cover('key','tour');cap(CAP.cue())}],
+  [11.4,()=>{interrupt('tour');S.stored.add('house');retrain();syncCards();cap(CAP.more())}],
+  [12.1,()=>{S.stored.add('note');retrain();syncCards()}],
+  [13.6,()=>{showPic('cat','tour');cap(CAP.ghost0());tour.onDone=()=>cap(CAP.ghost())}],
+  [23.0,()=>{setRule('projection','tour');cap(CAP.proj())}],
+  [27.2,()=>{scramble(.35,'tour');cap(CAP.proj2());tour.onDone=()=>cap(CAP.proj3())}],
+  [34.0,()=>{cap(CAP.you());tour=null;tourDone=true}],
+];
+function startTour(){tour={t0:simT,k:0,onDone:null};tourDone=false}
+function poke(){if(tour){tour=null;cap(CAP.you())}}
+function tourTick(){if(!tour)return;const t=simT-tour.t0;
+  while(tour&&tour.k<TOUR.length&&t>=TOUR[tour.k][0]){const f=TOUR[tour.k][1];tour.k++;f()}}
+
+/* ---------- the loop ---------- */
+function update(dt){
+  simT+=dt;tourTick();
+  if(S.pendingAt!==null&&simT>=S.pendingAt&&!S.drawing)startRun();
+  if(S.run&&!S.run.done){S.budget+=RATE*dt;let n=Math.floor(S.budget);S.budget-=n;
+    while(n-->0&&!S.run.done){const i=S.run.next();if(i>=0&&!STATIC)anims.set(i,{t0:simT,to:S.s[i]})}
+    if(S.run.done)runDone();else{S.trace.push([S.run.updates,S.run.energy()]);chartDirty=true}dirtyUI=true}
+}
+let last=0;window.__frame=0;let uiClock=0;
+function frame(ts,skipDraw){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the board
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.25);last=now;window.__frame++;
+  update(dt);
+  if(!skipDraw){drawDiscs();sndFrame(dt);uiClock+=dt;if(dirtyUI&&(uiClock>.07||FIXED||STATIC)){uiClock=0;dirtyUI=false;ui()}if(chartDirty)drawChart()}
+  const r=S.run;window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,rule:S.rule,stored:S.list.map(m=>m.id),run:r?{flips:r.flips,sweep:r.sweep,done:r.done}:null,pending:S.pendingAt!==null};
+}
+let ready=false;
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  retrain();buildCards();syncRule();wire();layout();
+  if(STATIC){ready=true;scramble(.3,'still');cap(CAP.still())}
+  else{startTour();if(FIXED){const at=Q.has('at')?+Q.get('at'):3.4;for(let i=0;i<Math.round(at*60);i++)update(1/60)}}
+  ready=true;
+  // fonts that arrive late change the plate text metrics: draw the housing again
+  document.fonts&&document.fonts.ready.then(()=>{if(ready){drawHousing();ledState=''}});
+}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+(async()=>{await start();if(FIXED){frame()}else{last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the machine
+window.hopfield={
+  state:()=>{if(!ready)return{ready:false};const v=verdict(),r=S.run;
+    return{ready:true,W,H,N,seed:SEED,rate:RATE,rule:S.rule,stored:S.list.map(m=>m.id),running:S.running,pending:S.pendingAt!==null,board:HF.bits(S.s),
+      custom:MEM.filter(m=>m.custom).map(m=>({id:m.id,bits:HF.bits(m.p)})),
+      run:r?{...S.meta,flips:r.flips,sweeps:r.sweep,updates:r.updates,done:r.done}:null,runs:S.runs.slice(),scrambles:S.scrambles.slice(),
+      verdict:{kind:v.kind,id:v.id,m:v.m,off:v.off},memE:{...S.memE},energy:S.w?HF.energy(S.w,S.s,S.rule):0,trace:S.trace.length,
+      tour:tour?tour.k:null,tourDone,sound:SND.on,simT:+simT.toFixed(3),caption:$('#caption').textContent,
+      geom:(()=>{const b=dc.getBoundingClientRect();return{left:b.left,top:b.top,mx:L.mx,my:L.my,c:L.c}})()}},
+  pictures:()=>Object.fromEntries(HF.PICS.map(q=>[q.id,HF.bits(HF.PAT[q.id])])),
+};
+</script>
+</body>
+</html>

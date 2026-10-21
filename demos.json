@@ -1,5 +1,15 @@
 [
  {
+  "slug": "hopfield-flipdots",
+  "title": "Hopfield Flip-Dots",
+  "no": "023",
+  "date": "2026-10-21",
+  "kind": "Hopfield memory \u00b7 Canvas flip-dots",
+  "blurb": "A 960-disc flip-dot sign wired as a Hopfield network: its pictures live only in 460,320 wires. Scramble it and the discs clack back to the nearest memory, energy falling with every flip. Teach it five look-alike drawings with Hebb's rule and it settles on a ghost nobody stored; the projection rule brings the cat back.",
+  "color": "#d6ff33",
+  "exhibit": "flipdots"
+ },
+ {
   "slug": "backprop-waterworks",
   "title": "Backprop Waterworks",
   "no": "022",
