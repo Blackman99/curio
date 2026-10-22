@@ -1,5 +1,15 @@
 [
  {
+  "slug": "optimizer-derby",
+  "title": "Optimizer Derby",
+  "no": "024",
+  "date": "2026-10-22",
+  "kind": "Optimizers \u00b7 three.js marble race",
+  "blurb": "SGD, Momentum, RMSProp and Adam race as marbles across five real loss surfaces, each moved only by its own update rule. On Rosenbrock's banana Momentum leads for 556 steps before Adam passes it; on a saddle the adaptive two leave at once. Set every learning rate, add noise, click to move the gate.",
+  "color": "#1aa3ff",
+  "exhibit": "derby"
+ },
+ {
   "slug": "hopfield-flipdots",
   "title": "Hopfield Flip-Dots",
   "no": "023",

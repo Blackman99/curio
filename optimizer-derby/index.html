@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Optimizer Derby — SGD, Momentum, RMSProp and Adam race down real loss landscapes</title>
+<meta name="description" content="Four marbles, four optimizers, one starting gate. SGD, Momentum, RMSProp and Adam race across five real loss surfaces (Rosenbrock's banana, a saddle, Himmelblau's four valleys, Beale's plateau, an egg crate). Every step is the real update rule; set each one's learning rate, move the gate, add gradient noise.">
+<meta property="og:title" content="Optimizer Derby">
+<meta property="og:description" content="SGD, Momentum, RMSProp and Adam race as marbles across real loss landscapes. Every step is the real update rule; set each learning rate and move the starting gate.">
+<meta property="og:image" content="https://blackman99.github.io/curio/optimizer-derby/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Optimizer Derby">
+<meta name="twitter:description" content="Four optimizers race as marbles down Rosenbrock's banana, a saddle and Himmelblau's four valleys. Real update rules, your learning rates.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/optimizer-derby/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#060a13;--chalk:#efe9dc;--chalk2:#a9afbb;--acc:#1aa3ff;--line:rgba(120,170,230,.24);--panel:rgba(8,12,22,.82);--turf:#7fc26b;
+  --c0:#c9d1db;--c1:#e8a93b;--c2:#a98bff;--c3:#ff4b5c}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--chalk);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden;background:radial-gradient(120% 90% at 52% 38%,#14223a 0%,#0a1222 45%,#05080f 100%) fixed}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#stage{position:fixed;inset:0;overflow:hidden}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#c.aim{cursor:crosshair}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#labels>div{position:absolute;left:0;top:0;will-change:transform;white-space:nowrap}
+.tag{font:600 11px/1 'IBM Plex Mono',monospace;padding:4px 7px 3px;border-radius:999px;background:rgba(6,10,19,.82);border:1px solid currentColor;box-shadow:0 2px 10px rgba(0,0,0,.5);transition:opacity .25s}
+.tag i{font-style:normal;color:var(--chalk);margin-left:5px;font-weight:500}
+.tag.gone{opacity:0}
+.gtag{font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#fff;text-shadow:0 1px 3px #000,0 0 8px #000}
+
+#title{position:fixed;left:32px;top:24px;max-width:400px;z-index:2;pointer-events:none}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;color:var(--acc);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(6,10,19,.6);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--acc);color:#04101c;outline:none}
+.kick{margin-top:18px;font:500 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--acc)}
+h1{margin:8px 0 10px;font:900 clamp(52px,5.4vw,86px)/.84 'Big Shoulders Display',Impact,sans-serif;letter-spacing:.005em;text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.7)}
+h1 em{display:block;font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--chalk)}
+.sub{margin:0;font-size:17px;line-height:1.42;color:var(--chalk2);max-width:350px;text-shadow:0 1px 3px #000,0 2px 14px #000}
+.sub b{color:var(--chalk);font-weight:600}
+#legend{margin-top:14px;display:grid;gap:6px;font:500 11.5px/1.3 'IBM Plex Mono',monospace;color:var(--chalk2);text-shadow:0 1px 3px #000}
+#legend b{font-weight:600}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px;vertical-align:-1px;box-shadow:inset -2px -2px 3px rgba(0,0,0,.45),inset 1px 1px 2px rgba(255,255,255,.6)}
+#story{position:fixed;left:32px;bottom:26px;width:390px;z-index:2;pointer-events:none}
+#caption{margin:0;font:400 18px/1.42 'Newsreader',serif;color:#f6f1e6;text-shadow:0 1px 3px #000,0 2px 18px #000;min-height:5.7em;transition:opacity .35s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'IBM Plex Mono',monospace}
+.k0,#caption .k0{color:var(--c0)}.k1,#caption .k1{color:var(--c1)}.k2,#caption .k2{color:var(--c2)}.k3,#caption .k3{color:var(--c3)}
+
+#panel{position:fixed;right:18px;top:18px;bottom:18px;width:360px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);
+  border:1px solid var(--line);border-radius:16px;padding:14px 15px 13px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(200,225,255,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+.lab b{font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--chalk);text-transform:none}
+.sec{margin-bottom:13px}
+/* the tote board */
+#tote{border-radius:12px;background:#03060c;border:1px solid rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 0 8px 24px rgba(0,0,0,.5);padding:9px 10px 8px}
+#toteHead{display:flex;justify-content:space-between;align-items:baseline;font:700 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#ffd78a;margin-bottom:7px}
+#toteHead span:last-child{font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.04em;color:#ffd78a}
+#rows{position:relative;height:120px}
+.row{position:absolute;left:0;right:0;height:28px;display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:6px;padding:0 6px;border-radius:7px;font:500 12px/1 'IBM Plex Mono',monospace;transition:transform .45s cubic-bezier(.3,.7,.2,1),background .3s}
+.row .pl{font:700 17px/1 'Big Shoulders Display',sans-serif;color:#ffd78a;text-align:center}
+.row .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .st{text-align:right;color:var(--chalk2);white-space:nowrap}
+.row .st b{color:var(--chalk);font-weight:600}
+.row.fin{background:rgba(255,215,138,.08)}
+.row.fin .st{color:#ffd78a}
+.row.off .st,.row.dnf .st{color:#ff8b8b}
+#chartBox{margin-top:8px}
+#chart{display:block;width:100%;height:64px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip,.btn{border:1px solid var(--line);background:rgba(26,163,255,.06);border-radius:999px;padding:6px 9px;font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--chalk);transition:border-color .2s}
+.chip:hover,.btn:hover,.chip:focus-visible,.btn:focus-visible{background:rgba(26,163,255,.2);border-color:var(--acc);outline:none}
+.chip.on,.btn.on{background:var(--acc);color:#03101c;border-color:var(--acc)}
+.btn{border-radius:9px;padding:8px 8px}
+.btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#lanes{display:grid;gap:1px}
+.lane{display:grid;grid-template-columns:92px 1fr 54px;align-items:center;gap:8px}
+.lane .nm{font:600 12px/1 'IBM Plex Mono',monospace;white-space:nowrap}
+.lane .val{font:500 12px/1 'IBM Plex Mono',monospace;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer;--k:var(--acc)}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,.08),var(--k));box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,.08),var(--k))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--k) 42%,#111 120%);box-shadow:0 2px 8px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--k) 42%,#111 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--acc);outline-offset:3px}
+.hint{font:italic 400 14px/1.35 'Newsreader',serif;color:var(--chalk2);margin:7px 0 0}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font:600 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--acc);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.45;color:var(--chalk2);margin:10px 0 0}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--chalk)}
+details a,.foot a{color:var(--acc)}
+.foot{margin-top:12px;font:500 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(239,233,220,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--acc);text-decoration:underline;font:inherit}
+#tip{position:fixed;z-index:5;pointer-events:none;padding:7px 9px;border-radius:9px;background:rgba(8,12,22,.92);border:1px solid var(--line);font:500 11px/1.45 'IBM Plex Mono',monospace;color:var(--chalk);opacity:0;transform:translate(14px,14px);transition:opacity .15s;white-space:nowrap}
+#nogl{display:none;position:absolute;left:32px;top:50%;max-width:420px;font:italic 500 18px/1.4 'Newsreader',serif;color:var(--chalk2)}
+.nogl #nogl{display:block}
+.nogl #c{display:none}
+
+@media (max-height:780px) and (min-width:821px){.sub{display:none}#legend{margin-top:8px}#caption{min-height:4.3em;font-size:16.5px}h1{font-size:clamp(46px,4.6vw,70px)}#chartBox{display:none}.kick{margin-top:12px}}
+@media (max-width:1180px) and (min-width:821px){#title{max-width:300px}#story{width:300px}#legend{display:none}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden;background:#070c17}
+  #title{position:static;max-width:none;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:50px;margin:6px 0 6px}
+  h1 em{display:inline}
+  .sub{font-size:15.5px;max-width:none}
+  #legend{margin-top:10px;font-size:10.5px}
+  #story{position:static;width:auto;padding:8px 16px 0}
+  #caption{font-size:16px;min-height:5.8em}
+  #stage{position:relative;inset:auto;height:min(54vh,450px);min-height:340px;margin-top:2px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(10,15,27,.97)}
+  #tip{display:none}
+  .tag{font-size:10px;padding:3px 6px 2px}
+}
+@media (prefers-reduced-motion:reduce){#caption,.tag,.row{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 024 · Optimizers</div>
+  <h1>Optimizer <em>Derby</em></h1>
+  <p class="sub">Four marbles leave one gate and race to the lowest point of a <b>real loss surface</b>. Each is steered only by its own update rule.</p>
+  <div id="legend"></div>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A relief model of a loss surface on a plinth, with four marbles racing from a starting gate to a chequered flag at the lowest point"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <p id="nogl">This exhibit draws the course with WebGL, which this browser didn't give us. The race itself still runs: the board and the chart on the right are live.</p>
+</div>
+
+<aside id="panel" aria-label="Race board and controls">
+  <div class="sec" id="tote" aria-live="polite">
+    <div id="toteHead"><span id="tname">Banana</span><span id="tstep">step 0</span></div>
+    <div id="rows"></div>
+    <div id="chartBox"><canvas id="chart" aria-label="Loss above the minimum, log scale, for each marble at every step"></canvas></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Course</span><b id="tfull"></b></div>
+    <div class="chips" id="tracks"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Learning rate η</span><b>each marble's own</b></div>
+    <div id="lanes"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Gradient noise σ</span><b id="noisev">0</b></div>
+    <input id="noise" type="range" min="0" max="100" value="0" aria-label="Gradient noise">
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Race</span><b id="speedv"></b></div>
+    <div class="chips" id="speeds" style="margin-bottom:7px"></div>
+    <div class="btns"><button class="btn" id="restart" title="Back to the gate with the same settings">Restart ↻</button><button class="btn" id="skip" title="Run every remaining step now">Finish ⏭</button><button class="btn" id="regate" title="Put the gate back where this course starts">Reset gate</button></div>
+    <p class="hint">Click the course to move the starting gate there.</p>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p>The ground is a real function f(x, y), drawn with height on a log scale (the contour lines are steps of ×√10 in f). The flag stands on its lowest point; a marble finishes when it comes within 1.5% of the course's width of a flag.</p>
+    <p>Each marble is one optimizer, and nothing else moves it: no gravity, no friction. At every step it reads the exact gradient g = ∇f under it and moves by its rule, in double precision:</p>
+    <p><b class="k0">SGD</b> <code>θ ← θ − η·g</code> (Robbins &amp; Monro, 1951).<br>
+      <b class="k1">Momentum</b> <code>v ← 0.9·v + g;  θ ← θ − η·v</code>, Polyak's heavy ball (1964), as PyTorch writes it.<br>
+      <b class="k2">RMSProp</b> <code>s ← 0.9·s + 0.1·g²;  θ ← θ − η·g/(√s + 10⁻⁸)</code>, per coordinate (Hinton, Lecture 6e, 2012).<br>
+      <b class="k3">Adam</b> <code>m ← 0.9·m + 0.1·g;  s ← 0.999·s + 0.001·g²;  θ ← θ − η·m̂/(√ŝ + 10⁻⁸)</code>, with the bias corrections m̂ = m/(1−0.9ᵗ), ŝ = s/(1−0.999ᵗ) (Kingma &amp; Ba, <a href="https://arxiv.org/abs/1412.6980">2015</a>).</p>
+    <p>Between steps the marble is drawn hopping from one point to the next; the arc is decoration, the landing points are the optimizer's. A marble that lands more than half a course-width off the table is out (“flew off”); one that hasn't finished after 1,500 steps is out of time.</p>
+    <p><b>Gradient noise</b> adds σ·z to each component of g before the update, with z the sum of twelve uniform random numbers minus six (close to a standard normal), from a seeded generator, so a race replays identically. With σ = 0 SGD is plain gradient descent.</p>
+    <p>Courses: Rosenbrock's banana (1960), Beale's function (1958), Himmelblau's four valleys (1972), the saddle ½x² + ¼y⁴ − ½y², and a bowl with bumps, ½(x² + y²) + 0.6·(2 − cos 2πx − cos 2πy) (its cosines come from a 28th-order series, within 10⁻¹⁴ of the real thing, so a race replays bit for bit anywhere). The saddle and banana races echo Alec Radford's 2014 animations, which Sebastian Ruder used in <a href="https://arxiv.org/abs/1609.04747">An overview of gradient descent optimization algorithms</a> (2016).</p>
+    <p>None of these is a neural network's loss. Two numbers stand in for millions, and which marble wins depends on the course, the gate and the learning rates: try SGD at η = 0.002 on the banana.</p>
+  </details>
+  <div class="foot">Drag to turn the course · click it to move the gate · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+/* ================= engine: four optimizers on five loss surfaces (plain float64, no DOM) ================= */
+const OD=(()=>{
+  // every surface: f, its analytic gradient, the table it is drawn on, its lowest points
+  const TAU=2*Math.PI;
+  // cos 2πx and sin 2πx by Taylor series after reducing x to [−½, ½] turns: only + − × and floor, so the
+  // Python reference reproduces every bit (Math.cos and C's cos may differ in the last place)
+  const CC=[1],SC=[1];for(let k=1;k<=14;k++){CC.push(-CC[k-1]/((2*k-1)*(2*k)));SC.push(-SC[k-1]/((2*k)*(2*k+1)))}
+  const red=x=>TAU*(x-Math.floor(x+.5));
+  const cos2pi=x=>{const u=red(x),u2=u*u;let c=CC[14];for(let k=13;k>=0;k--)c=c*u2+CC[k];return c};
+  const sin2pi=x=>{const u=red(x),u2=u*u;let c=SC[14];for(let k=13;k>=0;k--)c=c*u2+SC[k];return c*u};
+  const TRACKS={
+    rosen:{name:'Rosenbrock',f:(x,y)=>{const a=1-x,b=y-x*x;return a*a+100*b*b},
+      g:(x,y)=>{const b=y-x*x;return[-2*(1-x)-400*x*b,200*b]},dom:[-2,2,-1,3],min:[[1,1]],fmin:0},
+    beale:{name:'Beale',f:(x,y)=>{const a=1.5-x+x*y,b=2.25-x+x*y*y,c=2.625-x+x*y*y*y;return a*a+b*b+c*c},
+      g:(x,y)=>{const y2=y*y,y3=y2*y,a=1.5-x+x*y,b=2.25-x+x*y2,c=2.625-x+x*y3;
+        return[2*a*(y-1)+2*b*(y2-1)+2*c*(y3-1),2*a*x+2*b*(2*x*y)+2*c*(3*x*y2)]},dom:[-1.5,4.5,-2,2.5],min:[[3,.5]],fmin:0},
+    saddle:{name:'Saddle',f:(x,y)=>{const y2=y*y;return .5*x*x+.25*y2*y2-.5*y2},
+      g:(x,y)=>[x,y*y*y-y],dom:[-2.5,2.5,-2,2],min:[[0,1],[0,-1]],fmin:-.25},
+    himmel:{name:'Himmelblau',f:(x,y)=>{const a=x*x+y-11,b=x+y*y-7;return a*a+b*b},
+      g:(x,y)=>{const a=x*x+y-11,b=x+y*y-7;return[4*x*a+2*b,2*a+4*y*b]},dom:[-5,5,-5,5],
+      min:[[3,2],[-2.805118086952745,3.131312518250573],[-3.779310253377747,-3.283185991286170],[3.584428340330492,-1.848126526964404]],fmin:0},
+    egg:{name:'Egg crate',f:(x,y)=>.5*(x*x+y*y)+.6*(2-cos2pi(x)-cos2pi(y)),
+      g:(x,y)=>[x+.6*TAU*sin2pi(x),y+.6*TAU*sin2pi(y)],dom:[-4,4,-4,4],min:[[0,0]],fmin:0},
+  };
+  const OPT=[
+    {key:'sgd',name:'SGD'},{key:'mom',name:'Momentum'},{key:'rms',name:'RMSProp'},{key:'adam',name:'Adam'}];
+  const HP={mom:.9,rho:.9,b1:.9,b2:.999,eps:1e-8};
+  // seeded noise: mulberry32, and a sum of 12 uniforms for a near-Gaussian with exact arithmetic
+  function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  const gauss12=r=>{let s=0;for(let i=0;i<12;i++)s+=r();return s-6};
+  function marble(k,x,y,lr,seed){return{k,key:OPT[k].key,x,y,lr,vx:0,vy:0,sx:0,sy:0,mx:0,my:0,b1t:1,b2t:1,t:0,
+    rnd:mulberry32((seed*4+k+1)>>>0),path:[[x,y]],status:'run',at:-1,minIdx:-1}}
+  // one update; returns false if the marble left the table or went non-finite
+  function step(T,m,noise){
+    let[gx,gy]=T.g(m.x,m.y);
+    if(noise>0){gx+=noise*gauss12(m.rnd);gy+=noise*gauss12(m.rnd)}
+    const lr=m.lr;m.t++;
+    if(m.key==='sgd'){m.x-=lr*gx;m.y-=lr*gy}
+    else if(m.key==='mom'){m.vx=HP.mom*m.vx+gx;m.vy=HP.mom*m.vy+gy;m.x-=lr*m.vx;m.y-=lr*m.vy}
+    else if(m.key==='rms'){m.sx=HP.rho*m.sx+(1-HP.rho)*gx*gx;m.sy=HP.rho*m.sy+(1-HP.rho)*gy*gy;
+      m.x-=lr*gx/(Math.sqrt(m.sx)+HP.eps);m.y-=lr*gy/(Math.sqrt(m.sy)+HP.eps)}
+    else{m.mx=HP.b1*m.mx+(1-HP.b1)*gx;m.my=HP.b1*m.my+(1-HP.b1)*gy;m.vx=HP.b2*m.vx+(1-HP.b2)*gx*gx;m.vy=HP.b2*m.vy+(1-HP.b2)*gy*gy;
+      m.b1t*=HP.b1;m.b2t*=HP.b2;const c1=1-m.b1t,c2=1-m.b2t;
+      m.x-=lr*(m.mx/c1)/(Math.sqrt(m.vx/c2)+HP.eps);m.y-=lr*(m.my/c1)/(Math.sqrt(m.vy/c2)+HP.eps)}
+    m.path.push([m.x,m.y]);
+  }
+  const D=T=>{const[a,b,c,d]=T.dom;return{a,b,c,d,w:b-a,h:d-c}};
+  function onTable(T,x,y){const q=D(T),mx=q.w*.5,my=q.h*.5;return x===x&&y===y&&x>q.a-mx&&x<q.b+mx&&y>q.c-my&&y<q.d+my}
+  const ringR=T=>.015*Math.max(D(T).w,D(T).h);
+  function nearest(T,x,y){let b=-1,bd=Infinity;T.min.forEach((p,i)=>{const d=Math.hypot(x-p[0],y-p[1]);if(d<bd){bd=d;b=i}});return[b,bd]}
+  // a race: all four marbles from one gate, each with its own learning rate
+  class Race{
+    constructor(track,start,lrs,opt={}){this.key=track;this.T=TRACKS[track];this.start=[...start];this.lrs=[...lrs];this.noise=opt.noise||0;this.seed=opt.seed??7;
+      this.max=opt.max||1500;this.on=opt.on||[1,1,1,1];this.n=0;this.order=[];
+      this.M=OPT.map((o,k)=>marble(k,start[0],start[1],lrs[k],this.seed));
+      this.M.forEach((m,k)=>{if(!this.on[k])m.status='scratched';this.judge(m)})}
+    judge(m){if(m.status!=='run')return;const T=this.T;
+      if(!onTable(T,m.x,m.y)){m.status='off';m.at=m.t;m.offTable=true;return}
+      const[i,d]=nearest(T,m.x,m.y);if(d<ringR(T)){m.status='fin';m.at=m.t;m.minIdx=i;this.order.push(m.k)}}
+    tick(){if(this.done())return false;this.n++;
+      for(const m of this.M){if(m.status!=='run')continue;step(this.T,m,this.noise);this.judge(m);
+        if(m.status==='run'&&m.t>=this.max){m.status='dnf';m.at=m.t}}
+      return true}
+    done(){return this.M.every(m=>m.status!=='run')}
+    loss(m){return this.T.f(m.x,m.y)-this.T.fmin}
+  }
+  return{cos2pi,sin2pi,TRACKS,OPT,HP,mulberry32,gauss12,step,Race,onTable,ringR,nearest,D};
+})();
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=RM||STILL;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const minus=s=>String(s).replace(/-/g,'−');
+const sup=e=>(e<0?'⁻':'')+[...String(Math.abs(e))].map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]).join('');
+const expo=v=>{let e=Math.floor(Math.log10(v)),m=(v/10**e).toFixed(1);if(m==='10.0'){m='1.0';e++}return m+'×10'+sup(e)};
+const fmtL=v=>v!==v?'NaN':!isFinite(v)?'∞':v<=0?'0':v<1e-3||v>=1e4?expo(v):v<.1?v.toFixed(4):v<10?v.toFixed(3):v.toFixed(1);
+const fmtLR=v=>v>=.1?String(+v.toFixed(2)):v>=.01?String(+v.toFixed(3)):v>=.001?String(+v.toFixed(4)):String(+v.toFixed(5));
+const fmtXY=v=>minus((Math.abs(v)<5e-4?0:v).toFixed(Math.abs(v)<10?3:1));
+
+/* ---------- the field ---------- */
+const NAMES=['SGD','Momentum','RMSProp','Adam'],KEYS=['sgd','mom','rms','adam'];
+const COL=['#c9d1db','#e8a93b','#a98bff','#ff4b5c'],TRAIL=['#8f9aab','#f0b445','#b49cff','#ff5a69'];
+const RULE=['steps η × slope','keeps a running sum of slopes','divides by the slope’s recent size','momentum + per-coordinate scaling'];
+const LRS=[1e-4,1.5e-4,2e-4,3e-4,5e-4,7e-4,1e-3,1.5e-3,2e-3,3e-3,5e-3,7e-3,.01,.015,.02,.03,.05,.07,.1,.15,.2,.3,.5,.7,1];
+const lrIdx=v=>{let b=0;LRS.forEach((x,i)=>{if(Math.abs(Math.log(x/v))<Math.abs(Math.log(LRS[b]/v)))b=i});return b};
+// each course: its name on the board, where the gate stands, the house learning rates, how much noise the slider can add, how the relief is drawn
+const TRK={
+  rosen:{label:'Banana',full:'Rosenbrock, 1960',start:[-1.5,2.5],lr:[.001,.001,.01,.1],sig:40,hs:12,yaw:.25},
+  saddle:{label:'Saddle',full:'½x² + ¼y⁴ − ½y²',start:[2.2,1e-4],lr:[.05,.01,.05,.05],sig:2,hs:.5,yaw:-.95},
+  himmel:{label:'Four valleys',full:'Himmelblau, 1972',start:[-.3,-.9],lr:[.002,5e-4,.02,.05],sig:40,hs:40,yaw:.35},
+  beale:{label:'Plateau',full:'Beale, 1958',start:[1,1.5],lr:[.005,.001,.05,.1],sig:5,hs:.6,yaw:-.25},
+  egg:{label:'Egg crate',full:'bowl + bumps',start:[-3.6,-3.6],lr:[.01,.015,.05,.1],sig:10,hs:6,yaw:-.6},
+};
+const ORDER=['rosen','saddle','himmel','beale','egg'];
+const SPEEDS={slow:{n:'Slow',r:15},race:{n:'Race',r:60},fast:{n:'Fast',r:240}};
+const MAXSTEP=1500;
+const S={track:'rosen',start:[...TRK.rosen.start],lrs:[...TRK.rosen.lr],noiseU:0,seed:7,speed:'race',race:null,acc:0,raceT:0,id:0,gateMoved:false};
+const LOG=[];let simT=0;
+const sigma=()=>+(S.noiseU*TRK[S.track].sig).toPrecision(3);
+
+/* ---------- height of the relief: log of the loss above the minimum, scaled per course ---------- */
+const HMAX=2.1,WORLD=10;
+const G={};
+function geom(key){
+  const T=OD.TRACKS[key],[a,b,c,d]=T.dom,w=b-a,h=d-c,sc=WORLD/Math.max(w,h),hs=TRK[key].hs;
+  const fs=[];for(let j=0;j<=60;j++)for(let i=0;i<=60;i++)fs.push(T.f(a+w*i/60,c+h*j/60)-T.fmin);
+  fs.sort((p,q)=>p-q);const top=fs[Math.floor(fs.length*.995)];
+  Object.assign(G,{key,T,a,b,c,d,w,h,sc,hs,L0:Math.log1p(top/hs),cx:(a+b)/2,cy:(c+d)/2});
+}
+const hn=(x,y)=>{let v=G.T.f(x,y)-G.T.fmin;if(!(v>0))v=0;const r=Math.log1p(v/G.hs)/G.L0;return r===r?Math.min(r,1.25):1.25};
+const gy=(x,y)=>HMAX*hn(x,y);
+const wx=x=>(x-G.cx)*G.sc,wz=y=>-(y-G.cy)*G.sc,dx=X=>X/G.sc+G.cx,dy=Z=>-Z/G.sc+G.cy;
+const sane=v=>Number.isFinite(v)?clamp(v,-1e3,1e3):0;
+
+/* ---------- the race ---------- */
+function newRace(why){
+  S.race=new OD.Race(S.track,S.start,S.lrs,{noise:sigma(),seed:S.seed,max:MAXSTEP});S.acc=0;S.raceT=0;S.id++;
+  LOG.push({id:S.id,why,track:S.track,start:[...S.start],lrs:[...S.lrs],noise:sigma(),seed:S.seed,max:MAXSTEP,steps:0,done:false,result:null});if(LOG.length>200)LOG.shift();
+  if(scene)scene.reset();
+  lastDone=false;
+  if(STATIC)finishNow();
+  boardDirty=chartDirty=true;
+  if(STATIC&&ready){lastDone=true;if(!tour)cap(CAP.result());redraw()}
+}
+const logEntry=()=>LOG[LOG.length-1];
+function noteSteps(){const e=logEntry();if(!e||e.id!==S.id)return;const R=S.race;e.steps=R.n;
+  if(R.done()&&!e.done){e.done=true;e.result=R.M.map(m=>({key:m.key,status:m.status,at:m.at,min:m.minIdx,x:m.x,y:m.y,t:m.t}))}}
+function finishNow(){const R=S.race;while(R.tick()){}S.acc=0;noteSteps();if(scene)scene.catchUp();boardDirty=chartDirty=true}
+function advance(dt){
+  const R=S.race;if(!R||R.done())return;S.raceT+=dt;
+  // the first strides in slow motion, then the chosen pace
+  const base=SPEEDS[S.speed].r,rate=Math.max(Math.min(base,8),base*clamp(Math.max(.15,R.n/40),0,1));
+  S.acc+=dt*rate;let k=0;
+  while(S.acc>=1&&!R.done()&&k<400){R.tick();S.acc-=1;k++}
+  if(R.done())S.acc=0;
+  if(k){noteSteps();boardDirty=chartDirty=true}
+}
+const placeOf=()=>{const R=S.race,L=m=>R.loss(m),rank=m=>m.status==='fin'?0:m.status==='run'||m.status==='dnf'?1:2;
+  return[...R.M].sort((p,q)=>rank(p)-rank(q)||(rank(p)===0?p.at-q.at||L(p)-L(q):rank(p)===1?L(p)-L(q):q.at-p.at)).map(m=>m.k)};
+
+/* ---------- panel ---------- */
+let boardDirty=true,chartDirty=true;
+$('#legend').innerHTML=NAMES.map((n,k)=>`<span><i class="dot" style="background:${COL[k]}"></i><b class="k${k}">${n}</b> ${RULE[k]}</span>`).join('');
+$('#tracks').innerHTML=ORDER.map(k=>`<button class="chip" data-t="${k}">${TRK[k].label}</button>`).join('');
+$('#speeds').innerHTML=Object.entries(SPEEDS).map(([k,v])=>`<button class="chip" data-s="${k}">${v.n}</button>`).join('');
+$('#lanes').innerHTML=NAMES.map((n,k)=>`<div class="lane"><span class="nm"><i class="dot" style="background:${COL[k]}"></i>${n}</span><input type="range" min="0" max="${LRS.length-1}" step="1" data-k="${k}" style="--k:${COL[k]}" aria-label="${n} learning rate"><span class="val mono" data-o="${k}"></span></div>`).join('');
+$('#rows').innerHTML=NAMES.map((n,k)=>`<div class="row" data-k="${k}" style="transform:translateY(${k*30}px)"><span class="pl"></span><span class="nm k${k}"><i class="dot" style="background:${COL[k]}"></i>${n}</span><span class="st"></span></div>`).join('');
+function syncControls(){
+  $$('#tracks .chip').forEach(b=>b.classList.toggle('on',b.dataset.t===S.track));
+  $$('#speeds .chip').forEach(b=>b.classList.toggle('on',b.dataset.s===S.speed));
+  $$('#lanes input').forEach(el=>{const k=+el.dataset.k;el.value=lrIdx(S.lrs[k]);$(`#lanes [data-o="${k}"]`).textContent=fmtLR(S.lrs[k])});
+  $('#noise').value=Math.round(S.noiseU*100);$('#noisev').textContent=sigma()?String(sigma()):'0 (exact gradients)';
+  $('#tfull').textContent=TRK[S.track].full;$('#tname').textContent=TRK[S.track].label;$('#speedv').textContent=SPEEDS[S.speed].r+' steps / s'}
+function setTrack(key,why,opt={}){
+  S.track=key;S.start=[...(opt.start||TRK[key].start)];S.lrs=[...(opt.lrs||TRK[key].lr)];S.gateMoved=!!opt.start;geom(key);
+  if(scene)scene.build();syncControls();newRace(why)}
+$$('#tracks .chip').forEach(b=>b.addEventListener('click',()=>{poke();setTrack(b.dataset.t,'track')}));
+$$('#speeds .chip').forEach(b=>b.addEventListener('click',()=>{poke();S.speed=b.dataset.s;syncControls()}));
+$$('#lanes input').forEach(el=>el.addEventListener('input',()=>{poke();const k=+el.dataset.k;S.lrs[k]=LRS[+el.value];syncControls();newRace('lr')}));
+$('#noise').addEventListener('input',e=>{poke();S.noiseU=+e.target.value/100;syncControls();newRace('noise')});
+$('#restart').addEventListener('click',()=>{poke();newRace('restart')});
+$('#skip').addEventListener('click',()=>{poke();finishNow();redraw()});
+$('#regate').addEventListener('click',()=>{poke();S.start=[...TRK[S.track].start];S.gateMoved=false;newRace('gate-reset')});
+$('#tourb').addEventListener('click',()=>startTour());
+
+function statusText(m){const R=S.race;
+  if(m.status==='fin')return`✓ step <b>${m.at}</b>${G.T.min.length>1?' · '+compass(G.T.min[m.minIdx]):''}`;
+  if(m.status==='off')return`flew off · step ${m.at}`;
+  if(m.status==='dnf')return`out of time · <b>${fmtL(R.loss(m))}</b>`;
+  return`loss <b>${fmtL(R.loss(m))}</b>`}
+const compass=p=>(p[1]>0?'N':'S')+(Math.abs(p[0])>.1*G.w?p[0]>0?'E':'W':'');
+const ORD=['1st','2nd','3rd','4th'];
+let boardOrder=null,boardT=-9,boardId=-1;
+function board(){
+  const R=S.race;
+  // re-rank at most every 0.6 s of race time, so an early scramble doesn't shuffle the rows every frame
+  if(!boardOrder||boardId!==S.id||R.done()||simT-boardT>.6||STATIC){boardOrder=placeOf();boardT=simT;boardId=S.id}
+  const pl=boardOrder;
+  $('#tstep').textContent=R.done()?`final · ${R.n} steps`:`step ${R.n} / ${MAXSTEP}`;
+  pl.forEach((k,i)=>{const m=R.M[k],row=$(`#rows .row[data-k="${k}"]`);row.style.transform=`translateY(${i*30}px)`;
+    row.className='row '+m.status;row.querySelector('.pl').textContent=m.status==='off'?'×':i+1;
+    const st=statusText(m);if(row._st!==st){row._st=st;row.querySelector('.st').innerHTML=st}})}
+const fit2d=c=>{const d=Math.min(devicePixelRatio,2),w=c.clientWidth,h=c.clientHeight;if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return[g,w,h]};
+function chart(){
+  const c=$('#chart');if(!c.clientWidth)return;const[g,w,h]=fit2d(c),R=S.race,T=G.T;
+  const N=Math.max(100,R.n),X=i=>3+(w-6)*i/N,lg=p=>Math.log10(Math.max(1e-9,T.f(p[0],p[1])-T.fmin));let lo=9,hiL=-9;
+  R.M.forEach(m=>{const st=Math.max(1,Math.floor(m.path.length/200));for(let i=0;i<m.path.length;i+=st){const v=lg(m.path[i]);if(v<lo)lo=v;if(v>hiL)hiL=v}const v=lg(m.path[m.path.length-1]);if(v<lo)lo=v});
+  lo=Math.max(-6,Math.floor(lo-.2));hiL=Math.max(lo+1,Math.ceil(hiL+.1));const Y=v=>3+(h-14)*(1-(clamp(v,lo,hiL)-lo)/(hiL-lo));
+  g.font='500 9px "IBM Plex Mono",monospace';g.fillStyle='rgba(255,215,138,.45)';g.strokeStyle='rgba(255,215,138,.12)';g.lineWidth=1;
+  for(let e=lo;e<=hiL;e+=Math.max(1,Math.round((hiL-lo)/4))){g.beginPath();g.moveTo(0,Y(e)+.5);g.lineTo(w,Y(e)+.5);g.stroke();if(Y(e)>10)g.fillText('1e'+minus(e),w-34,Y(e)-2)}
+  g.fillText('loss − min, log · step →',3,h-2);
+  R.M.forEach((m,k)=>{const p=m.path,n=p.length,st=Math.max(1,Math.floor(n/400));g.strokeStyle=TRAIL[k];g.lineWidth=1.5;g.beginPath();
+    for(let i=0;i<n;i+=st){const v=Math.log10(Math.max(1e-12,T.f(p[i][0],p[i][1])-T.fmin));const x=X(i),y=Y(v);i?g.lineTo(x,y):g.moveTo(x,y)}
+    if((n-1)%st){const v=Math.log10(Math.max(1e-12,T.f(p[n-1][0],p[n-1][1])-T.fmin));g.lineTo(X(n-1),Y(v))}g.stroke()})}
+
+/* ================= the course, in three.js ================= */
+let R3=null;
+try{R3=new THREE.WebGLRenderer({canvas:$('#c'),antialias:true,alpha:true,powerPreference:'high-performance'})}catch(e){R3=null}
+if(!R3)document.body.classList.add('nogl');
+geom(S.track);
+const scene=R3?makeScene():null;
+
+function makeScene(){
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(32,1,.1,300);
+  R3.setPixelRatio(Math.min(devicePixelRatio,2));R3.toneMapping=THREE.ACESFilmicToneMapping;R3.toneMappingExposure=1.05;R3.setClearColor(0,0);
+  { // a dark arena with floodlights, prefiltered so the marbles have something to reflect
+    const e=new THREE.Scene();e.add(new THREE.Mesh(new THREE.BoxGeometry(12,12,12),new THREE.MeshBasicMaterial({color:new THREE.Color(.012,.016,.03),side:THREE.BackSide})));
+    const L=(r,g,b,x,y,z,w,h)=>{const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),side:THREE.DoubleSide}));p.position.set(x,y,z);p.lookAt(0,0,0);e.add(p)};
+    L(6,5.4,4.6,-3,5.5,2,4,1.4);L(5,4.6,4,3.5,5.5,-1,3,1.2);L(.9,1.4,2.4,5.5,1,3,2,4);L(.35,.6,.25,0,-5.5,0,9,9);
+    const pm=new THREE.PMREMGenerator(R3);sc.environment=pm.fromScene(e,.04).texture;pm.dispose()}
+  sc.add(new THREE.HemisphereLight(0xc4d6ff,0x1c1408,.55));
+  const KEY=new THREE.Vector3(-.45,.8,.4).normalize();
+  const key=new THREE.DirectionalLight(0xfff1dc,2.3);key.position.copy(KEY).multiplyScalar(12);sc.add(key);
+  const rim=new THREE.DirectionalLight(0x86b4ff,.9);rim.position.set(7,4,-8);sc.add(rim);
+
+  // ---- the relief: one draped grid, coloured by height, contour lines every half decade of loss, mown stripes in the low turf
+  const N=176;
+  const tGeo=new THREE.BufferGeometry(),tPos=new Float32Array((N+1)*(N+1)*3),tNor=new Float32Array((N+1)*(N+1)*3),tL=new Float32Array((N+1)*(N+1)),tH=new Float32Array((N+1)*(N+1));
+  const idx=[];for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i,b=a+1,c=a+N+1,d=c+1;idx.push(a,b,c,b,d,c)}
+  tGeo.setIndex(idx);tGeo.setAttribute('position',new THREE.BufferAttribute(tPos,3));tGeo.setAttribute('normal',new THREE.BufferAttribute(tNor,3));
+  tGeo.setAttribute('aL',new THREE.BufferAttribute(tL,1));tGeo.setAttribute('aH',new THREE.BufferAttribute(tH,1));
+  const tMat=new THREE.ShaderMaterial({uniforms:{uKey:{value:KEY}},
+    vertexShader:`attribute float aL;attribute float aH;varying float vL;varying float vH;varying vec3 vN;varying vec3 vW;
+      void main(){vL=aL;vH=aH;vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader:`uniform vec3 uKey;varying float vL;varying float vH;varying vec3 vN;varying vec3 vW;
+      void main(){vec3 n=normalize(vN);float h=clamp(vH,0.,1.2);
+        vec3 c=mix(vec3(.05,.20,.08),vec3(.20,.42,.13),smoothstep(0.,.12,h));
+        c=mix(c,vec3(.45,.47,.22),smoothstep(.1,.3,h));c=mix(c,vec3(.66,.52,.30),smoothstep(.28,.52,h));
+        c=mix(c,vec3(.62,.58,.52),smoothstep(.5,.75,h));c=mix(c,vec3(.86,.83,.76),smoothstep(.74,1.,h));
+        float turf=1.-smoothstep(.1,.24,h);c*=1.+turf*.07*(step(.5,fract(vW.x*.55+vW.z*.18))-.5);
+        float q=vL*2.,fw=max(fwidth(q),1e-4),dd=abs(fract(q+.5)-.5);
+        float major=step(abs(fract(vL+.5)-.5),.26);
+        float ln=(1.-smoothstep(fw*(.55+.5*major),fw*(1.4+.8*major),dd))*(1.-smoothstep(.22,.55,fw));
+        c=mix(c,mix(vec3(.16,.13,.08),vec3(.02,.06,.03),1.-smoothstep(.1,.3,h)),ln*(.42+.25*major));
+        float dif=max(dot(n,uKey),0.);vec3 amb=mix(vec3(.10,.08,.06),vec3(.30,.36,.48),n.y*.5+.5);
+        gl_FragColor=vec4(c*(amb+dif*vec3(1.,.95,.86)*.95),1.);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`});
+  const terrain=new THREE.Mesh(tGeo,tMat);sc.add(terrain);
+  // the plinth: walnut walls that follow the relief's edge down to a base
+  const skirtM=new THREE.MeshStandardMaterial({color:0x3b2416,roughness:.62,metalness:0,side:THREE.DoubleSide});
+  const sGeo=new THREE.BufferGeometry(),sPos=new Float32Array(4*(N+1)*2*3);const sIdx=[];
+  for(let e=0;e<4;e++)for(let i=0;i<N;i++){const a=(e*(N+1)+i)*2;sIdx.push(a,a+1,a+2,a+2,a+1,a+3)}
+  sGeo.setIndex(sIdx);sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3));
+  const skirt=new THREE.Mesh(sGeo,skirtM);sc.add(skirt);
+  const baseM=new THREE.MeshStandardMaterial({color:0x1a0f08,roughness:.5,metalness:.1}),trimM=new THREE.MeshStandardMaterial({color:0xc8a050,roughness:.3,metalness:1});
+  const base=new THREE.Mesh(new THREE.BoxGeometry(1,.16,1),baseM);sc.add(base);
+  const trim=new THREE.Mesh(new THREE.BoxGeometry(1,.035,1),trimM);sc.add(trim);
+  const BASEY=-.32;
+
+  // ---- marbles, their shadows, their trails, their name tags
+  const shTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),gr=g.createRadialGradient(32,32,2,32,32,31);gr.addColorStop(0,'rgba(0,0,0,.6)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
+  const RAD=.2,mGeo=new THREE.SphereGeometry(RAD,36,24),shGeo=new THREE.PlaneGeometry(1,1);shGeo.rotateX(-Math.PI/2);
+  const MSPEC=[{metalness:.6,roughness:.25,emissiveIntensity:.25},{metalness:.75,roughness:.28,emissiveIntensity:.3},{metalness:.1,roughness:.12,emissiveIntensity:.35},{metalness:.1,roughness:.12,emissiveIntensity:.35}];
+  const labels=$('#labels'),TCAP=1500*12+8;
+  const MB=COL.map((col,k)=>{
+    const mat=new THREE.MeshStandardMaterial(Object.assign({color:col,emissive:col,transparent:true,opacity:1},MSPEC[k]));
+    const mesh=new THREE.Mesh(mGeo,mat);mesh.renderOrder=3;sc.add(mesh);
+    const sh=new THREE.Mesh(shGeo,new THREE.MeshBasicMaterial({map:shTex,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,toneMapped:false}));sh.scale.setScalar(.62);sc.add(sh);
+    const pos=new Float32Array(TCAP*2*3),ix=new Uint32Array((TCAP-1)*6);for(let i=0;i<TCAP-1;i++){const a=i*2;ix.set([a,a+1,a+2,a+2,a+1,a+3],i*6)}
+    const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));rg.setIndex(new THREE.BufferAttribute(ix,1));rg.setDrawRange(0,0);
+    const rib=new THREE.Mesh(rg,new THREE.MeshBasicMaterial({color:TRAIL[k],transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,side:THREE.DoubleSide}));
+    rib.frustumCulled=false;rib.renderOrder=2+k*.1;sc.add(rib);
+    const tag=document.createElement('div');tag.className='tag';tag.style.color=COL[k];tag.innerHTML=NAMES[k]+'<i></i>';labels.appendChild(tag);
+    return{k,mesh,mat,sh,rib,pos,np:0,seg:0,tag,tagTxt:'',spin:new THREE.Quaternion(),last:new THREE.Vector3(),offT:0,sx:0,sy:0}});
+  const WIDTH=[.05,.038,.027,.016]; // nested: where two marbles took the same line you still see both
+  // a hop between two landing points: straight in plan, an arc in height, never through the ground
+  const hopAt=(p,q,u,out)=>{const x=p[0]+(q[0]-p[0])*u,y=p[1]+(q[1]-p[1])*u,d=Math.hypot((q[0]-p[0])*G.sc,(q[1]-p[1])*G.sc);
+    const A=Math.min(1.5,.4*d)*clamp((d-.22)/.3,0,1),h0=gy(p[0],p[1]),h1=gy(q[0],q[1]);
+    out[0]=wx(x);out[2]=wz(y);out[1]=Math.max(h0+(h1-h0)*u+A*4*u*(1-u),gy(x,y));return out};
+  const tmpA=[0,0,0];
+  function pushTrail(b,p,q){ // append the hop p→q to this marble's ribbon
+    const d=Math.hypot((q[0]-p[0])*G.sc,(q[1]-p[1])*G.sc),n=clamp(Math.ceil(d/.14),1,12);
+    let px=-(q[1]-p[1]),pz=-(q[0]-p[0]);const L=Math.hypot(px,pz)||1;px/=L;pz/=L; // perpendicular in plan (world z runs against y)
+    for(let s=b.np?1:0;s<=n;s++){if(b.np>=TCAP)return;hopAt(p,q,s/n,tmpA);const o=b.np*6;
+      const w=WIDTH[b.k];b.pos[o]=tmpA[0]+px*w;b.pos[o+1]=tmpA[1]+.028;b.pos[o+2]=tmpA[2]+pz*w;b.pos[o+3]=tmpA[0]-px*w;b.pos[o+4]=tmpA[1]+.028;b.pos[o+5]=tmpA[2]-pz*w;b.np++}}
+  // the hop a marble is in the middle of: its last one, if it made it this step and the race is still going
+  const hopU=m=>!S.race.done()&&m.t===S.race.n&&m.status!=='off'?clamp(S.acc,0,1):1;
+  function syncTrail(b){const m=S.race.M[b.k],p=m.path,t=p.length-1,lim=m.status==='off'?m.at-1:hopU(m)<1?t-1:t;let ch=false;
+    while(b.seg<lim){pushTrail(b,p[b.seg],p[b.seg+1]);b.seg++;ch=true}
+    if(ch){const g=b.rib.geometry;g.attributes.position.needsUpdate=true;g.setDrawRange(0,Math.max(0,b.np-1)*6)}}
+
+  // ---- the starting gate and the flags
+  const white=new THREE.MeshStandardMaterial({color:0xf1ece2,roughness:.4,metalness:.1}),post=new THREE.CylinderGeometry(.028,.034,.5,10);
+  const stripe=(()=>{const c=document.createElement('canvas');c.width=128;c.height=8;const g=c.getContext('2d');for(let i=0;i<8;i++){g.fillStyle=i%2?'#f4efe6':'#d8202f';g.fillRect(i*16,0,16,8)}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t})();
+  const checker=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');for(let j=0;j<4;j++)for(let i=0;i<6;i++){g.fillStyle=(i+j)%2?'#111':'#f6f3ea';g.fillRect(i*64/6,j*16,64/6+1,16)}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t})();
+  const gate=new THREE.Group();sc.add(gate);
+  for(const s of[-1,1]){const p=new THREE.Mesh(post,white);p.position.set(s*.36,.25,0);gate.add(p)}
+  const bar=new THREE.Mesh(new THREE.BoxGeometry(.8,.05,.05),new THREE.MeshStandardMaterial({color:0x1aa3ff,emissive:0x1aa3ff,emissiveIntensity:.5,roughness:.4}));bar.position.y=.5;gate.add(bar);
+  const armP=new THREE.Group();armP.position.set(-.36,.2,0);gate.add(armP);
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(.72,.045,.03),new THREE.MeshStandardMaterial({map:stripe,roughness:.5}));arm.position.x=.36;armP.add(arm);
+  let flags=[];
+  const ringM=new THREE.MeshStandardMaterial({map:checker,roughness:.5,emissive:0xffffff,emissiveIntensity:.0});
+  function buildFlags(){flags.forEach(f=>{sc.remove(f.g);f.g.traverse(o=>{if(o.geometry)o.geometry.dispose()})});flags=[];
+    const rr=OD.ringR(G.T)*G.sc;
+    G.T.min.forEach((p,i)=>{const g=new THREE.Group();g.position.set(wx(p[0]),gy(p[0],p[1]),wz(p[1]));sc.add(g);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(rr,.022,8,48),ringM);ring.rotation.x=Math.PI/2;ring.position.y=.03;g.add(ring);
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,1.1,8),white);pole.position.set(rr,.55,0);g.add(pole);
+      const fg=new THREE.PlaneGeometry(.5,.32,8,1);fg.translate(.25,0,0);const fl=new THREE.Mesh(fg,new THREE.MeshStandardMaterial({map:checker,side:THREE.DoubleSide,roughness:.6,emissive:0xffffff,emissiveMap:checker,emissiveIntensity:.25}));fl.position.set(rr+.02,.92,0);g.add(fl);
+      flags.push({g,fl,base:fg.attributes.position.array.slice(),i})})}
+
+  // ---- building a course
+  const tmpV=new THREE.Vector3();
+  function build(){
+    const T=G.T;
+    for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const x=G.a+G.w*i/N,y=G.c+G.h*j/N,v=j*(N+1)+i,f=T.f(x,y)-T.fmin;
+      tPos[v*3]=wx(x);tPos[v*3+1]=gy(x,y);tPos[v*3+2]=wz(y);tH[v]=hn(x,y);tL[v]=clamp(Math.log10(Math.max(f,1e-9)),-2.6,7)}
+    for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const v=j*(N+1)+i,l=Math.max(0,i-1),r=Math.min(N,i+1),dn=Math.max(0,j-1),up=Math.min(N,j+1);
+      const hx=(tPos[(j*(N+1)+r)*3+1]-tPos[(j*(N+1)+l)*3+1])/(tPos[(j*(N+1)+r)*3]-tPos[(j*(N+1)+l)*3]);
+      const hz=(tPos[(up*(N+1)+i)*3+1]-tPos[(dn*(N+1)+i)*3+1])/(tPos[(up*(N+1)+i)*3+2]-tPos[(dn*(N+1)+i)*3+2]);
+      tmpV.set(-hx,1,-hz).normalize();tNor[v*3]=tmpV.x;tNor[v*3+1]=tmpV.y;tNor[v*3+2]=tmpV.z}
+    tGeo.attributes.position.needsUpdate=tGeo.attributes.normal.needsUpdate=tGeo.attributes.aL.needsUpdate=tGeo.attributes.aH.needsUpdate=true;tGeo.computeBoundingSphere();
+    // walls: S, E, N, W edges
+    const edge=(e,i)=>{const u=i/N;return e===0?[G.a+G.w*u,G.c]:e===1?[G.b,G.c+G.h*u]:e===2?[G.b-G.w*u,G.d]:[G.a,G.d-G.h*u]};
+    for(let e=0;e<4;e++)for(let i=0;i<=N;i++){const[x,y]=edge(e,i),o=((e*(N+1)+i)*2)*3;sPos[o]=sPos[o+3]=wx(x);sPos[o+2]=sPos[o+5]=wz(y);sPos[o+1]=gy(x,y);sPos[o+4]=BASEY}
+    sGeo.attributes.position.needsUpdate=true;sGeo.computeVertexNormals();sGeo.computeBoundingSphere();
+    const W=G.w*G.sc,D=G.h*G.sc;base.scale.set(W+.5,1,D+.5);base.position.y=BASEY-.08;trim.scale.set(W+.52,1,D+.52);trim.position.y=BASEY+.005;
+    buildFlags();camS.yaw=TRK[G.key].yaw;camS.yv=0;fit()}
+  function reset(){for(const b of MB){b.np=0;b.seg=0;b.rib.geometry.setDrawRange(0,0);b.offT=0;b.mat.opacity=1;b.mesh.visible=true;b.sh.visible=true;b.spin.identity();b.last.set(NaN,0,0)}
+    // the gate faces downhill: its local +z along −∇f, which in world space is (−gx, +gy)
+    const[x,y]=S.start,[gx,gyy]=G.T.g(x,y);
+    gate.position.set(wx(x),gy(x,y),wz(y));gate.rotation.y=gx||gyy?Math.atan2(-gx,gyy):0;armA=0;labelsDirty=true}
+  let armA=0;
+  function catchUp(){for(const b of MB){if(S.race.M[b.k].status==='off')b.offT=9}}
+
+  // ---- camera
+  const camS={yaw:-.5,pitch:.86,yv:0,pv:0,dist:20,zoom:1,tgt:new THREE.Vector3(0,.7,0)};
+  let W=1,H=1,box=[0,0,1,1],labelsDirty=true;
+  const aim=(yw,d)=>{cam.position.set(camS.tgt.x+Math.sin(yw)*Math.cos(camS.pitch)*d,camS.tgt.y+Math.sin(camS.pitch)*d,camS.tgt.z+Math.cos(yw)*Math.cos(camS.pitch)*d);cam.lookAt(camS.tgt);cam.updateMatrixWorld()};
+  // frame the plinth: project its rim (as the sway will swing it) and pull the camera in or out until it fills the free box
+  function fit(){const st=$('#stage'),w=st.clientWidth,h=st.clientHeight,desk=innerWidth>820;W=w;H=h;R3.setSize(w,h,false);cam.aspect=w/h;
+    const bx0=desk?clamp(w*.27,300,430):8,bx1=desk?w-388:w-8,by0=desk?20:8,by1=h-(desk?20:8);box=[bx0,by0,bx1,by1];
+    const bw=Math.max(200,bx1-bx0),bh=by1-by0;cam.clearViewOffset();cam.updateProjectionMatrix();
+    const pts=[];for(let i=0;i<sPos.length;i+=3*8)pts.push(new THREE.Vector3(sPos[i],sPos[i+1],sPos[i+2]));
+    flags.forEach(f=>pts.push(f.g.position.clone().setY(f.g.position.y+1.1)));
+    let d=camS.dist||20,cx=w/2,cy=h/2;
+    for(let it=0;it<6;it++){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+      for(const yw of[camS.yaw-.12,camS.yaw,camS.yaw+.12]){aim(yw,d);for(const p of pts){tmpV.copy(p).project(cam);const X=(tmpV.x+1)/2*w,Y=(1-tmpV.y)/2*h;if(X<x0)x0=X;if(X>x1)x1=X;if(Y<y0)y0=Y;if(Y>y1)y1=Y}}
+      const k=Math.max((x1-x0)/bw,(y1-y0)/bh);cx=(x0+x1)/2;cy=(y0+y1)/2;if(Math.abs(k-1)<.004)break;d*=k}
+    camS.dist=d;cam.setViewOffset(w,h,cx-(bx0+bx1)/2,cy-(by0+by1)/2,w,h);cam.updateProjectionMatrix();labelsDirty=true}
+  const scr=(p,out)=>{tmpV.copy(p).project(cam);out[0]=(tmpV.x+1)/2*W;out[1]=(1-tmpV.y)/2*H;return out[2]=tmpV.z,out};
+  const xy=[0,0,0],P=new THREE.Vector3(),Q3=new THREE.Vector3(),ax=new THREE.Vector3(),qq=new THREE.Quaternion();
+  let lastCam='';
+  function update(dt){
+    // camera: three-quarter view, a slow sway while nobody is touching it
+    camS.yaw+=camS.yv;camS.pitch=clamp(camS.pitch+camS.pv,.32,1.25);camS.yv*=.86;camS.pv*=.86;if(Math.abs(camS.yv)<1e-5)camS.yv=0;if(Math.abs(camS.pv)<1e-5)camS.pv=0;
+    const sway=STATIC?0:.12*Math.sin(simT*.12),d=camS.dist*camS.zoom,yw=camS.yaw+sway;
+    cam.position.set(camS.tgt.x+Math.sin(yw)*Math.cos(camS.pitch)*d,camS.tgt.y+Math.sin(camS.pitch)*d,camS.tgt.z+Math.cos(yw)*Math.cos(camS.pitch)*d);cam.lookAt(camS.tgt);cam.updateMatrixWorld();
+    const ck=yw.toFixed(4)+camS.pitch.toFixed(4)+d.toFixed(3)+W+'x'+H;if(ck!==lastCam){lastCam=ck;labelsDirty=true}
+    // gate arm lifts as the race starts
+    const armW=S.race.n>0?1.35:0;armA=STATIC||FIXED&&dt===0?armW:armA+(armW-armA)*Math.min(1,dt*9);armP.rotation.z=armA;
+    flags.forEach(f=>{const a=f.fl.geometry.attributes.position,bp=f.base;for(let v=0;v<a.count;v++){const x=bp[v*3];a.array[v*3+2]=STATIC?x*.12:Math.sin(x*14-simT*5)*x*.18}a.needsUpdate=true});
+    const R=S.race;
+    for(const b of MB){const m=R.M[b.k],p=m.path,n=p.length;syncTrail(b);
+      if(m.status==='scratched'){b.mesh.visible=b.sh.visible=false;continue}
+      if(m.status==='off'){ // launched off the table: fly out along the last hop and drop out of sight
+        const a=p[Math.max(0,m.at-1)],z=p[m.at];b.offT+=dt;const s=b.offT;hopAt(a,a,0,tmpA);
+        let ux=sane(z[0])-a[0],uy=sane(z[1])-a[1];const L=Math.hypot(ux,uy)||1;ux/=L;uy/=L;
+        P.set(tmpA[0]+ux*G.sc*3.2*s,tmpA[1]+RAD+2.4*s-7*s*s,tmpA[2]-uy*G.sc*3.2*s);b.mesh.position.copy(P);b.mat.opacity=clamp(1-s/1.1,0,1);b.mesh.visible=s<1.1;b.sh.visible=false}
+      else{
+        if(n>=2)hopAt(p[n-2],p[n-1],hopU(m),tmpA);else hopAt(p[0],p[0],0,tmpA);
+        P.set(tmpA[0],tmpA[1]+RAD,tmpA[2]);
+        // roll: turn about the axis across the motion by distance / radius
+        if(b.last.x===b.last.x){Q3.subVectors(P,b.last);const dl=Math.hypot(Q3.x,Q3.z);if(dl>1e-5&&dl<3){ax.set(Q3.z,0,-Q3.x).normalize();qq.setFromAxisAngle(ax,dl/RAD);b.spin.premultiply(qq)}}
+        b.last.copy(P);b.mesh.position.copy(P);b.mesh.quaternion.copy(b.spin);b.mesh.visible=true;b.mat.opacity=1;
+        const gnd=gy(dx(P.x),dy(P.z));b.sh.position.set(P.x,gnd+.02,P.z);const air=P.y-RAD-gnd;b.sh.material.opacity=clamp(1-air*.8,.15,1);b.sh.scale.setScalar(.62+air*.25);b.sh.visible=true}
+      const pl=placeOf().indexOf(b.k),txt=m.status==='fin'?ORD[pl]:m.status==='off'?'off':m.status==='dnf'?'DNF':'';
+      if(txt!==b.tagTxt){b.tagTxt=txt;b.tag.lastChild.textContent=txt}
+      b.tag.classList.toggle('gone',m.status==='off'&&b.offT>.6)}
+    ringM.emissiveIntensity=R.order.length&&!STATIC?.08+.06*Math.sin(simT*5):0;
+    placeLabels();
+  }
+  const T2=[];
+  function placeLabels(){ // name tags above the marbles, nudged apart so they never sit on each other
+    const pts=MB.map(b=>{scr(tmpV.copy(b.mesh.position).setY(b.mesh.position.y+RAD+.08),xy);return{b,x:xy[0],y:xy[1],vis:b.mesh.visible&&xy[2]<1}});
+    pts.sort((p,q)=>q.y-p.y);
+    for(let i=0;i<pts.length;i++)for(let j=0;j<i;j++){const a=pts[i],c=pts[j];if(Math.abs(a.x-c.x)<84&&Math.abs(a.y-c.y)<21&&a.vis&&c.vis)a.y=Math.min(a.y,c.y-21)}
+    for(const p of pts){const tr=`translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px) translate(-50%,-100%)`;if(p.b.tag._tr!==tr){p.b.tag._tr=tr;p.b.tag.style.transform=tr}if(p.vis!==p.b.tag._vis){p.b.tag._vis=p.vis;p.b.tag.style.display=p.vis?'':'none'}}}
+  // where a ray from the pointer meets the relief: march, then bisect
+  const ray=new THREE.Raycaster(),pv=new THREE.Vector2();
+  function pick(cx,cy){const r=R3.domElement.getBoundingClientRect();pv.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(pv,cam);
+    const o=ray.ray.origin,dv=ray.ray.direction,above=t=>{const X=o.x+dv.x*t,Z=o.z+dv.z*t;return o.y+dv.y*t-gy(dx(X),dy(Z))};
+    const t1=camS.dist*camS.zoom*2.2,n=500;let prev=0;
+    for(let i=1;i<=n;i++){const t=t1*i/n;const X=o.x+dv.x*t,Z=o.z+dv.z*t,x=dx(X),y=dy(Z);if(x<G.a||x>G.b||y<G.c||y>G.d){prev=t;continue}
+      if(above(t)<0){let lo=prev,hi=t;for(let k=0;k<30;k++){const md=(lo+hi)/2;above(md)<0?hi=md:lo=md}const X2=o.x+dv.x*hi,Z2=o.z+dv.z*hi;return[dx(X2),dy(Z2)]}prev=t}
+    return null}
+  function screenOf(x,y){scr(tmpV.set(wx(x),gy(x,y),wz(y)),xy);const r=R3.domElement.getBoundingClientRect();return[xy[0]+r.left,xy[1]+r.top]}
+  build();
+  return{build,reset,catchUp,update,fit,pick,screenOf,camS,render:()=>R3.render(sc,cam),setDirty:()=>{labelsDirty=true}};
+}
+
+/* ---------- pointer: drag turns the course, a click moves the gate ---------- */
+const tip=$('#tip');
+if(scene){
+  const cv=$('#c');let drag=null;
+  cv.addEventListener('pointerdown',e=>{poke();drag={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:0,touch:e.pointerType==='touch'};if(!drag.touch)cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{
+    if(drag){const ddx=e.clientX-drag.x,ddy=e.clientY-drag.y;drag.moved+=Math.abs(ddx)+Math.abs(ddy);drag.x=e.clientX;drag.y=e.clientY;
+      if(drag.moved>6){cv.classList.add('drag');scene.camS.yv=clamp(-ddx*.004,-.05,.05);if(!drag.touch)scene.camS.pv=clamp(ddy*.003,-.03,.03);tip.style.opacity=0}return}
+    const p=scene.pick(e.clientX,e.clientY);if(!p){tip.style.opacity=0;cv.classList.remove('aim');return}
+    cv.classList.add('aim');tip.innerHTML=`x ${fmtXY(p[0])} · y ${fmtXY(p[1])}<br>loss − min ${fmtL(G.T.f(p[0],p[1])-G.T.fmin)}<br><span style="opacity:.6">click to put the gate here</span>`;
+    tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.style.opacity=1});
+  const end=e=>{if(drag&&drag.moved<6){const p=scene.pick(e.clientX,e.clientY);if(p)moveGate(p,'click')}drag=null;cv.classList.remove('drag')};
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',()=>{drag=null;cv.classList.remove('drag')});
+  cv.addEventListener('pointerleave',()=>{tip.style.opacity=0});
+  cv.addEventListener('wheel',e=>{if(innerWidth<=820)return;e.preventDefault();poke();scene.camS.zoom=clamp(scene.camS.zoom*(1+e.deltaY*.001),.6,1.6)},{passive:false});
+  addEventListener('resize',()=>{scene.fit();chartDirty=true;redraw()});
+}
+function moveGate(p,why){S.start=[+p[0].toFixed(4),+p[1].toFixed(4)];S.gateMoved=true;newRace(why);redraw()}
+
+/* ---------- captions and the tour ---------- */
+let shownCap='',capTimer=0;
+function cap(html){if(html===shownCap)return;const el=$('#caption');shownCap=html;
+  if(STATIC||FIXED){el.innerHTML=html;el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{el.innerHTML=shownCap;el.classList.remove('fade')},360)}
+const k=(i,s)=>`<b class="k${i}">${s||NAMES[i]}</b>`,mm=s=>`<span class="m">${s}</span>`;
+const R_=()=>S.race,M_=i=>S.race.M[i];
+function summary(){const R=S.race,pl=placeOf(),fin=pl.filter(i=>R.M[i].status==='fin');
+  if(!fin.length)return`Nobody reached a flag in ${R.n} steps. ${pl.map(i=>k(i)+' '+(R.M[i].status==='off'?'flew off':'stopped at loss '+fmtL(R.loss(R.M[i])))).join(', ')}.`;
+  const multi=G.T.min.length>1;
+  return`${k(fin[0])} wins in ${fin[0]===undefined?'':R.M[fin[0]].at} steps${multi?' ('+compass(G.T.min[R.M[fin[0]].minIdx])+' flag)':''}${fin.slice(1).map(i=>`, ${k(i)} ${R.M[i].at}${multi?' ('+compass(G.T.min[R.M[i].minIdx])+')':''}`).join('')}${pl.filter(i=>R.M[i].status!=='fin').map(i=>`; ${k(i)} ${R.M[i].status==='off'?'flew off at step '+R.M[i].at:R.M[i].status==='dnf'?'ran out of steps at loss '+fmtL(R.loss(R.M[i])):'still running'}`).join('')}.`}
+const offRidge=i=>{const p=M_(i).path;for(let j=0;j<p.length;j++)if(Math.abs(p[j][1])>.1)return j;return -1};
+const where=i=>compass(G.T.min[M_(i).minIdx]);
+// the step at which Adam first gets below Momentum's loss after the opening scramble, read off the two paths
+const passStep=()=>{const T=G.T,a=M_(3).path,b=M_(1).path,n=Math.min(a.length,b.length);for(let i=101;i<n;i++)if(T.f(a[i][0],a[i][1])<T.f(b[i][0],b[i][1]))return i;return -1};
+let passAt=-1;
+const CAP={
+  off:()=>`<b>They’re off.</b> Four marbles leave one gate on Rosenbrock’s banana and race for the flag at its lowest point. Every step, each one reads the slope under it and moves by its own rule. Nothing else pushes them.`,
+  hops:()=>`${k(1)} adds each new slope to a running sum. It hops from wall to wall of the valley at first; then the sideways pushes cancel, the push along the floor builds, and it takes the lead.`,
+  sgd:()=>`${k(0)} steps exactly η × slope, with η = ${fmtLR(S.lrs[0])}. Any bigger and the steep walls throw it off the table; this small, the gentle valley floor is a crawl. ${R_().n} steps in, it is at x = ${fmtXY(M_(0).x)}; the flag is at x = 1.`,
+  pass:()=>`Near the flag the slope fades and ${k(1)}’s steps shrink with it. ${k(3)} divides by the slope’s recent size, so its stride stays near η: it passes ${k(1)} at step ${passAt}.`,
+  rosenEnd:()=>`${k(3)} takes the flag at step ${M_(3).at}, ${k(1)} at ${M_(1).at}. ${k(2)} scales its steps too, but without momentum it zigzags across the valley floor and is still at loss ${fmtL(R_().loss(M_(2)))}.`,
+  saddle:()=>`<b>The saddle.</b> The gate sits on a mountain pass, 0.0001 off its ridge line. Across the ridge the slope is almost exactly zero.`,
+  saddleGo:()=>`${k(2)} and ${k(3)} divide each step by the slope’s size, so a tiny slope still earns a full step: they left the ridge in ${offRidge(2)} and ${offRidge(3)} steps. ${k(1)} and ${k(0)} had to wait for the slope to grow: ${offRidge(1)} and ${offRidge(0)} steps.`,
+  himmel:()=>`<b>Four valleys, one hilltop.</b> Himmelblau’s function has four lowest points, all of loss 0. The gate is beside its summit.`,
+  himmelEnd:()=>{const by={};[0,1,2,3].forEach(i=>{if(M_(i).status==='fin')(by[where(i)]=by[where(i)]||[]).push(i)});const v=Object.entries(by);
+    const nm={NE:'north-east',NW:'north-west',SE:'south-east',SW:'south-west'};
+    return`${v.map(([c,l],j)=>`${l.map(i=>k(i)).join(' and ')}${j?' into':' roll into'} the ${nm[c]} ${j?'one':'valley'}`).join('; ')}. Same ground, same gate: the optimizer chose the answer, not just the speed.`},
+  you:()=>`<b>Your turn.</b> Drag a learning rate, pick a course, add noise, or click the ground to move the gate. Try SGD at η = 0.002 on the banana.`,
+  result:()=>`<b>${TRK[S.track].label}.</b> ${summary()}`,
+};
+let tour=null,tourDone=false;
+// each beat waits for its moment in the race and for the previous caption to have been on screen a while
+const TOUR=[
+  {when:()=>true,gap:0,go:()=>{S.speed='race';S.noiseU=0;passAt=-1;setTrack('rosen','tour');cap(CAP.off())}},
+  {when:()=>R_().n>=30,gap:3.4,go:()=>cap(CAP.hops())},
+  {when:()=>R_().n>=170,gap:4.2,go:()=>cap(CAP.sgd())},
+  {when:()=>{passAt=passStep();return passAt>0||M_(3).status!=='run'},gap:3.6,go:()=>cap(passAt>0?CAP.pass():CAP.rosenEnd())},
+  {when:()=>M_(1).status!=='run'&&M_(3).status!=='run',gap:3,go:()=>cap(CAP.rosenEnd())},
+  {when:()=>true,gap:4.6,go:()=>{setTrack('saddle','tour');cap(CAP.saddle())}},
+  {when:()=>[0,1,2,3].every(i=>offRidge(i)>0),gap:2.6,go:()=>cap(CAP.saddleGo())},
+  {when:()=>R_().done(),gap:4.6,go:()=>{setTrack('himmel','tour');cap(CAP.himmel())}},
+  {when:()=>R_().done(),gap:3.2,go:()=>cap(CAP.himmelEnd())},
+  {when:()=>true,gap:5,go:()=>{cap(CAP.you());tour=null;tourDone=true}},
+];
+function startTour(){tour={k:0,t:-1e9};tourDone=false;syncControls()}
+function poke(){if(tour){tour=null;cap(CAP.you())}}
+function tourTick(){
+  while(tour&&tour.k<TOUR.length){const b=TOUR[tour.k];if(simT-tour.t<b.gap||!b.when())break;tour.k++;tour.t=simT;b.go()}}
+let lastDone=false;
+function afterRace(){ // when a race you started yourself ends, say how it went
+  const d=S.race.done();if(d&&!lastDone&&!tour&&S.race.n>0)cap(CAP.result());lastDone=d}
+
+/* ---------- the loop ---------- */
+function redraw(){if(!S.race)return;if(scene){scene.update(0);scene.render()}if(boardDirty){boardDirty=false;board()}if(chartDirty){chartDirty=false;chart()}}
+function update(dt){
+  simT+=dt;tourTick();if(!S.race)return;
+  if(!STATIC)advance(dt);
+  afterRace();
+  if(scene)scene.update(dt);
+  if(boardDirty){boardDirty=false;board()}
+  if(chartDirty&&simT-chartT>.1){chartDirty=false;chartT=simT;chart()}
+}
+let chartT=-1;
+let last=0;window.__frame=0;
+function frame(ts,skipDraw){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the race
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.25);last=now;window.__frame++;
+  update(dt);if(scene&&!skipDraw)scene.render();
+  const R=S.race;window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,track:S.track,step:R.n,done:R.done(),status:R.M.map(m=>m.status)};
+}
+let ready=false;
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  const want=Q.get('track');
+  if(want&&TRK[want]){const st=Q.get('start'),lr=Q.get('lr');
+    const s=st&&st.split(',').map(Number),l=lr&&lr.split(',').map(Number);
+    if(Q.has('noise'))S.noiseU=clamp(+Q.get('noise')||0,0,1);
+    setTrack(want,'url',{start:s&&s.length===2&&s.every(Number.isFinite)?s:null,lrs:l&&l.length===4&&l.every(v=>v>0)?l.map(v=>LRS[lrIdx(v)]):null});cap(CAP.you())}
+  else if(STATIC){setTrack('rosen','static');cap(CAP.result())}
+  else{startTour();if(FIXED){let g=0;while(g++<6000&&!(S.race&&S.track==='rosen'&&S.race.n>=300))update(1/60)}}
+  syncControls();ready=true;
+}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+(async()=>{await start();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the race
+window.derby={
+  state:()=>{if(!ready||!S.race)return{ready:false};const R=S.race;return{ready:true,track:S.track,start:[...S.start],lrs:[...S.lrs],noise:sigma(),noiseU:S.noiseU,seed:S.seed,max:MAXSTEP,speed:S.speed,
+    step:R.n,done:R.done(),order:[...R.order],place:placeOf(),marbles:R.M.map(m=>({key:m.key,status:m.status,at:m.at,min:m.minIdx,x:m.x,y:m.y,t:m.t,loss:R.loss(m),vx:m.vx,vy:m.vy,sx:m.sx,sy:m.sy,mx:m.mx,my:m.my})),
+    tour:tour?tour.k:null,tourDone,simT:+simT.toFixed(3),cam:scene?{yaw:+scene.camS.yaw.toFixed(4),pitch:+scene.camS.pitch.toFixed(4),zoom:scene.camS.zoom}:null,caption:$('#caption').textContent,log:LOG.map(e=>JSON.parse(JSON.stringify(e))),gateMoved:S.gateMoved}},
+  paths:()=>S.race?S.race.M.map(m=>m.path.map(p=>[p[0],p[1]])):null,
+  screenOf:(x,y)=>scene?scene.screenOf(x,y):null,
+};
+</script>
+</body>
+</html>
