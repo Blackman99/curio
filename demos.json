@@ -1,5 +1,15 @@
 [
  {
+  "slug": "reward-regatta",
+  "title": "Reward Regatta",
+  "no": "025",
+  "date": "2026-10-23",
+  "kind": "Reward hacking \u00b7 SVG sea chart",
+  "blurb": "A sailing boat learns a race by real tabular Q-learning, 50,000 practice runs in your browser. Pay it for buoys like the game's score and it circles the lagoon forever instead of finishing; pay for progress and it hovers at the line. Rewrite the rules, drag the buoys, watch it learn again.",
+  "color": "#3f50a6",
+  "exhibit": "regatta"
+ },
+ {
   "slug": "optimizer-derby",
   "title": "Optimizer Derby",
   "no": "024",
