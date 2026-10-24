@@ -1,5 +1,15 @@
 [
  {
+  "slug": "tsne-planisphere",
+  "title": "t-SNE Planisphere",
+  "no": "026",
+  "date": "2026-10-24",
+  "kind": "t-SNE \u00b7 Canvas star chart",
+  "blurb": "Five hundred handwritten digits, points in 400 dimensions, become a turning star chart as real t-SNE runs in your browser: random dust gathers into constellations, one per digit, without ever being told which digit is which. Change the perplexity to watch the sky shatter, or draw a digit and see where it lands.",
+  "color": "#720c97",
+  "exhibit": "planisphere"
+ },
+ {
   "slug": "reward-regatta",
   "title": "Reward Regatta",
   "no": "025",
