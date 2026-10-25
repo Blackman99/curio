@@ -1,5 +1,15 @@
 [
  {
+  "slug": "speculative-press",
+  "title": "Speculative Press",
+  "no": "027",
+  "date": "2026-10-25",
+  "kind": "Speculative decoding \u00b7 DOM press",
+  "blurb": "A cheap model pencils a few words ahead; one stroke of the big model checks them all at once, keeps each with probability min(1, p/q) and prints one word of its own. Real n-gram models trained on Franklin's Autobiography, real speculative sampling, and a proof card that tallies 20,000 strokes to show the text keeps the big model's odds.",
+  "color": "#931067",
+  "exhibit": "press"
+ },
+ {
   "slug": "tsne-planisphere",
   "title": "t-SNE Planisphere",
   "no": "026",
