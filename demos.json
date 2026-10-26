@@ -1,5 +1,15 @@
 [
  {
+  "slug": "random-forest",
+  "title": "Random Forest",
+  "no": "028",
+  "date": "2026-10-26",
+  "kind": "Ensembles \u00b7 three.js forest",
+  "blurb": "A grove of real CART decision trees, each grown in your browser on its own bootstrap sample of the pebbles on a meadow. Alone they average 90.4% on fresh pebbles; sixty voting get 95.3%. Hang a lantern and every tree drops the leaf it lands in. Plant, fell or prune the forest and watch the vote move.",
+  "color": "#21856c",
+  "exhibit": "grove"
+ },
+ {
   "slug": "speculative-press",
   "title": "Speculative Press",
   "no": "027",

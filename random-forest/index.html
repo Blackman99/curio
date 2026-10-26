@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Random Forest — a grove of real decision trees that vote on a meadow</title>
+<meta name="description" content="A literal forest: every tree is a real CART decision tree grown on its own bootstrap sample of the pebbles on a meadow. Its shadow is its opinion, the meadow's colour is the forest's vote. Plant trees, fell them, cut them back, hang a lantern to watch every tree drop its leaf.">
+<meta property="og:title" content="Random Forest">
+<meta property="og:description" content="Every tree is a real decision tree grown on its own bootstrap sample. Hang a lantern on the meadow and each tree drops one leaf: its vote. Plant, fell and prune the forest.">
+<meta property="og:image" content="https://blackman99.github.io/curio/random-forest/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Random Forest">
+<meta name="twitter:description" content="A grove of real CART trees, each grown on its own bootstrap sample, voting leaf by leaf on a meadow of pebbles.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/random-forest/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,800;1,9..144,500;1,9..144,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#06100b;--chalk:#eee7d6;--chalk2:#a7b2a3;--acc:#f2c46b;--line:rgba(190,220,170,.2);--panel:rgba(7,15,11,.84);
+  --A:#f39a4a;--B:#4fd1ae}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--chalk);font-family:'Source Serif 4',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden;background:radial-gradient(110% 85% at 50% 40%,#173123 0%,#0b1a12 46%,#040906 100%) fixed}
+.mono{font-family:'DM Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#stage{position:fixed;inset:0;overflow:hidden}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#c.aim{cursor:crosshair}
+#c.tree{cursor:pointer}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#labels>div{position:absolute;left:0;top:0;will-change:transform;white-space:nowrap}
+.tally{font:500 13px/1 'DM Mono',monospace;padding:5px 9px 4px;border-radius:999px;background:rgba(6,12,9,.86);border:1px solid rgba(242,196,107,.55);box-shadow:0 2px 12px rgba(0,0,0,.55);transition:opacity .3s}
+.tally b{font-weight:500}
+.tally .ka{color:var(--A)}.tally .kb{color:var(--B)}
+.tally i{font-style:normal;color:var(--chalk2);margin:0 5px}
+.ttag{font:500 11px/1 'DM Mono',monospace;color:#fff3d6;padding:4px 7px 3px;border-radius:999px;background:rgba(6,12,9,.8);border:1px solid rgba(255,243,214,.5)}
+.hide{opacity:0}
+
+#title{position:fixed;left:32px;top:24px;max-width:390px;z-index:2;pointer-events:none}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--acc);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(6,12,9,.6);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--acc);color:#1a1205;outline:none}
+.kick{margin-top:18px;font:500 11px/1.3 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--acc)}
+h1{margin:6px 0 10px;font:800 clamp(54px,5.6vw,88px)/.86 'Fraunces',Georgia,serif;letter-spacing:-.015em;text-shadow:0 4px 30px rgba(0,0,0,.7)}
+h1 em{display:block;font-style:italic;font-weight:700;color:var(--B)}
+.sub{margin:0;font-size:17px;line-height:1.42;color:var(--chalk2);max-width:350px;text-shadow:0 1px 3px #000,0 2px 14px #000}
+.sub b{color:var(--chalk);font-weight:600}
+#legend{margin-top:14px;display:grid;gap:6px;font:400 12px/1.3 'DM Mono',monospace;color:var(--chalk2);text-shadow:0 1px 3px #000}
+#legend b{font-weight:500}
+.peb{display:inline-block;width:11px;height:8px;border-radius:50%;margin-right:7px;vertical-align:0;box-shadow:inset -2px -2px 3px rgba(0,0,0,.4),inset 1px 1px 2px rgba(255,255,255,.55)}
+.peb.a{background:var(--A)}.peb.b{background:var(--B)}
+.lit{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:7px;vertical-align:3px;background:#ffe2a0;box-shadow:0 0 6px #ffcf70}
+.ka,#caption .ka{color:var(--A)}.kb,#caption .kb{color:var(--B)}
+#story{position:fixed;left:32px;bottom:26px;width:380px;z-index:2;pointer-events:none}
+#caption{margin:0;font:400 18px/1.42 'Source Serif 4',serif;color:#f5efe0;text-shadow:0 1px 3px #000,0 2px 18px #000;min-height:5.7em;transition:opacity .35s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace}
+
+#panel{position:fixed;right:18px;top:18px;bottom:18px;width:360px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);
+  border:1px solid var(--line);border-radius:16px;padding:14px 15px 13px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(220,240,200,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10.5px/1 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+.lab b{font:500 12px/1 'DM Mono',monospace;letter-spacing:0;color:var(--chalk);text-transform:none}
+.sec{margin-bottom:13px}
+#board{border-radius:12px;background:#030805;border:1px solid rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 0 8px 24px rgba(0,0,0,.5);padding:10px 11px 8px}
+.scores{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px;align-items:end}
+.sc{display:flex;flex-direction:column;gap:4px}
+.sc span{font:500 9.5px/1.1 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk2)}
+.sc b{font:700 20px/1 'Fraunces',serif;color:var(--chalk);font-variant-numeric:tabular-nums}
+.sc.big b{font-size:30px;color:#ffe3a6}
+#chart{display:block;width:100%;height:84px;margin-top:9px}
+.bnote{display:flex;justify-content:space-between;gap:6px;margin-top:5px;font:400 10px/1.35 'DM Mono',monospace;color:rgba(238,231,214,.62);white-space:nowrap}
+.bnote b{color:var(--chalk);font-weight:500}
+#tally,#treeBox{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:rgba(242,196,107,.04)}
+#tally p,#treeBox p{margin:0;font:400 14.5px/1.4 'Source Serif 4',serif;color:var(--chalk2)}
+#tally p b,#treeBox p b{color:var(--chalk);font-weight:600}
+#tbar{display:flex;height:9px;border-radius:5px;overflow:hidden;margin:8px 0 2px;background:#111}
+#tbar i{display:block;height:100%}
+#tbar .a{background:var(--A)}#tbar .b{background:var(--B)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip,.btn{border:1px solid var(--line);background:rgba(242,196,107,.05);border-radius:999px;padding:6px 9px;font:400 11.5px/1 'DM Mono',monospace;color:var(--chalk)}
+.chip:hover,.btn:hover,.chip:focus-visible,.btn:focus-visible{background:rgba(242,196,107,.18);border-color:var(--acc);outline:none}
+.chip.on,.btn.on{background:var(--acc);color:#1a1205;border-color:var(--acc)}
+.btn{border-radius:9px;padding:8px 8px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.trees{display:grid;grid-template-columns:34px 1fr 34px;gap:8px;align-items:center}
+.trees .btn{padding:6px 0;font-size:15px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer;--k:var(--acc)}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,.08),var(--k));box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,.08),var(--k))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--k) 42%,#111 120%);box-shadow:0 2px 8px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--k) 42%,#111 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--acc);outline-offset:3px}
+.hint{font:italic 400 14px/1.35 'Source Serif 4',serif;color:var(--chalk2);margin:7px 0 0}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font:500 10.5px/1 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.45;color:var(--chalk2);margin:10px 0 0}
+details code{font:12px 'DM Mono',monospace;color:var(--chalk)}
+details a,.foot a{color:var(--acc)}
+.foot{margin-top:12px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(238,231,214,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--acc);text-decoration:underline;font:inherit}
+#tip{position:fixed;z-index:5;pointer-events:none;padding:7px 9px;border-radius:9px;background:rgba(7,15,11,.93);border:1px solid var(--line);font:400 11px/1.5 'DM Mono',monospace;color:var(--chalk);opacity:0;transform:translate(14px,14px);transition:opacity .15s;white-space:nowrap}
+#nogl{display:none;position:absolute;left:32px;top:50%;max-width:420px;font:italic 500 18px/1.4 'Source Serif 4',serif;color:var(--chalk2)}
+.nogl #nogl{display:block}
+.nogl #c{display:none}
+
+@media (max-height:800px) and (min-width:821px){.sub{display:none}#legend{margin-top:8px}#caption{min-height:4.3em;font-size:16.5px}h1{font-size:clamp(48px,4.8vw,72px)}.kick{margin-top:12px}#chart{height:64px}}
+@media (max-width:1180px) and (min-width:821px){#title{max-width:300px}#story{width:300px}#legend{display:none}#caption{font-size:16px}.sub{font-size:15.5px;max-width:290px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden;background:#07120c}
+  #title{position:static;max-width:none;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:50px;margin:6px 0 6px}
+  h1 em{display:inline}
+  .sub{font-size:15.5px;max-width:none}
+  #legend{margin-top:10px;font-size:10.5px;grid-template-columns:1fr 1fr}
+  #legend span:last-child{grid-column:1/-1}
+  #story{position:static;width:auto;padding:8px 16px 0}
+  #caption{font-size:16px;min-height:5.8em}
+  #stage{position:relative;inset:auto;height:min(56vh,460px);min-height:340px;margin-top:2px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(9,17,12,.97)}
+  #tip{display:none}
+}
+@media (prefers-reduced-motion:reduce){#caption,.tally{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 028 · Ensembles</div>
+  <h1>Random <em>Forest</em></h1>
+  <p class="sub">Every tree in this grove is a <b>real decision tree</b>, grown on its own bootstrap sample of the pebbles. A tree’s shadow on the meadow is its opinion; the meadow’s colour is the forest’s vote.</p>
+  <div id="legend"><span><i class="peb a"></i><b class="ka">amber</b> pebbles</span><span><i class="peb b"></i><b class="kb">jade</b> pebbles</span><span><i class="lit"></i>lit branches: the lantern’s questions</span></div>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A round diorama: a square meadow of amber and jade pebbles, tinted by the forest's vote, ringed by a forest of small trees whose branches are the forks of decision trees and whose leaf clusters are their answers"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <p id="nogl">This exhibit draws the forest with WebGL, which this browser didn't give us. The forest itself still grows and votes: the scores and the chart on the right are live.</p>
+</div>
+
+<aside id="panel" aria-label="Scores and controls">
+  <div class="sec" id="board" aria-live="polite">
+    <div class="scores">
+      <div class="sc big"><span>Forest</span><b id="accF">–</b></div>
+      <div class="sc"><span>Avg. tree</span><b id="accM">–</b></div>
+      <div class="sc"><span>Out-of-bag</span><b id="accO">–</b></div>
+    </div>
+    <canvas id="chart" aria-label="Accuracy on fresh pebbles: the forest of the first k trees for every k, and each tree on its own"></canvas>
+    <div class="bnote"><span id="bnote1">on 2,000 fresh pebbles</span><span id="bnote2"></span></div>
+  </div>
+  <div class="sec" id="tally" hidden></div>
+  <div class="sec" id="treeBox" hidden></div>
+  <div class="sec">
+    <div class="lab"><span>Trees</span><b id="kv">60</b></div>
+    <div class="trees"><button class="btn" id="chop" title="Fell the newest tree" aria-label="Fell one tree">−</button><input id="kslider" type="range" min="1" max="150" value="60" aria-label="Number of trees"><button class="btn" id="plant" title="Plant one more tree" aria-label="Plant one tree">+</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Depth</span><b id="dv">grow until pure</b></div>
+    <div class="chips" id="depths"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Each fork may look along</span></div>
+    <div class="chips" id="mtrys"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Meadow</span><b id="setv"></b></div>
+    <div class="chips" id="sets" style="margin-bottom:6px"></div>
+    <div class="lab" style="margin:4px 0 0"><span>Scatter</span><b id="noisev"></b></div>
+    <input id="noise" type="range" min="0" max="30" value="16" aria-label="How far pebbles scatter from their shape">
+  </div>
+  <div class="sec btns"><button class="btn" id="reseed" title="Every tree draws a new bootstrap sample">New bootstraps</button><button class="btn" id="clearL" title="Take down the lantern">Take down lantern</button></div>
+  <p class="hint">Click the meadow to hang a lantern and ask the forest there. Click a tree to see its own shadow.</p>
+  <details>
+    <summary>What is this?</summary>
+    <p>The meadow is a 2-D dataset: 200 training pebbles of two kinds, scattered around two shapes (two moons by default; their positions are generated from a seeded random number generator, not measured from anything). A further 2,000 fresh pebbles from the same recipe stay hidden and are used only for scoring.</p>
+    <p>Each tree is a real CART tree (Breiman, Friedman, Olshen &amp; Stone, 1984) grown in your browser. It starts from a <b>bootstrap sample</b>: 200 draws with replacement from the 200 pebbles, so it sees about 63% of them, some two or three times. Every fork asks one question, <code>x ≤ t?</code> or <code>y ≤ t?</code>, choosing the threshold that leaves the two sides purest (lowest Gini impurity); a branch stops at a pure leaf or at the depth limit. In a <b>random forest</b> (Breiman, <a href="https://doi.org/10.1023/A:1010933404324">2001</a>) each fork may look along only one feature drawn at random (√2 rounded down); with “both” it is plain bagging (Breiman, 1996).</p>
+    <p>A tree votes with the majority of the training pebbles in the leaf a spot lands in; the forest votes with the majority of its trees (ties go to amber). The meadow’s tint is the share of trees voting jade; the pale line is where the majority flips.</p>
+    <p><b>Out-of-bag</b> accuracy asks each training pebble only of the trees that never saw it. <b>ρ̄</b> is the correlation between two trees’ mistakes on the fresh pebbles, averaged over every pair: Breiman showed a forest’s error is held down by strong trees whose mistakes are not alike. Across 30 two-moon meadows, one-feature trees score 90.7% alone against 92.3% for trees that see both, but their mistakes are less alike (ρ̄ 0.37 against 0.48), and the two forests of 60 end level at 95.2% and 95.1%.</p>
+    <p>Everything you see scored is computed: the trees, bootstraps, votes and accuracies, with the same arithmetic as a Python reference implementation that reproduces them bit for bit. The trees’ shapes are drawn from the real splits (a branch’s thickness grows with how many pebbles pass through it, its length only with depth); the falling leaves are decoration.</p>
+  </details>
+  <div class="foot">Drag to turn the grove · click the meadow to ask · click a tree to inspect it · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+/* ================= engine: datasets, CART trees, the forest ================= */
+const RF=(()=>{
+// mulberry32: the same generator in the page and in the Python reference
+const mulberry32=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+// a near-normal number: twelve uniforms minus six (no logs or square roots, so every platform agrees bit for bit)
+const gauss=r=>{let s=0;for(let i=0;i<12;i++)s+=r();return s-6};
+const LIM=1.2,clampL=v=>v<-LIM?-LIM:v>LIM?LIM:v;
+// the meadow is the square [-1.25, 1.25]²; every dataset lives inside it
+const DOM=[-1.25,1.25];
+// cos and sin from a fixed series, so the datasets come out bit-identical in JS and Python
+const TAU=6.283185307179586;
+function csn(t){t-=TAU*Math.floor(t/TAU+.5);const z=t*t;let c=0,s=0,tc=1,ts=t;
+  for(let k=0;k<30;k++){c+=tc;s+=ts;tc*=-z/((2*k+1)*(2*k+2));ts*=-z/((2*k+2)*(2*k+3))}return[c,s]}
+const SETS={
+  moons:(r,c)=>{const[co,si]=csn(Math.PI*r());return c?[(1-co-.5)*.8,(.5-si-.25)*.8+.06]:[(co-.5)*.8,(si-.25)*.8+.06]},
+  rings:(r,c)=>{const[co,si]=csn(TAU*r()),R=c?.95:.45;return[R*co,R*si]},
+  spiral:(r,c)=>{const s=r(),R=.1+1*s,[co,si]=csn(3.4*Math.PI*s+(c?Math.PI:0));return[R*co,R*si]},
+  checkers:(r,c)=>{for(;;){const x=r()*2.1-1.05,y=r()*2.1-1.05;if(((Math.floor((x+1.05)/.7)+Math.floor((y+1.05)/.7))&1)===c)return[x,y]}},
+};
+function dataset(name,n,noise,seed){
+  const r=mulberry32(seed),X=new Array(n),Y=new Array(n);
+  for(let i=0;i<n;i++){const c=i&1,p=SETS[name](r,c);X[i]=[clampL(p[0]+noise*gauss(r)),clampL(p[1]+noise*gauss(r))];Y[i]=c}
+  return{X,Y}}
+
+// each tree's own seed, and a per-node draw that depends only on (tree, node): a tree grown to depth d is exactly the
+// deeper tree with its branches cut at d
+const treeSeed=(seed,k)=>(seed*7919+(k+1)*104729)%4294967296;
+const nodeDraw=(ts,id)=>mulberry32((ts+Math.imul(id,0x9E3779B1))>>>0)();
+
+// bootstrap: n draws with replacement → how many times each training pebble was picked
+function bootstrap(n,ts){const r=mulberry32(ts),w=new Int32Array(n);for(let i=0;i<n;i++)w[Math.floor(r()*n)]++;return w}
+
+/* CART (Breiman et al. 1984) with Gini impurity. A node splits on the threshold that maximises
+   Σ_k cL_k²/nL + Σ_k cR_k²/nR, which is the same as minimising nL·giniL + nR·giniR (n − that sum).
+   mtry = how many of the two features a node may look at (1 = random forest, 2 = plain bagging). */
+function growTree(X,Y,w,opt,ts){
+  const maxD=opt.depth,mtry=opt.mtry,nodes=[];
+  const idx0=[];for(let i=0;i<w.length;i++)if(w[i])idx0.push(i);
+  (function grow(idx,id,d,box){
+    let c0=0,c1=0;for(const i of idx){if(Y[i])c1+=w[i];else c0+=w[i]}
+    const n=c0+c1,me={id,d,n,c0,c1,box,leaf:true,f:-1,thr:0,L:-1,R:-1,k:nodes.length};nodes.push(me);
+    if(c0===0||c1===0||d>=maxD||n<2)return me.k;
+    const order=mtry===1?(nodeDraw(ts,id)<.5?[0,1]:[1,0]):[0,1];
+    let best=-1,bf=-1,bt=0,bpos=-1,bsorted=null,tried=0;
+    for(const f of order){
+      if(mtry===1&&tried>=1&&bf>=0)break; // a random-forest node looks along one feature; the other only if the first can't split
+      tried++;
+      const s=idx.slice().sort((a,b)=>X[a][f]-X[b][f]||a-b);
+      let l0=0,l1=0;
+      for(let j=0;j<s.length-1;j++){const i=s[j];if(Y[i])l1+=w[i];else l0+=w[i];
+        const va=X[i][f],vb=X[s[j+1]][f];if(va===vb)continue;
+        const nl=l0+l1,nr=n-nl,r0=c0-l0,r1=c1-l1,sc=(l0*l0+l1*l1)/nl+(r0*r0+r1*r1)/nr;
+        if(sc>best){best=sc;bf=f;bt=(va+vb)/2;bpos=j;bsorted=s}}
+    }
+    if(bf<0)return me.k;
+    me.leaf=false;me.f=bf;me.thr=bt;me.gain=best-(c0*c0+c1*c1)/n;
+    const Lb=box.slice(),Rb=box.slice();if(bf===0){Lb[1]=bt;Rb[0]=bt}else{Lb[3]=bt;Rb[2]=bt}
+    me.L=grow(bsorted.slice(0,bpos+1),id*2,d+1,Lb);me.R=grow(bsorted.slice(bpos+1),id*2+1,d+1,Rb);
+    return me.k})(idx0,1,0,[DOM[0],DOM[1],DOM[0],DOM[1]]);
+  return nodes}
+// a leaf's vote: the majority of the bootstrap pebbles that reached it; a tie goes to class 0 (amber)
+const leafVote=nd=>nd.c1>nd.c0?1:0;
+function leafOf(T,x,y){let k=0;for(;;){const nd=T[k];if(nd.leaf)return k;k=(nd.f?y:x)<=nd.thr?nd.L:nd.R}}
+function pathOf(T,x,y){const p=[];let k=0;for(;;){p.push(k);const nd=T[k];if(nd.leaf)return p;k=(nd.f?y:x)<=nd.thr?nd.L:nd.R}}
+const voteOf=(T,x,y)=>leafVote(T[leafOf(T,x,y)]);
+const forestVote=(v1,T)=>2*v1>T?1:0; // majority of the trees; a tie goes to class 0
+const depthOf=T=>T.reduce((m,n)=>Math.max(m,n.d),0),leavesOf=T=>T.reduce((m,n)=>m+(n.leaf?1:0),0);
+
+/* a forest: K trees on one dataset. Everything the page shows is read off this object. */
+class Forest{
+  constructor(o){Object.assign(this,{set:'moons',n:200,noise:.2,seed:7,dataSeed:11,testSeed:23,nTest:2000,depth:99,mtry:1,K:1},o);
+    const d=dataset(this.set,this.n,this.noise,this.dataSeed),t=dataset(this.set,this.nTest,this.noise,this.testSeed);
+    this.X=d.X;this.Y=d.Y;this.TX=t.X;this.TY=t.Y;this.trees=[];this.W=[];this.TS=[];this.ids=[];this.next=0;
+    for(let k=0;k<this.K;k++)this.plant()}
+  // plant the next tree in the sequence (tree k always has the same seed and bootstrap)
+  plant(){const k=this.next++,ts=treeSeed(this.seed,k),w=bootstrap(this.n,ts);
+    this.TS.push(ts);this.W.push(w);this.ids.push(k);this.trees.push(growTree(this.X,this.Y,w,{depth:this.depth,mtry:this.mtry},ts));return this.trees.length-1}
+  chop(j){if(j==null)j=this.trees.length-1;for(const a of[this.trees,this.W,this.TS,this.ids])a.splice(j,1)}
+  regrow(o){Object.assign(this,o);this.trees=this.trees.map((_,j)=>growTree(this.X,this.Y,this.W[j],{depth:this.depth,mtry:this.mtry},this.TS[j]))}
+  get T(){return this.trees.length}
+  votes(x,y){let v=0;for(const T of this.trees)v+=voteOf(T,x,y);return v}
+  predict(x,y){return forestVote(this.votes(x,y),this.T)}
+  // test accuracy of the forest, of every tree on its own, and of the first k trees for every k
+  score(){const K=this.T,M=this.TX.length,v=new Int32Array(M),curve=new Array(K),each=new Array(K);
+    for(let k=0;k<K;k++){const T=this.trees[k];let ok=0,okF=0;
+      for(let j=0;j<M;j++){const p=voteOf(T,this.TX[j][0],this.TX[j][1]);v[j]+=p;if(p===this.TY[j])ok++;if(forestVote(v[j],k+1)===this.TY[j])okF++}
+      each[k]=ok/M;curve[k]=okF/M}
+    const mean=K?each.reduce((a,b)=>a+b,0)/K:0;
+    return{acc:K?curve[K-1]:0,mean,each,curve}}
+  // out-of-bag: each training pebble asked only of the trees that never saw it
+  oob(){let ok=0,cnt=0;const per=new Array(this.n);
+    for(let i=0;i<this.n;i++){let v=0,t=0;for(let k=0;k<this.T;k++)if(!this.W[k][i]){t++;v+=voteOf(this.trees[k],this.X[i][0],this.X[i][1])}
+      per[i]=[t,v];if(t){cnt++;if(forestVote(v,t)===this.Y[i])ok++}}
+    return{acc:cnt?ok/cnt:0,covered:cnt,per}}
+  trainAcc(){let ok=0;for(let i=0;i<this.n;i++)if(this.predict(this.X[i][0],this.X[i][1])===this.Y[i])ok++;return ok/this.n}
+  // how alike the trees' mistakes are: Pearson correlation of two trees' 0/1 test errors, averaged over every pair
+  // (Breiman's ρ̄). Integer counts, then one square root, so it comes out the same everywhere.
+  errCorr(){const K=this.T,M=this.TX.length,Wd=Math.ceil(M/32),B=[],cnt=[];
+    for(let k=0;k<K;k++){const b=new Int32Array(Wd);let c=0;for(let j=0;j<M;j++)if(voteOf(this.trees[k],this.TX[j][0],this.TX[j][1])!==this.TY[j]){b[j>>5]|=1<<(j&31);c++}B.push(b);cnt.push(c)}
+    const pop=v=>{v=v-((v>>>1)&0x55555555);v=(v&0x33333333)+((v>>>2)&0x33333333);return(((v+(v>>>4))&0x0F0F0F0F)*0x01010101)>>>24};
+    let s=0,np=0;
+    for(let a=0;a<K;a++){const ca=cnt[a];if(!ca||ca===M)continue;
+      for(let b=a+1;b<K;b++){const cb=cnt[b];if(!cb||cb===M)continue;let both=0;const A=B[a],C=B[b];for(let w=0;w<Wd;w++)both+=pop(A[w]&C[w]);
+        s+=(both*M-ca*cb)/Math.sqrt(ca*(M-ca)*cb*(M-cb));np++}}
+    return np?s/np:null}
+}
+return{mulberry32,gauss,csn,dataset,SETS,DOM,treeSeed,nodeDraw,bootstrap,growTree,leafVote,leafOf,pathOf,voteOf,forestVote,depthOf,leavesOf,Forest}})();
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=RM||STILL;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const minus=s=>String(s).replace(/-/g,'−');
+const pct=v=>v==null?'–':(v*100).toFixed(1)+'%';
+const f2=v=>minus((Math.abs(v)<5e-3?0:v).toFixed(2));
+const fmtN=n=>n.toLocaleString('en-US');
+
+/* ---------- the forest's settings ---------- */
+const SETS={moons:{label:'Two moons',noise:.16},rings:{label:'Rings',noise:.1},spiral:{label:'Spiral',noise:.05},checkers:{label:'Checkers',noise:.06}};
+const SETORDER=['moons','rings','spiral','checkers'];
+const DEPTHS=[1,2,3,4,6,8,99];
+const dLabel=d=>d>=99?'grow until pure':d===1?'1 question: stumps':d+' questions';
+const KMAX=150,K0=60;
+const DEF={set:'moons',n:200,noise:.16,seed:7,dataSeed:24,testSeed:1024,nTest:2000,depth:99,mtry:1};
+const PROBE0=[.35,.1]; // the tour's lantern: amber country that the first tree got wrong
+const S={...DEF,probe:null,sel:null,planting:null};
+let F=null,M=null,simT=0,logId=0;const LOG=[];
+const cfgOf=()=>({set:F.set,n:F.n,noise:F.noise,seed:F.seed,dataSeed:F.dataSeed,testSeed:F.testSeed,nTest:F.nTest,depth:F.depth,mtry:F.mtry});
+let boardDirty=true,chartDirty=true,fieldDirty=true,pebDirty=true,tallyDirty=true;
+function rescore(){const s=F.score(),o=F.oob();M={acc:s.acc,mean:s.mean,curve:s.curve,each:s.each,oob:o.acc,covered:o.covered,rho:F.errCorr(),train:F.trainAcc()};boardDirty=chartDirty=tallyDirty=true}
+function note(why){rescore();const e={id:++logId,why,cfg:cfgOf(),ids:[...F.ids],acc:M.acc,mean:M.mean,oob:M.oob,covered:M.covered,rho:M.rho,train:M.train};
+  if(S.probe){const{x,y}=S.probe;e.probe={x,y,v1:F.votes(x,y),leaves:F.trees.map(T=>RF.leafOf(T,x,y))}}
+  LOG.push(e);if(LOG.length>400)LOG.shift();if(STATIC&&ready)queueMicrotask(redraw)}
+const treeById=id=>{const j=F.ids.indexOf(id);return j<0?null:{j,T:F.trees[j],W:F.W[j]}};
+
+/* ---------- the meadow's tint: votes per pixel, filled leaf rectangle by leaf rectangle ---------- */
+const GR=512,[D0,D1]=RF.DOM,CW=(D1-D0)/GR;
+const gcv=document.createElement('canvas');gcv.width=gcv.height=GR;const gx=gcv.getContext('2d');
+const VOTES=new Uint16Array(GR*GR),IMG=gx.createImageData(GR,GR),GRAIN=new Float32Array(GR*GR);
+{const r=RF.mulberry32(5);const C=16,cs=new Float32Array((C+1)*(C+1));for(let i=0;i<cs.length;i++)cs[i]=r();
+  for(let j=0;j<GR;j++)for(let i=0;i<GR;i++){const u=i/GR*C,v=j/GR*C,a=Math.floor(u),b=Math.floor(v),fu=u-a,fv=v-b,s=q=>q*q*(3-2*q);
+    const n=(cs[b*(C+1)+a]*(1-s(fu))+cs[b*(C+1)+a+1]*s(fu))*(1-s(fv))+(cs[(b+1)*(C+1)+a]*(1-s(fu))+cs[(b+1)*(C+1)+a+1]*s(fu))*s(fv);
+    GRAIN[j*GR+i]=.9+.13*n+.05*(r()-.5)+((Math.floor((i+j*.35)/22)&1)?.025:-.025)}}
+const edge=t=>clamp(Math.floor((t-D0)/CW-.5)+1,0,GR);
+function fieldTree(T,sg){for(const nd of T){if(!nd.leaf||!RF.leafVote(nd))continue;const[x0,x1,y0,y1]=nd.box;
+  const i0=edge(x0),i1=edge(x1),r0=edge(-y1),r1=edge(-y0);for(let r=r0;r<r1;r++){const o=r*GR;for(let i=i0;i<i1;i++)VOTES[o+i]+=sg}}}
+function fieldAll(){VOTES.fill(0);for(const T of F.trees)fieldTree(T,1);fieldDirty=true}
+const FA=[128,66,30],FB=[24,104,86],SA=[178,92,38],SB=[30,146,118],LINE=[248,232,190];
+function paintField(){
+  const sel=S.sel!=null?treeById(S.sel):null;
+  if(sel){ // one tree's own opinion: its leaves as hard rectangles
+    gx.fillStyle='#000';gx.fillRect(0,0,GR,GR);const px=x=>(x-D0)/(D1-D0)*GR,py=y=>(D1-y)/(D1-D0)*GR;
+    for(const nd of sel.T){if(!nd.leaf)continue;const[x0,x1,y0,y1]=nd.box,c=RF.leafVote(nd)?SB:SA;gx.fillStyle=`rgb(${c})`;gx.fillRect(px(x0),py(y1),px(x1)-px(x0),py(y0)-py(y1))}
+    gx.globalCompositeOperation='multiply';gx.drawImage(grainCanvas(),0,0);gx.globalCompositeOperation='source-over';
+    gx.strokeStyle='rgba(14,10,4,.8)';gx.lineWidth=2.2;
+    for(const nd of sel.T){if(!nd.leaf)continue;const[x0,x1,y0,y1]=nd.box;gx.strokeRect(px(x0),py(y1),px(x1)-px(x0),py(y0)-py(y1))}
+    gx.strokeStyle='rgba(255,236,190,.55)';gx.lineWidth=1;
+    for(const nd of sel.T){if(!nd.leaf)continue;const[x0,x1,y0,y1]=nd.box;gx.strokeRect(px(x0)+1.5,py(y1)+1.5,px(x1)-px(x0)-3,py(y0)-py(y1)-3)}
+  }else{
+    const K=F.T,d=IMG.data;
+    for(let r=0;r<GR;r++)for(let i=0;i<GR;i++){const o=r*GR+i,v=VOTES[o],f=K?v/K:0,g=GRAIN[o];
+      const maj=2*v>K,line=(i<GR-1&&(2*VOTES[o+1]>K)!==maj)||(r<GR-1&&(2*VOTES[o+GR]>K)!==maj)||(i>0&&(2*VOTES[o-1]>K)!==maj)||(r>0&&(2*VOTES[o-GR]>K)!==maj);
+      let R=(FA[0]+(FB[0]-FA[0])*f)*g,G=(FA[1]+(FB[1]-FA[1])*f)*g,B=(FA[2]+(FB[2]-FA[2])*f)*g;
+      if(line){R=R*.2+LINE[0]*.8;G=G*.2+LINE[1]*.8;B=B*.2+LINE[2]*.8}
+      d[o*4]=R;d[o*4+1]=G;d[o*4+2]=B;d[o*4+3]=255}
+    gx.putImageData(IMG,0,0)}
+  if(scene)scene.fieldUpdated()}
+let _grainC=null;
+function grainCanvas(){if(_grainC)return _grainC;const c=document.createElement('canvas');c.width=c.height=GR;const g=c.getContext('2d'),im=g.createImageData(GR,GR);
+  for(let o=0;o<GR*GR;o++){const v=clamp(GRAIN[o]*232,0,255);im.data[o*4]=im.data[o*4+1]=im.data[o*4+2]=v;im.data[o*4+3]=255}g.putImageData(im,0,0);return _grainC=c}
+
+/* ---------- changing the forest ---------- */
+function buildForest(why,K,anim){
+  F=new RF.Forest({set:S.set,n:S.n,noise:S.noise,seed:S.seed,dataSeed:S.dataSeed,testSeed:S.testSeed,nTest:S.nTest,depth:S.depth,mtry:S.mtry,K});
+  if(S.sel!=null&&!treeById(S.sel))S.sel=null;
+  fieldAll();pebDirty=true;note(why);if(scene)scene.sync(anim||'regrow');probeChanged(false);syncControls()}
+function plantOne(why){if(F.T>=KMAX)return;const j=F.plant();fieldTree(F.trees[j],1);fieldDirty=true;note(why);if(scene)scene.sync('grow');probeChanged(false);syncControls()}
+function chopAt(j,why){if(F.T<=1)return;const T=F.trees[j],id=F.ids[j];fieldTree(T,-1);F.chop(j);if(S.sel===id)S.sel=null;fieldDirty=pebDirty=true;note(why);if(scene)scene.sync('fall');probeChanged(false);syncControls()}
+function setK(k,why){k=clamp(Math.round(k),1,KMAX);S.planting=null;
+  if(k>F.T){while(F.T<k){const j=F.plant();fieldTree(F.trees[j],1)}}
+  else if(k<F.T){while(F.T>k){const j=F.T-1;fieldTree(F.trees[j],-1);if(S.sel===F.ids[j])S.sel=null;F.chop(j)}}
+  else return;
+  fieldDirty=pebDirty=true;note(why);if(scene)scene.sync('grow');probeChanged(false);syncControls()}
+function regrow(o,why){Object.assign(S,o);F.regrow({depth:S.depth,mtry:S.mtry});fieldAll();note(why);if(scene)scene.sync('regrow');probeChanged(false);syncControls()}
+function startPlanting(target){S.planting={target,acc:0,t:0}}
+function plantTick(dt){const P=S.planting;if(!P)return;P.t+=dt;P.acc+=dt*Math.min(14,1.2+3*P.t);
+  while(P.acc>=1&&F.T<P.target){plantOne('tour-plant');P.acc-=1}if(F.T>=P.target)S.planting=null}
+function setProbe(x,y,why,fly=true){S.probe={x:+x.toFixed(4),y:+y.toFixed(4)};note(why);probeChanged(fly&&!STATIC)}
+function probeChanged(fly){tallyDirty=true;if(scene)scene.probe(fly)}
+
+/* ---------- panel ---------- */
+$('#depths').innerHTML=DEPTHS.map(d=>`<button class="chip" data-d="${d}">${d>=99?'∞':d}</button>`).join('');
+$('#mtrys').innerHTML=`<button class="chip" data-m="1" title="Random forest: one feature, drawn at random at every fork">one feature, at random</button><button class="chip" data-m="2" title="Bagging: every fork looks along both x and y">both (bagging)</button>`;
+$('#sets').innerHTML=SETORDER.map(k=>`<button class="chip" data-s="${k}">${SETS[k].label}</button>`).join('');
+function syncControls(){
+  $('#kv').textContent=F.T+(F.T===1?' tree':' trees');$('#kslider').value=F.T;
+  $$('#depths .chip').forEach(b=>b.classList.toggle('on',+b.dataset.d===S.depth));$('#dv').textContent=dLabel(S.depth);
+  $$('#mtrys .chip').forEach(b=>b.classList.toggle('on',+b.dataset.m===S.mtry));
+  $$('#sets .chip').forEach(b=>b.classList.toggle('on',b.dataset.s===S.set));$('#setv').textContent=SETS[S.set].label;
+  $('#noise').value=Math.round(S.noise*100);$('#noisev').textContent='σ '+S.noise.toFixed(2);
+  $('#clearL').disabled=!S.probe;$('#clearL').style.opacity=S.probe?1:.45}
+$('#kslider').addEventListener('input',e=>{poke();setK(+e.target.value,'slider')});
+$('#plant').addEventListener('click',()=>{poke();S.planting=null;plantOne('plant')});
+$('#chop').addEventListener('click',()=>{poke();S.planting=null;chopAt(F.T-1,'chop')});
+$$('#depths .chip').forEach(b=>b.addEventListener('click',()=>{poke();regrow({depth:+b.dataset.d},'depth')}));
+$$('#mtrys .chip').forEach(b=>b.addEventListener('click',()=>{poke();regrow({mtry:+b.dataset.m},'mtry')}));
+$$('#sets .chip').forEach(b=>b.addEventListener('click',()=>{poke();S.set=b.dataset.s;S.noise=SETS[S.set].noise;S.planting=null;buildForest('set',F.T)}));
+$('#noise').addEventListener('input',e=>{poke();S.noise=+e.target.value/100;S.planting=null;buildForest('noise',F.T,'regrow')});
+$('#reseed').addEventListener('click',()=>{poke();S.seed++;S.planting=null;buildForest('reseed',F.T)});
+$('#clearL').addEventListener('click',()=>{poke();S.probe=null;note('lantern-off');probeChanged(false);syncControls()});
+$('#tourb').addEventListener('click',()=>startTour());
+
+function board(){
+  $('#accF').textContent=pct(M.acc);$('#accM').textContent=pct(M.mean);$('#accO').textContent=pct(M.oob);
+  $('#bnote1').innerHTML=`<b>${F.T}</b> ${F.T===1?'tree':'trees'} · ${fmtN(F.nTest)} fresh pebbles`;
+  $('#bnote2').innerHTML=`ρ̄ <b>${M.rho==null?'–':M.rho.toFixed(2)}</b> · train <b>${(M.train*100).toFixed(0)}%</b>`}
+const fit2d=c=>{const d=Math.min(devicePixelRatio,2),w=c.clientWidth,h=c.clientHeight;if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return[g,w,h]};
+function chart(){
+  const c=$('#chart');if(!c.clientWidth)return;const[g,w,h]=fit2d(c),K=F.T,E=M.each,C=M.curve;
+  let lo=Math.min(...E,...C);lo=Math.max(.4,Math.floor((lo-.01)*20)/20);const hi=1;
+  const X=k=>6+(w-12)*(K>1?k/(Math.max(K,10)-1):.5),Y=v=>4+(h-16)*(1-(v-lo)/(hi-lo));
+  g.font='400 9px "DM Mono",monospace';g.lineWidth=1;
+  for(let v=Math.ceil(lo*20)/20;v<=hi+1e-9;v+=.05){g.strokeStyle='rgba(238,231,214,.08)';g.beginPath();g.moveTo(0,Y(v)+.5);g.lineTo(w,Y(v)+.5);g.stroke();
+    if(Math.round(v*100)%10===0){g.fillStyle='rgba(238,231,214,.4)';g.fillText(Math.round(v*100)+'%',w-26,Y(v)<12?Y(v)+10:Y(v)-2)}}
+  // each tree on its own: a faint dot per tree
+  E.forEach((v,k)=>{g.fillStyle='rgba(238,231,214,.36)';g.beginPath();g.arc(X(k),Y(v),1.7,0,7);g.fill()});
+  g.setLineDash([3,3]);g.strokeStyle='rgba(238,231,214,.5)';g.beginPath();g.moveTo(X(0),Y(M.mean)+.5);g.lineTo(X(K-1),Y(M.mean)+.5);g.stroke();g.setLineDash([]);
+  g.strokeStyle='#ffe3a6';g.lineWidth=1.8;g.beginPath();C.forEach((v,k)=>k?g.lineTo(X(k),Y(v)):g.moveTo(X(k),Y(v)));g.stroke();
+  g.fillStyle='#ffe3a6';g.beginPath();g.arc(X(K-1),Y(C[K-1]),2.8,0,7);g.fill();
+  g.fillStyle='rgba(255,227,166,.85)';const L1='— forest of the first k trees';g.fillText(L1,6,h-3);g.fillStyle='rgba(238,231,214,.55)';g.fillText('· each tree alone',12+g.measureText(L1).width,h-3)}
+function tally(){
+  const t=$('#tally'),b=$('#treeBox');
+  if(S.probe){const{x,y}=S.probe,v1=F.votes(x,y),v0=F.T-v1,w=RF.forestVote(v1,F.T);t.hidden=false;
+    t.innerHTML=`<div class="lab"><span>The lantern</span><b>x ${f2(x)} · y ${f2(y)}</b></div><p><b class="ka">${v0}</b> ${v0===1?'tree drops':'trees drop'} an amber leaf, <b class="kb">${v1}</b> a jade one. The forest says <b class="${w?'kb':'ka'}">${w?'jade':'amber'}</b>${2*v1===F.T?' (a tie goes to amber)':''}.</p><div id="tbar"><i class="a" style="width:${v0/F.T*100}%"></i><i class="b" style="width:${v1/F.T*100}%"></i></div>`}
+  else t.hidden=true;
+  const sel=S.sel!=null?treeById(S.sel):null;
+  if(sel){const w=sel.W,saw=w.reduce((a,v)=>a+(v?1:0),0),dup=w.reduce((a,v)=>a+(v>1?1:0),0);b.hidden=false;
+    b.innerHTML=`<div class="lab"><span>Tree #${S.sel+1}</span><b>${RF.leavesOf(sel.T)} leaves · ${RF.depthOf(sel.T)} deep</b></div><p>Its bootstrap held <b>${saw}</b> of the ${F.n} pebbles (${dup} of them more than once); it never saw the other ${F.n-saw}, drawn small. On its own it gets <b>${pct(M.each[sel.j])}</b> of the fresh pebbles. The meadow shows its leaves as rectangles.</p><div class="btns" style="margin-top:8px"><button class="btn" id="fell">Fell this tree</button><button class="btn" id="unsel">Back to the vote</button></div>`;
+    $('#fell').onclick=()=>{const t=treeById(S.sel);if(t){poke();chopAt(t.j,'fell')}};$('#unsel').onclick=()=>{poke();select(null)}}
+  else b.hidden=true}
+function select(id){S.sel=id;fieldDirty=pebDirty=tallyDirty=true;if(scene)scene.selChanged();if(STATIC&&ready)queueMicrotask(redraw)}
+
+/* ================= the grove, in three.js ================= */
+let R3=null;
+try{R3=new THREE.WebGLRenderer({canvas:$('#c'),antialias:true,alpha:true,powerPreference:'high-performance'})}catch(e){R3=null}
+if(!R3)document.body.classList.add('nogl');
+let scene=null;
+
+function makeScene(){
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(30,1,.1,300);
+  R3.setPixelRatio(Math.min(devicePixelRatio,2));R3.toneMapping=THREE.ACESFilmicToneMapping;R3.toneMappingExposure=1.08;R3.setClearColor(0,0);
+  { // a dusk sky to reflect: warm low sun, cool zenith, dark ground
+    const e=new THREE.Scene();e.add(new THREE.Mesh(new THREE.BoxGeometry(12,12,12),new THREE.MeshBasicMaterial({color:new THREE.Color(.02,.03,.025),side:THREE.BackSide})));
+    const L=(r,g,b,x,y,z,w,h)=>{const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),side:THREE.DoubleSide}));p.position.set(x,y,z);p.lookAt(0,0,0);e.add(p)};
+    L(4.5,3.2,1.8,-4,3,3,4,1.5);L(.6,.9,1.3,0,5.8,0,8,8);L(1.2,1.0,.8,4.5,2,-2,2,3);
+    const pm=new THREE.PMREMGenerator(R3);sc.environment=pm.fromScene(e,.04).texture;pm.dispose()}
+  sc.add(new THREE.HemisphereLight(0xbfd6ff,0x22180c,.75));
+  const key=new THREE.DirectionalLight(0xffe2b8,2.1);key.position.set(-6,9,5);sc.add(key);
+  const rim=new THREE.DirectionalLight(0x9fc4ff,.85);rim.position.set(6,5,-8);sc.add(rim);
+  const SC=2.4,MY=.06,TS=.95; // data → world scale, meadow height, tree scale
+  const wx=x=>x*SC,wz=y=>-y*SC;
+
+  // ---- where trees stand: rings around the meadow, filling from the back outward, front left open
+  const SLOTS=[];{const r=RF.mulberry32(99);
+    for(let ring=0;SLOTS.length<KMAX+10;ring++){const off=1.0+ring*.74,ring_=[];
+      const rho=t=>3/Math.max(Math.abs(Math.sin(t)),Math.abs(Math.cos(t)))+off;
+      let t=0;const pts=[0];while(t<2.18){t+=.72/Math.max(1,rho(t)*1.0);pts.push(t)}
+      for(const a of pts)for(const s of a?[-1,1]:[1]){const th=a*s+(r()-.5)*.03,R=rho(th)+(r()-.5)*.26;ring_.push({x:Math.sin(th)*R,z:-Math.cos(th)*R,a,yaw:r()*6.283,ring})}
+      ring_.sort((p,q)=>p.a-q.a);SLOTS.push(...ring_)}}
+  const RAD=Math.max(...SLOTS.slice(0,KMAX).map(p=>Math.hypot(p.x,p.z)))+1.05;
+
+  // ---- the plinth, the forest floor, the meadow
+  const wood=new THREE.MeshStandardMaterial({color:0x3a2416,roughness:.55,metalness:.05});
+  const plinth=new THREE.Mesh(new THREE.CylinderGeometry(RAD,RAD+.12,.55,120,1,true),wood);plinth.position.y=-.28;sc.add(plinth); // open-ended: the floor disc is its top
+  const brass=new THREE.Mesh(new THREE.TorusGeometry(RAD+.02,.035,8,160),new THREE.MeshStandardMaterial({color:0xc8a050,roughness:.3,metalness:1}));brass.rotation.x=Math.PI/2;brass.position.y=-.02;sc.add(brass);
+  const floorTex=(()=>{const N=1024,c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d'),r=RF.mulberry32(3);
+    const gr=g.createRadialGradient(N/2,N/2,N*.1,N/2,N/2,N/2);gr.addColorStop(0,'#24331c');gr.addColorStop(.75,'#18241a');gr.addColorStop(1,'#0e1610');g.fillStyle=gr;g.fillRect(0,0,N,N);
+    for(let i=0;i<9000;i++){const x=r()*N,y=r()*N,s=1.5+r()*5;g.fillStyle=`hsla(${70+r()*55},${20+r()*25}%,${9+r()*13}%,.45)`;g.beginPath();g.ellipse(x,y,s,s*.6,r()*3,0,7);g.fill()}
+    for(let i=0;i<900;i++){const x=r()*N,y=r()*N;g.fillStyle=`hsla(${25+r()*20},45%,${14+r()*10}%,.6)`;g.beginPath();g.ellipse(x,y,2+r()*3,1+r()*1.5,r()*3,0,7);g.fill()}
+    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t})();
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(RAD,120),new THREE.MeshStandardMaterial({map:floorTex,roughness:1,metalness:0}));floor.rotation.x=-Math.PI/2;sc.add(floor);
+  const gtex=new THREE.CanvasTexture(gcv);gtex.colorSpace=THREE.SRGBColorSpace;gtex.anisotropy=Math.min(8,R3.capabilities.getMaxAnisotropy());
+  const mGeo=new THREE.PlaneGeometry(D1*2*SC,D1*2*SC);mGeo.rotateX(-Math.PI/2);
+  const meadow=new THREE.Mesh(mGeo,new THREE.MeshStandardMaterial({map:gtex,emissiveMap:gtex,emissive:0xffffff,emissiveIntensity:.32,roughness:.95,metalness:0}));meadow.position.y=MY;sc.add(meadow);
+  { const H=D1*SC,fm=new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:.6});
+    for(const[w,d,x,z]of[[2*H+.16,.08,0,-H-.04],[2*H+.16,.08,0,H+.04],[.08,2*H,-H-.04,0],[.08,2*H,H+.04,0]]){const b=new THREE.Mesh(new THREE.BoxGeometry(w,.1,d),fm);b.position.set(x,MY-.02,z);sc.add(b)}}
+
+  // ---- pebbles
+  const pGeo=new THREE.SphereGeometry(1,14,9),pMat=new THREE.MeshStandardMaterial({roughness:.32,metalness:0,envMapIntensity:1});
+  const peb=new THREE.InstancedMesh(pGeo,pMat,600);peb.frustumCulled=false;sc.add(peb);
+  const CA=new THREE.Color(COLA_),CB=new THREE.Color(COLB_),tmpC=new THREE.Color(),m4=new THREE.Matrix4(),q4=new THREE.Quaternion(),v3=new THREE.Vector3(),s3=new THREE.Vector3();
+  function pebbles(){const sel=S.sel!=null?treeById(S.sel):null;peb.count=F.n;
+    for(let i=0;i<F.n;i++){const[x,y]=F.X[i],w=sel?sel.W[i]:1,k=w?1+.3*(w-1):.55;
+      m4.compose(v3.set(wx(x),MY+.038*k,wz(y)),q4.identity(),s3.set(.07*k,.044*k,.07*k));peb.setMatrixAt(i,m4);
+      tmpC.copy(F.Y[i]?CB:CA);if(sel&&!w)tmpC.multiplyScalar(.3);peb.setColorAt(i,tmpC)}
+    peb.instanceMatrix.needsUpdate=true;peb.instanceColor.needsUpdate=true}
+
+  // ---- trees: one instanced mesh of branches, one of leaf clusters, shared by every tree
+  const bGeo=new THREE.CylinderGeometry(.78,1,1,6,1,true);bGeo.translate(0,.5,0);
+  const lGeo=new THREE.IcosahedronGeometry(1,0);
+  const BCAP=26000,LCAP=13000;
+  const bark=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85,metalness:0});
+  const leafM=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.62,metalness:0,flatShading:true,emissive:0x1a1408,emissiveIntensity:1});
+  const BR=new THREE.InstancedMesh(bGeo,bark,BCAP),LF=new THREE.InstancedMesh(lGeo,leafM,LCAP);
+  for(const m of[BR,LF]){m.frustumCulled=false;m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);m.count=0;sc.add(m)}
+  BR.setColorAt(0,tmpC.set(0x5a3a22));LF.setColorAt(0,tmpC.set(0xffffff));
+  // glowing overlays for the lantern's paths
+  const glowM=new THREE.MeshBasicMaterial({color:0xffc95e,transparent:true,opacity:.85,toneMapped:false,depthWrite:false});
+  const GB=new THREE.InstancedMesh(bGeo,glowM,6000),GL=new THREE.InstancedMesh(lGeo,new THREE.MeshBasicMaterial({color:0xffd98a,transparent:true,opacity:.26,toneMapped:false,depthWrite:false,blending:THREE.AdditiveBlending}),KMAX+10);
+  for(const m of[GB,GL]){m.frustumCulled=false;m.count=0;sc.add(m)}
+
+  const UP=new THREE.Vector3(0,1,0),XA=new THREE.Vector3(1,0,0);
+  // a tree's shape, read off its splits: a branch per node (thicker for more pebbles), a leaf cluster per leaf
+  function shapeOf(T,phase,seed){
+    const N0=T[0].n,segs=[],blobs=[],end=new Array(T.length),segOf=new Int32Array(T.length).fill(-1),blobOf=new Int32Array(T.length).fill(-1),r=RF.mulberry32(seed);
+    const rad=n=>.009+.052*Math.sqrt(n/N0);let top=0;
+    const rec=(k,p,dir,len,ang)=>{const nd=T[k],e=p.clone().addScaledVector(dir,len);end[k]=e;top=Math.max(top,e.y);
+      segOf[k]=segs.length;segs.push({k,p,dir,len,r:rad(nd.n)});
+      if(nd.leaf){blobOf[k]=blobs.length;blobs.push({k,p:e,r:.06+.21*Math.sqrt(nd.n/N0),f:nd.c1/nd.n,j:r()});return}
+      const nL=T[nd.L].n,nR=T[nd.R].n,sp=1.05,aL=sp*nR/(nL+nR),aR=sp*nL/(nL+nR);
+      const a1=new THREE.Vector3().crossVectors(dir,Math.abs(dir.y)<.95?UP:XA).normalize().applyAxisAngle(dir,ang);
+      const dL=dir.clone().applyAxisAngle(a1,aL).addScaledVector(UP,.24).normalize(),dR=dir.clone().applyAxisAngle(a1,-aR).addScaledVector(UP,.24).normalize();
+      rec(nd.L,e,dL,len*.8,ang+2.39996);rec(nd.R,e,dR,len*.8,ang+2.39996)};
+    rec(0,new THREE.Vector3(),UP.clone(),.55,phase);
+    const SL=new Float32Array(segs.length*16),BL=new Float32Array(blobs.length*16),BC=new Float32Array(blobs.length*3);
+    segs.forEach((s,i)=>{q4.setFromUnitVectors(UP,s.dir);m4.compose(s.p,q4,s3.set(s.r,s.len*1.02,s.r));m4.toArray(SL,i*16)});
+    blobs.forEach((b,i)=>{q4.setFromAxisAngle(UP,b.j*6.28);m4.compose(b.p,q4,s3.set(b.r,b.r*.86,b.r));m4.toArray(BL,i*16);
+      tmpC.copy(CA).lerp(CB,b.f).multiplyScalar(.82+.3*b.j);BC.set([tmpC.r,tmpC.g,tmpC.b],i*3)});
+    return{segs,blobs,end,segOf,blobOf,SL,BL,BC,top}}
+
+  // visual entries: one per tree on the plinth (a felled tree keeps its entry until it has fallen)
+  let ents=[];
+  const used=()=>new Set(ents.map(e=>e.slot));
+  const tm=new THREE.Matrix4(),tq=new THREE.Quaternion(),tq2=new THREE.Quaternion(),ax=new THREE.Vector3();
+  function treeMat(e,out){const sl=SLOTS[e.slot];let s=e.s,fa=0;
+    if(e.st==='fall'){const u=clamp(e.t/.75,0,1);fa=Math.PI/2*u*u;s=e.t<.75?1:clamp(1-(e.t-.75)/.5,0,1)}
+    tq.setFromAxisAngle(UP,sl.yaw);const o=Math.hypot(sl.x,sl.z)||1;ax.set(-sl.z/o,0,sl.x/o);tq2.setFromAxisAngle(ax,-fa);tq.premultiply(tq2);
+    return out.compose(v3.set(sl.x,0,sl.z),tq,s3.setScalar(Math.max(1e-4,s*TS)))}
+  // grow: a springy rise; delay staggers a forest regrowing all at once
+  const easeBack=u=>{const c=1.5;u=clamp(u,0,1);return 1+(c+1)*Math.pow(u-1,3)+c*Math.pow(u-1,2)};
+  function sync(anim){
+    const live=new Map(F.ids.map((id,j)=>[id,j]));
+    for(const e of ents)if(!live.has(e.id)&&e.st!=='fall'){e.st='fall';e.t=0}
+    const have=new Map(ents.filter(e=>e.st!=='fall').map(e=>[e.id,e]));
+    let n=0;
+    F.ids.forEach((id,j)=>{let e=have.get(id);const T=F.trees[j];
+      if(!e){const u=used();let slot=0;while(u.has(slot))slot++;e={id,slot,T:null,s:0,st:'grow',t:-n*.02};ents.push(e);n++}
+      else if(anim==='regrow'&&e.T!==T){e.st='grow';e.s=0;e.t=-(SLOTS[e.slot].ring*.12+(e.slot%13)*.018)}
+      if(e.T!==T){e.T=T;e.shape=shapeOf(T,e.slot*2.17+.4,e.slot*31+7)}});
+    if(STATIC)for(const e of ents){if(e.st==='grow'){e.st='live';e.s=1}}
+    ents=ents.filter(e=>!(e.st==='fall'&&STATIC));
+    layout();probeMarks()}
+  // pack every entry's instances into the shared meshes; colours once, matrices again whenever a tree moves
+  function layout(){let b=0,l=0;
+    for(const e of ents){const sh=e.shape;e.b0=b;e.l0=l;
+      if(b+sh.segs.length>BCAP||l+sh.blobs.length>LCAP){e.nb=e.nl=0;continue}
+      for(let i=0;i<sh.segs.length;i++)BR.setColorAt(b+i,tmpC.setRGB(.075+.03*((e.slot*7)%5)/5,.04,.022));
+      for(let i=0;i<sh.blobs.length;i++)LF.setColorAt(l+i,tmpC.setRGB(sh.BC[i*3],sh.BC[i*3+1],sh.BC[i*3+2]));
+      e.nb=sh.segs.length;e.nl=sh.blobs.length;b+=e.nb;l+=e.nl;place(e)}
+    BR.count=b;LF.count=l;BR.instanceColor.needsUpdate=LF.instanceColor.needsUpdate=true;BR.instanceMatrix.needsUpdate=LF.instanceMatrix.needsUpdate=true}
+  const mL=new THREE.Matrix4();
+  function place(e){treeMat(e,tm);const sh=e.shape,A=BR.instanceMatrix.array,B=LF.instanceMatrix.array;
+    for(let i=0;i<e.nb;i++){mL.fromArray(sh.SL,i*16).premultiply(tm);mL.toArray(A,(e.b0+i)*16)}
+    for(let i=0;i<e.nl;i++){mL.fromArray(sh.BL,i*16).premultiply(tm);mL.toArray(B,(e.l0+i)*16)}}
+  const worldOf=(e,p,out)=>out.copy(p).applyMatrix4(treeMat(e,tm));
+
+  // ---- the lantern, its two piles and the leaves on their way
+  const lant=new THREE.Group();lant.visible=false;sc.add(lant);
+  { const iron=new THREE.MeshStandardMaterial({color:0x2a2622,roughness:.5,metalness:.6});
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.86,8),iron);pole.position.y=.43;lant.add(pole);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(.2,.018,.018),iron);arm.position.set(.09,.84,0);lant.add(arm);
+    const hook=new THREE.Group();hook.position.set(.18,.8,0);lant.add(hook);
+    const cage=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.13,6,1,true),new THREE.MeshStandardMaterial({color:0x2a2622,roughness:.4,metalness:.7,wireframe:true}));cage.position.y=-.07;hook.add(cage);
+    const glow=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),new THREE.MeshBasicMaterial({color:0xffd27a,toneMapped:false}));glow.position.y=-.07;hook.add(glow);
+    const cap=new THREE.Mesh(new THREE.ConeGeometry(.075,.05,6),iron);cap.position.y=.02;hook.add(cap);
+    const pl=new THREE.PointLight(0xffc870,1.5,3.2,1.6);pl.position.set(.18,.72,0);lant.add(pl)}
+  const leafGeo=(()=>{const s=new THREE.Shape();s.moveTo(0,-.06);s.quadraticCurveTo(.045,-.01,0,.065);s.quadraticCurveTo(-.045,-.01,0,-.06);const g=new THREE.ShapeGeometry(s,4);g.rotateX(-Math.PI/2);return g})();
+  const FL=new THREE.InstancedMesh(leafGeo,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.6,side:THREE.DoubleSide,emissive:0x2a1c08,emissiveIntensity:1}),KMAX+10);
+  FL.frustumCulled=false;FL.count=0;FL.setColorAt(0,tmpC);sc.add(FL);
+  let flights=[],landed=[0,0];
+  const pileAt=(c,i,P,out)=>{const r=.034*Math.sqrt(i+.5),a=i*2.39996;return out.set(P.x+(c?.26:-.26)+Math.cos(a)*r,MY+.012+Math.max(0,.15-r*.62)+i*.0004,P.z+.1+Math.sin(a)*r*.8)};
+  function probeMarks(){ // light every path, and (re)lay the piles without flights
+    if(!S.probe){lant.visible=false;GB.count=GL.count=0;FL.count=0;flights=[];return}
+    const P=new THREE.Vector3(wx(S.probe.x),MY,wz(S.probe.y));lant.position.copy(P);lant.visible=true;
+    glowPaths();
+    if(!flights.length||flights.some(f=>f.stale))layPiles(false)}
+  function glowPaths(){if(!S.probe){GB.count=GL.count=0;return}
+    let g=0,h=0;const A=GB.instanceMatrix.array,B=GL.instanceMatrix.array;
+    for(const e of ents){if(e.st==='fall'||!e.nb)continue;const p=RF.pathOf(e.T,S.probe.x,S.probe.y);treeMat(e,tm);
+      // the trunk is on every path: only the forks after it tell
+      for(const k of p){const si=e.shape.segOf[k];if(!k||si<0||g>=6000)continue;mL.fromArray(e.shape.SL,si*16);
+        mL.decompose(v3,q4,s3);s3.x=s3.x*1.3+.006;s3.z=s3.z*1.3+.006;mL.compose(v3,q4,s3).premultiply(tm);mL.toArray(A,g*16);g++}
+      const bi=e.shape.blobOf[p[p.length-1]];if(bi>=0&&h<KMAX+10){mL.fromArray(e.shape.BL,bi*16);mL.decompose(v3,q4,s3);s3.multiplyScalar(Math.min(1.3,1+.035/s3.x));mL.compose(v3,q4,s3).premultiply(tm);mL.toArray(B,h*16);h++}}
+    GB.count=g;GL.count=h;GB.instanceMatrix.needsUpdate=GL.instanceMatrix.needsUpdate=true}
+  const tv=new THREE.Vector3(),tv2=new THREE.Vector3();
+  function layPiles(fly){
+    const P=lant.position,live=ents.filter(e=>e.st!=='fall'&&e.nb);const r=RF.mulberry32(17);
+    flights=live.map(e=>{const p=RF.pathOf(e.T,S.probe.x,S.probe.y),lk=p[p.length-1],c=RF.leafVote(e.T[lk]);
+      worldOf(e,e.shape.end[lk],tv);return{c,from:tv.clone(),d:Math.hypot(tv.x-P.x,tv.z-P.z),j:r(),k:r()}});
+    // nearest trees' leaves land first, so the piles fill in order of landing
+    const ord=flights.map((f,i)=>i).sort((a,b)=>flights[a].d-flights[b].d);const nC=[0,0];
+    ord.forEach((i,o)=>{const f=flights[i];f.slot=nC[f.c]++;f.to=pileAt(f.c,f.slot,P,new THREE.Vector3());f.t0=fly?.25+o*.022+f.j*.25:-9;f.dur=1.35+f.k*.6;f.yaw=f.j*6.28});
+    FL.count=flights.length;flights.forEach((f,i)=>{FL.setColorAt(i,tmpC.copy(f.c?CB:CA).multiplyScalar(.85+.3*f.k))});FL.instanceColor.needsUpdate=true;flyT=0;moveLeaves(0)}
+  let flyT=0;
+  function moveLeaves(dt){if(!flights.length)return;flyT+=dt;const A=FL.instanceMatrix.array;landed=[0,0];
+    flights.forEach((f,i)=>{const u=clamp((flyT-f.t0)/f.dur,0,1);let pos;
+      if(u>=1){pos=f.to;q4.setFromEuler(eu.set(.08*Math.sin(f.yaw*3),f.yaw,.06*Math.cos(f.yaw*5)));landed[f.c]++}
+      else{const s=u*u*(3-2*u),mid=tv2.copy(f.from).lerp(f.to,.5);mid.y=Math.max(f.from.y,f.to.y)+.35+.3*f.k;
+        pos=tv.copy(f.from).multiplyScalar((1-s)*(1-s)).addScaledVector(mid,2*s*(1-s)).addScaledVector(f.to,s*s);
+        const fl=(1-s)*Math.sin(flyT*7+f.yaw*3)*.12;pos.x+=fl;pos.z+=fl*.6;
+        q4.setFromEuler(eu.set(Math.sin(flyT*6+f.yaw)*1.1*(1-s),f.yaw+flyT*2.5*(1-s),Math.cos(flyT*5+f.k*5)*.9*(1-s)))}
+      m4.compose(pos,q4,s3.setScalar(1.9));m4.toArray(A,i*16)});
+    FL.instanceMatrix.needsUpdate=true}
+  const eu=new THREE.Euler();
+  function probe(fly){if(!S.probe){probeMarks();return}lant.position.set(wx(S.probe.x),MY,wz(S.probe.y));lant.visible=true;glowPaths();layPiles(fly)}
+  const flying=()=>flights.some(f=>flyT<f.t0+f.dur);
+
+  // ---- fireflies, for the dusk
+  const ffN=46,ffP=new Float32Array(ffN*3),ffS=[];{const r=RF.mulberry32(41);for(let i=0;i<ffN;i++){const a=r()*6.28,R=3.6+r()*(RAD-4);ffS.push({x:Math.sin(a)*R,z:-Math.cos(a)*R,y:.4+r()*1.8,p:r()*6.28,w:.3+r()*.5})}}
+  const ffG=new THREE.BufferGeometry();ffG.setAttribute('position',new THREE.BufferAttribute(ffP,3));
+  const ffTex=(()=>{const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,240,170,1)');gr.addColorStop(.3,'rgba(220,255,140,.6)');gr.addColorStop(1,'rgba(200,255,120,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(c)})();
+  const ff=new THREE.Points(ffG,new THREE.PointsMaterial({map:ffTex,size:.16,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false}));sc.add(ff);
+  function fireflies(){ffS.forEach((f,i)=>{const t=simT*f.w+f.p;ffP[i*3]=f.x+Math.sin(t)*.4;ffP[i*3+1]=f.y+Math.sin(t*1.7)*.25;ffP[i*3+2]=f.z+Math.cos(t*.8)*.4});ffG.attributes.position.needsUpdate=true}
+
+  // ---- camera
+  const camS={yaw:0,pitch:.9,yv:0,pv:0,dist:24,zoom:1,tgt:new THREE.Vector3(0,.3,-1.05)};
+  let W=1,H=1;
+  const aim=(yw,d)=>{cam.position.set(camS.tgt.x+Math.sin(yw)*Math.cos(camS.pitch)*d,camS.tgt.y+Math.sin(camS.pitch)*d,camS.tgt.z+Math.cos(yw)*Math.cos(camS.pitch)*d);cam.lookAt(camS.tgt);cam.updateMatrixWorld()};
+  const FITP=[];{const H_=D1*SC;for(const[x,z]of[[-H_,-H_],[H_,-H_],[-H_,H_+.1],[H_,H_+.1]])FITP.push(new THREE.Vector3(x,0,z));
+    SLOTS.slice(0,K0).forEach((p,i)=>{if(i%2===0){FITP.push(new THREE.Vector3(p.x,1.75,p.z));FITP.push(new THREE.Vector3(p.x,0,p.z))}})}
+  function fit(){const st=$('#stage'),w=st.clientWidth,h=st.clientHeight,desk=innerWidth>820;W=w;H=h;R3.setSize(w,h,false);cam.aspect=w/h;
+    const bx0=desk?clamp(w*.255,290,410):6,bx1=desk?w-386:w-6,by0=desk?14:4,by1=h-(desk?12:4);
+    const bw=Math.max(200,bx1-bx0),bh=by1-by0;cam.clearViewOffset();cam.updateProjectionMatrix();
+    let d=camS.dist,cx=w/2,cy=h/2;
+    for(let it=0;it<8;it++){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+      for(const yw of[camS.yaw-.1,camS.yaw,camS.yaw+.1]){aim(yw,d);for(const p of FITP){tv.copy(p).project(cam);const X=(tv.x+1)/2*w,Y=(1-tv.y)/2*h;if(X<x0)x0=X;if(X>x1)x1=X;if(Y<y0)y0=Y;if(Y>y1)y1=Y}}
+      const k=Math.max((x1-x0)/bw,(y1-y0)/bh);cx=(x0+x1)/2;cy=(y0+y1)/2;if(Math.abs(k-1)<.004)break;d*=k}
+    camS.dist=d;cam.setViewOffset(w,h,cx-(bx0+bx1)/2,cy-(by0+by1)/2,w,h);cam.updateProjectionMatrix()}
+  const scr=(p,out)=>{tv.copy(p).project(cam);out[0]=(tv.x+1)/2*W;out[1]=(1-tv.y)/2*H;out[2]=tv.z;return out};
+
+  // ---- labels: the lantern's running tally, the selected tree's name
+  const labels=$('#labels'),tagL=document.createElement('div'),tagT=document.createElement('div');tagL.className='tally';tagT.className='ttag';labels.append(tagL,tagT);
+  const xy=[0,0,0];
+  function placeLabels(){
+    if(S.probe&&lant.visible){scr(tv2.set(lant.position.x+.09,MY+1.02,lant.position.z),xy);const txt=`<b class="ka">${landed[0]}</b><i>·</i><b class="kb">${landed[1]}</b>`;
+      if(tagL._t!==txt){tagL._t=txt;tagL.innerHTML=txt}tagL.style.display='';tagL.style.transform=`translate(${xy[0].toFixed(1)}px,${xy[1].toFixed(1)}px) translate(-50%,-100%)`}
+    else tagL.style.display='none';
+    const e=S.sel!=null?ents.find(e=>e.id===S.sel&&e.st!=='fall'):null;
+    if(e){scr(worldOf(e,tv2.set(0,e.shape.top+.25,0),new THREE.Vector3()),xy);tagT.textContent='Tree #'+(e.id+1);tagT.style.display='';tagT.style.transform=`translate(${xy[0].toFixed(1)}px,${xy[1].toFixed(1)}px) translate(-50%,-100%)`}
+    else tagT.style.display='none'}
+
+  function update(dt){
+    camS.yaw+=camS.yv;camS.pitch=clamp(camS.pitch+camS.pv,.38,1.36);camS.yv*=.86;camS.pv*=.86;if(Math.abs(camS.yv)<1e-5)camS.yv=0;if(Math.abs(camS.pv)<1e-5)camS.pv=0;
+    const sway=STATIC?0:.1*Math.sin(simT*.11),d=camS.dist*camS.zoom;aim(camS.yaw+sway,d);
+    let moved=false;
+    for(const e of ents){if(e.st==='live')continue;e.t+=dt;moved=true;
+      if(e.st==='grow'){e.s=easeBack(e.t/.85);if(e.t>=.85){e.s=1;e.st='live'}}
+      if(e.st==='fall'&&e.t>=1.25)e.dead=true}
+    if(ents.some(e=>e.dead)){ents=ents.filter(e=>!e.dead);layout()}
+    else if(moved){for(const e of ents)if(e.st!=='live'||e.s!==1||e._was!==e.s){place(e);e._was=e.s}BR.instanceMatrix.needsUpdate=LF.instanceMatrix.needsUpdate=true}
+    if(moved&&S.probe)glowPaths();
+    moveLeaves(dt);
+    if(!STATIC)fireflies();
+    placeLabels()}
+
+  // pointer → the meadow (data coordinates) or a tree
+  const ray=new THREE.Raycaster(),pv=new THREE.Vector2();
+  function pick(cx,cy){const r=R3.domElement.getBoundingClientRect();pv.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(pv,cam);
+    const o=ray.ray.origin,dv=ray.ray.direction;let best=null,bt=1e9;
+    // trees: a vertical capsule around each trunk, as tall as the crown
+    for(const e of ents){if(e.st==='fall'||!e.nb)continue;const sl=SLOTS[e.slot],ht=e.shape.top*TS*e.s+.2;
+      const px=o.x-sl.x,pz=o.z-sl.z,a=dv.x*dv.x+dv.z*dv.z,b=px*dv.x+pz*dv.z,t=a>1e-9?-b/a:0,dx=px+dv.x*t,dz=pz+dv.z*t,y=o.y+dv.y*t;
+      if(dx*dx+dz*dz<.16&&y>0&&y<ht&&t>0&&t<bt){bt=t;best={tree:e.id}}}
+    const tg=(MY-o.y)/dv.y;
+    if(tg>0){const X=o.x+dv.x*tg,Z=o.z+dv.z*tg,x=X/SC,y=-Z/SC;if(x>=D0&&x<=D1&&y>=D0&&y<=D1&&tg<bt)return{x,y}}
+    return best}
+  function screenOfData(x,y){scr(tv2.set(wx(x),MY,wz(y)),xy);const r=R3.domElement.getBoundingClientRect();return[xy[0]+r.left,xy[1]+r.top]}
+  function screenOfTree(id){const e=ents.find(e=>e.id===id);if(!e)return null;scr(worldOf(e,tv2.set(0,e.shape.top*.55,0),new THREE.Vector3()),xy);const r=R3.domElement.getBoundingClientRect();return[xy[0]+r.left,xy[1]+r.top]}
+  return{sync,probe,update,fit,pick,camS,screenOfData,screenOfTree,pebbles,flying,
+    fieldUpdated:()=>{gtex.needsUpdate=true},selChanged:()=>{},
+    animating:()=>ents.some(e=>e.st!=='live'),entCount:()=>ents.length,landed:()=>[...landed],
+    render:()=>R3.render(sc,cam)}
+}
+const COLA_='#f39a4a',COLB_='#4fd1ae';
+
+/* ---------- pointer: drag turns the grove, a click asks the meadow or picks a tree ---------- */
+const tip=$('#tip');
+function hookPointer(){
+  const cv=$('#c');let drag=null;
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,moved:0,touch:e.pointerType==='touch'};if(!drag.touch)cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{
+    if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;
+      if(drag.moved>6){poke();cv.classList.add('drag');scene.camS.yv=clamp(-dx*.004,-.05,.05);if(!drag.touch)scene.camS.pv=clamp(dy*.003,-.03,.03);tip.style.opacity=0}return}
+    const p=scene.pick(e.clientX,e.clientY);cv.classList.toggle('aim',!!(p&&p.x!=null));cv.classList.toggle('tree',!!(p&&p.tree!=null));
+    if(!p){tip.style.opacity=0;return}
+    if(p.tree!=null){const t=treeById(p.tree);if(!t){tip.style.opacity=0;return}
+      tip.innerHTML=`Tree #${p.tree+1} · ${RF.leavesOf(t.T)} leaves · ${RF.depthOf(t.T)} deep<br>alone: ${pct(M.each[t.j])} of fresh pebbles<br><span style="opacity:.6">click to see its own shadow</span>`}
+    else{const v1=F.votes(p.x,p.y);tip.innerHTML=`x ${f2(p.x)} · y ${f2(p.y)}<br><span class="ka">${F.T-v1} amber</span> · <span class="kb">${v1} jade</span><br><span style="opacity:.6">click to hang the lantern here</span>`}
+    tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.style.opacity=1});
+  const end=e=>{if(drag&&drag.moved<6){poke();const p=scene.pick(e.clientX,e.clientY);
+      if(p&&p.tree!=null)select(S.sel===p.tree?null:p.tree);else if(p){if(S.sel!=null)select(null);setProbe(p.x,p.y,'click');syncControls()}else if(S.sel!=null)select(null)}
+    drag=null;cv.classList.remove('drag')};
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',()=>{drag=null;cv.classList.remove('drag')});
+  cv.addEventListener('pointerleave',()=>{tip.style.opacity=0});
+  cv.addEventListener('wheel',e=>{if(innerWidth<=820)return;e.preventDefault();poke();scene.camS.zoom=clamp(scene.camS.zoom*(1+e.deltaY*.001),.55,1.5)},{passive:false});
+  addEventListener('resize',()=>{scene.fit();chartDirty=true;redraw()})}
+
+/* ---------- captions and the tour ---------- */
+let shownCap='',capTimer=0;
+function cap(html){if(html===shownCap)return;const el=$('#caption');shownCap=html;
+  if(STATIC||FIXED){el.innerHTML=html;el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{el.innerHTML=shownCap;el.classList.remove('fade')},360)}
+const KA=s=>`<b class="ka">${s}</b>`,KB=s=>`<b class="kb">${s}</b>`;
+const firstSays=()=>{const t=treeById(0);return t&&S.probe?RF.voteOf(t.T,S.probe.x,S.probe.y):null};
+const CAP={
+  one:()=>{const t=treeById(0),saw=t?t.W.reduce((a,v)=>a+(v?1:0),0):0,ok=t?F.X.reduce((a,p,i)=>a+(t.W[i]&&RF.voteOf(t.T,p[0],p[1])===F.Y[i]?1:0),0):0;
+    return`<b>One decision tree</b>, grown until every leaf is pure. Each fork asks one question (is x ≤ t?), each leaf cluster is an answer, and its shadow on the meadow is its whole opinion. It gets ${ok===saw?'all':ok+' of'} the ${saw} pebbles it was grown on right, and <b>${pct(M.each[0])}</b> of ${fmtN(F.nTest)} fresh ones.`},
+  plant:()=>`<b>Now plant more.</b> Each tree draws its own <b>bootstrap</b>: ${F.n} pebbles picked with replacement, so it sees about 63% of them, some twice. At every fork it may look along only one direction, chosen at random. Each one overfits in its own way.`,
+  vote:()=>`<b>Let them vote.</b> The meadow’s tint is now the share of the ${F.T} trees voting jade. Together they get <b>${pct(M.acc)}</b> of the fresh pebbles; their average member alone, ${pct(M.mean)}. Their mistakes don’t line up, so most of them cancel.`,
+  lantern:()=>{const v1=F.votes(S.probe.x,S.probe.y),v0=F.T-v1,t0=firstSays(),w=RF.forestVote(v1,F.T);
+    return`<b>Ask at one spot.</b> Every tree follows its own questions down to one leaf (the lit branches) and drops it at the lantern: ${KA(v0+' amber')}, ${KB(v1+' jade')}.${t0!=null&&t0!==w?` The first tree, the one you met, says ${t0?'jade':'amber'} here: outvoted.`:''}`},
+  stumps:()=>{const v1=S.probe?F.votes(S.probe.x,S.probe.y):null;
+    return`<b>Cut every tree back to one question</b>: stumps. Alone, a stump gets ${pct(M.mean)} of the fresh pebbles; ${F.T} stumps voting get <b>${pct(M.acc)}</b>, as straight cuts in different places add up to a curve${v1!=null?`. At the lantern they now say ${2*v1>F.T?KB('jade'):KA('amber')}, ${Math.max(v1,F.T-v1)} to ${Math.min(v1,F.T-v1)}`:''}.`},
+  oob:()=>`<b>Grown back.</b> Each tree never saw about 37% of the pebbles. Ask each pebble only of the trees that didn’t see it: <b>${pct(M.oob)}</b> out-of-bag, close to the ${pct(M.acc)} on fresh pebbles, without setting any aside (Breiman, 2001).`,
+  you:()=>`<b>Your turn.</b> Plant or fell trees, cut them back, try the spiral, or click anywhere on the meadow to move the lantern. Click a tree to see its own shadow.`,
+  result:()=>`<b>${F.T} ${F.T===1?'tree':'trees'}, ${dLabel(S.depth)}${S.mtry===2?', bagging':''}.</b> Forest <b>${pct(M.acc)}</b> of fresh pebbles · average tree ${pct(M.mean)} · out-of-bag ${pct(M.oob)}.`,
+  still:()=>`<b>${F.T} real decision trees</b>, each grown on its own bootstrap sample, vote on the meadow. Together: <b>${pct(M.acc)}</b> of ${fmtN(F.nTest)} fresh pebbles; their average member alone, ${pct(M.mean)}. At the lantern, ${KA((F.T-F.votes(S.probe.x,S.probe.y))+' amber')} leaves, ${KB(F.votes(S.probe.x,S.probe.y)+' jade')}.`,
+};
+let tour=null,tourDone=false;
+const settled=()=>!scene||!scene.animating();
+function tourReset(){Object.assign(S,DEF);S.probe=null;S.planting=null;S.sel=0;buildForest('tour',1,'regrow')}
+const TOUR=[
+  {when:()=>true,gap:0,go:()=>{tourReset();cap(CAP.one())}},
+  {when:()=>true,gap:4.6,go:()=>{select(null);startPlanting(K0);cap(CAP.plant())}},
+  {when:()=>!S.planting&&settled(),gap:4.2,go:()=>cap(CAP.vote())},
+  {when:()=>true,gap:5.2,go:()=>{setProbe(PROBE0[0],PROBE0[1],'tour');syncControls();cap(CAP.lantern())}},
+  {when:()=>true,gap:6.4,go:()=>{regrow({depth:1},'tour');cap(CAP.stumps())}},
+  {when:()=>settled(),gap:5.8,go:()=>{regrow({depth:99},'tour');cap(CAP.oob())}},
+  {when:()=>settled(),gap:6.2,go:()=>{cap(CAP.you());tour=null;tourDone=true}},
+];
+function startTour(){tour={k:0,t:-1e9};tourDone=false}
+function poke(){if(tour){tour=null;S.planting=null;cap(CAP.you())}}
+function tourTick(){while(tour&&tour.k<TOUR.length){const b=TOUR[tour.k];if(simT-tour.t<b.gap||!b.when())break;tour.k++;tour.t=simT;b.go()}}
+let lastLog=0;
+function afterChange(){ // when you change something yourself, say how the forest does now
+  if(tour||!tourDone&&!ready)return;const e=LOG[LOG.length-1];if(!e||e.id===lastLog)return;lastLog=e.id;
+  if(['tour','tour-plant'].includes(e.why))return;
+  if(e.why==='click'){const v1=F.votes(S.probe.x,S.probe.y),v0=F.T-v1,w=RF.forestVote(v1,F.T);cap(`<b>The lantern, at x ${f2(S.probe.x)}, y ${f2(S.probe.y)}.</b> ${KA(v0+' amber')} leaves, ${KB(v1+' jade')}: the forest says ${w?KB('jade'):KA('amber')}.`);return}
+  cap(CAP.result())}
+
+/* ---------- the loop ---------- */
+let fieldT=-1,prerun=false;
+function redraw(){if(!F)return;if(fieldDirty){fieldDirty=false;paintField()}if(pebDirty&&scene){pebDirty=false;scene.pebbles()}if(scene){scene.update(0);scene.render()}flushPanel(true)}
+function flushPanel(force){if(boardDirty){boardDirty=false;board()}if(chartDirty&&(force||simT-chartT>.12)){chartDirty=false;chartT=simT;chart()}if(tallyDirty){tallyDirty=false;tally()}}
+let chartT=-1;
+function update(dt){
+  simT+=dt;tourTick();plantTick(dt);afterChange();
+  if(fieldDirty&&!prerun&&(simT-fieldT>.07||!S.planting)){fieldDirty=false;fieldT=simT;paintField()}
+  if(pebDirty&&scene){pebDirty=false;scene.pebbles()}
+  if(scene)scene.update(dt);
+  flushPanel(false)}
+let last=0;window.__frame=0;
+function frame(ts,skipDraw){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the grove
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.25);last=now;window.__frame++;
+  update(dt);if(scene&&!skipDraw)scene.render();
+  window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,trees:F.T,depth:S.depth,probe:!!S.probe,flying:scene?scene.flying():false}}
+let ready=false;
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  if(R3){scene=makeScene();hookPointer()}
+  const want=Q.get('set'),kq=Q.get('k'),dq=Q.get('depth'),mq=Q.get('mtry'),nq=Q.get('noise'),pq=Q.get('probe'),sq=Q.get('sel');
+  if(want||kq||dq||mq||pq){
+    if(want&&SETS[want]){S.set=want;S.noise=SETS[want].noise}
+    if(nq!=null&&isFinite(+nq))S.noise=clamp(+nq,0,.3);
+    if(dq&&DEPTHS.includes(+dq))S.depth=+dq;if(mq==='2')S.mtry=2;
+    buildForest('url',clamp(+kq||K0,1,KMAX));
+    if(pq){const p=pq.split(',').map(Number);if(p.length===2&&p.every(Number.isFinite))setProbe(clamp(p[0],D0,D1),clamp(p[1],D0,D1),'url',!STATIC)}
+    if(sq!=null&&treeById(+sq))select(+sq);
+    tourDone=true;cap(CAP.result())}
+  else if(STATIC){buildForest('static',K0);setProbe(PROBE0[0],PROBE0[1],'static',false);tourDone=true;cap(CAP.still())}
+  else{startTour();if(FIXED){prerun=true;let g=0;while(g++<9000&&!(tour&&tour.k>=4&&simT-tour.t>=2.5))update(1/60);prerun=false;fieldDirty=true}}
+  if(!F)buildForest('init',1);
+  syncControls();if(scene)scene.fit();ready=true;lastLog=LOG.length?LOG[LOG.length-1].id:0;
+}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+(async()=>{await start();redraw();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the forest
+window.forest={
+  state:()=>{if(!ready||!F||!M)return{ready:false};return{ready:true,cfg:cfgOf(),ids:[...F.ids],K:F.T,acc:M.acc,mean:M.mean,curve:[...M.curve],each:[...M.each],oob:M.oob,covered:M.covered,rho:M.rho,train:M.train,
+    probe:S.probe?{x:S.probe.x,y:S.probe.y,v1:F.votes(S.probe.x,S.probe.y),leaves:F.trees.map(T=>RF.leafOf(T,S.probe.x,S.probe.y))}:null,sel:S.sel,planting:!!S.planting,
+    tour:tour?tour.k:null,tourDone,simT:+simT.toFixed(3),caption:$('#caption').textContent,landed:scene?scene.landed():null,flying:scene?scene.flying():false,animating:scene?scene.animating():false,
+    ents:scene?scene.entCount():null,cam:scene?{yaw:+scene.camS.yaw.toFixed(4),pitch:+scene.camS.pitch.toFixed(4),zoom:scene.camS.zoom}:null,log:LOG.map(e=>JSON.parse(JSON.stringify(e)))}},
+  trees:()=>F?F.trees.map(T=>T.map(n=>[n.id,n.d,n.c0,n.c1,n.f,n.thr,n.L,n.R])):null,
+  data:()=>F?{X:F.X.map(p=>[...p]),Y:[...F.Y]}:null,
+  screenOf:(x,y)=>scene?scene.screenOfData(x,y):null,
+  screenOfTree:id=>scene?scene.screenOfTree(id):null,
+};
+</script>
+</body>
+</html>
