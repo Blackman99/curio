@@ -1,5 +1,15 @@
 [
  {
+  "slug": "scaling-observatory",
+  "title": "Scaling Observatory",
+  "no": "029",
+  "date": "2026-10-27",
+  "kind": "Scaling laws \u00b7 SVG observatory",
+  "blurb": "Chinchilla's scaling law as a night sky: parameters across, tokens up, predicted loss as a glow. A compute budget opens one slit in the dome and a telescope finds the best model in it. Re-fit the law in your browser from the 245 training runs behind it, and watch Chinchilla land on the floor.",
+  "color": "#774940",
+  "exhibit": "observatory"
+ },
+ {
   "slug": "random-forest",
   "title": "Random Forest",
   "no": "028",

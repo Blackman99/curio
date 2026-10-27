@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scaling Observatory — find the compute-optimal model through a slit in the dome</title>
+<meta name="description" content="Chinchilla's scaling law as a night sky: parameters across, training tokens up, the predicted loss as a glow. A compute budget opens one slit in the dome and a telescope finds the lowest loss in it. Re-fit the law in your browser from the 245 training runs behind it.">
+<meta property="og:title" content="Scaling Observatory">
+<meta property="og:description" content="A compute budget opens one slit in the dome; the telescope finds the best model size and token count in it. Grind the lens again from Chinchilla's own training runs and watch the answer move.">
+<meta property="og:image" content="https://blackman99.github.io/curio/scaling-observatory/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Scaling Observatory">
+<meta name="twitter:description" content="Chinchilla's scaling law as a night sky. Turn the compute budget, point at Gopher or Llama 3, and re-fit the law from 245 training runs in your browser.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/scaling-observatory/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#04060e;--paper:#efe6d2;--paper2:#a9afc2;--brass:#e3b968;--brass2:#9c7136;--acc:#f0c36e;--cool:#9fd2ff;--line:rgba(227,185,104,.22);--panel:rgba(6,9,22,.86)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Spectral',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden;background:radial-gradient(120% 90% at 55% 35%,#121a3d 0%,#0a0f26 45%,#03050c 100%) fixed}
+.m,.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#stage{position:fixed;inset:0;overflow:hidden}
+#sky,#skyN{position:absolute;inset:0;width:100%;height:100%;display:block}
+#skyN{pointer-events:none;will-change:transform}
+#sky{touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
+#sky.onstar{cursor:pointer}
+#sky text,#skyN text{font-family:'IBM Plex Mono',monospace}
+.axl{font-size:11px;fill:rgba(239,230,210,.62)}
+.axt{font-size:10.5px;letter-spacing:.14em;fill:var(--brass);text-transform:uppercase}
+.fl{font-size:10px;fill:rgba(227,185,104,.55)}
+.cl{font-size:10px;fill:rgba(255,236,196,.78);paint-order:stroke;stroke:#060a1c;stroke-width:3px;stroke-linejoin:round}
+.sl{font-family:'Cormorant Garamond',serif!important;font-size:16px;font-weight:700;fill:#fff6df;paint-order:stroke;stroke:rgba(4,6,16,.9);stroke-width:4px;stroke-linejoin:round;letter-spacing:.02em}
+.sl.on{fill:#ffd98a}
+.rl{font-size:12px;fill:#fff1cf;paint-order:stroke;stroke:rgba(4,6,16,.92);stroke-width:4px;stroke-linejoin:round}
+
+#title{position:fixed;left:32px;top:24px;width:330px;z-index:2;pointer-events:none}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--acc);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(6,9,22,.6);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--acc);color:#1a1205;outline:none}
+.kick{margin-top:18px;font:500 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--acc)}
+h1{margin:6px 0 10px;font:700 clamp(46px,4.1vw,62px)/.9 'Cormorant Garamond',Georgia,serif;letter-spacing:-.005em;text-shadow:0 4px 30px rgba(0,0,0,.7)}
+h1 em{display:block;font-style:italic;color:var(--brass)}
+.sub{margin:0;font-size:16.5px;line-height:1.45;color:var(--paper2);text-shadow:0 1px 3px #000,0 2px 14px #000}
+.sub b{color:var(--paper);font-weight:600}
+#legend{margin-top:14px;display:grid;gap:6px;font:400 11.5px/1.3 'IBM Plex Mono',monospace;color:var(--paper2);text-shadow:0 1px 3px #000}
+#legend i{display:inline-block;vertical-align:middle;margin-right:8px}
+.lg-run{width:7px;height:7px;border-radius:50%;background:#bfe0ff;box-shadow:0 0 5px #7fc0ff}
+.lg-star{width:11px;height:11px;background:#fff1cc;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
+.lg-slit{width:18px;height:8px;background:linear-gradient(90deg,transparent,rgba(255,220,160,.45),transparent);border-left:1px solid rgba(255,220,160,.7);border-right:1px solid rgba(255,220,160,.7)}
+.lg-ret{width:12px;height:12px;border-radius:50%;border:1.5px solid #ffd98a}
+#story{position:fixed;left:32px;bottom:24px;width:340px;z-index:2;pointer-events:none}
+#caption{margin:0;font:400 17px/1.45 'Spectral',serif;color:#f5eedd;text-shadow:0 1px 3px #000,0 2px 18px #000;min-height:6.6em;transition:opacity .35s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font-size:.84em}
+
+#panel{position:fixed;right:18px;top:18px;bottom:18px;width:360px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);
+  border:1px solid var(--line);border-radius:16px;padding:12px 15px 13px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,230,180,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin-bottom:7px}
+.lab b{font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+#eyeBox{text-align:center}
+#eye{display:block;width:100%;max-width:276px;height:auto;margin:0 auto -2px;overflow:visible}
+#eye text{font-family:'IBM Plex Mono',monospace}
+.reads{display:grid;grid-template-columns:1.15fr 1fr .9fr .9fr;gap:4px;text-align:left;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 0 7px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--paper2);white-space:nowrap}
+.rd b{font:700 23px/1 'Cormorant Garamond',serif;color:var(--paper);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rd.big b{font-size:28px;color:#ffe2a4}
+.bnote{display:flex;justify-content:space-between;gap:6px;margin-top:6px;font:400 10px/1.35 'IBM Plex Mono',monospace;color:rgba(239,230,210,.6);text-align:left}
+.bnote b{color:var(--paper);font-weight:500}
+#starBox{border:1px solid var(--line);border-radius:12px;padding:9px 11px;background:rgba(240,195,110,.05)}
+#starBox p{margin:0;font:400 14.5px/1.42 'Spectral',serif;color:var(--paper2)}
+#starBox p b{color:var(--paper);font-weight:600}
+#starBox .nm{font:700 18px/1 'Cormorant Garamond',serif;color:#ffd98a;margin-right:4px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:rgba(240,195,110,.05);border-radius:999px;padding:6px 9px;font:400 11.5px/1 'IBM Plex Mono',monospace;color:var(--paper)}
+.chip:hover,.chip:focus-visible{background:rgba(240,195,110,.18);border-color:var(--acc);outline:none}
+.chip.on{background:var(--acc);color:#1a1205;border-color:var(--acc)}
+.chip:disabled{opacity:.45;cursor:default}
+#lensEq{margin:8px 0 3px;font:400 11.5px/1.45 'IBM Plex Mono',monospace;color:var(--paper)}
+#lensFit{font:400 10.5px/1.45 'IBM Plex Mono',monospace;color:var(--paper2)}
+#lensFit b{color:var(--paper);font-weight:500}
+.grindRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px}
+.grindRow .gl{font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--paper2);margin-right:2px}
+#gbar{height:3px;border-radius:2px;background:rgba(255,255,255,.07);margin-top:8px;overflow:hidden}
+#gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brass2),var(--acc))}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer;--k:var(--acc)}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,.08),var(--k));box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,.08),var(--k))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--k) 42%,#111 120%);box-shadow:0 2px 8px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--k) 42%,#111 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--acc);outline-offset:3px}
+#serve{--k:#9fd2ff}
+.hint{font:italic 400 14px/1.35 'Spectral',serif;color:var(--paper2);margin:4px 0 0}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:14.5px;line-height:1.48;color:var(--paper2);margin:10px 0 0}
+details b{color:var(--paper);font-weight:600}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--paper)}
+details a,.foot a{color:var(--acc)}
+.foot{margin-top:12px;font:400 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(239,230,210,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--acc);text-decoration:underline;font:inherit}
+#tip{position:fixed;z-index:5;pointer-events:none;padding:7px 9px;border-radius:9px;background:rgba(6,9,22,.94);border:1px solid var(--line);font:400 11px/1.5 'IBM Plex Mono',monospace;color:var(--paper);opacity:0;transform:translate(14px,14px);transition:opacity .15s;white-space:nowrap}
+#tip b{color:#ffd98a;font-weight:500}
+
+@media (max-height:800px) and (min-width:821px){.sub{font-size:15px}#legend{display:none}#caption{min-height:6em;font-size:15.5px}h1{font-size:clamp(42px,3.7vw,54px)}.kick{margin-top:12px}#eye{max-width:236px}.rd b{font-size:20px}.rd.big b{font-size:24px}}
+@media (max-width:1260px) and (min-width:821px){#title{width:290px}#story{width:290px}#caption{font-size:15.5px}.sub{font-size:15px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden;background:#070b1c}
+  #title{position:static;width:auto;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:46px;margin:6px 0 6px}
+  h1 em{display:inline}
+  .sub{font-size:15.5px}
+  #legend{margin-top:10px;font-size:10.5px;gap:4px}
+  #story{position:static;width:auto;padding:8px 16px 0}
+  #caption{font-size:16px;min-height:7.4em}
+  #stage{position:relative;inset:auto;height:min(112vw,470px);min-height:360px;margin-top:2px}
+  #sky{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(8,12,28,.97)}
+  #tip{display:none}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 029 · Scaling laws</div>
+  <h1>Scaling <em>Observatory</em></h1>
+  <p class="sub">Every point of this sky is a language model: <b>parameters</b> across, <b>training tokens</b> up. The glow is the loss Chinchilla’s scaling law predicts for it. A compute budget opens <b>one slit</b> in the dome; the telescope finds the lowest loss in it.</p>
+  <div id="legend"><span><i class="lg-run"></i>a training run behind the law (245)</span><span><i class="lg-star"></i>a named model</span><span><i class="lg-slit"></i>one compute budget, C ≈ 6·N·D</span><span><i class="lg-ret"></i>the lowest loss in the slit</span></div>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="stage">
+  <svg id="skyN" aria-hidden="true"></svg>
+  <svg id="sky" role="img" aria-label="A log-log night sky: model parameters across, training tokens up, iso-loss contours glowing brighter where the predicted loss is lower, dots for 245 training runs, named models as stars, a diagonal slit for the chosen compute budget, and a brass telescope aimed at the lowest loss inside the slit"></svg>
+</div>
+
+<aside id="panel" aria-label="Eyepiece and controls">
+  <div class="sec" id="eyeBox" aria-live="polite">
+    <svg id="eye" viewBox="0 0 300 300" aria-label="The eyepiece: predicted loss along the slit against model size, with the training runs at this budget and the lowest point marked"></svg>
+    <div class="reads">
+      <div class="rd big"><span>Best size</span><b id="rN">–</b></div>
+      <div class="rd"><span>Tokens</span><b id="rD">–</b></div>
+      <div class="rd"><span>Per param</span><b id="rR">–</b></div>
+      <div class="rd"><span>Loss</span><b id="rL">–</b></div>
+    </div>
+    <div class="bnote"><span id="bn1"></span><span id="bn2"></span></div>
+  </div>
+  <div class="sec" id="starBox" hidden></div>
+  <div class="sec">
+    <div class="lab"><span>Compute budget</span><b id="cv">–</b></div>
+    <input id="budget" type="range" min="18" max="27" step="0.01" value="23.7" aria-label="Compute budget, log10 of FLOPs">
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Tokens it will serve</span><b id="sv">none</b></div>
+    <input id="serve" type="range" min="10" max="15.5" step="0.05" value="10" aria-label="Lifetime inference tokens, log10 (leftmost: none)">
+  </div>
+  <div class="sec" id="lensBox">
+    <div class="lab"><span>Lens</span><b id="lensv"></b></div>
+    <div class="chips" id="lenses"></div>
+    <div id="lensEq"></div>
+    <div id="lensFit"></div>
+    <div class="grindRow"><span class="gl">Grind from runs up to</span><span class="chips" id="ceils"></span><button class="chip" id="outl" aria-pressed="false" title="The five runs with the highest loss: big models given almost no data">+ 5 outliers</button></div>
+    <div id="gbar"><i></i></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Point the telescope at</span></div>
+    <div class="chips" id="starChips"></div>
+  </div>
+  <p class="hint">Click or drag on the sky to open a slit there. Hover a dot to see that training run.</p>
+  <details>
+    <summary>What is this?</summary>
+    <p>The sky is model space on log scales: <b>parameters N</b> across, <b>training tokens D</b> up. The glow and its contour lines are the loss (nats per token on DeepMind’s MassiveText) predicted by the parametric law of Hoffmann et al., <a href="https://arxiv.org/abs/2203.15556">2022</a> (the Chinchilla paper, Approach 3): <code>L(N, D) = E + A/N^α + B/D^β</code>.</p>
+    <p>Training costs about <b>C ≈ 6·N·D</b> FLOPs, so one budget is one diagonal: the slit. The telescope runs a golden-section search along it for the lowest loss. On a straight slit this is the closed form <code>N* = G·(C/6)^(β/(α+β))</code>, which the reference implementation checks it against. The paper counts Gopher’s budget more carefully (5.76×10²³ FLOPs); 6·N·D gives 5.04×10²³.</p>
+    <p>The dots are the paper’s training runs, read back off its Figure 4 (colour = loss) by <a href="https://arxiv.org/abs/2404.10102">Besiroglu, Erdil, Barnett &amp; You, 2024</a> (Epoch AI), rounded here to 5 significant figures; the colour scale limits each loss to about ±0.01. The five with the highest loss, large models given very few tokens, are left out unless you add them back, as Epoch did.</p>
+    <p><b>Lenses.</b> <i>Printed</i> is the law as printed: E 1.69, A 406.4, B 410.7, α 0.34, β 0.28. It sits above 235 of the 240 runs. <i>Unrounded</i> uses the digits left in comments in the paper’s TeX source (α 0.33917, β 0.28491); it sits above 84 of 240. <i>Re-ground</i> is fitted in your browser: the same Huber loss (δ = 10⁻³ on log L, log-sum-exp form) minimised with BFGS, starting from the printed lens. On the 240 runs it takes 46 steps to E 1.8171, A 477.5, B 2141, α 0.3473, β 0.3671. Epoch reported E 1.8172, A 482.01, B 2085.43, α 0.3478, β 0.3658; this page’s fit has a slightly lower Huber sum on the same data. Per Epoch, the original fit stopped early because the loss was averaged rather than summed. Grinding from only the smaller runs shows how far the answer can move when you extrapolate.</p>
+    <p><b>Stars.</b> The five models of the paper’s Table 1 and Chinchilla itself (Jurassic-1, 178B parameters on 300B tokens, sits on top of GPT-3), plus Llama 3 8B, which Meta trained on over 15T tokens (<a href="https://ai.meta.com/blog/meta-llama-3/">2024</a>). Their losses here are what Chinchilla’s law predicts for that size and token count. They are not the models’ measured losses, which were taken on different data.</p>
+    <p><b>Serving.</b> Following <a href="https://arxiv.org/abs/2401.00448">Sardana, Portes, Doubov &amp; Frankle, 2024</a>, each token a model serves costs about 2·N FLOPs, so the slit becomes 6·N·D + 2·N·D<sub>inf</sub> = C and bends. They minimise the total bill for a fixed loss; the slit asks the dual question (the lowest loss for a fixed bill), which picks out the same models. With 10¹⁴ tokens served, Llama 3 8B costs 2.5% more than the best model for its loss.</p>
+    <p>Everything you see is computed live: the contours, the search, the fits, the compute-equivalent savings. A Python reference implementation reproduces every focus and every fit bit for bit. The data are a reconstruction and the FLOP count is the 6·N·D approximation.</p>
+  </details>
+  <div class="foot">Click the sky to aim · hover a star or a run · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<div id="tip"></div>
+
+<script>
+/* ================= Scaling Observatory engine: Chinchilla's loss formula, the telescope's focus, the lens grinder =================
+   Plain double arithmetic in a fixed order (own exp and log, sums in run order), so the Python reference replays it bit for bit. */
+const SO=(()=>{
+// exp and log from + - * / only: the same digits in every browser and in Python
+const LN2=0.6931471805599453,INV_LN2=1.4426950408889634,SQRT2=1.4142135623730951,LN10=2.302585092994046;
+const EC=[1.0,1.0,0.5,0.16666666666666666,0.041666666666666664,0.008333333333333333,0.001388888888888889,0.0001984126984126984,2.48015873015873e-05,2.7557319223985893e-06,2.755731922398589e-07,2.505210838544172e-08,2.08767569878681e-09,1.6059043836821613e-10];
+const POW2=new Float64Array(2101);{let p=1;for(let k=0;k<=1050;k++){POW2[1050+k]=p;p*=2}p=1;for(let k=0;k<=1050;k++){POW2[1050-k]=p;p*=.5}}
+function exp_(x){if(x<-700)return 0;const k=Math.floor(x*INV_LN2+.5),r=x-k*LN2;let p=EC[13];for(let n=12;n>=0;n--)p=p*r+EC[n];return p*POW2[1050+k]}
+function log_(x){if(!(x>0&&x<Infinity))return x===Infinity?Infinity:x===0?-Infinity:NaN;let m=x,e=0;while(m>=2){m*=.5;e++}while(m<1){m*=2;e--}if(m>SQRT2){m*=.5;e++}
+  const s=(m-1)/(m+1),s2=s*s;let p=1/23;for(let n=21;n>=1;n-=2)p=p*s2+1/n;return e*LN2+2*s*p}
+// 245 training runs of Hoffmann et al. (2022), read back off their Figure 4 by Besiroglu et al. (2024): [parameters N, training FLOP C, final loss]
+const RUNS=[[7.3825e7,1.3972e18,3.4059],[8.9818e7,1.7656e18,3.3253],[1.0581e8,2.0559e18,3.3004],[1.1671e8,2.8673e18,3.1982],[7.3825e7,2.8905e18,3.2223],[1.3974e8,3.4099e18,3.1318],[8.9818e7,3.52e18,3.1839],[1.6277e8,3.9336e18,3.1085],[1.0581e8,4.7454e18,3.0945],[3.0564e8,5.1308e18,3.0714],[1.7494e8,5.1508e18,3.0485],[7.3825e7,5.2664e18,3.1085],[2.1673e8,5.3945e18,3.0853],[1.9583e8,5.3975e18,3.0485],[1.3974e8,5.4016e18,3.0577],[1.1671e8,5.4456e18,3.0714],[5.5248e8,5.4842e18,3.1839],[2.7835e8,5.5073e18,3.0714],[4.2461e8,5.5966e18,3.1225],[1.7494e8,5.6155e18,3.0485],[7.3825e7,5.7697e18,3.0945],[5.7334e7,5.8e18,3.1601],[2.1673e8,6.3721e18,3.0212],[8.9818e7,6.8298e18,3.0485],[1.3974e8,6.8369e18,3.0122],[1.6277e8,7.9975e18,2.963],[2.5107e8,8.1361e18,2.9763],[1.0581e8,8.3044e18,2.9987],[1.0581e8,8.7032e18,2.9987],[1.7938e9,8.8113e18,3.4059],[2.1673e8,8.9959e18,2.9497],[3.0564e8,9.0641e18,2.9497],[1.3974e8,9.0748e18,2.9763],[1.7305e9,9.0858e18,3.3957],[2.7835e8,9.1599e18,2.9408],[5.5248e8,9.2191e18,2.9852],[2.9795e9,9.2275e18,4.6652],[8.1634e8,9.2923e18,3.0485],[2.7835e8,9.2952e18,2.9408],[5.866e8,9.3104e18,2.9852],[1.7494e8,9.3517e18,2.9408],[6.3222e8,9.3872e18,2.9987],[1.2656e9,9.3897e18,3.1318],[4.2461e8,9.3954e18,2.963],[1.1433e9,9.5592e18,3.0945],[1.018e9,9.6179e18,3.0714],[2.2828e9,9.6227e18,3.7939],[1.4292e9,9.7204e18,3.1839],[1.6091e9,9.7464e18,3.2856],[2.6386e9,9.753e18,3.7656],[2.0067e9,9.7717e18,3.447],[1.7494e8,9.9865e18,2.9408],[6.7956e9,9.9939e18,5.0056],[3.0564e8,1.0198e19,2.9145],[1.1671e8,1.0799e19,2.9497],[7.3825e7,1.1154e19,3.0485],[1.9583e8,1.1541e19,2.8928],[1.3974e8,1.3731e19,2.9058],[2.5107e8,1.5754e19,2.8455],[4.8855e8,1.688e19,2.837],[2.7835e8,1.8297e19,2.8116],[1.7494e8,1.911e19,2.8583],[5.5248e8,1.9391e19,2.8032],[3.0564e8,2.0329e19,2.7781],[5.0924e8,2.0624e19,2.7906],[1.9583e8,2.2435e19,2.8116],[2.1673e8,2.3969e19,2.7906],[5.866e8,2.404e19,2.7781],[1.3974e8,2.4771e19,2.837],[2.7835e8,2.5317e19,2.7698],[2.1673e8,2.5383e19,2.7781],[1.3974e8,2.6764e19,2.837],[4.2461e8,2.6776e19,2.7574],[3.0564e8,2.7198e19,2.745],[6.6396e8,2.7379e19,2.745],[5.5248e8,2.7622e19,2.745],[6.3222e8,2.7842e19,2.7368],[6.3222e8,2.7844e19,2.7368],[1.7494e8,2.8057e19,2.8032],[8.1634e8,2.8237e19,2.7698],[5.866e8,2.8245e19,2.7368],[1.6091e9,2.8488e19,2.8243],[1.1433e9,2.8708e19,2.7574],[1.018e9,2.8905e19,2.745],[1.7938e9,2.8925e19,2.837],[1.4292e9,2.9035e19,2.8032],[1.2656e9,2.9234e19,2.7698],[4.2461e8,3.0976e19,2.7368],[1.6277e8,3.1999e19,2.7906],[7.2428e8,3.2751e19,2.7245],[2.7835e8,3.5763e19,2.7123],[4.8855e8,3.6495e19,2.7042],[8.1634e8,3.6816e19,2.7042],[3.0564e8,3.7442e19,2.7042],[1.7494e8,4.0594e19,2.7698],[5.0924e8,4.0841e19,2.68],[5.5248e8,4.1188e19,2.68],[8.9267e8,4.3865e19,2.672],[1.9583e8,4.4432e19,2.745],[1.018e9,4.7215e19,2.672],[5.866e8,4.7275e19,2.648],[2.1673e8,5.1129e19,2.7042],[1.1433e9,5.2074e19,2.6401],[2.7835e8,5.2468e19,2.692],[5.5248e8,5.3468e19,2.6401],[1.018e9,5.3622e19,2.6283],[6.6396e8,5.4793e19,2.6283],[8.1634e8,5.5825e19,2.6283],[4.2461e8,5.6699e19,2.66],[6.3222e8,5.7149e19,2.6283],[1.1433e9,5.724e19,2.6165],[6.3222e8,5.7599e19,2.6401],[1.4292e9,5.8127e19,2.66],[1.2656e9,5.8562e19,2.648],[1.6091e9,5.8618e19,2.66],[4.2461e8,5.9137e19,2.6401],[7.2428e8,6.291e19,2.6165],[2.5107e8,6.4753e19,2.68],[2.7835e8,6.8297e19,2.66],[4.8855e8,7.0224e19,2.6165],[8.1634e8,7.3791e19,2.597],[1.2656e9,7.462e19,2.648],[3.0564e8,8.0317e19,2.6401],[5.5248e8,8.2537e19,2.5853],[8.9267e8,8.3459e19,2.5776],[5.5248e8,8.4597e19,2.5776],[5.866e8,8.7752e19,2.5776],[6.3222e8,8.9255e19,2.566],[4.2461e8,8.9382e19,2.597],[5.866e8,8.9559e19,2.5853],[1.1433e9,9.2398e19,2.5545],[1.5929e9,9.2719e19,2.6087],[8.1634e8,9.4146e19,2.566],[1.018e9,9.6386e19,2.5469],[2.9795e9,9.691e19,2.6283],[2.0067e9,9.6928e19,2.5776],[1.7938e9,9.726e19,2.5776],[1.2656e9,9.7785e19,2.5545],[1.7305e9,9.8125e19,2.566],[2.6386e9,9.8356e19,2.5853],[1.018e9,9.9962e19,2.5545],[1.6091e9,1.0693e20,2.597],[6.3222e8,1.093e20,2.5469],[1.1433e9,1.1226e20,2.5165],[1.7938e9,1.1901e20,2.5545],[7.2428e8,1.2679e20,2.5241],[8.1634e8,1.361e20,2.5053],[4.8855e8,1.3815e20,2.5545],[1.2656e9,1.4799e20,2.5241],[1.2656e9,1.4846e20,2.5165],[1.4292e9,1.6835e20,2.494],[1.4292e9,1.6844e20,2.5053],[1.5929e9,1.7004e20,2.494],[1.7305e9,1.7009e20,2.5053],[1.4244e9,1.7319e20,2.494],[8.9267e8,1.7523e20,2.4866],[5.866e8,1.8302e20,2.5053],[1.5929e9,1.8577e20,2.494],[1.4244e9,1.8976e20,2.494],[2.0067e9,1.9584e20,2.4866],[1.018e9,1.9993e20,2.4569],[1.6091e9,2.1291e20,2.4569],[1.6091e9,2.1492e20,2.4643],[6.6396e8,2.1922e20,2.4754],[2.2828e9,2.2401e20,2.4754],[1.1433e9,2.2477e20,2.4459],[1.7938e9,2.2835e20,2.4643],[1.7938e9,2.3967e20,2.4569],[2.2977e9,2.4045e20,2.4643],[5.866e8,2.704e20,2.4643],[2.2828e9,2.751e20,2.4168],[1.7938e9,2.7808e20,2.4277],[1.1433e9,2.7871e20,2.4349],[8.1634e8,2.8092e20,2.4349],[4.2461e8,2.8378e20,2.5165],[1.4292e9,2.8546e20,2.4059],[1.2656e9,2.8748e20,2.4349],[2.0067e9,2.9302e20,2.3987],[2.9795e9,2.9336e20,2.4349],[8.1634e8,2.953e20,2.4459],[4.5161e9,2.9884e20,2.4569],[6.7956e9,2.9911e20,2.5241],[1.7305e9,3.2397e20,2.4277],[2.9795e9,3.2633e20,2.4349],[1.4292e9,3.3673e20,2.4168],[1.4244e9,3.8077e20,2.4059],[2.0067e9,3.9349e20,2.3987],[1.1433e9,4.0834e20,2.388],[1.6091e9,4.3004e20,2.388],[2.2828e9,4.4872e20,2.3773],[1.7938e9,4.7174e20,2.3773],[2.2977e9,4.7223e20,2.3702],[6.3223e8,5.4458e20,2.4459],[1.1433e9,5.473e20,2.3702],[8.1634e8,5.4972e20,2.3987],[1.2656e9,5.5324e20,2.3702],[2.9795e9,5.588e20,2.3595],[4.5161e9,5.6264e20,2.388],[1.4292e9,5.7648e20,2.3595],[2.6386e9,5.8004e20,2.3489],[1.7938e9,5.8377e20,2.3489],[2.0067e9,5.8701e20,2.3314],[2.9795e9,5.9168e20,2.3595],[6.7956e9,6.0284e20,2.4059],[1.2569e10,6.0818e20,2.5241],[1.7305e9,6.5724e20,2.3489],[1.5929e9,7.4087e20,2.3314],[1.6091e9,8.5533e20,2.321],[2.2828e9,8.8087e20,2.314],[6.7956e9,9.2832e20,2.3419],[1.7938e9,9.528e20,2.3036],[1.7938e9,9.5895e20,2.3036],[1.4292e9,9.6372e20,2.3314],[2.9795e9,9.6478e20,2.3036],[2.2828e9,9.7292e20,2.2933],[1.2656e9,9.7396e20,2.3314],[2.6386e9,9.7687e20,2.2864],[1.6091e9,9.7746e20,2.314],[2.0067e9,9.7859e20,2.3036],[1.7305e9,9.8456e20,2.3036],[4.5161e9,9.8978e20,2.321],[4.5161e9,9.9465e20,2.3036],[9.2932e9,1.0123e21,2.3595],[1.2569e10,1.014e21,2.4168],[1.1452e10,1.0148e21,2.4059],[2.9795e9,1.2935e21,2.2762],[1.7305e9,1.2966e21,2.2864],[2.0067e9,1.4992e21,2.266],[6.7956e9,1.5796e21,2.2933],[2.2828e9,1.795e21,2.2491],[4.5161e9,1.9865e21,2.2491],[2.6386e9,2.3081e21,2.2223],[9.2932e9,2.4418e21,2.2592],[2.9795e9,2.621e21,2.2123],[9.2932e9,2.876e21,2.239],[6.7956e9,2.8775e21,2.2057],[1.6183e10,2.9289e21,2.2864],[2.9795e9,2.9451e21,2.2123],[2.6386e9,2.9558e21,2.2057],[1.2569e10,2.9742e21,2.266],[4.5161e9,2.9887e21,2.2057],[1.1452e10,3.0192e21,2.266],[6.7956e9,3.2209e21,2.2057],[9.2932e9,5.0313e21,2.1794],[6.7956e9,1.2956e22,2.0774]];
+const NR=RUNS.length,lnN=new Float64Array(NR),lnD=new Float64Array(NR),lnL=new Float64Array(NR),isOut=new Uint8Array(NR);
+for(let i=0;i<NR;i++){const[N,C,L]=RUNS[i];lnN[i]=log_(N);lnD[i]=log_(C/(6*N));lnL[i]=log_(L)}
+// the five outliers: the five highest losses (a column of big models given almost no data at ~1e19 FLOP)
+const OUT=[...RUNS.keys()].sort((p,q)=>RUNS[q][2]-RUNS[p][2]).slice(0,5);for(const i of OUT)isOut[i]=1;
+// lenses: L(N,D) = E + A/N^α + B/D^β
+const lens=(E,A,B,al,be,name)=>({name,E,A,B,al,be});
+const PRINTED=lens(1.69,406.4,410.7,.34,.28,'printed');           // as printed in Hoffmann et al. 2022, eq. 10
+const UNROUNDED=lens(exp_(0.5267228),exp_(6.0073404),exp_(6.0179186),0.33917084,0.2849083,'unrounded'); // their TeX source comments
+const EPOCH=lens(1.8172,482.01,2085.43,.3478,.3658,'epoch');       // Besiroglu et al. 2024, for comparison only
+const fromTheta=(th,name)=>lens(exp_(th[2]),exp_(th[0]),exp_(th[1]),th[3],th[4],name||'reground');
+const theta0=l=>[log_(l.A),log_(l.B),log_(l.E),l.al,l.be];
+function loss(l,u,v){return l.E+l.A*exp_(-l.al*u)+l.B*exp_(-l.be*v)}          // u = ln N, v = ln D
+// ---- the telescope: lowest loss along one slit, 6ND + 2N·Dinf = C, golden-section search on ln N ----
+const GR=0.6180339887498949,UMIN=log_(1e5);
+function slitL(l,C,Di,u){const N=exp_(u),D=(C-2*N*Di)/(6*N);return D>0?loss(l,u,log_(D)):Infinity}
+function focus(l,C,Di,keep,it){
+  it=it||90;let a=UMIN,b=log_(C/(6e5+2*Di));const br=keep?[]:null;
+  if(!(b>a))return{u:a,N:exp_(a),D:0,L:Infinity,br};                 // serving alone costs more than the budget
+  let c=b-GR*(b-a),d=a+GR*(b-a),fc=slitL(l,C,Di,c),fd=slitL(l,C,Di,d);
+  for(let k=0;k<it;k++){
+    if(br&&k<30)br.push([a,b]);
+    if(fc<fd){b=d;d=c;fd=fc;c=b-GR*(b-a);fc=slitL(l,C,Di,c)}else{a=c;c=d;fc=fd;d=a+GR*(b-a);fd=slitL(l,C,Di,d)}
+  }
+  const u=(a+b)/2,N=exp_(u),D=(C-2*N*Di)/(6*N);
+  return{u,N,D,L:D>0?loss(l,u,log_(D)):Infinity,br};
+}
+// the smallest total budget whose best model reaches loss Lt (bisection on ln C)
+function cEquiv(l,Lt,Di){let lo=log_(1e15),hi=log_(1e32);for(let k=0;k<64;k++){const m=(lo+hi)/2;if(focus(l,exp_(m),Di).L>Lt)lo=m;else hi=m}return exp_((lo+hi)/2)}
+// ---- the catalogue (Hoffmann et al. 2022, Table 1; Llama 3 8B from Meta, 2024) ----
+const STARS=[{id:'lamda',name:'LaMDA',N:137e9,D:168e9},{id:'gpt3',name:'GPT-3',N:175e9,D:300e9},{id:'gopher',name:'Gopher',N:280e9,D:300e9},
+  {id:'mtnlg',name:'MT-NLG',N:530e9,D:270e9},{id:'chinchilla',name:'Chinchilla',N:70e9,D:1.4e12},{id:'llama3',name:'Llama 3 8B',N:8e9,D:15e12}];
+function starInfo(l,s,Di){const C=6*s.N*s.D+2*s.N*Di,Ls=loss(l,log_(s.N),log_(s.D)),o=focus(l,C,Di),ce=cEquiv(l,Ls,Di);
+  return{C,Ls,N:o.N,D:o.D,L:o.L,ce,save:C/ce}}
+// ---- the lens grinder: Huber loss on log L (δ = 1e-3), BFGS from the printed lens, as in Hoffmann et al. Appendix D.2 ----
+const DELTA=1e-3,CEILS=[1.2e20,1.2e21,Infinity];
+function subset(ceil,withOut){const idx=[];for(let i=0;i<NR;i++)if(RUNS[i][1]<=ceil&&(withOut||!isOut[i]))idx.push(i);return idx}
+function huber(th,idx,g){
+  const a=th[0],b=th[1],e=th[2],al=th[3],be=th[4];let f=0,g0=0,g1=0,g2=0,g3=0,g4=0;
+  for(const i of idx){
+    const x1=a-al*lnN[i],x2=b-be*lnD[i],mx=Math.max(x1,x2,e),e1=exp_(x1-mx),e2=exp_(x2-mx),e3=exp_(e-mx),s=e1+e2+e3,r=mx+log_(s)-lnL[i],ar=Math.abs(r);
+    let dh;if(ar<=DELTA){f+=.5*r*r;dh=r}else{f+=DELTA*(ar-.5*DELTA);dh=r>0?DELTA:-DELTA}
+    const w1=dh*e1/s,w2=dh*e2/s,w3=dh*e3/s;g0+=w1;g1+=w2;g2+=w3;g3-=w1*lnN[i];g4-=w2*lnD[i];
+  }
+  if(g){g[0]=g0;g[1]=g1;g[2]=g2;g[3]=g3;g[4]=g4}
+  return f;
+}
+function grind(idx,th0,maxIt){
+  maxIt=maxIt||400;let th=th0.slice(),g=[0,0,0,0,0],f=huber(th,idx,g);
+  const H=[1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1],path=[th.slice()],fs=[f];let stop='max';
+  for(let it=0;it<maxIt;it++){
+    const p=[0,0,0,0,0];for(let i=0;i<5;i++){let q=0;for(let j=0;j<5;j++)q+=H[i*5+j]*g[j];p[i]=-q}
+    let gp=0;for(let i=0;i<5;i++)gp+=g[i]*p[i];
+    if(!(gp<0)){for(let k=0;k<25;k++)H[k]=k%6?0:1;gp=0;for(let i=0;i<5;i++){p[i]=-g[i];gp-=g[i]*g[i]}}
+    let t=1,ok=false,th2=null,f2=0;const g2=[0,0,0,0,0];
+    for(let ls=0;ls<60;ls++){th2=[0,1,2,3,4].map(i=>th[i]+t*p[i]);f2=huber(th2,idx,g2);if(f2<=f+1e-4*t*gp){ok=true;break}t*=.5}
+    if(!ok){stop='line';break}
+    const s=[0,0,0,0,0],y=[0,0,0,0,0];let sy=0,smax=0;
+    for(let i=0;i<5;i++){s[i]=th2[i]-th[i];y[i]=g2[i]-g[i];sy+=s[i]*y[i];smax=Math.max(smax,Math.abs(s[i]))}
+    th=th2;f=f2;for(let i=0;i<5;i++)g[i]=g2[i];path.push(th.slice());fs.push(f);
+    if(sy>1e-18){const rho=1/sy,Hy=[0,0,0,0,0];let yHy=0;
+      for(let i=0;i<5;i++){let q=0;for(let j=0;j<5;j++)q+=H[i*5+j]*y[j];Hy[i]=q}
+      for(let i=0;i<5;i++)yHy+=y[i]*Hy[i];
+      const c2=rho*rho*yHy+rho;
+      for(let i=0;i<5;i++)for(let j=0;j<5;j++)H[i*5+j]=H[i*5+j]-rho*(s[i]*Hy[j]+Hy[i]*s[j])+c2*s[i]*s[j]}
+    if(smax<1e-11){stop='step';break}
+  }
+  return{th,f,path,fs,iters:path.length-1,stop};
+}
+// how a lens sits against the runs: share of runs it puts above the measured loss, and its Huber sum
+function lensStats(l,idx){let above=0,f=0;for(const i of idx){const p=loss(l,lnN[i],lnD[i]);if(p>RUNS[i][2])above++;const r=log_(p)-lnL[i],ar=Math.abs(r);f+=ar<=DELTA?.5*r*r:DELTA*(ar-.5*DELTA)}return{above,n:idx.length,f}}
+// iso-loss line L = lev: split the reducible loss as t : 1-t between the two terms, t = 1/(1+e^-s)
+function contour(l,lev,s0,s1,n){const R=lev-l.E;if(!(R>0))return[];const lA=log_(l.A),lB=log_(l.B),lR=log_(R),pts=[];
+  for(let k=0;k<=n;k++){const s=s0+(s1-s0)*k/n,lt=-log_(1+exp_(-s)),l1t=-log_(1+exp_(s));pts.push([(lA-lt-lR)/l.al,(lB-l1t-lR)/l.be])}return pts}
+function contourAt(l,lev,t){const R=lev-l.E;if(!(R>0))return null;return[(log_(l.A)-log_(t*R))/l.al,(log_(l.B)-log_((1-t)*R))/l.be]}
+return{contourAt,exp_,log_,LN10,RUNS,NR,lnN,lnD,lnL,isOut,OUT,PRINTED,UNROUNDED,EPOCH,lens,fromTheta,theta0,loss,slitL,focus,cEquiv,STARS,starInfo,DELTA,CEILS,subset,huber,grind,lensStats,contour};
+})();
+/* ================= page ================= */
+const $=s=>document.querySelector(s),Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=RM||STILL;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<=0?0:t>=1?1:t<.5?2*t*t:1-2*(1-t)*(1-t);
+const exp_=SO.exp_,log_=SO.log_,LN10=SO.LN10,NS='http://www.w3.org/2000/svg';
+const l10=x=>log_(x)/LN10,p10=v=>exp_(v*LN10);
+// the sky, in decades: parameters across, training tokens up
+const NX0=7.5,NX1=12.5,DY0=8.2,DY1=13.7,LC0=18,LC1=27,LS0=10,LS1=15.5;
+const CEIL_LAB=['10²⁰','10²¹','all'],CEIL_TXT=['up to 10²⁰ FLOP','up to 10²¹ FLOP','all'];
+const LEV=[4,3.5,3.1,2.8,2.6,2.45,2.33,2.24,2.17,2.11,2.06,2.02,1.98,1.95,1.92,1.89,1.86,1.83,1.8];
+const LEV_LAB=new Set([3.1,2.6,2.33,2.17,2.06,1.98,1.92,1.86]);
+const STARS=SO.STARS,star=id=>STARS.find(s=>s.id===id);
+const LPOS={lamda:[0,20,'middle'],gpt3:[-7,-11,'end'],gopher:[6,-12,'start'],mtnlg:[9,17,'start'],chinchilla:[12,-9,'start'],llama3:[12,-8,'start']};
+const SUPD='⁰¹²³⁴⁵⁶⁷⁸⁹',sup=n=>String(n).replace('-','⁻').replace(/\d/g,d=>SUPD[d]);
+const sig3=x=>x>=99.95?x.toFixed(0):x>=9.995?x.toFixed(1):x.toFixed(2);
+const fmtNum=n=>n>=1e12?sig3(n/1e12)+'T':n>=1e9?sig3(n/1e9)+'B':n>=1e6?sig3(n/1e6)+'M':sig3(n/1e3)+'K';
+function fmtC(C){let e=Math.floor(Math.log10(C)),m=C/Math.pow(10,e);if(m>=9.95){m/=10;e++}return m.toFixed(1)+'×10'+sup(e)}
+const fmtX=n=>fmtNum(n).replace(/\.0+([KMBT])$/,'$1').replace(/(\.\d*?)0+([KMBT])$/,'$1$2');
+const fmtR=r=>r>=99.5?Math.round(r).toLocaleString('en-US'):r>=9.95?r.toFixed(0):r.toFixed(1);
+const DEC={6:'1M',7:'10M',8:'100M',9:'1B',10:'10B',11:'100B',12:'1T',13:'10T',14:'100T'};
+const trim=(x,d)=>(+x.toFixed(d)).toString();
+const el=(tag,at,par)=>{const e=document.createElementNS(NS,tag);for(const k in at)e.setAttribute(k,at[k]);if(par)par.appendChild(e);return e};
+const mulberry32=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+
+/* ---------- lenses and the grinder ---------- */
+const LENSES={printed:SO.PRINTED,unrounded:SO.UNROUNDED};
+const TH0=SO.theta0(SO.PRINTED),thetaOf=l=>[log_(l.A),log_(l.B),log_(l.E),l.al,l.be];
+const GRINDS=new Map(),GLOG=[],FLOG=[],SLOG=[];
+function ground(ci,wo){const k=ci+':'+(wo?1:0);
+  if(!GRINDS.has(k)){const idx=SO.subset(SO.CEILS[ci],wo),r=SO.grind(idx,TH0);r.idx=idx;r.ci=ci;r.wo=wo;r.lens=SO.fromTheta(r.th,'reground');GRINDS.set(k,r);
+    GLOG.push({ci,ceil:isFinite(SO.CEILS[ci])?SO.CEILS[ci]:null,withOut:wo,n:idx.length,iters:r.iters,stop:r.stop,f:r.f,th:r.th.slice()})}
+  return GRINDS.get(k)}
+const S={lens:'printed',ci:2,wo:false,star:null};
+const V={th:TH0.slice(),lens:SO.PRINTED,lc:23.7,ls:LS0,ang:-2.5,fo:null,C:0,Di:0};
+const lensNow=()=>S.lens==='reground'?ground(S.ci,S.wo).lens:LENSES[S.lens];
+const DiOf=ls=>ls>LS0+1e-9?p10(ls):0;
+const lcStar=(s,Di)=>clamp(l10(6*s.N*s.D+2*s.N*Di),LC0,LC1);
+
+/* ---------- layout ---------- */
+let W=0,H=0,MOB=false,PX0,PX1,PY0,PY1,SX,SY,SC=1,PIV={x:0,y:0},SLW=30;
+const X=u=>PX0+(u/LN10-NX0)*SX,Y=v=>PY1-(v/LN10-DY0)*SY;            // u = ln N, v = ln D
+const invX=x=>(NX0+(x-PX0)/SX)*LN10,invY=y=>(DY0+(PY1-y)/SY)*LN10;
+function layout(){
+  const st=$('#stage').getBoundingClientRect();W=st.width;H=st.height;MOB=innerWidth<=820;
+  if(MOB){PX0=50;PX1=W-14;PY0=12;PY1=H-36}
+  else{const tw=$('#title').getBoundingClientRect().width,pl=$('#panel').getBoundingClientRect().left;PX0=32+tw+56;PX1=pl-28;PY0=34;PY1=H-46}
+  SX=(PX1-PX0)/(NX1-NX0);SY=(PY1-PY0)/(DY1-DY0);SC=clamp((PX1-PX0)/640,.42,1)*.82;SLW=MOB?20:30;
+  PIV={x:PX1-92*SC,y:PY1-116*SC};
+  sky.setAttribute('viewBox',`0 0 ${W} ${H}`);skyN.setAttribute('viewBox',`0 0 ${W} ${H}`);
+}
+
+/* ---------- the sky ---------- */
+const sky=$('#sky'),skyN=$('#skyN'),G={};
+function buildSky(){
+  sky.innerHTML='';const defs=el('defs',{},sky);
+  G.clipR=el('rect',{},el('clipPath',{id:'pc'},defs));
+  const mk=el('mask',{id:'shut',maskUnits:'userSpaceOnUse'},defs);G.mR=el('rect',{fill:'#fff'},mk);G.mHole=el('path',{fill:'none',stroke:'#000'},mk);
+  const lg=(id,stops,v)=>{const g=el('linearGradient',v?{id,x1:0,y1:0,x2:0,y2:1}:{id},defs);stops.forEach(([o,c])=>el('stop',{offset:o,'stop-color':c},g))};
+  lg('tubeG',[[0,'#4a2f12'],[.28,'#f7dc9a'],[.5,'#c8923f'],[.82,'#6e4818'],[1,'#2e1c08']],1);
+  lg('shadeG',[[0,'#24180b'],[.3,'#8a6a3a'],[.55,'#4c3418'],[1,'#120b04']],1);
+  lg('legG',[[0,'#2a1a0e'],[.5,'#6a4626'],[1,'#22150a']]);
+  const rg=el('radialGradient',{id:'glassG',cx:.35,cy:.35,r:.8},defs);[[0,'#cfe9ff'],[.4,'#3c6f9e'],[1,'#0b1a2c']].forEach(([o,c])=>el('stop',{offset:o,'stop-color':c},rg));
+  // the still layer (repainted only when the lens changes): background, nebula, contours, meridians, frontier, axes
+  skyN.innerHTML='';const dn=el('defs',{},skyN);G.clipN=el('rect',{},el('clipPath',{id:'pcN'},dn));
+  const pg=el('radialGradient',{id:'plotBg',cx:.92,cy:.06,r:1.25},dn);[[0,'#1b2350'],[.55,'#0b1029'],[1,'#05070f']].forEach(([o,c])=>el('stop',{offset:o,'stop-color':c},pg));
+  G.bg=el('g',{},skyN);
+  G.plotBg=el('rect',{fill:'url(#plotBg)'},skyN);
+  const PN=el('g',{'clip-path':'url(#pcN)'},skyN);
+  G.neb=el('g',{},PN);G.iso=el('g',{fill:'none'},PN);G.flops=el('g',{fill:'none',stroke:'rgba(227,185,104,.16)','stroke-width':1,'stroke-dasharray':'3 6'},PN);
+  G.front=el('path',{fill:'none',stroke:'rgba(255,242,210,.8)','stroke-width':1.5,'stroke-dasharray':'1.5 5','stroke-linecap':'round'},PN);
+  G.flopLab=el('g',{},PN);G.axes=el('g',{},skyN);
+  // the live layer: the dome's shutters and slit, the runs, the stars, the telescope
+  const P=el('g',{'clip-path':'url(#pc)'},sky);
+  G.glow=el('path',{fill:'none',stroke:'rgba(255,236,200,.06)'},P);
+  G.shut=el('rect',{fill:'#02030a',opacity:.58,mask:'url(#shut)'},P);
+  G.slitL=el('path',{fill:'none',stroke:'rgba(255,226,170,.5)','stroke-width':1,'stroke-dasharray':'1 4'},P);
+  G.isoLab=el('g',{},P);
+  G.runs=el('g',{},P);G.stars=el('g',{},P);
+  G.sight=el('path',{fill:'none',stroke:'rgba(255,224,160,.42)','stroke-width':1.1,'stroke-dasharray':'5 5'},P);
+  G.ret=el('g',{},P);
+  G.retC=el('circle',{r:15,fill:'rgba(255,217,138,.08)',stroke:'#ffd98a','stroke-width':1.6},G.ret);
+  G.retX=el('path',{d:'M-24 0H-9M9 0H24M0 -24V-9M0 9V24',stroke:'#ffd98a','stroke-width':1.4},G.ret);
+  G.retD=el('circle',{r:2.2,fill:'#fff3d2'},G.ret);
+  G.retT=el('text',{class:'rl',x:24,y:-14},G.ret);
+  G.scope=el('g',{},sky);
+  // runs
+  G.run=SO.RUNS.map((r,i)=>el('circle',{r:2.3,'data-i':i},G.runs));
+  // stars
+  G.star=STARS.map(s=>{const g=el('g',{'data-s':s.id},G.stars);
+    const halo=el('circle',{r:13,fill:'none',stroke:'#ffd98a','stroke-width':1.3,opacity:0},g);
+    el('path',{d:'M0 -10 L2.4 -2.4 L10 0 L2.4 2.4 L0 10 L-2.4 2.4 L-10 0 L-2.4 -2.4Z',fill:'#fff3d6'},g);
+    el('circle',{r:2.6,fill:'#fff'},g);
+    const t=el('text',{class:'sl'},g);t.textContent=s.name;return{s,g,halo,t}});
+  buildScope();
+}
+function lossColor(L){const t=clamp((3.3-L)/1.2,0,1),a=[110,140,255],b=[190,225,255],c=[255,240,196],m=t<.5?[a,b,t*2]:[b,c,t*2-1];
+  return`rgb(${m[0].map((v,i)=>Math.round(lerp(v,m[1][i],m[2]))).join(',')})`}
+function placeStatic(){ // everything that only moves when the window does
+  for(const r of[G.clipR,G.clipN,G.plotBg]){r.setAttribute('x',PX0);r.setAttribute('y',PY0);r.setAttribute('width',PX1-PX0);r.setAttribute('height',PY1-PY0)}
+  G.mR.setAttribute('x',PX0-10);G.mR.setAttribute('y',PY0-10);G.mR.setAttribute('width',PX1-PX0+20);G.mR.setAttribute('height',PY1-PY0+20);
+  G.shut.setAttribute('x',PX0);G.shut.setAttribute('y',PY0);G.shut.setAttribute('width',PX1-PX0);G.shut.setAttribute('height',PY1-PY0);
+  G.mHole.setAttribute('stroke-width',SLW);G.glow.setAttribute('stroke-width',SLW);
+  // background stars
+  G.bg.innerHTML='';const r=mulberry32(29);for(let i=0;i<(MOB?70:170);i++){const x=r()*W,y=r()*H,s=r();el('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:(.4+s*s*1.1).toFixed(2),fill:'#dfe8ff',opacity:(.12+r()*.4).toFixed(2)},G.bg)}
+  // runs
+  SO.RUNS.forEach(([N,C,L],i)=>{const c=G.run[i];c.setAttribute('cx',X(SO.lnN[i]).toFixed(1));c.setAttribute('cy',Y(SO.lnD[i]).toFixed(1));c.setAttribute('fill',lossColor(L));c.setAttribute('r',MOB?1.7:2.3)});
+  // stars
+  for(const o of G.star){const x=X(log_(o.s.N)),y=Y(log_(o.s.D)),lp=LPOS[o.s.id];o.x=x;o.y=y;o.g.setAttribute('transform',`translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${MOB?.75:1})`);
+    o.t.setAttribute('x',lp[0]);o.t.setAttribute('y',lp[1]+5);o.t.setAttribute('text-anchor',lp[2]);o.t.style.fontSize=MOB?'14px':''}
+  drawAxes();drawFlops();placeScope(true);
+}
+function drawAxes(){
+  const g=G.axes;g.innerHTML='';const fr=el('g',{fill:'none',stroke:'rgba(227,185,104,.55)'},g);
+  el('rect',{x:PX0-.5,y:PY0-.5,width:PX1-PX0+1,height:PY1-PY0+1,'stroke-width':1},fr);
+  el('rect',{x:PX0-5,y:PY0-5,width:PX1-PX0+10,height:PY1-PY0+10,'stroke-width':.6,stroke:'rgba(227,185,104,.3)'},fr);
+  const nm=d=>DEC[d];
+  for(let d=Math.ceil(NX0);d<=NX1;d++)for(let k=1;k<10;k++){const v=d+Math.log10(k);if(v<NX0||v>NX1)continue;const x=PX0+(v-NX0)*SX;
+    el('line',{x1:x,x2:x,y1:PY1+5,y2:PY1+(k===1?12:8),stroke:'rgba(227,185,104,.55)','stroke-width':k===1?1:.6},g);
+    if(k===1){const t=el('text',{class:'axl',x,y:PY1+25,'text-anchor':'middle'},g);t.textContent=nm(d)}}
+  for(let d=Math.ceil(DY0);d<=DY1;d++)for(let k=1;k<10;k++){const v=d+Math.log10(k);if(v<DY0||v>DY1)continue;const y=PY1-(v-DY0)*SY;
+    el('line',{x1:PX0-5,x2:PX0-(k===1?12:8),y1:y,y2:y,stroke:'rgba(227,185,104,.55)','stroke-width':k===1?1:.6},g);
+    if(k===1){const t=el('text',{class:'axl',x:PX0-15,y:y+4,'text-anchor':'end'},g);t.textContent=nm(d)}}
+  const a1=MOB?el('text',{class:'axt',x:PX0+8,y:PY1-8},g):el('text',{class:'axt',x:PX1,y:PY1+40,'text-anchor':'end'},g);a1.textContent=MOB?'params N →':'parameters N →';
+  const a2=el('text',{class:'axt',x:MOB?PX0+8:PX0,y:MOB?PY0+16:PY0-12},g);a2.textContent=MOB?'↑ tokens D':'↑ training tokens D';
+}
+function drawFlops(){ // training-compute meridians, C = 6ND
+  G.flops.innerHTML='';G.flopLab.innerHTML='';
+  for(let c=16;c<=29;c++){const k=(c-Math.log10(6))*LN10,u0=(NX0-1)*LN10,u1=(NX1+1)*LN10;
+    el('path',{d:`M${X(u0).toFixed(1)} ${Y(k-u0).toFixed(1)}L${X(u1).toFixed(1)} ${Y(k-u1).toFixed(1)}`},G.flops);
+    // label where the line leaves the top edge, else the right edge
+    const vt=DY1*LN10,ut=k-vt,xt=X(ut);let x,y,anc;
+    if(xt>=PX0+(MOB?96:190)&&xt<=PX1-30){x=xt+3;y=PY0+12;anc='start'}else{const ur=NX1*LN10,yr=Y(k-ur);if(yr<PY0+24||yr>PY1-10)continue;x=PX1-4;y=yr-4;anc='end'}
+    const t=el('text',{class:'fl',x,y,'text-anchor':anc},G.flopLab);t.textContent='10'+sup(c)}
+}
+// the nebula: one filled band per loss level, painted from the highest loss in, coloured by the level itself
+const PAL=[[0,[13,18,51]],[.3,[28,36,98]],[.5,[50,46,118]],[.66,[84,56,126]],[.79,[128,72,120]],[.89,[180,104,106]],[.955,[224,150,98]],[1,[250,208,130]]];
+function palette(t){t=clamp(t,0,1);for(let i=1;i<PAL.length;i++)if(t<=PAL[i][0]){const[a,ca]=PAL[i-1],[b,cb]=PAL[i],f=(t-a)/(b-a);return`rgb(${ca.map((v,j)=>Math.round(lerp(v,cb[j],f))).join(',')})`}return'rgb(255,214,128)'}
+const NEB=LEV.map(lev=>{const t=(4-lev)/(4-1.8);return{lev,fill:palette(Math.pow(t,1.15)),line:`rgba(255,232,190,${(.1+.22*t).toFixed(2)})`}});
+let nebP=[],isoP=[],labT=[];
+function buildNebula(){G.neb.innerHTML='';G.iso.innerHTML='';G.isoLab.innerHTML='';
+  nebP=NEB.map(n=>el('path',{fill:n.fill},G.neb));
+  isoP=NEB.map(n=>el('path',{stroke:n.line,'stroke-width':LEV_LAB.has(n.lev)?1.1:.7},G.iso));
+  labT=NEB.map(n=>{const t=el('text',{class:'cl','text-anchor':'middle'},G.isoLab);t.textContent=n.lev.toFixed(2);return t})}
+const ptsD=pts=>{let d='';for(let i=0;i<pts.length;i++)d+=(i?'L':'M')+X(pts[i][0]).toFixed(1)+' '+Y(pts[i][1]).toFixed(1);return d};
+function hitsStar(o,cx,cy){ // would a contour label centred at (cx,cy) touch this star or its name?
+  const lp=LPOS[o.s.id],w=o.s.name.length*(MOB?7.4:8.4),sc=MOB?.75:1,lx=o.x+lp[0]*sc-(lp[2]==='end'?w:lp[2]==='middle'?w/2:0),ly=o.y+lp[1]*sc;
+  const box=(a,b)=>a[0]<b[1]&&b[0]<a[1]&&a[2]<b[3]&&b[2]<a[3],me=[cx-18,cx+18,cy-11,cy+5];
+  return box(me,[o.x-13,o.x+13,o.y-13,o.y+13])||box(me,[lx-4,lx+w+4,ly-14,ly+6])}
+function drawNebula(l){
+  const ts=l.be/(l.al+l.be);
+  NEB.forEach((n,k)=>{const pts=SO.contour(l,n.lev,-12,12,MOB?110:160);
+    if(!pts.length){nebP[k].setAttribute('d','');isoP[k].setAttribute('d','');labT[k].setAttribute('opacity',0);return}
+    const d=ptsD(pts);isoP[k].setAttribute('d',d);nebP[k].setAttribute('d',d+`L${PX1+5000} ${PY0-5000}Z`);
+    // label where the line crosses the compute-optimal frontier
+    const c=SO.contourAt(l,n.lev,ts),x=X(c[0]),y=Y(c[1]),ok=LEV_LAB.has(n.lev)&&x>PX0+16&&x<PX1-16&&y>PY0+16&&y<PY1-12&&G.star.every(o=>!hitsStar(o,x-14,y-6));
+    labT[k].setAttribute('opacity',ok?1:0);labT[k].dataset.ok=ok?1:0;labT[k].dataset.hid='';labT[k].dataset.x=x;labT[k].dataset.y=y;if(ok){labT[k].setAttribute('x',(x-14).toFixed(1));labT[k].setAttribute('y',(y-6).toFixed(1))}});
+}
+function drawFrontier(l,Di){let d='';let first=true;
+  for(let c=15;c<=30.001;c+=.2){const o=SO.focus(l,p10(c),Di,false,48);if(!(o.D>0&&isFinite(o.L)))continue;d+=(first?'M':'L')+X(o.u).toFixed(1)+' '+Y(log_(o.D)).toFixed(1);first=false}
+  G.front.setAttribute('d',d)}
+function slitPath(C,Di){
+  if(!Di){const k=log_(C/6),u0=(NX0-1)*LN10,u1=(NX1+1)*LN10;return`M${X(u0).toFixed(1)} ${Y(k-u0).toFixed(1)}L${X(u1).toFixed(1)} ${Y(k-u1).toFixed(1)}`}
+  // 6ND + 2N·Dinf = C, as N = C/(2Dinf)·w and D = Dinf/3·(1-w)/w with w = 1/(1+e^-s)
+  const a=log_(C/(2*Di)),b=log_(Di/3),s0=b-(DY1+1)*LN10,s1=b-(DY0-1.2)*LN10,pts=[];
+  for(let k=0;k<=150;k++){const s=s0+(s1-s0)*k/150;pts.push([a-log_(1+exp_(-s)),b-s])}
+  return ptsD(pts)}
+function drawSlit(C,Di){const d=slitPath(C,Di);G.mHole.setAttribute('d',d);G.glow.setAttribute('d',d);G.slitL.setAttribute('d',d)}
+let inSlit=[];
+function markRuns(C,Di){const lc=l10(C);inSlit=[];
+  SO.RUNS.forEach(([N,Cr,L],i)=>{const on=!Di&&Math.abs(l10(Cr)-lc)<.06,out=SO.isOut[i]&&!(S.lens==='reground'&&S.wo);if(on)inSlit.push(i);
+    const c=G.run[i];c.setAttribute('opacity',on?1:.42);c.setAttribute('stroke',out?'#ff9d7a':on?'#fff':'none');c.setAttribute('stroke-width',out?1.1:on?.8:0);
+    if(out)c.setAttribute('fill-opacity',.15);else c.removeAttribute('fill-opacity')})}
+
+/* ---------- the telescope ---------- */
+function buildScope(){
+  const g=G.scope;g.innerHTML='';G.tri=el('g',{},g);
+  const leg=(x2,y2)=>el('path',{d:`M0 6L${x2} ${y2}`,stroke:'url(#legG)','stroke-width':6.5,'stroke-linecap':'round'},G.tri);
+  leg(-64,108);leg(58,108);leg(8,114);
+  el('path',{d:'M-40 70L34 70M-6 74L6 74',stroke:'rgba(227,185,104,.5)','stroke-width':1.5},G.tri);
+  for(const[x,y]of[[-64,108],[58,108],[8,114]])el('circle',{cx:x,cy:y,r:3.6,fill:'#c89a4c'},G.tri);
+  el('path',{d:'M-15 22L-15 -4Q-15 -16 0 -16Q15 -16 15 -4L15 22Z',fill:'url(#shadeG)',stroke:'#2a1a08','stroke-width':1},G.tri);
+  G.tube=el('g',{},g);const t=G.tube;
+  el('rect',{x:-112,y:-8,width:10,height:16,rx:2,fill:'#c8923f'},t);
+  el('rect',{x:-104,y:-5.5,width:28,height:11,fill:'#1d140a'},t);
+  el('path',{d:'M-78 -12L150 -15.5L150 15.5L-78 12Z',fill:'url(#tubeG)',stroke:'#2a1a08','stroke-width':.8},t);
+  for(const x of[-40,40,110])el('rect',{x,y:-16,width:6,height:32,rx:1.5,fill:'url(#shadeG)'},t);
+  el('path',{d:'M146 -18L206 -19.5L206 19.5L146 18Z',fill:'url(#shadeG)',stroke:'#1a1006','stroke-width':.8},t);
+  el('ellipse',{cx:206,cy:0,rx:3.6,ry:18,fill:'url(#glassG)'},t);
+  el('rect',{x:6,y:-29,width:74,height:8,rx:2.5,fill:'url(#tubeG)',stroke:'#2a1a08','stroke-width':.6},t);
+  for(const x of[18,64])el('rect',{x,y:-23,width:4,height:9,fill:'#3a2610'},t);
+  el('circle',{cx:-64,cy:17,r:5.5,fill:'#c8923f',stroke:'#2a1a08','stroke-width':.8},t);
+  G.hub=el('g',{},g);el('circle',{cx:0,cy:0,r:9,fill:'#d9ab5c',stroke:'#2a1a08','stroke-width':1},G.hub);el('circle',{cx:0,cy:0,r:3,fill:'#2a1a08'},G.hub);
+}
+function placeScope(){
+  const a=V.ang,flip=Math.cos(a)<0?-1:1;
+  G.tri.setAttribute('transform',`translate(${PIV.x.toFixed(1)},${PIV.y.toFixed(1)}) scale(${SC})`);
+  G.tube.setAttribute('transform',`translate(${PIV.x.toFixed(1)},${PIV.y.toFixed(1)}) rotate(${(a*180/Math.PI).toFixed(2)}) scale(${SC},${(SC*flip).toFixed(3)})`);
+  G.hub.setAttribute('transform',`translate(${PIV.x.toFixed(1)},${PIV.y.toFixed(1)}) scale(${SC})`);
+  if(okFo()){const ox=PIV.x+Math.cos(a)*210*SC,oy=PIV.y+Math.sin(a)*210*SC,tx=X(V.fo.u),ty=Y(log_(V.fo.D));
+    G.sight.setAttribute('d',`M${ox.toFixed(1)} ${oy.toFixed(1)}L${tx.toFixed(1)} ${ty.toFixed(1)}`)}
+}
+function placeReticle(){const fo=V.fo,x=X(fo.u),y=Y(log_(fo.D));
+  labT.forEach((t,k)=>{if(+t.getAttribute('opacity')||t.dataset.hid){const nb=Math.hypot(t.dataset.x-x,t.dataset.y-y)<46;const o=nb?'0':(t.dataset.ok==='1'?'1':'0');t.dataset.hid=nb?1:'';if(t.getAttribute('opacity')!==o)t.setAttribute('opacity',o)}});G.ret.setAttribute('transform',`translate(${x.toFixed(1)},${y.toFixed(1)})`);
+  G.retT.textContent=`${fmtNum(fo.N)} · ${fmtNum(fo.D)} tokens`;const left=x>PX0+190;G.retT.setAttribute('text-anchor',left?'end':'start');G.retT.setAttribute('x',left?-22:22);
+  G.retT.setAttribute('y',y<PY0+40?34:-14)}
+
+/* ---------- the eyepiece ---------- */
+const eye=$('#eye'),E={};
+function buildEye(){
+  eye.innerHTML='';const defs=el('defs',{},eye);
+  el('circle',{cx:150,cy:150,r:132},el('clipPath',{id:'ec'},defs));
+  const rg=el('radialGradient',{id:'eyeBg',cx:.5,cy:.45,r:.62},defs);[[0,'#141c44'],[.7,'#080c20'],[1,'#020309']].forEach(([o,c])=>el('stop',{offset:o,'stop-color':c},rg));
+  const br=el('linearGradient',{id:'rimG',x1:0,y1:0,x2:1,y2:1},defs);[[0,'#f6d58e'],[.45,'#9c7136'],[.7,'#e8c27a'],[1,'#5a3c16']].forEach(([o,c])=>el('stop',{offset:o,'stop-color':c},br));
+  el('circle',{cx:150,cy:150,r:146,fill:'#07080f',stroke:'url(#rimG)','stroke-width':8},eye);
+  for(let k=0;k<72;k++){const a=k*5*Math.PI/180,r0=k%6?139.5:137;el('line',{x1:150+Math.cos(a)*r0,y1:150+Math.sin(a)*r0,x2:150+Math.cos(a)*142,y2:150+Math.sin(a)*142,stroke:'rgba(255,228,170,.5)','stroke-width':k%6?.6:1},eye)}
+  el('circle',{cx:150,cy:150,r:133,fill:'url(#eyeBg)'},eye);
+  const g=el('g',{'clip-path':'url(#ec)'},eye);
+  E.grid=el('g',{stroke:'rgba(159,210,255,.1)','stroke-width':.7},g);
+  E.br=el('g',{},g);E.b1=el('line',{stroke:'rgba(159,210,255,.7)','stroke-width':1.2,y1:60,y2:240},E.br);E.b2=el('line',{stroke:'rgba(159,210,255,.7)','stroke-width':1.2,y1:60,y2:240},E.br);
+  E.curve=el('path',{fill:'none',stroke:'#f3c97c','stroke-width':2.2,'stroke-linejoin':'round'},g);
+  E.runs=el('g',{},g);
+  E.minV=el('line',{stroke:'rgba(255,217,138,.55)','stroke-width':1,'stroke-dasharray':'2 3'},g);
+  E.min=el('g',{},g);el('circle',{r:7,fill:'none',stroke:'#ffd98a','stroke-width':1.5},E.min);el('path',{d:'M-12 0H-4M4 0H12M0 -12V-4M0 4V12',stroke:'#ffd98a','stroke-width':1.2},E.min);
+  E.star=el('path',{d:'M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2Z',fill:'#fff3d6',stroke:'#05070f','stroke-width':.8},g);
+  E.lab=el('g',{},g);
+  el('circle',{cx:150,cy:150,r:133,fill:'none',stroke:'rgba(0,0,0,.55)','stroke-width':14},eye);
+  E.top=el('text',{x:150,y:56,'text-anchor':'middle',fill:'rgba(239,230,210,.75)','font-size':10.5},eye);
+}
+const EX0=50,EX1=250,EY0=74,EY1=222;
+let EYEW=null;
+function drawEye(l,C,Di,fo){
+  const c=fo.u/LN10,umax=l10(C/(6e5+2*Di));let lo=c-1.35,hi=Math.min(c+1.35,umax-1e-3);if(hi-lo<1.2)lo=hi-2.7;
+  const n=110,pts=[];let ymax=-1e9;
+  for(let k=0;k<n;k++){const u=lo+(hi-lo)*k/(n-1),L=SO.slitL(l,C,Di,u*LN10);pts.push([u,L]);if(isFinite(L)&&(k===0||k===n-1))ymax=Math.max(ymax,L)}
+  const runs=Di?[]:inSlit.filter(i=>{const u=SO.lnN[i]/LN10;return u>=lo&&u<=hi});
+  let ymin=fo.L;for(const i of runs)ymin=Math.min(ymin,SO.RUNS[i][2]),ymax=Math.max(ymax,SO.RUNS[i][2]);
+  ymax=Math.min(ymax,fo.L+1.6);if(ymax-fo.L<.04)ymax=fo.L+.04;const pad=(ymax-ymin)*.07;ymin-=pad;
+  const ex=u=>EX0+(u-lo)/(hi-lo)*(EX1-EX0),ey=L=>EY1-(L-ymin)/(ymax-ymin)*(EY1-EY0);
+  EYEW={lo,hi,ex,ey};
+  let d='',pen=false;for(const[u,L]of pts){if(!isFinite(L)){pen=false;continue}d+=(pen?'L':'M')+ex(u).toFixed(1)+' '+clamp(ey(L),-50,400).toFixed(1);pen=true}
+  E.curve.setAttribute('d',d);
+  E.runs.innerHTML='';for(const i of runs){const[N,Cr,L]=SO.RUNS[i];el('circle',{cx:ex(SO.lnN[i]/LN10).toFixed(1),cy:ey(L).toFixed(1),r:3.2,fill:lossColor(L),stroke:'#05070f','stroke-width':.8,opacity:SO.isOut[i]&&!(S.lens==='reground'&&S.wo)?.45:1},E.runs)}
+  const mx=ex(c),my=ey(fo.L);E.min.setAttribute('transform',`translate(${mx.toFixed(1)},${my.toFixed(1)})`);
+  E.minV.setAttribute('x1',mx);E.minV.setAttribute('x2',mx);E.minV.setAttribute('y1',my+12);E.minV.setAttribute('y2',EY1+18);
+  // grid and labels: decades across, two losses up
+  E.grid.innerHTML='';E.lab.innerHTML='';
+  for(let dd=Math.ceil(lo);dd<=hi;dd++){const x=ex(dd);el('line',{x1:x,x2:x,y1:EY0-20,y2:EY1+26},E.grid);
+    const t=el('text',{x,y:EY1+20,'text-anchor':'middle',fill:'rgba(159,210,255,.7)','font-size':10},E.lab);t.textContent=DEC[dd]||('1e'+dd)}
+  for(const L of[fo.L,ymax]){const y=ey(L);el('line',{x1:30,x2:270,y1:y,y2:y},E.grid);const t=el('text',{x:EX0-4,y:y-4,'text-anchor':'start',fill:'rgba(239,230,210,.6)','font-size':10},E.lab);t.textContent=L.toFixed(3)}
+  const s=S.star&&star(S.star);
+  if(s){const u=l10(s.N),Ls=SO.loss(l,log_(s.N),log_(s.D));const inW=u>=lo&&u<=hi&&ey(Ls)>EY0-30;E.star.setAttribute('opacity',inW?1:0);if(inW)E.star.setAttribute('transform',`translate(${ex(u).toFixed(1)},${ey(Ls).toFixed(1)})`)}
+  else E.star.setAttribute('opacity',0);
+  E.top.textContent=`slit · ${fmtC(C)} FLOP${Di?' in all':''}`;
+}
+function noSlit(){E.curve.setAttribute('d','');E.runs.innerHTML='';E.lab.innerHTML='';E.min.setAttribute('opacity',0);E.minV.setAttribute('x1',-9);E.minV.setAttribute('x2',-9);E.star.setAttribute('opacity',0);
+  E.top.textContent='serving alone costs more';
+  for(const k of['rN','rD','rR','rL'])$('#'+k).textContent='–';$('#cv').textContent=fmtC(V.C)+' FLOP';$('#sv').textContent=fmtC(V.Di)+' tokens';
+  $('#bn1').innerHTML='this budget can’t even pay for <b>serving</b> that many tokens';$('#bn2').textContent=''}
+function eyeBrackets(k){ // the search closing in: the first k brackets of the golden-section search
+  const br=EF&&EF.br;if(!br||!EYEW||k<0){E.br.setAttribute('opacity',0);return}
+  const b=br[Math.min(k,br.length-1)],x1=EYEW.ex(b[0]/LN10),x2=EYEW.ex(b[1]/LN10);
+  E.br.setAttribute('opacity',1);for(const[e,x]of[[E.b1,x1],[E.b2,x2]]){e.setAttribute('x1',clamp(x,-20,320));e.setAttribute('x2',clamp(x,-20,320))}}
+
+/* ---------- panel ---------- */
+const LENS_UI=[['printed','Printed 2022'],['unrounded','Unrounded'],['reground','Re-ground']];
+function buildPanel(){
+  const lc=$('#lenses');LENS_UI.forEach(([k,t])=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.dataset.k=k;b.onclick=()=>{poke();setLens(k,'chip')};lc.appendChild(b)});
+  const cc=$('#ceils');CEIL_LAB.forEach((t,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.dataset.i=i;b.title='Fit to the runs '+CEIL_TXT[i];b.onclick=()=>{poke();S.ci=i;startGrind('chip')};cc.appendChild(b)});
+  $('#outl').onclick=()=>{poke();S.wo=!S.wo;startGrind('chip')};
+  const sc=$('#starChips');STARS.forEach(s=>{const b=document.createElement('button');b.className='chip';b.textContent=s.name;b.dataset.s=s.id;b.onclick=()=>{poke();pointAt(s.id,'chip')};sc.appendChild(b)});
+  const bu=$('#budget'),sv=$('#serve');
+  bu.addEventListener('input',()=>{poke();sliding=true;S.star=null;twLc=null;V.lc=+bu.value;markGeo()});
+  bu.addEventListener('change',()=>{sliding=false});
+  sv.addEventListener('input',()=>{poke();sliding=true;twLs=null;V.ls=+sv.value;if(S.star)V.lc=lcStar(star(S.star),DiOf(V.ls));markGeo(true)});
+  sv.addEventListener('change',()=>{sliding=false});
+  $('#tourb').onclick=()=>{startTour()};
+}
+function syncUI(){
+  document.querySelectorAll('#lenses .chip').forEach(b=>b.classList.toggle('on',b.dataset.k===S.lens));
+  document.querySelectorAll('#ceils .chip').forEach(b=>b.classList.toggle('on',S.lens==='reground'&&+b.dataset.i===S.ci));
+  const o=$('#outl');o.classList.toggle('on',S.lens==='reground'&&S.wo);o.setAttribute('aria-pressed',S.wo);
+  document.querySelectorAll('#starChips .chip').forEach(b=>b.classList.toggle('on',b.dataset.s===S.star));
+  for(const o of G.star){const on=o.s.id===S.star;o.halo.setAttribute('opacity',on?1:0);o.t.classList.toggle('on',on)}
+}
+function lensText(l,stats,grinding){
+  const r=S.lens==='reground'?ground(S.ci,S.wo):null;
+  $('#lensv').textContent=S.lens==='printed'?'as printed, 2022':S.lens==='unrounded'?'TeX-source digits':`fitted here, ${r.idx.length} runs`;
+  const f=(x,d)=>trim(x,d);
+  $('#lensEq').innerHTML=`L = ${f(l.E,4)} + ${(+l.A.toPrecision(4))}/N<sup>${f(l.al,4)}</sup> + ${(+l.B.toPrecision(4))}/D<sup>${f(l.be,4)}</sup>`;
+  if(grinding)$('#lensFit').innerHTML=`grinding · BFGS step <b>${grinding[0]}</b> of ${grinding[1]} · Huber Σ ${grinding[2].toExponential(2)}`;
+  else $('#lensFit').innerHTML=`sits above <b>${stats.above}</b> of ${stats.n} runs · Huber Σ ${stats.f.toExponential(2)}`;
+}
+const statsCache=new Map();
+function lensStatsNow(){const idx=S.lens==='reground'?ground(S.ci,S.wo).idx:SO.subset(Infinity,false),k=S.lens+':'+S.ci+':'+S.wo;
+  if(!statsCache.has(k))statsCache.set(k,SO.lensStats(lensNow(),idx));return statsCache.get(k)}
+function readouts(fo,C,Di){
+  $('#rN').textContent=fmtNum(fo.N);$('#rD').textContent=fmtNum(fo.D);$('#rR').textContent=fmtR(fo.D/fo.N);$('#rL').textContent=fo.L.toFixed(3);
+  $('#cv').textContent=fmtC(C)+' FLOP';$('#sv').textContent=Di?fmtC(Di)+' tokens':'none';
+  const tr=6*fo.N*fo.D/C;$('#bn1').innerHTML=Di?`training <b>${Math.round(tr*100)}%</b> · serving ${Math.round((1-tr)*100)}% of the bill`:`along a slit of <b>${fmtC(C)}</b> FLOP`;
+  $('#bn2').textContent=S.lens==='printed'?'printed lens':S.lens==='unrounded'?'unrounded lens':'re-ground lens';
+  const bu=$('#budget'),sv=$('#serve');if(document.activeElement!==bu)bu.value=V.lc;if(document.activeElement!==sv)sv.value=V.ls;
+}
+function starCard(log){
+  const box=$('#starBox'),s=S.star&&star(S.star);if(!s){box.hidden=true;return}
+  const l=V.lens,q=SO.starInfo(l,s,V.Di);box.hidden=false;
+  if(log)SLOG.push({id:s.id,E:l.E,A:l.A,B:l.B,al:l.al,be:l.be,Di:V.Di,C:q.C,Ls:q.Ls,N:q.N,D:q.D,L:q.L,ce:q.ce,save:q.save});
+  const at=q.save<1.004?`It sits at the floor of its slit.`:`The floor of its slit is <b>${fmtNum(q.N)} on ${fmtNum(q.D)} tokens</b>, which reaches ${s.name}’s loss with <b>${q.save.toFixed(2)}× less</b> compute.`;
+  box.innerHTML=`<p><span class="nm">${s.name}</span> ${fmtX(s.N)} parameters on ${fmtX(s.D)} tokens, ${fmtR(s.D/s.N)} per parameter. This lens gives it loss <b>${q.Ls.toFixed(3)}</b>. ${at}</p>`;
+}
+
+/* ---------- state changes ---------- */
+let twLens=null,twLc=null,twLs=null,GRA=null,EF=null,sliding=false,aiming=false,simT=0,needSettle=true,lensDirty=true,geoDirty=true,diDirty=true,drawLens=true,drawGeo=true,lastWhy='init',gstep=null;
+function markGeo(di){geoDirty=true;needSettle=true;if(di)diDirty=true}
+function setLens(k,why){
+  if(k==='reground'){startGrind(why);return}
+  S.lens=k;lastWhy=why;const to=LENSES[k];GRA=null;twLens={from:V.th.slice(),to:thetaOf(to),t0:simT,dur:STATIC?0:.8,final:to};syncUI()}
+function startGrind(why){
+  S.lens='reground';lastWhy=why;const r=ground(S.ci,S.wo);twLens=null;
+  const same=V.th.every((v,i)=>v===r.path[0][i]);
+  GRA={r,t0:simT,pre:V.th.slice(),preDur:STATIC||same?0:.45,dur:STATIC?0:clamp(r.iters*.07,2.2,4.4)};syncUI()}
+function tweenLc(to,dur){twLc={from:V.lc,to,t0:simT,dur:STATIC?0:dur}}
+function tweenLs(to,dur){twLs={from:V.ls,to,t0:simT,dur:STATIC?0:dur}}
+function pointAt(id,why){S.star=id;lastWhy=why;tweenLc(lcStar(star(id),DiOf(V.ls)),1.4);syncUI()}
+function aimAt(p){const u=invX(clamp(p.x,PX0,PX1)),v=invY(clamp(p.y,PY0,PY1)),N=exp_(u),D=exp_(v);S.star=null;twLc=null;lastWhy='aim';
+  V.lc=clamp(l10(6*N*D+2*N*DiOf(V.ls)),LC0,LC1);markGeo();syncUI()}
+function stepTweens(){
+  if(GRA){const t=simT-GRA.t0,r=GRA.r;
+    if(t<GRA.preDur){const e=ease(t/GRA.preDur);V.th=GRA.pre.map((v,i)=>lerp(v,r.path[0][i],e));gstep=[0,r.iters,r.fs[0]]}
+    else{const u=GRA.dur&&r.iters?(t-GRA.preDur)/GRA.dur:1;
+      if(u>=1){V.th=r.th.slice();V.lens=r.lens;GRA=null;gstep=null}
+      else{const q=r.iters*u,i=Math.min(r.iters-1,Math.floor(q)),f=q-i;V.th=r.path[i].map((v,j)=>lerp(v,r.path[i+1][j],f));gstep=[i+1,r.iters,r.fs[i+1]]}}
+    if(GRA)V.lens=SO.fromTheta(V.th,'grinding');lensDirty=true}
+  else if(twLens){const u=twLens.dur?(simT-twLens.t0)/twLens.dur:1;
+    if(u>=1){V.th=twLens.to.slice();V.lens=twLens.final;twLens=null}else{const e=ease(u);V.th=twLens.from.map((v,i)=>lerp(v,twLens.to[i],e));V.lens=SO.fromTheta(V.th,'tween')}lensDirty=true}
+  if(twLs){const u=twLs.dur?(simT-twLs.t0)/twLs.dur:1;V.ls=u>=1?twLs.to:lerp(twLs.from,twLs.to,ease(u));if(u>=1)twLs=null;if(S.star)V.lc=lcStar(star(S.star),DiOf(V.ls));markGeo(true)}
+  if(twLc){if(S.star&&!twLc.fixed)twLc.to=lcStar(star(S.star),DiOf(V.ls));const u=twLc.dur?(simT-twLc.t0)/twLc.dur:1;V.lc=u>=1?twLc.to:lerp(twLc.from,twLc.to,(twLc.lin?u:ease(u)));if(u>=1)twLc=null;markGeo()}
+}
+const okFo=()=>!!(V.fo&&isFinite(V.fo.L)&&V.fo.D>0);
+const busy=()=>!!(GRA||twLens||twLc||twLs||aiming||sliding);
+function compute(){ // the model: where the telescope points now
+  const l=V.lens,C=p10(V.lc),Di=DiOf(V.ls);V.C=C;V.Di=Di;
+  const fo=SO.focus(l,C,Di,true);V.fo=fo;
+  if(isFinite(fo.L))FLOG.push({E:l.E,A:l.A,B:l.B,al:l.al,be:l.be,C,Di,N:fo.N,D:fo.D,L:fo.L});if(FLOG.length>4000)FLOG.splice(0,FLOG.length-4000);
+  drawLens=drawLens||lensDirty;drawGeo=true;if(diDirty)drawLens=true;lensDirty=geoDirty=diDirty=false;
+}
+function aimTelescope(dt,snap){if(!okFo())return;const tx=X(V.fo.u),ty=Y(log_(V.fo.D)),a=Math.atan2(ty-PIV.y,tx-PIV.x);let d=a-V.ang;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+  V.ang=snap?a:V.ang+d*(1-Math.exp(-dt*6))}
+
+/* ---------- captions and the tour ---------- */
+let shownCap='',capTimer=0;
+function cap(html){if(html===shownCap)return;const e=$('#caption');shownCap=html;
+  if(STATIC||FIXED){e.innerHTML=html;e.classList.remove('fade');return}
+  e.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{e.innerHTML=shownCap;e.classList.remove('fade')},360)}
+const RG=()=>ground(2,false);
+const CAP={
+  slit:()=>`<b>A compute budget opens one slit.</b> Training costs about <span class="m">C ≈ 6·N·D</span> FLOPs, so along the slit a bigger model reads fewer tokens. The telescope finds where in the slit the glow, the loss Chinchilla’s law predicts, is deepest.`,
+  gopher:()=>{const s=star('gopher'),q=SO.starInfo(SO.PRINTED,s,0);return`<b>Gopher</b>: 280B parameters on 300B tokens. The law as printed in 2022 says the same budget is best spent on <b>${fmtNum(q.N)} parameters reading ${fmtNum(q.D)} tokens</b>, ${fmtR(q.D/q.N)} per parameter. Chinchilla, trained to prove the point, read 20.`},
+  runs:()=>{const st=SO.lensStats(SO.PRINTED,SO.subset(Infinity,false));return`<b>The dots are the law’s evidence</b>: 245 training runs, read back off the paper’s Figure 4 by Epoch AI. The eyepiece shows the ones at 10²¹ FLOP. The printed curve sits above <b>${st.above} of the ${st.n}</b> that count; β was printed as 0.28, rounded from 0.2849.`},
+  grind:()=>{const r=RG(),l=r.lens;return`<b>So grind the lens again</b>, here in your browser: ${r.iters} BFGS steps on the same Huber loss, starting from the printed values. It ends at E ${l.E.toFixed(3)}, α ${l.al.toFixed(3)}, β ${l.be.toFixed(3)}. Epoch AI’s 2024 replication got 1.817, 0.348 and 0.366.`},
+  chin:()=>{const s=star('chinchilla'),q=SO.starInfo(RG().lens,s,0),p=SO.starInfo(SO.PRINTED,s,0);return`<b>Now point at Chinchilla</b>, 70B on 1.4T tokens. On the re-ground lens its slit bottoms out at <b>${fmtNum(q.N)} on ${fmtNum(q.D)} tokens</b>, ${fmtR(q.D/q.N)} per parameter, right where Chinchilla sits. The printed lens asked for ${fmtNum(p.N)}.`},
+  ceil:()=>{const s=star('chinchilla'),r=ground(0,false),o=SO.focus(r.lens,6*s.N*s.D,0);return`<b>Grind it from only the runs up to 10²⁰ FLOP</b>, ${Math.round(6*s.N*s.D/1.2e20).toLocaleString('en-US')}× short of this budget, and the floor jumps to <b>${fmtNum(o.N)} on ${fmtNum(o.D)} tokens</b>: ${fmtR(o.D/o.N)} per parameter. Far beyond the data, the answer swings.`},
+  llama:()=>{const s=star('llama3'),q=SO.starInfo(RG().lens,s,0);return`<b>Llama 3 8B</b> read 15T tokens, ${fmtR(s.D/s.N)} per parameter, on nearly the same budget. On this lens that budget would buy a <b>${fmtNum(q.N)}</b> model on ${fmtNum(q.D)} tokens, reaching Llama’s loss with ${q.save.toFixed(1)}× less compute.`},
+  serve:()=>{const s=star('llama3'),q=SO.starInfo(RG().lens,s,1e14);return`<b>But every token a model serves costs 2·N FLOPs.</b> Expect 10¹⁴ tokens of use and the slit bends: its floor slides to <b>${fmtNum(q.N)} on ${fmtNum(q.D)} tokens</b>, and Llama 3 8B costs only ${((q.save-1)*100).toFixed(1)}% more than the best.`},
+  you:()=>`<b>Your turn…</b> Turn the budget, click the sky to open a slit there, point the telescope at a model, or grind the lens from other runs.`,
+  still:()=>{const s=star('chinchilla'),q=SO.starInfo(RG().lens,s,0),p=SO.starInfo(SO.PRINTED,s,0);return`<b>Chinchilla’s scaling law, re-fitted in your browser</b> to the 240 training runs behind it. At Chinchilla’s budget the floor of the slit is ${fmtNum(q.N)} parameters on ${fmtNum(q.D)} tokens, right where Chinchilla (70B on 1.4T) sits. The law as printed in 2022 asked for ${fmtNum(p.N)} on ${fmtNum(p.D)}.`},
+};
+function capResult(){const fo=V.fo;let h='';
+  if(lastWhy==='chip'&&S.lens==='reground'){const r=ground(S.ci,S.wo),l=r.lens;h=`<b>Re-ground on ${r.idx.length} runs</b> (${CEIL_TXT[S.ci]}${S.wo?', outliers in':''}) in ${r.iters} BFGS steps: E ${l.E.toFixed(3)}, α ${l.al.toFixed(3)}, β ${l.be.toFixed(3)}. `}
+  if(S.star){const s=star(S.star),q=SO.starInfo(V.lens,s,V.Di);h+=`<b>${s.name}</b>, ${fmtX(s.N)} on ${fmtX(s.D)} tokens. The floor of its slit: ${fmtNum(q.N)} on ${fmtNum(q.D)} tokens, ${fmtR(q.D/q.N)} per parameter${q.save<1.004?'; it sits right there.':`, reaching its loss with ${q.save.toFixed(2)}× less compute.`}`}
+  else h+=`<b>${fmtC(V.C)} FLOP${V.Di?' in all, serving included':''}.</b> The floor of the slit is a <b>${fmtNum(fo.N)}</b> model on ${fmtNum(fo.D)} tokens, ${fmtR(fo.D/fo.N)} per parameter, loss ${fo.L.toFixed(3)}.`;
+  cap(h)}
+let tour=null,tourDone=false;
+function tourReset(){S.lens='printed';S.ci=2;S.wo=false;S.star=null;V.th=TH0.slice();V.lens=SO.PRINTED;V.lc=LC0;V.ls=LS0;twLens=twLc=twLs=GRA=null;lensDirty=true;markGeo(true);syncUI()}
+const TOUR=[
+  {gap:0,go:()=>{tourReset();twLc={from:LC0,to:lcStar(star('gopher'),0),t0:simT,dur:STATIC?0:6.4,fixed:true};cap(CAP.slit())}},
+  {gap:6.9,go:()=>{pointAt('gopher','tour');cap(CAP.gopher())}},
+  {gap:7.4,go:()=>{S.star=null;syncUI();tweenLc(21,1.5);twLc.fixed=true;cap(CAP.runs())}},
+  {gap:7.6,go:()=>{S.ci=2;S.wo=false;startGrind('tour');cap(CAP.grind())}},
+  {gap:6.4,when:()=>!GRA,go:()=>{pointAt('chinchilla','tour');cap(CAP.chin())}},
+  {gap:7.4,go:()=>{S.ci=0;startGrind('tour');cap(CAP.ceil())}},
+  {gap:7.2,when:()=>!GRA,go:()=>{S.ci=2;startGrind('tour');pointAt('llama3','tour');cap(CAP.llama())}},
+  {gap:7.2,when:()=>!GRA,go:()=>{tweenLs(14,2.6);cap(CAP.serve())}},
+  {gap:8.4,go:()=>{cap(CAP.you());tour=null;tourDone=true}},
+];
+function startTour(){tour={k:0,t:-1e9};tourDone=false;tourTick()}
+function poke(){if(tour){tour=null;twLc=null;twLs=null;cap(CAP.you())}}
+function tourTick(){while(tour&&tour.k<TOUR.length){const b=TOUR[tour.k];if(simT-tour.t<b.gap||(b.when&&!b.when()))break;tour.k++;tour.t=simT;b.go()}}
+
+/* ---------- pointer ---------- */
+const tip=$('#tip');
+function loc(e){const r=sky.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+const inPlot=p=>p.x>=PX0&&p.x<=PX1&&p.y>=PY0&&p.y<=PY1;
+function hitStar(p){let best=null,bd=(MOB?18:15)**2;for(const o of G.star){const d=(o.x-p.x)**2+(o.y-p.y)**2;if(d<bd){bd=d;best=o.s}}return best}
+function hitRun(p){let best=-1,bd=81;SO.RUNS.forEach((r,i)=>{const d=(X(SO.lnN[i])-p.x)**2+(Y(SO.lnD[i])-p.y)**2;if(d<bd){bd=d;best=i}});return best}
+function hover(p,e){if(MOB)return;const s=hitStar(p);sky.classList.toggle('onstar',!!s);
+  if(s){const l=V.lens;tip.innerHTML=`<b>${s.name}</b> · ${fmtX(s.N)} parameters · ${fmtX(s.D)} tokens<br>${fmtR(s.D/s.N)} per parameter · 6·N·D ${fmtC(6*s.N*s.D)} FLOP<br>this lens predicts loss ${SO.loss(l,log_(s.N),log_(s.D)).toFixed(3)}`}
+  else{const i=inPlot(p)?hitRun(p):-1;if(i<0){tip.style.opacity=0;return}const[N,C,L]=SO.RUNS[i];
+    tip.innerHTML=`<b>training run</b>${SO.isOut[i]?' (one of the 5 outliers)':''} · ${fmtNum(N)} parameters · ${fmtNum(C/(6*N))} tokens<br>${fmtC(C)} FLOP · measured loss ${L.toFixed(2)} · this lens ${SO.loss(V.lens,SO.lnN[i],SO.lnD[i]).toFixed(3)}`}
+  tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.style.opacity=1}
+function hookPointer(){
+  sky.addEventListener('pointerdown',e=>{const p=loc(e),s=hitStar(p);if(s){poke();pointAt(s.id,'click');return}if(!inPlot(p))return;poke();aiming=true;try{sky.setPointerCapture(e.pointerId)}catch(_){}aimAt(p)});
+  sky.addEventListener('pointermove',e=>{const p=loc(e);if(aiming){aimAt(p);return}hover(p,e)});
+  const end=()=>{aiming=false};sky.addEventListener('pointerup',end);sky.addEventListener('pointercancel',end);
+  sky.addEventListener('pointerleave',()=>{tip.style.opacity=0;sky.classList.remove('onstar')});
+  addEventListener('resize',()=>{layout();placeStatic();drawLens=true;drawGeo=true;render()});
+}
+
+/* ---------- the loop ---------- */
+let prerun=false,settleT=-1;
+function update(dt){
+  simT+=dt;tourTick();stepTweens();
+  if(lensDirty||geoDirty||diDirty)compute();
+  aimTelescope(dt,STATIC);
+  const b=busy();if(b)needSettle=true;
+  else if(needSettle){needSettle=false;settleT=simT;onSettle()}
+}
+function onSettle(){ // the telescope has stopped: show the search closing in, log what it says, tell the visitor
+  if(!okFo()){if(!tour&&ready)cap(`<b>${fmtC(V.C)} FLOP in all</b> can’t even pay for serving ${fmtC(V.Di)} tokens: raise the budget or serve less.`);return}
+  EF=STATIC||FIXED&&prerun?null:{br:V.fo.br,t0:simT};starCard(true);
+  if(!tour&&ready&&!['init','static'].includes(lastWhy))capResult();
+}
+function render(){
+  if(!V.fo)return;
+  if(drawLens){drawNebula(V.lens);drawFrontier(V.lens,V.Di);if(!GRA)lensText(V.lens,lensStatsNow(),null);markRuns(V.C,V.Di)}
+  if(GRA&&gstep)lensText(V.lens,null,gstep);
+  if(drawGeo){drawSlit(V.C,V.Di);if(!drawLens)markRuns(V.C,V.Di);const ok=okFo();G.ret.setAttribute('opacity',ok?1:0);G.sight.setAttribute('opacity',ok?1:0);
+    if(ok){drawEye(V.lens,V.C,V.Di,V.fo);placeReticle();readouts(V.fo,V.C,V.Di);if(S.star&&busy())starCard(false)}else noSlit()}
+  $('#gbar i').style.width=GRA&&gstep?(gstep[0]/gstep[1]*100).toFixed(1)+'%':S.lens==='reground'?'100%':'0%';
+  drawLens=drawGeo=false;
+  // the eyepiece search animation after the telescope settles
+  if(EF){const u=(simT-EF.t0)/.9;if(u>=1){EF=null;eyeBrackets(-1);E.min.setAttribute('opacity',1)}else{eyeBrackets(Math.floor(u*16));E.min.setAttribute('opacity',u>.85?1:.25)}}
+  else{eyeBrackets(-1);E.min.setAttribute('opacity',busy()?.85:1)}
+  placeScope();
+}
+let last=0;window.__frame=0;
+function frame(ts,skipDraw){
+  if(!FIXED)requestAnimationFrame(frame); // first, so one bad frame can't stop the sky
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.1);last=now;window.__frame++;
+  update(dt);if(!skipDraw)render();
+  window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,lens:S.lens,lc:+V.lc.toFixed(4),ls:+V.ls.toFixed(4),star:S.star,grinding:!!GRA,busy:busy()}}
+let ready=false;
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  layout();buildSky();buildNebula();buildEye();buildPanel();placeStatic();hookPointer();
+  const lq=Q.get('lens'),cq=Q.get('ceil'),oq=Q.get('out'),sq=Q.get('star'),Cq=Q.get('C'),vq=Q.get('serve');
+  if(lq||sq||Cq||vq){
+    if(cq!=null&&[0,1,2].includes(+cq))S.ci=+cq;if(oq==='1')S.wo=true;
+    if(lq==='reground'){S.lens='reground';const r=ground(S.ci,S.wo);V.th=r.th.slice();V.lens=r.lens}
+    else if(LENSES[lq]){S.lens=lq;V.lens=LENSES[lq];V.th=thetaOf(V.lens)}
+    if(vq!=null&&isFinite(+vq))V.ls=clamp(+vq,LS0,LS1);
+    if(Cq!=null&&isFinite(+Cq))V.lc=clamp(+Cq,LC0,LC1);
+    if(sq&&star(sq)){S.star=sq;V.lc=lcStar(star(sq),DiOf(V.ls))}
+    tourDone=true;lastWhy='url';markGeo(true);lensDirty=true;compute();aimTelescope(0,true);capResult()}
+  else if(STATIC){S.lens='reground';const r=RG();V.th=r.th.slice();V.lens=r.lens;S.star='chinchilla';V.lc=lcStar(star('chinchilla'),0);tourDone=true;lastWhy='static';
+    markGeo(true);compute();aimTelescope(0,true);cap(CAP.still())}
+  else{startTour();
+    if(FIXED){prerun=true;let g=0;while(g++<9000&&!(tour&&tour.k>=5&&simT-tour.t>=3.4))update(1/60);prerun=false;aimTelescope(0,true)}}
+  if(!V.fo)compute();
+  syncUI();ready=true;drawLens=drawGeo=true;
+}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+(async()=>{await start();render();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the observatory
+window.observatory={
+  state:()=>{if(!ready||!V.fo)return{ready:false};const l=V.lens;
+    return{ready:true,lens:S.lens,ci:S.ci,withOut:S.wo,star:S.star,lc:V.lc,ls:V.ls,C:V.C,Di:V.Di,
+      shown:{E:l.E,A:l.A,B:l.B,al:l.al,be:l.be},focus:{N:V.fo.N,D:V.fo.D,L:V.fo.L,u:V.fo.u},
+      grinding:!!GRA,busy:busy(),tour:tour?tour.k:null,tourDone,caption:$('#caption').textContent,inSlit:inSlit.slice(),
+      plot:{x0:PX0,x1:PX1,y0:PY0,y1:PY1},pivot:PIV,angle:V.ang,
+      logs:{focus:FLOG.slice(),grind:GLOG.slice(),star:SLOG.slice()}}},
+  toScreen:(N,D)=>({x:X(log_(N)),y:Y(log_(D))}),
+};
+</script>
+</body>
+</html>
