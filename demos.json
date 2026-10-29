@@ -1,5 +1,15 @@
 [
  {
+  "slug": "kv-cloakroom",
+  "title": "KV Cloakroom",
+  "no": "030",
+  "date": "2026-10-29",
+  "kind": "KV cache \u00b7 Canvas cloakroom",
+  "blurb": "A real two-layer transformer writes Oscar Wilde one letter at a time, and every letter checks its keys and values at the cloakroom as a coat and a hat. Next door a tailor with no cache re-measures every guest for every letter: the same letters, bit for bit, at over a hundred times the work. Shorten the rack, or seat a full house with paged racks.",
+  "color": "#144860",
+  "exhibit": "cloakroom"
+ },
+ {
   "slug": "scaling-observatory",
   "title": "Scaling Observatory",
   "no": "029",
