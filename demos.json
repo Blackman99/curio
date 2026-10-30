@@ -1,5 +1,15 @@
 [
  {
+  "slug": "double-descent-coaster",
+  "title": "Double Descent Coaster",
+  "no": "031",
+  "date": "2026-10-30",
+  "kind": "Double descent \u00b7 three.js coaster",
+  "blurb": "A roller coaster whose track is a real learning curve: random-feature regression fitted in your browser at every width from 1 to 512 features. It dips to the classical sweet spot, climbs a spike where features equal training points, then falls lower than before. Add ridge, switch off the noise, or take data away.",
+  "color": "#fcbcd8",
+  "exhibit": "coaster"
+ },
+ {
   "slug": "kv-cloakroom",
   "title": "KV Cloakroom",
   "no": "030",
