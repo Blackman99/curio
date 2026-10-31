@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Flow Tunnel — flow matching as a smoke tunnel, computed exactly</title>
+<meta name="description" content="Threads of smoke leave a wind tunnel's inlet as pure Gaussian noise and land on the points of an airliner, following the exact closed-form flow-matching velocity field, computed in your browser. Compare them with the straight wires flow matching trains on, cut both with a laser sheet, and paint your own target.">
+<meta property="og:title" content="Flow Tunnel">
+<meta property="og:description" content="2,400 threads of smoke blown from Gaussian noise onto a target shape by the exact flow-matching field. Same cross-sections as straight wires at every station, and not one crossing.">
+<meta property="og:image" content="https://blackman99.github.io/curio/flow-tunnel/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Flow Tunnel">
+<meta name="twitter:description" content="Flow matching as a smoke tunnel: the exact velocity field blows Gaussian noise onto a shape, and a laser sheet shows why it matches straight lines at every station.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/flow-tunnel/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#06090e;--paper:#e9eef2;--paper2:#9fb0bd;--acc:#ffc23d;--laser:#7dffb4;--cool:#58c8ff;--warm:#ff7a55;--line:rgba(170,200,225,.18);--panel:rgba(8,12,18,.88)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Spectral',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+#stage{position:fixed;inset:0;overflow:hidden;background:#06090e}
+#stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#live{touch-action:pan-y;cursor:grab}
+#live.drag{cursor:grabbing}
+#live.paint{cursor:crosshair;touch-action:none}
+#busy{position:absolute;left:calc((100% - 368px)/2);top:16px;transform:translateX(-50%);font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);background:rgba(6,9,14,.82);border:1px solid var(--line);padding:6px 10px 5px;border-radius:3px;opacity:0;transition:opacity .2s;pointer-events:none}
+#busy.on{opacity:1}
+#painthint{position:absolute;left:calc((100% - 368px)/2);bottom:96px;transform:translateX(-50%);font:500 12px/1.3 'IBM Plex Mono',monospace;color:#10130a;background:var(--acc);padding:7px 11px;border-radius:3px;display:none;pointer-events:none;white-space:nowrap}
+#painthint.on{display:block}
+
+#title{position:fixed;left:32px;top:24px;max-width:440px;z-index:2;pointer-events:none}
+#title a{pointer-events:auto}
+.back{display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--acc);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:3px;background:rgba(6,9,14,.6);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--acc);color:#14100a;outline:none}
+.kick{margin-top:16px;font:500 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--acc)}
+h1{margin:6px 0 8px;font:400 clamp(38px,3.6vw,54px)/.98 'Saira Stencil One','Arial Narrow',sans-serif;letter-spacing:.02em;color:#f4f7f9;text-shadow:0 2px 26px rgba(0,0,0,.8)}
+.sub{margin:0;font-size:17px;line-height:1.4;color:var(--paper2);max-width:390px;text-shadow:0 1px 3px #000,0 2px 14px #000}
+.sub b{color:var(--paper);font-weight:600}
+#story{position:fixed;left:32px;bottom:20px;width:min(640px,calc(100vw - 460px));z-index:2;pointer-events:none}
+#caption{margin:0;font:400 18px/1.4 'Spectral',serif;color:#f4f7f9;text-shadow:0 1px 3px #000,0 2px 16px #000,0 0 30px #000;min-height:4.2em;transition:opacity .3s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .82em 'IBM Plex Mono',monospace}
+#caption .c{color:#8bd8ff}#caption .a{color:var(--acc)}#caption .g{color:var(--laser)}
+
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:352px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin-bottom:7px}
+.lab b{font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:11px}
+.twin{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pane{position:relative;background:#03060a;border:1px solid rgba(125,255,180,.2);border-radius:3px;overflow:hidden}
+.pane canvas{display:block;width:100%;aspect-ratio:1.185;touch-action:pan-y}
+.pane span{position:absolute;left:6px;top:5px;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:rgba(233,238,242,.75);pointer-events:none}
+#secS{cursor:crosshair;touch-action:none!important}
+.w1{margin:6px 0 0;min-height:4.2em;font:400 11px/1.4 'IBM Plex Mono',monospace;color:var(--paper2)}
+.w1 b{font-weight:500;color:var(--laser)}
+#essc{display:block;width:100%;height:46px;margin-top:6px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer;--k:var(--acc)}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.1),var(--k))}
+input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.1),var(--k))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:17px;margin-top:-7px;border-radius:2px;border:0;background:var(--k);box-shadow:0 2px 8px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:15px;height:17px;border-radius:2px;border:0;background:var(--k)}
+input[type=range]:focus-visible{outline:1px dashed var(--acc);outline-offset:3px}
+#sheet{--k:var(--laser);margin-top:-2px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip,.seg button,.btn{border:1px solid var(--line);background:rgba(170,200,225,.05);border-radius:3px;padding:6px 8px 5px;font:400 11.5px/1 'IBM Plex Mono',monospace;color:var(--paper)}
+.chip:hover,.seg button:hover,.btn:hover,.chip:focus-visible,.seg button:focus-visible,.btn:focus-visible{border-color:var(--acc);outline:none}
+.chip.on,.seg button.on{background:var(--acc);border-color:var(--acc);color:#14100a;font-weight:500}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+.seg button{padding:6px 2px 5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nums{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:3px 8px;font:400 11.5px/1.25 'IBM Plex Mono',monospace;color:var(--paper2);border-top:1px solid var(--line);padding-top:8px}
+.nums b{font-weight:500;color:var(--paper);text-align:right;font-variant-numeric:tabular-nums}
+.nums i{font-style:normal;text-align:right;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.nums .s{color:#8bd8ff}.nums .w{color:var(--acc)}
+.nums .full{grid-column:1/-1;margin-top:2px}
+details{margin-top:11px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.45;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details code{font:12px 'IBM Plex Mono',monospace;color:var(--paper)}
+details a,.foot a{color:var(--acc)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'IBM Plex Mono',monospace;color:rgba(233,238,242,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--acc);text-decoration:underline;font:inherit}
+
+@media (max-height:980px) and (min-width:821px){.sub{display:none}}
+@media (max-height:800px) and (min-width:821px){#caption{min-height:3em;font-size:16.5px}h1{font-size:clamp(36px,3.2vw,48px)}.kick{margin-top:12px}#essc{height:36px}.sec{margin-bottom:8px}}
+@media (max-width:1180px) and (min-width:821px){#title{max-width:330px}#caption{font-size:16px}.sub{font-size:15.5px;max-width:320px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0}
+  .kick{margin-top:12px;font-size:9.5px}
+  h1{font-size:42px;margin:6px 0}
+  .sub{font-size:15.5px;max-width:none}
+  #story{position:static;width:auto;padding:8px 16px 4px}
+  #caption{font-size:16px;min-height:7em}
+  #stage{position:relative;inset:auto;height:min(36vh,300px);min-height:250px}
+  #busy,#painthint{left:50%}
+  #painthint{bottom:10px;font-size:11px}
+  #panel{position:static;width:auto;margin:6px 10px calc(14px + env(safe-area-inset-bottom));background:#0a0e14}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 032 · Flow matching</div>
+  <h1>Flow Tunnel</h1>
+  <p class="sub">Every thread is a <b>real solution</b> of flow matching’s exact velocity field, integrated in your browser from Gaussian noise to the shape on the screen.</p>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="stage">
+  <canvas id="base" aria-label="A wind tunnel seen from three-quarters on. Threads of smoke leave the inlet at the far left as a Gaussian cloud, weave through the test section and land on the points of a target shape on the outlet screen."></canvas>
+  <canvas id="live" aria-hidden="true"></canvas>
+  <div id="busy">fan spinning up…</div>
+  <div id="painthint">Drag on the outlet screen to paint targets</div>
+</div>
+<aside id="panel" aria-label="Laser sheet and controls">
+  <div class="sec">
+    <div class="lab"><span>Laser sheet</span><b id="tv">t = 0.50</b></div>
+    <div class="twin">
+      <div class="pane"><span>Smoke</span><canvas id="secS" aria-label="Where the smoke threads cross the laser sheet. Hover or tap to probe the velocity."></canvas></div>
+      <div class="pane"><span>Wires</span><canvas id="secW" aria-label="Where the straight wires cross the laser sheet"></canvas></div>
+    </div>
+    <p class="w1" id="w1"></p>
+    <canvas id="essc" aria-label="How many targets still pull on a thread, against t"></canvas>
+    <input id="sheet" type="range" min="0" max="1000" value="500" aria-label="Move the laser sheet along the tunnel, t from 0 to 1">
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Target on the screen</span></div>
+    <div class="chips" id="shapes"></div>
+  </div>
+  <div class="sec two">
+    <div><div class="lab"><span>Points K</span><b id="kv">640</b></div><input id="kk" type="range" min="0" max="8" value="7" aria-label="Number of target points"></div>
+    <div><div class="lab"><span>Euler steps</span><b id="nv">64</b></div><input id="nn" type="range" min="0" max="13" value="11" aria-label="Number of Euler steps from t = 0 to t = 1"></div>
+  </div>
+  <div class="sec two">
+    <div><div class="lab"><span>Show</span></div><div class="seg" id="views"><button data-v="smoke" title="The exact marginal flow">Smoke</button><button data-v="wires" title="The straight conditional paths">Wires</button><button data-v="both" title="Both at once">Both</button></div></div>
+    <div><div class="lab"><span>Camera</span></div><div class="seg" id="cams"><button data-c="q" title="Three-quarters from downstream">¾</button><button data-c="s" title="Straight in through the side window">Side</button><button data-c="b" title="Down the barrel, from the outlet">Axial</button></div></div>
+  </div>
+  <div class="sec nums" id="nums"></div>
+  <div class="foot">Drag the tunnel to swing the camera · hover the Smoke pane to probe · <button id="newseed">new smoke</button> · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+  <details>
+    <summary>What is this?</summary>
+        <p><b>The formula.</b> Take any finite set of target points x<sub>i</sub>. Flow matching’s straight-line paths go x<sub>t</sub> = (1−t)x<sub>0</sub> + t·x<sub>i</sub>, with x<sub>0</sub> Gaussian noise and each x<sub>i</sub> equally likely. The velocity a network is trained to regress, the average of (x<sub>i</sub> − x<sub>0</sub>) over every wire through a point, has a closed form here: u<sub>t</sub>(x) = (Σ w<sub>i</sub>x<sub>i</sub> − x)/(1−t), with weights w<sub>i</sub> ∝ exp(−‖x − t·x<sub>i</sub>‖²/2(1−t)²). This page integrates that with Euler steps in float64 and draws each path (Lipman et al., <a href="https://arxiv.org/abs/2210.02747">2023</a>; Liu et al., <a href="https://arxiv.org/abs/2209.03003">2023</a>; Albergo &amp; Vanden-Eijnden, <a href="https://arxiv.org/abs/2209.15571">2023</a>).</p>
+    <p><b>Smoke and wires.</b> The wires are the training targets: each noise sample tied to a random target. The smoke is the flow of their average. The theorem is that the two have the same distribution at every t, which the laser sheet lets you check: sliced W₁ is the mean 1-D Wasserstein distance over 8 directions, printed beside the distance between two independent draws of wires, which is what sampling noise alone gives you. With few Euler steps the smoke drifts away from the wires, and that number grows.</p>
+    <p><b>How typical is this?</b> Over 10 seeds on the airliner (2,400 threads, 640 targets, 64 steps), wires travel 10.6–11.9× the smoke’s squared distance, and at t = ¼, ½ and ¾ the smoke-to-wires distance is below the wires’ own noise floor in 20 of 30 cuts, never above 1.46× it. Rectified flow’s theorem says the flow can’t cost more than its wires for any convex cost. Three posts split the rake at the Gaussian third-quantiles, ±0.431 (a fine RK4 solve of 6,001 nozzles gives 2000/2001/2000). Eight knots with 100,000 threads share out evenly (χ² = 5.7 on 7 degrees of freedom).</p>
+    <p><b>The steps.</b> Threads within 0.01 of a target on the default airliner: 0% with 1 Euler step, 3.5% with 4, 5.1% with 16, 25.6% with 32, 81.7% with 64, 99.1% with 128. The field is stiff near t = 1, so Euler needs many small steps there; at 64 steps the ends sit a mean 0.03 from a 1,024-step RK4 solve, and 68% pick the same target (the rest land on a neighbouring point).</p>
+    <p><b>The memoriser.</b> Near t = 1 one target’s weight goes to 1, so the exact field can only land on the training points. A trained network never fits this field exactly, and Bertrand et al. (<a href="https://arxiv.org/abs/2506.03719">2025</a>) argue that this failure, mostly early in the flow, is where generalisation comes from. No network is trained on this page.</p>
+    <p><b>Real and not.</b> The noise, the wires, the weights, the Euler steps and every number are computed in your browser and match a separate numpy implementation bit for bit. The target shapes are hand-drawn polygons, stippled by best-candidate sampling. The tunnel is a metaphor: this is not a fluid simulation, the horizontal axis is time, and there is no pressure, viscosity or turbulence. In the ¾ and axial views threads can appear to cross only because a 3-D curve is being projected onto your screen; the flat three-post rake in the side window shows the real rule. The beads are tracers along the same paths, moving at a constant pace for show. The look borrows from F. N. M. Brown’s <a href="https://archives.nd.edu/findaids/ead/html/FMB000.htm">smoke tunnel photographs</a> at Notre Dame.</p>
+  </details>
+</aside>
+<script type="module">
+/* ================= engine: exact flow matching for a finite target set ================= */
+/* No Math.exp/log/sin/cos: fixed-order series, so that the same float64 operations give the same bits in Python. */
+const LN2=0.6931471805599453,INV_LN2=1.4426950408889634,POW2=new Float64Array(160);
+{let v=1;for(let i=0;i<80;i++){POW2[80+i]=v;v*=2}v=1;for(let i=1;i<=80;i++){v/=2;POW2[80-i]=v}}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function flog(x){let m=x,k=0;while(m<0.7071067811865476){m*=2;k--}while(m>1.4142135623730951){m/=2;k++}
+ const z=(m-1)/(m+1),q=z*z;let p=1/21;for(let d=19;d>=1;d-=2)p=p*q+1/d;return 2*z*p+k*LN2}
+/* exp(x) for -37 < x <= 0 */
+function fexp(x){const k=Math.floor(x*INV_LN2+.5),r=x-k*LN2;
+ const p=1+r*(1+r*(.5+r*(1/6+r*(1/24+r*(1/120+r*(1/720+r*(1/5040+r*(1/40320+r/362880))))))));return p*POW2[80+k]}
+function fsin(x){const q=x*x;let p=1,d=26;while(d>=2){p=1-p*q/(d*(d+1));d-=2}return x*p}
+function fcos(x){const q=x*x;let p=1,d=25;while(d>=1){p=1-p*q/(d*(d+1));d-=2}return p}
+/* ---- the targets ---- */
+const bez=(a,b,c,d,n)=>{const o=[];for(let i=1;i<=n;i++){const u=i/n,v=1-u;o.push([v*v*v*a[0]+3*v*v*u*b[0]+3*v*u*u*c[0]+u*u*u*d[0],v*v*v*a[1]+3*v*v*u*b[1]+3*v*u*u*c[1]+u*u*u*d[1]])}return o};
+function mirrorPath(segs,start){let P=[start],c=start;for(const s of segs){P=P.concat(bez(c,s[0],s[1],s[2],14));c=s[2]}
+ const L=P.slice(1,-1).reverse().map(p=>[-p[0],p[1]]);return P.concat(L)}
+const inPoly=(P,x,y)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
+const SWIFT=mirrorPath([[[.10,1.18],[.17,1.05],[.20,.86]],[[.62,1.02],[1.55,.72],[2.42,-.62]],[[1.62,-.08],[.86,.02],[.26,-.02]],[[.26,-.32],[.20,-.58],[.17,-.70]],[[.24,-1.02],[.34,-1.30],[.46,-1.62]],[[.26,-1.40],[.10,-1.12],[0,-.92]]],[0,1.18]);
+const mir=P=>P.map(p=>[-p[0],p[1]]);
+const AIR={polys:[[[.30,-.34],[2.72,.26],[2.76,.36],[.36,-.06]],[[2.66,.24],[2.84,.74],[2.90,.74],[2.78,.28]],[[.05,.60],[1.08,.84],[1.10,.92],[.05,.76]],[[.98,-.30],[1.06,-.08],[1.18,-.05],[1.16,-.30]],[[.40,-.46],[.46,-1.02],[.54,-1.02],[.52,-.40]],[[.36,-1.02],[.64,-1.02],[.64,-1.16],[.36,-1.16]]],
+ circ:[[0,0,.62],[1.12,-.44,.29],[-1.12,-.44,.29]]};
+AIR.polys=AIR.polys.concat(AIR.polys.map(mir),[[[-.09,.45],[-.035,1.62],[.035,1.62],[.09,.45]]]);
+const SPIRAL=(()=>{const o=[];for(let i=0;i<=150;i++){const a=.55+i/150*10.2,r=.16+a*.222;o.push([r*fcos(a),r*fsin(a)])}return o})();
+const nearPolyline=(L,x,y,w)=>{const w2=w*w;for(let i=1;i<L.length;i++){const ax=L[i-1][0],ay=L[i-1][1],bx=L[i][0]-ax,by=L[i][1]-ay,u=Math.max(0,Math.min(1,((x-ax)*bx+(y-ay)*by)/(bx*bx+by*by))),dx=x-ax-u*bx,dy=y-ay-u*by;if(dx*dx+dy*dy<w2)return true}return false};
+const SHAPES={
+ swift:{name:'Swift',zoom:1.25,box:[-2.5,-1.7,2.5,1.25],hit:(x,y)=>inPoly(SWIFT,x,y)},
+ airliner:{name:'Airliner',zoom:1.2,box:[-2.95,-1.2,2.95,1.65],hit:(x,y)=>{for(const c of AIR.circ){const a=x-c[0],b=y-c[1];if(a*a+b*b<c[2]*c[2])return true}for(const P of AIR.polys)if(inPoly(P,x,y))return true;return false}},
+ spiral:{name:'Spiral',zoom:1.2,box:[-2.7,-2.5,2.7,2.5],hit:(x,y)=>nearPolyline(SPIRAL,x,y,.13)},
+ checker:{name:'Checkerboard',zoom:1.2,box:[-2.4,-2.4,2.4,2.4],hit:(x,y)=>(Math.floor(x/1.2)+Math.floor(y/1.2))%2===0},
+ eight:{name:'Eight knots',fixed:[[2.6,0],[1.8384776310850235,1.8384776310850235],[0,2.6],[-1.8384776310850235,1.8384776310850235],[-2.6,0],[-1.8384776310850235,-1.8384776310850235],[0,-2.6],[1.8384776310850235,-1.8384776310850235]]},
+ three:{name:'Three posts',flat:true,fixed:[[0,2.6],[0,0],[0,-2.6]]},
+};
+/* Mitchell's best-candidate stipple: any prefix of the list is itself evenly spread, so K is just how far you read */
+const shapeCache={};
+function shapePoints(name,K){const S=SHAPES[name];if(S.fixed)return S.fixed;if(shapeCache[name]&&shapeCache[name].length>=K)return shapeCache[name].slice(0,K);
+ const n=Math.max(K,800),r=mulberry32(1031),[x0,y0,x1,y1]=S.box,o=[];
+ const cand=()=>{for(;;){const x=x0+(x1-x0)*r(),y=y0+(y1-y0)*r();if(S.hit(x,y))return[x,y]}};
+ o.push(cand());
+ for(let i=1;i<n;i++){let best=null,bd=-1;for(let c=0;c<12;c++){const q=cand();let m=1e18;for(let j=0;j<o.length;j++){const a=q[0]-o[j][0],b=q[1]-o[j][1],e=a*a+b*b;if(e<m)m=e}if(m>bd){bd=m;best=q}}o.push(best)}
+ const z=S.zoom||1;for(const q of o){q[0]*=z;q[1]*=z}
+ shapeCache[name]=o;return o.slice(0,K)}
+/* Acklam's inverse normal CDF refined by nothing: only used to space the flat rake's nozzles */
+function invPhi(p){const a=[-39.69683028665376,220.9460984245205,-275.9285104469687,138.357751867269,-30.66479806614716,2.506628277459239],b=[-54.47609879822406,161.5858368580409,-155.6989798598866,66.80131188771972,-13.28068155288572],c=[-.007784894002430293,-.3223964580411365,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783],d=[.007784695709041462,.3224671290700398,2.445134137142996,3.754408661907416],l=.02425;
+ if(p<l){const q=Math.sqrt(-2*flog(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+ if(p<=1-l){const q=p-.5,s=q*q;return(((((a[0]*s+a[1])*s+a[2])*s+a[3])*s+a[4])*s+a[5])*q/(((((b[0]*s+b[1])*s+b[2])*s+b[3])*s+b[4])*s+1)}
+ const q=Math.sqrt(-2*flog(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+function sourceNoise(P,seed,flat){const a=new Float64Array(2*P);if(flat){for(let i=0;i<P;i++){a[2*i]=0;a[2*i+1]=invPhi((i+.5)/P)}return a}
+ const r=mulberry32(seed);for(let i=0;i<P;i++){for(;;){const u=2*r()-1,v=2*r()-1,s=u*u+v*v;if(s>0&&s<1){const f=Math.sqrt(-2*flog(s)/s);a[2*i]=u*f;a[2*i+1]=v*f;break}}}return a}
+const PRUNE=36;
+/* cfg:{shape,K,P,N,seed,custom?}. Everything is float64; traj is P×(N+1)×2 */
+function makeRun(cfg){const pts=cfg.custom||shapePoints(cfg.shape,cfg.K),K=pts.length,{P,N,seed}=cfg,flat=!cfg.custom&&!!(SHAPES[cfg.shape]||{}).flat;
+ const tx=new Float64Array(K),ty=new Float64Array(K);for(let i=0;i<K;i++){tx[i]=pts[i][0];ty[i]=pts[i][1]}
+ const traj=new Float64Array(P*(N+1)*2),src=sourceNoise(P,seed,flat);for(let p=0;p<P;p++){traj[p*2*(N+1)]=src[2*p];traj[p*2*(N+1)+1]=src[2*p+1]}
+ const ri=mulberry32(seed+1000),rj=mulberry32(seed+2000),wire=new Int32Array(P),wire2=new Int32Array(P);
+ for(let p=0;p<P;p++){wire[p]=Math.floor(ri()*K);wire2[p]=Math.floor(rj()*K)}
+ return{cfg,flat,K,P,N,tx,ty,traj,wire,wire2,ess:new Float64Array(N),d:new Float64Array(K),k:0,p:0,done:false,evals:0,essSum:0}}
+/* the closed form: u_t(x) = (E[x1|x_t=x] − x)/(1−t), with E[x1|x_t=x] a softmax of −|x − t·x_i|²/(2(1−t)²) over the targets */
+function posterior(run,x,y,t,out){const{K,tx,ty,d}=run,s=1-t,iv=1/(2*s*s);let dm=Infinity;
+ for(let i=0;i<K;i++){const a=x-t*tx[i],b=y-t*ty[i],e=(a*a+b*b)*iv;d[i]=e;if(e<dm)dm=e}
+ let W=0,W2=0,mx=0,my=0;for(let i=0;i<K;i++){const e=d[i]-dm;if(e<PRUNE){const w=fexp(-e);W+=w;W2+=w*w;mx+=w*tx[i];my+=w*ty[i]}}
+ out[0]=mx/W;out[1]=my/W;out[2]=W*W/W2;return out}
+const _o=new Float64Array(3);
+/* the same softmax, kept per target, for the probe */
+function weights(run,x,y,t){const{K,tx,ty}=run,o=new Float64Array(K),s=1-t,iv=1/(2*s*s);let dm=Infinity;
+ for(let i=0;i<K;i++){const a=x-t*tx[i],b=y-t*ty[i],e=(a*a+b*b)*iv;o[i]=e;if(e<dm)dm=e}
+ let W=0,W2=0,mx=0,my=0;for(let i=0;i<K;i++){const e=o[i]-dm;if(e<PRUNE){const w=fexp(-e);o[i]=w;W+=w;W2+=w*w;mx+=w*tx[i];my+=w*ty[i]}else o[i]=0}
+ for(let i=0;i<K;i++)o[i]/=W;return{w:o,ess:W*W/W2,mx:mx/W,my:my/W,ux:(mx/W-x)/s,uy:(my/W-y)/s}}
+/* advance by whole particles until the budget runs out; Euler on the uniform grid t_k = k/N */
+function advance(run,ms){if(run.done)return true;const{P,N,traj}=run,w=2*(N+1),T0=ms<1e9?performance.now():0;let c=0;const h=1/N;
+ while(run.k<N){const k=run.k,t=k/N,s=1-t;
+  while(run.p<P){const o=run.p*w+2*k,x=traj[o],y=traj[o+1];posterior(run,x,y,t,_o);traj[o+2]=x+h*((_o[0]-x)/s);traj[o+3]=y+h*((_o[1]-y)/s);run.essSum+=_o[2];run.p++;
+   if(++c%48===0&&ms<1e9&&performance.now()-T0>ms)return false}
+  run.ess[k]=run.essSum/P;run.essSum=0;run.p=0;run.k++}
+ finish(run);return true}
+function inversions(a){/* pairs (i<j) with a[i]>a[j] (strict), a Float64Array, merge sort */let n=a.length,cnt=0,x=Float64Array.from(a),y=new Float64Array(n);
+ for(let w=1;w<n;w*=2){for(let l=0;l<n;l+=2*w){const m=Math.min(l+w,n),r=Math.min(l+2*w,n);let i=l,j=m,o=l;while(i<m&&j<r){if(x[i]<=x[j])y[o++]=x[i++];else{cnt+=m-i;y[o++]=x[j++]}}while(i<m)y[o++]=x[i++];while(j<r)y[o++]=x[j++]}const q=x;x=y;y=q}return cnt}
+function finish(run){const{P,N,K,tx,ty,traj,wire}=run,w=2*(N+1),land=new Int32Array(P),count=new Int32Array(K);let cs=0,cw=0,ls=0,lw=0,near=0;
+ for(let p=0;p<P;p++){const o=p*w,x0=traj[o],y0=traj[o+1],x1=traj[o+w-2],y1=traj[o+w-1];let m=Infinity,b=0;
+  for(let i=0;i<K;i++){const a=x1-tx[i],c=y1-ty[i],e=a*a+c*c;if(e<m){m=e;b=i}}land[p]=b;count[b]++;if(m<1e-4)near++;
+  cs+=(x1-x0)*(x1-x0)+(y1-y0)*(y1-y0);const j=wire[p],a=tx[j]-x0,c=ty[j]-y0;const e=a*a+c*c;cw+=e;lw+=Math.sqrt(e);
+  for(let k=0;k<N;k++){const u=traj[o+2*k+2]-traj[o+2*k],v=traj[o+2*k+3]-traj[o+2*k+1];ls+=Math.sqrt(u*u+v*v)}}
+ run.land=land;run.count=count;
+ run.metrics={costSmoke:cs/P,costWire:cw/P,lenSmoke:ls/P,lenWire:lw/P,landed:near/P,hit:count.reduce((s,c)=>s+(c>0?1:0),0)};
+ if(run.flat){const y0=new Float64Array(P),ys=new Float64Array(P),yw=new Float64Array(P);const o=[...Array(P).keys()].sort((a,b)=>traj[a*w+1]-traj[b*w+1]);
+  for(let i=0;i<P;i++){ys[i]=traj[o[i]*w+w-1];yw[i]=ty[wire[o[i]]]}const pairs=P*(P-1)/2;run.metrics.swapSmoke=inversions(ys)/pairs;run.metrics.swapWire=inversions(yw)/pairs}
+ run.done=true;return run}
+function section(run,t,kind,out,which){const{P,N,traj,tx,ty}=run,w=2*(N+1);
+ if(kind==='wire'){const W=which===2?run.wire2:run.wire;for(let p=0;p<P;p++){const o=p*w,j=W[p];out[2*p]=(1-t)*traj[o]+t*tx[j];out[2*p+1]=(1-t)*traj[o+1]+t*ty[j]}return out}
+ const f=t*N,k=Math.min(N-1,Math.floor(f)),u=f-k;for(let p=0;p<P;p++){const o=p*w+2*k;out[2*p]=traj[o]+u*(traj[o+2]-traj[o]);out[2*p+1]=traj[o+1]+u*(traj[o+3]-traj[o+1])}return out}
+/* mean sliced Wasserstein-1 over 8 fixed directions */
+const SW_C=[],SW_S=[];for(let j=0;j<8;j++){SW_C.push(fcos(j*.39269908169872414));SW_S.push(fsin(j*.39269908169872414))}
+function slicedW1(a,b){const n=a.length/2,u=new Float64Array(n),v=new Float64Array(n);let s=0;
+ for(let j=0;j<8;j++){const c=SW_C[j],d=SW_S[j];for(let i=0;i<n;i++){u[i]=c*a[2*i]+d*a[2*i+1];v[i]=c*b[2*i]+d*b[2*i+1]}u.sort();v.sort();let m=0;for(let i=0;i<n;i++)m+=Math.abs(u[i]-v[i]);s+=m/n}return s/8}
+function fnv(arr){const b=new Uint8Array(arr.buffer,arr.byteOffset,arr.byteLength);let h=2166136261;for(let i=0;i<b.length;i++){h^=b[i];h=Math.imul(h,16777619)}return h>>>0}
+/* ================= page ================= */
+const Q=new URLSearchParams(location.search),FIXED=Q.has('fixed'),RM=!FIXED&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(FIXED||RM)document.documentElement.classList.add('still');
+const $=id=>document.getElementById(id),clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,u)=>a+(b-a)*u,smooth=u=>{u=clamp(u,0,1);return u*u*(3-2*u)};
+const KS=[12,24,48,96,192,320,480,640,800],NS=[1,2,3,4,6,8,12,16,24,32,48,64,96,128];
+const LT=10.5,HX=3.9,HY=3.3;                                   /* tunnel length and half-sizes in target units */
+const CAMS={q:{yaw:.72,pitch:2.4},s:{yaw:0,pitch:.8},b:{yaw:1,pitch:.6}};
+const isPhone=()=>innerWidth<=820;
+const S={shape:SHAPES[Q.get('shape')]?Q.get('shape'):'airliner',K:+Q.get('k')||640,N:+Q.get('n')||64,P:+Q.get('p')||(isPhone()?1200:2400),seed:Q.has('seed')?+Q.get('seed'):7,
+ view:['smoke','wires','both'].includes(Q.get('view'))?Q.get('view'):'smoke',cam:CAMS[Q.get('cam')]?Q.get('cam'):'q',sheetT:Q.has('t')?clamp(+Q.get('t'),0,1):.62,sweep:!Q.has('t'),custom:null,painting:false,probe:null};
+if(S.shape==='three'&&!Q.has('p'))S.P=61;if(S.shape==='three'&&!Q.has('cam'))S.cam='s';
+let yaw=CAMS[S.cam].yaw,pitch=CAMS[S.cam].pitch,camAnim=null,camFast=false,dragging=false;
+let cur=null,pending=null,front=0,revealT0=0,revealDur=0,frame=0,simT=0,runCounter=0,w1Table=null,w1Next=0,userTouched=false;
+const cache=new Map(),log=[],probeLog=[],w1Log=[];
+const nowS=()=>FIXED?frame/60:performance.now()/1000;
+
+/* ---------- canvases ---------- */
+const base=$('base'),live=$('live'),bctx=base.getContext('2d'),lctx=live.getContext('2d');
+const filmC=document.createElement('canvas'),fctx=filmC.getContext('2d'),bgC=document.createElement('canvas'),bgx=bgC.getContext('2d');
+const g1=document.createElement('canvas'),g2=document.createElement('canvas'),g3=document.createElement('canvas');
+let W=0,H=0,DPR=1,fs=1,film=null,img=null,dirty=[1e9,1e9,-1,-1],grain=null,filmKey='',filmFront=0,filmStride=1,needComposite=true;
+const LUTN=2048,LUT=new Uint8ClampedArray(LUTN),LUTS=LUTN/10;
+for(let i=0;i<LUTN;i++){const e=i/LUTS;LUT[i]=255*Math.pow(1-Math.exp(-e),1/2.1)}
+function resize(){const r=$('stage').getBoundingClientRect();const cw=Math.max(1,r.width),ch=Math.max(1,r.height);DPR=Math.min(devicePixelRatio||1,2);fs=Math.min(DPR,1.5);if(cw*ch*fs*fs>2.7e6)fs=Math.sqrt(2.7e6/(cw*ch));
+ const nw=Math.round(cw*fs),nh=Math.round(ch*fs);if(nw===W&&nh===H&&film)return false;W=nw;H=nh;
+ for(const c of[base,live,filmC,bgC]){c.width=W;c.height=H}
+ for(const[c,d]of[[g1,4],[g2,8],[g3,16]]){c.width=Math.max(1,W/d|0);c.height=Math.max(1,H/d|0)}
+ film=new Float32Array(W*H*3);img=fctx.createImageData(W,H);img.data.fill(255);
+ grain=new Int8Array(65536);{const r=mulberry32(99);for(let i=0;i<65536;i++)grain[i]=Math.floor((r()+r()-1)*4.2)}
+ filmKey='';sizePanes();return true}
+
+/* ---------- camera ---------- */
+let CX=0,CY=0,CZ=0,RX=0,RY=0,RZ=0,UX=0,UY=0,UZ=0,FX=0,FY=0,FZ=0,F=1,SX=0,SY=0;
+/* a shift lens: the film plane stays parallel to the outlet in the ¾ view, so the target keeps its true shape while the tunnel recedes */
+function setCamera(){const w=clamp(yaw,0,1);let th,cz,cx;if(w<.72){const u=w/.72,v=smooth(u);th=v*Math.PI/2;cx=lerp(0,19.25,v);cz=lerp(20,14,u)}else{const u=(w-.72)/.28;th=Math.PI/2;cx=lerp(19.25,21.25,u);cz=lerp(14,.01,u)}
+ CX=cx;CY=pitch;CZ=cz;FX=-Math.sin(th);FY=0;FZ=-Math.cos(th);RX=Math.cos(th);RY=0;RZ=-Math.sin(th);UX=0;UY=1;UZ=0;
+ /* fit the tunnel into the free part of the stage */
+ const phone=isPhone(),L=(phone?26:30)*fs,Rr=(phone?8:376)*fs,T=phone?12*fs:Math.max(H*.17,150*fs),B=phone?12*fs:Math.max(H*.135,122*fs);
+ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;F=1;SX=0;SY=0;for(const X of[-LT/2,LT/2])for(const Y of[-HY,HY])for(const Z of[-HX,HX]){const vx=X-CX,vy=Y-CY,vz=Z-CZ,z=vx*FX+vy*FY+vz*FZ,u=(vx*RX+vy*RY+vz*RZ)/z,v=(vx*UX+vy*UY+vz*UZ)/z;x0=Math.min(x0,u);x1=Math.max(x1,u);y0=Math.min(y0,v);y1=Math.max(y1,v)}
+ const aw=W-L-Rr,ah=H-T-B;F=Math.min(aw/(x1-x0),ah/(y1-y0));SX=L+aw/2-F*(x0+x1)/2;SY=T+ah/2+F*(y0+y1)/2}
+const camKey=()=>yaw.toFixed(4)+'|'+pitch.toFixed(4);
+function proj(t,x,y,o){const X=(t-.5)*LT-CX,Y=y-CY,Z=-x-CZ,z=X*FX+Y*FY+Z*FZ;o[0]=SX+F*(X*RX+Y*RY+Z*RZ)/z;o[1]=SY-F*(X*UX+Y*UY+Z*UZ)/z;o[2]=z;return o}
+const p0=new Float64Array(3);
+/* the outlet plane under a pointer */
+function pickOutlet(mx,my){const dx=(mx-SX)/F,dy=-(my-SY)/F;const wx=FX+dx*RX+dy*UX,wy=FY+dx*RY+dy*UY,wz=FZ+dx*RZ+dy*UZ,u=(LT/2-CX)/wx;if(u<=0)return null;const y=CY+u*wy,x=-(CZ+u*wz);return{x,y}}
+
+/* ---------- the film: smoke is added up in float, then developed ---------- */
+function line(x0,y0,x1,y1,er,eg,eb){let dx=x1-x0,dy=y1-y0;const ax=dx<0?-dx:dx,ay=dy<0?-dy:dy;
+ if(ax>=ay){if(ax<1e-4)return;if(dx<0){let q=x0;x0=x1;x1=q;q=y0;y0=y1;y1=q;dx=-dx;dy=-dy}
+  const g=dy/dx,L=Math.sqrt(1+g*g);let a=Math.ceil(x0),b=Math.ceil(x1)-1;if(a<0)a=0;if(b>W-1)b=W-1;if(a>b)return;
+  const R=er*L,G=eg*L,B=eb*L;let y=y0+g*(a-x0);for(let x=a;x<=b;x++,y+=g){const yi=Math.floor(y);if(yi>=0&&yi<H-1){const f=y-yi,h=1-f;let i=(yi*W+x)*3;film[i]+=R*h;film[i+1]+=G*h;film[i+2]+=B*h;i+=W*3;film[i]+=R*f;film[i+1]+=G*f;film[i+2]+=B*f}}
+  if(a<dirty[0])dirty[0]=a;if(b>dirty[2])dirty[2]=b;const u=y0<y1?y0:y1,v=y0<y1?y1:y0;if(u<dirty[1])dirty[1]=Math.floor(u);if(v+1>dirty[3])dirty[3]=Math.ceil(v)+1}
+ else{if(dy<0){let q=x0;x0=x1;x1=q;q=y0;y0=y1;y1=q;dx=-dx;dy=-dy}
+  const g=dx/dy,L=Math.sqrt(1+g*g);let a=Math.ceil(y0),b=Math.ceil(y1)-1;if(a<0)a=0;if(b>H-1)b=H-1;if(a>b)return;
+  const R=er*L,G=eg*L,B=eb*L;let x=x0+g*(a-y0);for(let y=a;y<=b;y++,x+=g){const xi=Math.floor(x);if(xi>=0&&xi<W-1){const f=x-xi,h=1-f;let i=(y*W+xi)*3;film[i]+=R*h;film[i+1]+=G*h;film[i+2]+=B*h;film[i+3]+=R*f;film[i+4]+=G*f;film[i+5]+=B*f}}
+  const u=x0<x1?x0:x1,v=x0<x1?x1:x0;if(u<dirty[0])dirty[0]=Math.floor(u);if(v+1>dirty[2])dirty[2]=Math.ceil(v)+1;if(a<dirty[1])dirty[1]=a;if(b>dirty[3])dirty[3]=b}}
+function splat(x,y,er,eg,eb){const xi=Math.floor(x),yi=Math.floor(y);if(xi<1||yi<1||xi>=W-2||yi>=H-2)return;const f=x-xi,g=y-yi;
+ const w=[(1-f)*(1-g),f*(1-g),(1-f)*g,f*g];let i=(yi*W+xi)*3;film[i]+=er*w[0];film[i+1]+=eg*w[0];film[i+2]+=eb*w[0];film[i+3]+=er*w[1];film[i+4]+=eg*w[1];film[i+5]+=eb*w[1];i+=W*3;film[i]+=er*w[2];film[i+1]+=eg*w[2];film[i+2]+=eb*w[2];film[i+3]+=er*w[3];film[i+4]+=eg*w[3];film[i+5]+=eb*w[3];
+ if(xi<dirty[0])dirty[0]=xi;if(yi<dirty[1])dirty[1]=yi;if(xi+1>dirty[2])dirty[2]=xi+1;if(yi+1>dirty[3])dirty[3]=yi+1}
+function develop(){let[x0,y0,x1,y1]=dirty;x0=clamp(x0-1,0,W-1);y0=clamp(y0-1,0,H-1);x1=clamp(x1+1,0,W-1);y1=clamp(y1+1,0,H-1);if(x1<x0||y1<y0)return false;const d=img.data;
+ for(let y=y0;y<=y1;y++){let i=(y*W+x0)*3,j=(y*W+x0)*4;const row=(y&255)<<8;for(let x=x0;x<=x1;x++,i+=3,j+=4){const r=film[i],g=film[i+1],b=film[i+2];const n=grain[row|(x&255)];
+  if(r+g+b<.001){d[j]=d[j+1]=d[j+2]=0;continue}
+  let a=r*LUTS|0,c=g*LUTS|0,e=b*LUTS|0;if(a>=LUTN)a=LUTN-1;if(c>=LUTN)c=LUTN-1;if(e>=LUTN)e=LUTN-1;d[j]=LUT[a]+n;d[j+1]=LUT[c]+n;d[j+2]=LUT[e]+n}}
+ fctx.putImageData(img,0,0,x0,y0,x1-x0+1,y1-y0+1);dirty=[1e9,1e9,-1,-1];return true}
+function outletQuad(c){const o=new Float64Array(3);c.beginPath();proj(1,-HX,-HY,o);c.moveTo(o[0],o[1]);proj(1,HX,-HY,o);c.lineTo(o[0],o[1]);proj(1,HX,HY,o);c.lineTo(o[0],o[1]);proj(1,-HX,HY,o);c.lineTo(o[0],o[1]);c.closePath()}
+/* the outlet is a smoked-glass screen between you and the smoke; what has landed sits on it */
+function drawLanded(c){const run=cur;if(!run||front<1)return;const o=new Float64Array(3),P=run.P,wires=S.view==='wires',N=run.N,w=2*(N+1),colK=run.colK,ids=wires?run.wire:run.land;
+ const zs=F/proj(1,0,0,o)[2],R=Math.max(1*fs,zs*(run.K>200?.0115:run.K>40?.017:.022));c.globalCompositeOperation='lighter';
+ /* a halo for each occupied spot, then every thread's real end point */
+ for(let p=0;p<P;p++){const x=wires?run.tx[run.wire[p]]:run.traj[p*w+w-2],y=wires?run.ty[run.wire[p]]:run.traj[p*w+w-1];proj(1,x,y,o);c.fillStyle=colK[ids[p]];c.globalAlpha=.055;c.beginPath();c.arc(o[0],o[1],R*2.7,0,7);c.fill();c.globalAlpha=.62;c.beginPath();c.arc(o[0],o[1],R,0,7);c.fill()}
+ c.globalAlpha=1;c.globalCompositeOperation='source-over'}
+function composite(){bctx.globalCompositeOperation='source-over';bctx.globalAlpha=1;bctx.drawImage(bgC,0,0);bctx.globalCompositeOperation='lighter';bctx.drawImage(filmC,0,0);
+ const a=g1.getContext('2d'),b=g2.getContext('2d'),c=g3.getContext('2d');a.globalCompositeOperation='copy';b.globalCompositeOperation='copy';c.globalCompositeOperation='copy';a.imageSmoothingEnabled=b.imageSmoothingEnabled=c.imageSmoothingEnabled=true;
+ a.drawImage(filmC,0,0,g1.width,g1.height);b.drawImage(g1,0,0,g2.width,g2.height);c.drawImage(g2,0,0,g3.width,g3.height);
+ a.globalCompositeOperation='source-over';a.globalAlpha=.5;a.drawImage(g2,0,0,g1.width,g1.height);a.globalCompositeOperation='lighter';a.globalAlpha=.55;a.drawImage(g3,0,0,g1.width,g1.height);a.globalAlpha=1;
+ bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='low';bctx.globalAlpha=.4;bctx.drawImage(g1,0,0,W,H);bctx.globalAlpha=1;bctx.globalCompositeOperation='source-over';
+ if(yaw>.12){const q=proj(1,-HX,0,new Float64Array(3))[0],q2=proj(1,HX,0,new Float64Array(3))[0],A=.62*Math.min(1,(yaw-.12)/.3),gl=bctx.createLinearGradient(q,0,q2,0);gl.addColorStop(0,`rgba(5,8,13,${A*.3})`);gl.addColorStop(.3,`rgba(5,8,13,${A})`);gl.addColorStop(1,`rgba(5,8,13,${A})`);outletQuad(bctx);bctx.fillStyle=gl;bctx.fill();bctx.strokeStyle='rgba(170,200,225,.5)';bctx.lineWidth=1.4*fs;bctx.stroke()}
+ drawLanded(bctx)}
+
+/* ---------- the tunnel itself ---------- */
+function floorText(str,t,x,size,col,rot){const a=proj(t,x,-HY,new Float64Array(3)),b=proj(t+.1,x,-HY,new Float64Array(3)),c=proj(t,x-.5,-HY,new Float64Array(3));
+ const ux=(b[0]-a[0])/(.1*LT),uy=(b[1]-a[1])/(.1*LT),vx=(c[0]-a[0])/.5,vy=(c[1]-a[1])/.5;
+ bgx.save();if(rot)bgx.setTransform(vx,vy,-ux,-uy,a[0],a[1]);else bgx.setTransform(ux,uy,vx,vy,a[0],a[1]);bgx.font=`${size}px 'Saira Stencil One','Arial Narrow',sans-serif`;bgx.fillStyle=col;bgx.textBaseline='middle';bgx.scale(1,1);
+ bgx.fillText(str,0,0);bgx.restore()}
+function drawBackdrop(){const c=bgx,o=new Float64Array(3);c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';
+ const g=c.createRadialGradient(W*.52,H*.46,0,W*.52,H*.46,Math.max(W,H)*.75);g.addColorStop(0,'#0f1720');g.addColorStop(.55,'#090e15');g.addColorStop(1,'#04060a');c.fillStyle=g;c.fillRect(0,0,W,H);
+ const P=(t,x,y)=>{proj(t,x,y,o);return[o[0],o[1]]};
+ const quad=(a,b,e,d,fill)=>{c.beginPath();c.moveTo(...a);c.lineTo(...b);c.lineTo(...e);c.lineTo(...d);c.closePath();if(fill){c.fillStyle=fill;c.fill()}};
+ /* floor and whichever walls are behind the smoke */
+ const fl0=P(0,-HX,-HY),fl1=P(0,HX,-HY),fl2=P(1,HX,-HY),fl3=P(1,-HX,-HY);const fg=c.createLinearGradient(fl0[0],0,fl2[0],0);fg.addColorStop(0,'rgba(120,150,175,.05)');fg.addColorStop(1,'rgba(120,150,175,.13)');quad(fl0,fl1,fl2,fl3,fg);
+ const farX=HX;const w0=P(0,farX,-HY),w1=P(0,farX,HY),w2=P(1,farX,HY),w3=P(1,farX,-HY);const wg=c.createLinearGradient(w0[0],0,w2[0],0);wg.addColorStop(0,'rgba(90,120,150,.035)');wg.addColorStop(1,'rgba(90,120,150,.085)');quad(w0,w1,w2,w3,wg);
+ /* floor stringers */
+ c.lineWidth=fs*.8;for(let i=-3;i<=3;i++){const x=i/3*HX;const a=P(0,x,-HY),b=P(1,x,-HY);c.strokeStyle='rgba(170,200,225,.075)';c.beginPath();c.moveTo(...a);c.lineTo(...b);c.stroke()}
+ /* ribs */
+ for(let i=0;i<=10;i++){const t=i/10,end=i===0||i===10,al=lerp(.14,.3,t)*(end?1.9:1);const a=P(t,-HX,-HY),b=P(t,HX,-HY),d=P(t,HX,HY),e=P(t,-HX,HY);c.strokeStyle=`rgba(170,200,225,${al})`;c.lineWidth=fs*(end?1.5:.8);c.beginPath();c.moveTo(...a);c.lineTo(...b);c.lineTo(...d);c.lineTo(...e);c.closePath();c.stroke()}
+ for(const[x,y]of[[-HX,-HY],[HX,-HY],[HX,HY],[-HX,HY]]){const a=P(0,x,y),b=P(1,x,y),lg=c.createLinearGradient(a[0],a[1],b[0],b[1]);lg.addColorStop(0,'rgba(170,200,225,.18)');lg.addColorStop(1,'rgba(170,200,225,.42)');c.strokeStyle=lg;c.lineWidth=fs*1.1;c.beginPath();c.moveTo(...a);c.lineTo(...b);c.stroke()}
+ /* inlet honeycomb, outlet screen */
+ c.save();c.beginPath();{const a=P(0,-HX,-HY),b=P(0,HX,-HY),d=P(0,HX,HY),e=P(0,-HX,HY);c.moveTo(...a);c.lineTo(...b);c.lineTo(...d);c.lineTo(...e);c.closePath();c.fillStyle='rgba(110,150,180,.05)';c.fill();c.clip()}
+ c.strokeStyle='rgba(170,200,225,.13)';c.lineWidth=fs*.6;for(let i=-16;i<=16;i++){const a=P(0,i*.4,-HY),b=P(0,i*.4,HY);c.beginPath();c.moveTo(...a);c.lineTo(...b);c.stroke();const d=P(0,-HX,i*.4),e=P(0,HX,i*.4);c.beginPath();c.moveTo(...d);c.lineTo(...e);c.stroke()}c.restore();
+ {const a=P(1,-HX,-HY),b=P(1,HX,-HY),d=P(1,HX,HY),e=P(1,-HX,HY);c.beginPath();c.moveTo(...a);c.lineTo(...b);c.lineTo(...d);c.lineTo(...e);c.closePath();c.fillStyle='rgba(150,180,205,.05)';c.fill()}
+ /* painted on the floor */
+ if(yaw<.86){for(const t of[0,.25,.5,.75,1]){const a=P(t,-HX,-HY);proj(t,-HX,-HY,o);const px=isPhone()?7.5*fs:Math.max(9*fs,Math.min(13*fs,F/o[2]*.42));c.font=`500 ${px}px 'IBM Plex Mono',monospace`;c.fillStyle='rgba(255,194,61,.8)';c.textAlign='center';c.textBaseline='top';c.fillText('t = '+t,a[0],a[1]+6*fs)}}
+ c.textAlign='left';if(yaw<.86)floorText('TEST SECTION',.3,-2.8,.92,'rgba(255,194,61,.17)');
+ const lab=(t,x,y,s,dy)=>{proj(t,x,y,o);c.font=`500 ${isPhone()?7.5*fs:10.5*fs}px 'IBM Plex Mono',monospace`;c.fillStyle='rgba(233,238,242,.62)';c.textAlign='center';c.textBaseline='bottom';c.fillText(s,o[0],o[1]+(dy||-7)*fs)};
+ lab(0,0,HY,'INLET · N(0, I)');lab(1,0,HY,cur&&cur.cfg.custom?'OUTLET · YOUR TARGET':'OUTLET · TARGET POINTS');c.setTransform(1,0,0,1,0,0)}
+
+/* ---------- colours: a thread takes the colour of where it lands ---------- */
+const PAL=[[.13,.5,1],[.2,.84,.98],[1,.88,.68],[1,.55,.22],[1,.24,.17]];
+const palette=u=>{const f=clamp(u,0,.9999)*(PAL.length-1),i=f|0,a=f-i;return[lerp(PAL[i][0],PAL[i+1][0],a),lerp(PAL[i][1],PAL[i+1][1],a),lerp(PAL[i][2],PAL[i+1][2],a)]};
+const css=c=>`rgb(${c[0]*255|0},${c[1]*255|0},${c[2]*255|0})`;
+function dress(run){const{K,P,tx,ty,land,wire}=run;let lo=1e9,hi=-1e9;const uu=new Float32Array(K);
+ for(let i=0;i<K;i++){const v=tx[i]*.72+ty[i]*.69;uu[i]=v;if(v<lo)lo=v;if(v>hi)hi=v}const sp=hi-lo||1,cols=[];
+ for(let i=0;i<K;i++){uu[i]=(uu[i]-lo)/sp;cols.push(palette(uu[i]))}
+ const tc=new Float32Array(P*3),wc=new Float32Array(P*3);for(let p=0;p<P;p++){const a=cols[land[p]],b=cols[wire[p]];tc[3*p]=a[0];tc[3*p+1]=a[1];tc[3*p+2]=a[2];wc[3*p]=b[0];wc[3*p+1]=b[1];wc[3*p+2]=b[2]}
+ /* dots by colour bucket, for the panes */
+ const NB=9,bS=Array.from({length:NB},()=>[]),bW=Array.from({length:NB},()=>[]);for(let p=0;p<P;p++){bS[Math.min(NB-1,uu[land[p]]*NB|0)].push(p);bW[Math.min(NB-1,uu[wire[p]]*NB|0)].push(p)}
+ run.colK=cols.map(css);run.wireCount=new Int32Array(K);for(let p=0;p<P;p++)run.wireCount[wire[p]]++;run.tc=tc;run.wc=wc;run.bS=bS;run.bW=bW;run.bCol=Array.from({length:NB},(_,i)=>css(palette((i+.5)/NB)));run.secS=new Float64Array(2*P);run.secW=new Float64Array(2*P);run.secW2=new Float64Array(2*P)}
+const WSEG=28;
+function projectBundles(run){const{P,N,traj,tx,ty,wire}=run,w=2*(N+1);
+ if(!run.ss||run.ss.length!==2*P*(N+1)){run.ss=new Float32Array(2*P*(N+1));run.ws=new Float32Array(2*P*(WSEG+1))}
+ const ss=run.ss,ws=run.ws;
+ for(let p=0,o=0;p<P;p++){const q=p*w;for(let k=0;k<=N;k++,o+=2){const t=k/N,x=traj[q+2*k],y=traj[q+2*k+1],X=(t-.5)*LT-CX,Y=y-CY,Z=-x-CZ,z=X*FX+Y*FY+Z*FZ;ss[o]=SX+F*(X*RX+Y*RY+Z*RZ)/z;ss[o+1]=SY-F*(X*UX+Y*UY+Z*UZ)/z}}
+ for(let p=0,o=0;p<P;p++){const q=p*w,a=traj[q],b=traj[q+1],j=wire[p],c=tx[j],d=ty[j];for(let k=0;k<=WSEG;k++,o+=2){const t=k/WSEG,x=a+(c-a)*t,y=b+(d-b)*t,X=(t-.5)*LT-CX,Y=y-CY,Z=-x-CZ,z=X*FX+Y*FY+Z*FZ;ws[o]=SX+F*(X*RX+Y*RY+Z*RZ)/z;ws[o+1]=SY-F*(X*UX+Y*UY+Z*UZ)/z}}
+ /* far threads crowd together; keep the inlet from burning out */
+ const dim=t=>{proj(t,0,0,p0);const a=F/p0[2];proj(1,0,0,p0);const b=F/p0[2];return Math.pow(a/b,2.7)};
+ run.eS=new Float32Array(N);for(let k=0;k<N;k++)run.eS[k]=dim((k+.5)/N);run.eW=new Float32Array(WSEG);for(let k=0;k<WSEG;k++)run.eW[k]=dim((k+.5)/WSEG)}
+function depositBundle(pts,Nseg,eT,cols,P,t0,t1,e0,stride,tint){const w=2*(Nseg+1),a0=t0*Nseg,a1=t1*Nseg,k0=Math.floor(a0),k1=Math.min(Nseg-1,Math.floor(a1)),L=1/(stride*1);
+ for(let p=0;p<P;p+=stride){const q=p*w,r=cols[3*p],g=cols[3*p+1],b=cols[3*p+2];
+  for(let k=k0;k<=k1;k++){const u=Math.max(0,a0-k),v=Math.min(1,a1-k);if(v<=u)continue;const o=q+2*k,xa=pts[o],ya=pts[o+1],xb=pts[o+2],yb=pts[o+3],dx=xb-xa,dy=yb-ya,e=e0*eT[k]*stride*(tint||1);
+   line(xa+u*dx,ya+u*dy,xa+v*dx,ya+v*dy,e*r,e*g,e*b)}}}
+const threadE=run=>run.flat?.55:.03*Math.pow(2400/run.P,.75);
+const WIRETINT=[1,.66,.2];
+function wireCols(run){if(!run.wcA){run.wcA=new Float32Array(run.P*3);for(let p=0;p<run.P;p++){run.wcA[3*p]=WIRETINT[0];run.wcA[3*p+1]=WIRETINT[1];run.wcA[3*p+2]=WIRETINT[2]}}return run.wcA}
+function exposeRange(run,t0,t1,stride){if(!(t1>t0))return;const e=threadE(run)*fs;
+ if(t0===0){const q=2*(run.N+1);for(let p=0;p<run.P;p+=stride){if(S.view!=='wires'){const r=run.tc,z=.5*stride*(run.flat?2:1);splat(run.ss[p*q],run.ss[p*q+1],z*r[3*p],z*r[3*p+1],z*r[3*p+2])}}}
+ if(S.view==='smoke'||S.view==='both')depositBundle(run.ss,run.N,run.eS,run.tc,run.P,t0,t1,e,stride,1);
+ if(S.view==='wires')depositBundle(run.ws,WSEG,run.eW,wireCols(run),run.P,t0,t1,e,stride,1);
+ if(S.view==='both')depositBundle(run.ws,WSEG,run.eW,wireCols(run),run.P,t0,t1,e,stride,run.flat?.8:.7);
+ }
+function updateFilm(){const stride=(camFast||dragging)?3:1,key=[cur?cur.id:'',S.view,camKey(),W,H,stride].join('|');let changed=false;
+ if(key!==filmKey){setCamera();drawBackdrop();film.fill(0);filmFront=0;filmKey=key;filmStride=stride;dirty=[0,0,W-1,H-1];if(cur)projectBundles(cur);changed=true}
+ if(cur&&front>filmFront){exposeRange(cur,filmFront,front,stride);filmFront=front;changed=true}
+ if(changed){develop();composite()}}
+
+/* ---------- laser sheet ---------- */
+const paneS=$('secS'),paneW=$('secW'),pcS=paneS.getContext('2d'),pcW=paneW.getContext('2d'),ess=$('essc'),ecx=ess.getContext('2d');let PW=0,PH=0,EW=0,EH=0,paneKey='';
+function sizePanes(){const r=paneS.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);PW=Math.max(1,Math.round(r.width*d));PH=Math.max(1,Math.round(r.height*d));for(const c of[paneS,paneW]){c.width=PW;c.height=PH}const e=ess.getBoundingClientRect();EW=Math.max(1,Math.round(e.width*d));EH=Math.max(1,Math.round(e.height*d));ess.width=EW;ess.height=EH;paneKey=''}
+const pxOf=x=>PW*(x+HX)/(2*HX),pyOf=y=>PH*(1-(y+HY)/(2*HY));
+function drawPane(c,run,arr,buckets,dr){c.globalCompositeOperation='source-over';c.fillStyle='#03060a';c.fillRect(0,0,PW,PH);
+ c.fillStyle='rgba(170,200,225,.16)';const st=run.K>200?1:1,sz=PW/150;for(let i=0;i<run.K;i+=st)c.fillRect(pxOf(run.tx[i])-sz*.5,pyOf(run.ty[i])-sz*.5,sz,sz);
+ c.globalCompositeOperation='lighter';const dd=dr;for(let b=0;b<buckets.length;b++){c.fillStyle=run.bCol[b];const L=buckets[b];c.globalAlpha=run.flat?.9:run.P<2000?.85:.55;for(let i=0;i<L.length;i++){const p=L[i];c.fillRect(pxOf(arr[2*p])-dd/2,pyOf(arr[2*p+1])-dd/2,dd,dd)}}c.globalAlpha=1;c.globalCompositeOperation='source-over'}
+function drawProbe(run,t){if(!S.probe||t>=.999)return null;const c=pcS,x=S.probe.x,y=S.probe.y,R=weights(run,x,y,t),px=pxOf(x),py=pyOf(y);let mx=0;for(let i=0;i<run.K;i++)if(R.w[i]>mx)mx=R.w[i];
+ c.lineWidth=Math.max(1,PW/260);for(let i=0;i<run.K;i++){const a=R.w[i]/mx;if(a<.02)continue;c.strokeStyle=`rgba(255,194,61,${Math.min(.9,.1+a*.8)})`;c.beginPath();c.moveTo(px,py);c.lineTo(pxOf(run.tx[i]),pyOf(run.ty[i]));c.stroke()}
+ /* the arrow is the weighted average of those straight lines: x + (1−t)·u is the posterior mean */
+ const ex=pxOf(R.mx),ey=pyOf(R.my);c.strokeStyle='#fff';c.lineWidth=Math.max(1.5,PW/130);c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();c.fillStyle='#fff';c.beginPath();c.arc(px,py,PW/70,0,7);c.fill();c.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--laser');c.beginPath();c.arc(ex,ey,PW/60,0,7);c.fill();
+ S.probeRead={x,y,t,ess:R.ess,ux:R.ux,uy:R.uy,mx:R.mx,my:R.my};return R}
+function updatePanes(){const run=cur;if(!run)return;const t=Math.min(S.sheetT,front>=1?1:Math.max(front,0)),key=[run.id,t.toFixed(4),S.probe?S.probe.x+','+S.probe.y:'',PW].join('|');$('tv').textContent='t = '+t.toFixed(2);
+ const sl=$('sheet');if(document.activeElement!==sl||S.sweep)sl.value=Math.round(t*1000);
+ if(key===paneKey)return;if(lite&&frame%3&&run.secDrawn)return;run.secDrawn=true;paneKey=key;section(run,t,'smoke',run.secS);section(run,t,'wire',run.secW,1);
+ const dr=Math.max(1.2,PW/230)*(run.flat?1.8:1);S.probeRead=null;drawPane(pcS,run,run.secS,run.bS,dr);drawPane(pcW,run,run.secW,run.bW,dr);drawProbe(run,t);drawEss(run,t);updateW1(run,t)}
+function drawEss(run,t){const c=ecx,w=EW,h=EH,N=run.N;c.clearRect(0,0,w,h);const d=w/ess.getBoundingClientRect().width||1;const yy=v=>h-4*d-(h-16*d)*(run.K>1?flog(Math.max(1,v))/flog(run.K):0);
+ c.beginPath();c.moveTo(0,h);for(let k=0;k<N;k++){c.lineTo(w*(k+.5)/N,yy(run.ess[k]))}c.lineTo(w,yy(1));c.lineTo(w,h);c.closePath();c.fillStyle='rgba(125,255,180,.14)';c.fill();
+ c.beginPath();for(let k=0;k<N;k++){c[k?'lineTo':'moveTo'](w*(k+.5)/N,yy(run.ess[k]))}c.strokeStyle='rgba(125,255,180,.85)';c.lineWidth=1.3*d;c.stroke();
+ const f=t*N,i=Math.min(N-1,Math.max(0,Math.round(f-.5))),e=run.ess[i];c.strokeStyle='rgba(255,255,255,.55)';c.lineWidth=d;c.beginPath();c.moveTo(w*t,0);c.lineTo(w*t,h);c.stroke();
+ c.font=`400 ${10*d}px 'IBM Plex Mono',monospace`;c.fillStyle='rgba(233,238,242,.8)';c.textBaseline='top';const s=(S.probeRead?`this spot: ${S.probeRead.ess<9.95?S.probeRead.ess.toFixed(1):Math.round(S.probeRead.ess)}`:`a thread here: ${e<9.95?e.toFixed(1):Math.round(e)}`)+` of ${run.K} targets pulling`;c.textAlign=t>.5?'left':'right';c.fillText(s,t>.5?2*d:w-2*d,1*d)}
+function w1At(run,t){section(run,t,'smoke',run.secS);section(run,t,'wire',run.secW,1);section(run,t,'wire',run.secW2,2);return{t,smoke:slicedW1(run.secS,run.secW),floor:slicedW1(run.secW2,run.secW)}}
+function updateW1(run,t){if(!run.w1)return;const i=clamp(Math.round(t*16),0,16),r=run.w1[i];$('w1').innerHTML=r?`At t = ${r.t.toFixed(2)} the two clouds differ by <b>${r.smoke.toFixed(3)}</b> (sliced W₁). Two independent draws of wires differ by ${r.floor.toFixed(3)}.`:'Comparing the two clouds…'}
+function growW1(run,all){if(!run.w1)run.w1=new Array(17).fill(null);do{const i=run.w1.indexOf(null);if(i<0)return;run.w1[i]=w1At(run,i/16);paneKey='';if(i===16){run.w1Done=true;w1Log.push({id:run.id,table:run.w1.map(r=>[r.t,r.smoke,r.floor])});if(w1Log.length>60)w1Log.shift()}}while(all)}
+function updateNums(){const run=cur;if(!run)return;const m=run.metrics,f=v=>v>=100?v.toFixed(0):v.toFixed(2);let h=`<span></span><i class="s">Smoke</i><i class="w">Wires</i>
+<span>Squared distance</span><b>${f(m.costSmoke)}</b><b>${f(m.costWire)}</b><span>Path length</span><b>${f(m.lenSmoke)}</b><b>${f(m.lenWire)}</b>`;
+ if(run.flat)h+=`<span>Order swaps</span><b>${(100*m.swapSmoke).toFixed(1)}%</b><b>${(100*m.swapWire).toFixed(1)}%</b>`;
+ h+=`<span class="full">${(100*m.landed).toFixed(1)}% of threads within 0.01 of a target · ${m.hit} of ${run.K} targets hit</span>`;$('nums').innerHTML=h;
+ $('kv').textContent=run.K;$('nv').textContent=run.N}
+
+/* ---------- runs ---------- */
+function runKey(){return S.custom?null:[S.shape,S.K,S.P,S.N,S.seed].join('|')}
+function runCfg(){return S.custom?{shape:'custom',custom:S.custom.slice(),K:S.custom.length,P:S.P,N:S.N,seed:S.seed}:{shape:S.shape,K:SHAPES[S.shape].fixed?SHAPES[S.shape].fixed.length:S.K,P:S.P,N:S.N,seed:S.seed}}
+let afterRun=null;
+function request(dur,cb){S.reveal=dur==null?1.5:dur;if(RM||FIXED&&frame===0)S.reveal=0;const key=runKey();if(cb)afterRun=cb;
+ if(key&&cache.has(key)){const r=cache.get(key);pending=null;adopt(r);return}
+ pending=makeRun(runCfg());pending.key=key;pending.id=++runCounter;if(FIXED||RM||!cur){advance(pending,1e12);landed()}}
+function landed(){const r=pending;pending=null;dress(r);r.hash=fnv(r.traj);r.w1=null;if(r.key){cache.set(r.key,r);if(cache.size>10)cache.delete(cache.keys().next().value)}
+ const e={id:r.id,shape:r.cfg.shape,K:r.K,P:r.P,N:r.N,seed:r.cfg.seed,hash:r.hash,metrics:r.metrics};if(r.cfg.custom)e.custom=r.cfg.custom;e.essHash=fnv(r.ess);log.push(e);if(log.length>400)log.shift();adopt(r)}
+function adopt(r){cur=r;filmKey='';front=S.reveal>0?0:1;revealT0=nowS();revealDur=S.reveal;updateNums();syncUI();paneKey='';if(!r.w1)growW1(r,FIXED||RM);if(afterRun){const f=afterRun;afterRun=null;f(r)}}
+function setShape(sh,keepK){S.custom=null;S.painting=false;S.shape=sh;S.P=sh==='three'?61:(isPhone()?1200:2400);$('live').classList.remove('paint');$('painthint').classList.remove('on')}
+
+/* ---------- UI ---------- */
+const chipsEl=$('shapes');for(const k of Object.keys(SHAPES)){const b=document.createElement('button');b.className='chip';b.textContent=SHAPES[k].name;b.dataset.s=k;chipsEl.appendChild(b)}
+{const b=document.createElement('button');b.className='chip';b.textContent='Paint ✎';b.dataset.s='paint';b.title='Clear the screen and paint your own target points';chipsEl.appendChild(b)}
+function syncUI(){for(const b of chipsEl.children)b.classList.toggle('on',S.custom||S.painting?b.dataset.s==='paint':b.dataset.s===S.shape);
+ for(const b of $('views').children)b.classList.toggle('on',b.dataset.v===S.view);for(const b of $('cams').children)b.classList.toggle('on',b.dataset.c===S.cam);
+ const fixedK=!S.custom&&SHAPES[S.shape].fixed;$('kk').disabled=!!(fixedK||S.custom);$('kk').style.opacity=fixedK||S.custom?.35:1;$('kk').value=KS.indexOf(S.K)>=0?KS.indexOf(S.K):7;$('nn').value=NS.indexOf(S.N)>=0?NS.indexOf(S.N):11;
+ $('kv').textContent=S.custom?S.custom.length:fixedK?SHAPES[S.shape].fixed.length:S.K;$('nv').textContent=S.N}
+function touched(){if(tour.on)stopTour(true);userTouched=true}
+chipsEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;touched();if(b.dataset.s==='paint'){S.custom=[];S.painting=true;$('live').classList.add('paint');$('painthint').classList.add('on');if(S.cam!=='q'&&S.cam!=='b')camTo('q');syncUI();return}
+ setShape(b.dataset.s);if(b.dataset.s==='three'&&S.cam!=='s')camTo('s');request(1.6);syncUI()});
+$('kk').addEventListener('input',e=>{touched();S.K=KS[+e.target.value];$('kv').textContent=S.K;request(1.1)});
+$('nn').addEventListener('input',e=>{touched();S.N=NS[+e.target.value];$('nv').textContent=S.N;request(1.1)});
+$('sheet').addEventListener('input',e=>{touched();S.sweep=false;S.sheetT=+e.target.value/1000;if(front<1){front=1;revealDur=0}});
+$('views').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;touched();setView(b.dataset.v)});
+$('cams').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;touched();camTo(b.dataset.c);syncUI()});
+$('newseed').addEventListener('click',()=>{touched();S.seed=(S.seed*31+17)%99991;request(1.6)});
+$('tourb').addEventListener('click',()=>{startTour()});
+function setView(v){S.view=v;filmKey='';front=RM?1:0;revealT0=nowS();revealDur=RM?0:1.4;syncUI()}
+function camTo(c){S.cam=c;const a=CAMS[c];if(a.yaw===yaw&&a.pitch===pitch)return;if(RM||FIXED&&frame===0){yaw=a.yaw;pitch=a.pitch;filmKey='';return}camAnim={y0:yaw,p0:pitch,y1:a.yaw,p1:a.pitch,t0:nowS(),d:1.15}}
+/* drag: swing the camera, or paint */
+let dragLast=null,painted=false;
+function evPos(e){const r=live.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+live.addEventListener('pointerdown',e=>{touched();live.setPointerCapture&&live.setPointerCapture(e.pointerId);if(S.painting){painted=true;dragLast=evPos(e);paintAt(dragLast);return}dragLast={x:e.clientX,y:e.clientY};dragging=true;camAnim=null;live.classList.add('drag')});
+live.addEventListener('pointermove',e=>{if(!dragLast)return;if(S.painting){paintAt(evPos(e));return}const dx=e.clientX-dragLast.x,dy=e.clientY-dragLast.y;dragLast={x:e.clientX,y:e.clientY};yaw=clamp(yaw-dx*.0013,0,1);pitch=clamp(pitch+dy*.012,-2,7);S.cam='';syncUI()});
+const endPtr=()=>{if(!dragLast)return;dragLast=null;if(dragging){dragging=false;live.classList.remove('drag');filmKey=''}if(painted){painted=false;if(S.custom&&S.custom.length){S.painting=false;live.classList.remove('paint');$('painthint').classList.remove('on');request(1.6)}}};
+live.addEventListener('pointerup',endPtr);live.addEventListener('pointercancel',endPtr);
+function paintAt(p){const q=pickOutlet(p.x,p.y);if(!q||Math.abs(q.x)>HX||Math.abs(q.y)>HY)return;for(const a of S.custom){const u=a[0]-q.x,v=a[1]-q.y;if(u*u+v*v<.012)return}if(S.custom.length>=800)return;S.custom.push([q.x,q.y]);$('kv').textContent=S.custom.length}
+/* probe */
+function probeAt(e){const r=paneS.getBoundingClientRect(),x=((e.clientX-r.left)/r.width)*2*HX-HX,y=(1-(e.clientY-r.top)/r.height)*2*HY-HY;S.probe={x:+x.toFixed(4),y:+y.toFixed(4)};probeLog.length>=200&&probeLog.shift()}
+paneS.addEventListener('pointermove',e=>{if(e.pointerType==='touch'&&e.buttons===0)return;touched();S.sweep=false;probeAt(e)});paneS.addEventListener('pointerdown',e=>{touched();S.sweep=false;probeAt(e)});paneS.addEventListener('pointerleave',e=>{if(e.pointerType!=='touch'){S.probe=null}});
+
+/* ---------- live layer: the sheet, and where it cuts the threads ---------- */
+const lp=new Float64Array(3);
+function drawLive(){const c=lctx;c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,W,H);if(S.painting||(S.custom&&!cur)||S.custom&&S.custom.length&&!cur){}
+ if(S.painting){c.fillStyle='rgba(255,194,61,.95)';for(const q of S.custom){proj(1,q[0],q[1],lp);c.fillRect(lp[0]-1.5*fs,lp[1]-1.5*fs,3*fs,3*fs)}
+  const a=proj(1,-HX,-HY,new Float64Array(3)),b=proj(1,HX,-HY,new Float64Array(3)),d=proj(1,HX,HY,new Float64Array(3)),e=proj(1,-HX,HY,new Float64Array(3));c.strokeStyle='rgba(255,194,61,.8)';c.lineWidth=1.5*fs;c.setLineDash([6*fs,5*fs]);c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.lineTo(d[0],d[1]);c.lineTo(e[0],e[1]);c.closePath();c.stroke();c.setLineDash([]);return}
+ if(!cur)return;const t=Math.min(S.sheetT,front>=1?1:front),a=proj(t,-HX,-HY,new Float64Array(3)),b=proj(t,HX,-HY,new Float64Array(3)),d=proj(t,HX,HY,new Float64Array(3)),e=proj(t,-HX,HY,new Float64Array(3));
+ c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.lineTo(d[0],d[1]);c.lineTo(e[0],e[1]);c.closePath();c.fillStyle='rgba(125,255,180,.045)';c.fill();c.strokeStyle='rgba(125,255,180,.7)';c.lineWidth=1.2*fs;c.stroke();
+ const arr=S.view==='wires'?cur.secW:cur.secS,P=cur.P,dd=(cur.flat?2.6:1.5)*fs;if(paneKey){c.globalCompositeOperation='lighter';c.fillStyle='rgba(190,255,220,.3)';
+  const X=(t-.5)*LT-CX;for(let p=0;p<P;p+=lite?3:1){const x=arr[2*p],y=arr[2*p+1],Y=y-CY,Z=-x-CZ,z=X*FX+Y*FY+Z*FZ;c.fillRect(SX+F*(X*RX+Y*RY+Z*RZ)/z-dd/2,SY-F*(X*UX+Y*UY+Z*UZ)/z-dd/2,dd,dd)}c.globalCompositeOperation='source-over'}
+ const px=11*fs;if(t<.86&&t>.27&&!isPhone()){c.font=`500 ${px}px 'IBM Plex Mono',monospace`;c.fillStyle='rgba(125,255,180,.95)';c.textAlign='center';c.textBaseline='bottom';c.fillText('t = '+t.toFixed(2),d[0]+(e[0]-d[0])/2,Math.min(d[1],e[1])-5*fs)}
+ /* tracers: a few threads carry a bright bead, so you can see which way the wind blows */
+ if(!RM&&front>=1){const run=cur,wires=S.view==='wires',pts=wires?run.ws:run.ss,Ns=wires?WSEG:run.N,q=2*(Ns+1),n=run.flat?run.P:lite?60:130,stp=Math.max(1,Math.floor(run.P/n)),now=nowS();c.globalCompositeOperation='lighter';for(let p=0,i=0;p<run.P;p+=stp,i++){const ph=(i*.6180339887+now/5.5)%1,f=ph*Ns,k=Math.min(Ns-1,f|0),u=f-k,o=p*q+2*k,x=pts[o]+u*(pts[o+2]-pts[o]),y=pts[o+1]+u*(pts[o+3]-pts[o+1]),fa=Math.min(1,ph*8)*Math.min(1,(1-ph)*12);c.fillStyle=`rgba(255,250,235,${.8*fa})`;c.beginPath();c.arc(x,y,1.05*fs,0,7);c.fill();c.fillStyle=`rgba(255,235,200,${.1*fa})`;c.beginPath();c.arc(x,y,3.2*fs,0,7);c.fill()}c.globalCompositeOperation='source-over'}}
+
+/* ---------- the tour ---------- */
+const capEl=$('caption');let capTimer=0,capText='';
+function caption(h){if(h===capText)return;capText=h;if(FIXED||RM){capEl.innerHTML=h;return}capEl.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{capEl.innerHTML=h;capEl.classList.remove('fade')},280)}
+const m=(v,d)=>v.toFixed(d==null?2:d),pct=(v,d)=>(100*v).toFixed(d==null?1:d)+'%';
+const tour={on:false,i:0,t0:0},YOUR='<b>Your turn.</b> Paint a target on the outlet screen, swing the camera, drop the Euler steps, or hover the Smoke pane to probe the wind.';
+const whenRun=fn=>{if(pending||!cur)afterRun=fn;else fn(cur)};
+const STEPS=[
+ {at:0,go(){setShape('airliner');S.K=640;S.N=64;S.view='smoke';S.sweep=true;S.probe=null;camTo('q');request(4.6);caption(`A rake at the inlet releases <b class="m">${S.P.toLocaleString('en')}</b> threads of smoke: pure Gaussian noise. No thread has been told where to go.`)}},
+ {at:6,go(){whenRun(r=>caption(`They land on the <b>${r.K} points of an airliner</b>, seen head-on. There is no network and no training here: the wind at every point of this tunnel is a closed formula, a weighted average of straight lines to every target.`))}},
+ {at:13,go(){setView('wires');whenRun(r=>caption(`Flow matching trains on something much cruder. Pair each noise sample with a random target and stretch a <b class="a">straight wire</b>. Same starts, same targets: squared distance travelled <b class="m">${m(r.metrics.costWire)}</b>, against the smoke’s <b class="m">${m(r.metrics.costSmoke)}</b>.`))}},
+ {at:20,go(){S.sweep=false;S.sheetT=.5;setView('smoke');whenRun(r=>{const q=r.w1&&r.w1[8];caption(`Now cut both with the laser sheet, on the right. Halfway down, the smoke and the wires make <b class="g">the same cloud</b>${q?`: they differ by <b class="m">${m(q.smoke,3)}</b>, while two fresh draws of wires differ by <b class="m">${m(q.floor,3)}</b>`:''}. Different paths, same picture at every station. That is the theorem.`)})}},
+ {at:27,go(){setShape('three');S.view='smoke';S.sweep=true;camTo('s');request(2.6);whenRun(r=>caption(`Side window, one flat sheet of smoke, three posts. A velocity field has <b>one arrow per point</b>, so threads can never cross: <b class="m">${pct(r.metrics.swapSmoke)}</b> of pairs swap order between inlet and outlet. Each post gets its third of the rake.`))}},
+ {at:33,go(){setView('both');whenRun(r=>caption(`The <b class="a">wires</b> from the same nozzles cross everywhere: <b class="m">${pct(r.metrics.swapWire)}</b> of pairs swap. The wind can’t follow them all, so at each point it takes their average, and the average bends.`))}},
+ {at:40,go(){setShape('eight');S.view='smoke';S.sweep=false;S.sheetT=.2;S.probe={x:.8,y:.75};camTo('q');request(1.5);S.tourSweep={t0:nowS(),a:.2,b:.86,d:7};whenRun(r=>caption(`A probe in the flow, in the Smoke pane. <b class="a">Gold lines</b> run to each target, brighter the more plausibly this spot lies on its wire; the white arrow is their average, and that average is the wind. Early on all eight pull. Late on, one has won.`))}},
+ {at:48,go(){S.tourSweep=null;S.probe=null;setShape('airliner');S.K=640;S.N=1;S.sweep=true;S.view='smoke';request(1.2);whenRun(r=>caption(`Sampling is just integrating. With <b class="m">1</b> Euler step the wind at t = 0 points at the centroid, so the whole rake lands on <b>one point</b>.`))}},
+ {at:52,go(){S.N=4;request(1.2);whenRun(r=>caption(`<b class="m">4</b> steps: a plane-shaped smudge, ${pct(r.metrics.landed,0)} of threads on a target.`))}},
+ {at:56,go(){S.N=16;request(1.2);whenRun(r=>caption(`<b class="m">16</b> steps: the aeroplane is back, but ${pct(1-r.metrics.landed,0)} of threads still stop short of a target point.`))}},
+ {at:60,go(){S.N=64;request(1.2);whenRun(r=>caption(`<b class="m">64</b> steps: ${pct(r.metrics.landed,0)} land within 0.01 of a target. This exact field is a perfect memoriser: it can only ever draw the training points. Real networks only approximate it, and that gap is where new samples come from.`))}},
+ {at:68,go(){setShape('spiral');S.K=640;S.N=64;camTo('b');request(2.6);whenRun(r=>caption(`Any finite set of points gets its own wind, with no training at all. Here is a spiral of <b class="m">${r.K}</b> points, seen down the barrel from the outlet.`))}},
+ {at:75,go(){stopTour(false);caption(YOUR)}},
+];
+function startTour(){S.custom=null;S.painting=false;live.classList.remove('paint');$('painthint').classList.remove('on');tour.on=true;tour.i=0;tour.t0=FIXED?frame/60:nowS();runTour(0)}
+function stopTour(interrupt){tour.on=false;S.tourSweep=null;if(interrupt)caption(YOUR)}
+function runTour(t){while(tour.on&&tour.i<STEPS.length&&STEPS[tour.i].at<=t){const s=STEPS[tour.i++];s.go()}}
+
+/* ---------- frame ---------- */
+let ema=1/60,lite=false;
+function tick(dt){frame++;simT+=dt;const t=nowS();if(!FIXED&&dt>0){ema+=(dt-ema)*.08;if(ema>.036)lite=true;else if(ema<.022)lite=false}
+ if(pending){const ok=advance(pending,FIXED||RM?1e12:Math.min(70,Math.max(13,ema*700)));if(ok)landed()}
+ $('busy').classList.toggle('on',!!pending&&!FIXED);
+ if(revealDur>0&&front<1){front=clamp((t-revealT0)/revealDur,0,1);if(front>=1)revealDur=0}
+ if(camAnim){const u=smooth((t-camAnim.t0)/camAnim.d);yaw=lerp(camAnim.y0,camAnim.y1,u);pitch=lerp(camAnim.p0,camAnim.p1,u);camFast=u<1;if(u>=1){camAnim=null;camFast=false}}
+ if(tour.on)runTour(t-tour.t0);
+ if(S.tourSweep){const a=S.tourSweep;S.sheetT=lerp(a.a,a.b,clamp((t-a.t0)/a.d,0,1))}
+ else if(S.sweep&&cur){if(front<1)S.sheetT=front;else{cur.sw=(cur.sw==null?0:cur.sw)+Math.min(dt,.05)/11;const u=cur.sw%2;S.sheetT=u<1?1-u*.85:.15+(u-1)*.85}}
+ if(cur&&!cur.w1Done&&!pending&&front>=1)growW1(cur,FIXED);
+ window.__frame=frame;window.__state={t,frame,tourStep:tour.i,front,sheetT:S.sheetT,running:!!pending}}
+function paint(){updateFilm();updatePanes();drawLive()}
+let lastNow=0;
+function loop(ts){requestAnimationFrame(loop);const dt=Math.min(.2,(ts-lastNow)/1000||1/60);lastNow=ts;tick(dt);paint()}
+addEventListener('resize',()=>{if(resize()){filmKey='';if(FIXED||RM)paint()}});
+
+/* ---------- state ---------- */
+window.flowTunnel={state(){if(!cur)return{ready:false,running:!!pending};const r=cur;return{ready:true,running:!!pending,cfg:{shape:S.shape,K:r.K,P:r.P,N:r.N,seed:S.seed,custom:!!S.custom,flat:r.flat},view:S.view,cam:S.cam,yaw,pitch,front,sheetT:S.sheetT,sweep:S.sweep,painting:S.painting,paintCount:S.custom?S.custom.length:0,probe:S.probe,probeRead:S.probeRead||null,metrics:r.metrics,hash:r.hash,ess:Array.from(r.ess),w1:r.w1?r.w1.filter(Boolean).map(a=>({...a})):[],w1Done:!!r.w1Done,tour:{on:tour.on,i:tour.i,n:STEPS.length},caption:capEl.textContent,capText,simT,frame,log:log.slice(),w1Log:w1Log.slice(),fs,W,H}},
+ dump(){const r=cur;return r?{K:r.K,P:r.P,N:r.N,tx:Array.from(r.tx),ty:Array.from(r.ty),land:Array.from(r.land),count:Array.from(r.count),traj0:Array.from(r.traj.slice(0,2*(r.N+1)))}:null},
+ inspect(x,y,t){if(!cur)return null;const R=weights(cur,x,y,t);return{ess:R.ess,mx:R.mx,my:R.my,ux:R.ux,uy:R.uy,sum:R.w.reduce((a,b)=>a+b,0)}}};
+window.step=n=>{for(let i=0;i<n;i++)tick(1/60);paint();return window.__state};
+
+if(RM)for(const ev of['input','click','pointerup','pointermove'])document.addEventListener(ev,()=>queueMicrotask(()=>{tick(0);paint()}));
+/* ---------- go ---------- */
+resize();setCamera();drawBackdrop();syncUI();
+const fromUrl=['shape','n','k','view','cam','t','notour'].some(k=>Q.has(k));
+const start=()=>{
+ if(FIXED){/* frame 0 is the finished picture; stepping plays the tour on simulated time */if(fromUrl){request(0);caption(YOUR);S.sweep=S.sweep&&!Q.has('notour')}else{startTour();front=1}if(cur&&!Q.has('t')){cur.sw=.776;S.sheetT=.34}paint();return}
+ if(RM){request(0);S.sweep=false;front=1;caption(`Threads of smoke leave the inlet as Gaussian noise and land on the <b>${cur.K} points of an airliner</b>, following the exact flow-matching field. Paint a target, drop the Euler steps, or move the laser sheet: everything recomputes.`);paint();requestAnimationFrame(loop);return}
+ if(fromUrl){request(2);caption(YOUR)}else startTour();
+ paint();requestAnimationFrame(ts=>{lastNow=ts;loop(ts)})};
+const fontsReady=document.fonts&&document.fonts.ready?Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]):Promise.resolve();
+if(FIXED)start();
+fontsReady.then(()=>{if(!FIXED){start()}else{filmKey='';paint()}filmKey='';if(RM)paint()});
+</script>
+</body>
+</html>

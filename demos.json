@@ -1,5 +1,15 @@
 [
  {
+  "slug": "flow-tunnel",
+  "title": "Flow Tunnel",
+  "no": "032",
+  "date": "2026-10-31",
+  "kind": "Flow matching \u00b7 Canvas tunnel",
+  "blurb": "A wind tunnel whose smoke follows flow matching's exact closed-form velocity field: 2,400 threads leave the inlet as Gaussian noise and land on the points of an airliner. Cut them with a laser sheet to see they match straight wires at every station, drop the Euler steps, or paint your own target.",
+  "color": "#d5fc9b",
+  "exhibit": "flowtunnel"
+ },
+ {
   "slug": "double-descent-coaster",
   "title": "Double Descent Coaster",
   "no": "031",
