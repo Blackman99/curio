@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mark I Perceptron — the 1959 learning machine, wired from its operators' manual</title>
+<meta name="description" content="A working replica of the Mark I Perceptron: 400 photocells, a randomly wired plugboard and 512 motor-driven knobs, specified from the 1960 operators' manual and running the real error-correction rule in your browser. Teach it left from right, pull out half its wires, and find what it can never learn.">
+<meta property="og:title" content="Mark I Perceptron">
+<meta property="og:description" content="400 photocells, a plugboard wired from a random-number printout and 512 knobs on motors, running the real error-correction rule. XOR is easy for it. Connectedness is a coin flip.">
+<meta property="og:image" content="https://blackman99.github.io/curio/perceptron-mark-i/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mark I Perceptron">
+<meta name="twitter:description" content="A working replica of the 1959 learning machine, built from its operators' manual: watch 512 knobs learn, then find out what the lore gets wrong about XOR.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/perceptron-mark-i/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--room:#0b0c0a;--ivory:#ece6d2;--ivory2:#a9a693;--amber:#f2a43a;--neon:#ff7a2a;--cool:#46b4d8;--line:rgba(236,230,210,.16);--panel:#141612}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--room);color:var(--ivory);font-family:'Spectral',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{display:grid;grid-template-columns:minmax(0,1fr) 316px;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"head panel" "story panel" "mach panel";overflow:hidden;background:radial-gradient(1100px 700px at 38% 44%,#23251f 0%,#12130f 58%,#0a0b09 100%)}
+button,input{font:inherit;color:inherit}button{cursor:pointer}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+#head{grid-area:head;padding:12px 18px 0 20px;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:16px;align-items:center}
+.back{grid-row:1/3;align-self:start;margin-top:3px;display:inline-block;font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--amber);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:3px;background:rgba(0,0,0,.25);transition:background .2s,color .2s}
+.back:hover,.back:focus-visible{background:var(--amber);color:#14100a;outline:none}
+.kick{font:500 10.5px/1.2 'IBM Plex Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
+.tl{display:flex;align-items:baseline;gap:16px;min-width:0}
+h1{margin:1px 0 0;font:600 40px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.035em;text-transform:uppercase;color:#f5f0dd;white-space:nowrap}
+.sub{margin:0;font-size:15px;line-height:1.25;color:var(--ivory2);min-width:0}
+.sub b{color:var(--ivory);font-weight:600}
+#story{grid-area:story;padding:7px 20px 7px}
+#caption{margin:0;font-size:17px;line-height:1.36;color:#f4efdc;min-height:2.72em;max-width:1040px;transition:opacity .28s}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .82em 'IBM Plex Mono',monospace;color:var(--amber)}
+#caption .c{color:#8fd6ee}
+#mwrap{grid-area:mach;min-height:0;min-width:0;display:flex;justify-content:center;align-items:flex-start;padding:0 12px 10px}
+#machine{position:relative;flex:none;box-shadow:0 26px 60px rgba(0,0,0,.6);border-radius:4px;background:#0d0e0b}
+.bay{position:absolute;overflow:hidden;border-radius:2px}
+.bay svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.bay .st{will-change:transform}
+#stc{will-change:transform,opacity;transition:opacity .28s}
+#lit{will-change:opacity,transform}
+#hit{cursor:crosshair;touch-action:none}
+#bK{cursor:help}
+text{font-family:'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.09em}
+text.m{font-family:'IBM Plex Mono',monospace;letter-spacing:0}
+#panel{grid-area:panel;height:100vh;overflow:auto;scrollbar-width:thin;background:var(--panel);border-left:1px solid var(--line);padding:12px 14px 12px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:600 12.5px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:0;color:var(--ivory);text-transform:none}
+.sec{margin-bottom:11px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip,.btn{border:1px solid var(--line);background:rgba(236,230,210,.05);border-radius:3px;padding:6px 8px 5px;font:400 11.5px/1 'IBM Plex Mono',monospace;color:var(--ivory)}
+.chip:hover,.btn:hover,.chip:focus-visible,.btn:focus-visible{border-color:var(--amber);outline:none}
+.chip.on,.btn.on{background:var(--amber);border-color:var(--amber);color:#14100a;font-weight:500}
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+.row .btn{padding:7px 2px 6px}
+.note{margin:6px 0 0;font:400 10.5px/1.4 'IBM Plex Mono',monospace;color:var(--ivory2)}
+.note b{font-weight:500;color:var(--ivory)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;--k:var(--amber)}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.1),var(--k))}
+input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,.1),var(--k))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:16px;margin-top:-6.5px;border-radius:2px;border:0;background:var(--k);box-shadow:0 2px 6px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:14px;height:16px;border-radius:2px;border:0;background:var(--k)}
+input[type=range]:focus-visible{outline:1px dashed var(--amber);outline-offset:2px}
+.tri{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.nums{display:grid;grid-template-columns:1fr auto;gap:3px 8px;font:400 11.5px/1.3 'IBM Plex Mono',monospace;color:var(--ivory2);border-top:1px solid var(--line);padding-top:8px}
+.nums b{font-weight:500;color:var(--ivory);text-align:right;font-variant-numeric:tabular-nums}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:600 12.5px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:14.5px;line-height:1.44;color:var(--ivory2);margin:9px 0 0}
+details p b{color:var(--ivory);font-weight:600}
+details a,.foot a{color:var(--amber)}
+.foot{margin-top:9px;font:400 10.5px/1.6 'IBM Plex Mono',monospace;color:rgba(236,230,210,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--amber);text-decoration:underline;font:inherit}
+@media (max-height:800px) and (min-width:821px){h1{font-size:32px}#caption{font-size:15.5px}.sub{font-size:13.5px}.sec{margin-bottom:8px}}
+@media (max-width:1180px) and (min-width:821px){.sub{display:none}}
+@media (max-width:820px){
+ html,body{height:auto}
+ body{display:block;overflow:auto;overflow-x:hidden}
+ #head{padding:12px 14px 0;display:block}
+ .back{margin-bottom:9px}
+ .tl{display:block}
+ h1{font-size:40px;margin:4px 0 5px;white-space:normal}
+ .sub{font-size:15px}
+ #story{padding:8px 14px 8px}
+ #caption{font-size:15.5px;min-height:8.2em}
+ #mwrap{display:block;padding:0 8px 8px}
+ #machine{width:100%!important;height:auto!important;display:grid;grid-template-columns:repeat(100,1fr);gap:0;background:none;box-shadow:none}
+ .bay{position:relative;left:auto!important;top:auto!important;width:auto!important;height:auto!important}
+ .bay svg{position:absolute}
+ #bS{grid-column:1/-1;aspect-ratio:232/288}
+ #bP{grid-column:1/62;aspect-ratio:398/540;margin:4px 2px 0 0}
+ #bK{grid-column:62/-1;aspect-ratio:236/540;margin:4px 0 0 0}
+ #bR{grid-column:1/-1;aspect-ratio:340/198;margin-top:4px}
+ #bT{grid-column:1/-1;aspect-ratio:638/122;margin-top:4px}
+ #panel{height:auto;border-left:0;border-top:1px solid var(--line);margin:4px 0 calc(10px + env(safe-area-inset-bottom));overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){#caption,#stc{transition:none}}
+.still *{transition:none!important}
+</style>
+</head>
+<body>
+<header id="head">
+  <a class="back" href="../" title="Back to the cabinet">← Curio</a>
+  <div class="kick">Curio · No. 033 · Perceptrons</div>
+  <div class="tl"><h1>Mark I Perceptron</h1><p class="sub">Built from the <b>1960 operators’ manual</b>. The learning rule is the real one and runs in your browser.</p></div>
+</header>
+<section id="story"><p id="caption" aria-live="polite"></p></section>
+<div id="mwrap"><div id="machine">
+  <div class="bay" id="bS" aria-label="The S-unit cabinet: a 20 by 20 neon monitor of the photocells and the 20 by 20 switch array below it. Draw here to set the pattern."></div>
+  <div class="bay" id="bP" aria-label="The plugboards: every excitatory and inhibitory cord from the S-units to the A-units, wired at random."></div>
+  <div class="bay" id="bK" aria-label="The rack of 512 motor-driven potentiometers. Their positions are the machine's memory. Hover one to see its wires."></div>
+  <div class="bay" id="bT" aria-label="A paper chart of the error rate on the tray and on slides it has never seen."></div>
+  <div class="bay" id="bR" aria-label="The response panel: the summing meter, the eight R-unit lamps, the percentage of active A-units and the counters."></div>
+</div></div>
+<aside id="panel" aria-label="Controls">
+  <div class="sec">
+    <div class="lab"><span>Slide tray</span><b id="trayv">80 slides</b></div>
+    <div class="chips" id="decks"></div>
+  </div>
+  <div class="sec">
+    <div class="row"><button class="btn" id="run">Run</button><button class="btn" id="one">One slide</button><button class="btn" id="reset" title="Drive every knob back to zero">Reset knobs</button></div>
+    <div class="lab" style="margin:8px 0 0"><span>Speed</span><b id="ratev">30 slides/s</b></div>
+    <input id="rate" type="range" min="0" max="7" value="5" aria-label="Slides per second">
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Your slide</span><b id="myv">draw on the neon</b></div>
+    <div class="row"><button class="btn" id="t1" title="Set the response this pattern should give to 1 and let the motors correct it">Teach 1</button><button class="btn" id="t0" title="Set the response this pattern should give to 0 and let the motors correct it">Teach 0</button><button class="btn" id="clear">Clear</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Plugboard</span><b id="wv">7,680 cords</b></div>
+    <div class="tri">
+      <div><div class="lab"><span>X exc.</span><b id="xv">10</b></div><input id="x" type="range" min="0" max="15" value="10" aria-label="Excitatory connections per A-unit, X"></div>
+      <div><div class="lab"><span>Y inh.</span><b id="yv">5</b></div><input id="y" type="range" min="0" max="15" value="5" aria-label="Inhibitory connections per A-unit, Y"></div>
+      <div><div class="lab"><span style="text-transform:none">θ</span><b id="tv">2</b></div><input id="th" type="range" min="1" max="7" value="2" aria-label="A-unit threshold, theta"></div>
+    </div>
+    <div class="row" style="margin-top:4px"><button class="btn" id="patch" title="Rewire every cord from a new random number">Re-patch</button><button class="btn" id="direct" title="One cord from each photocell to its own knob: the textbook perceptron, no hidden layer">No hidden layer</button></div>
+    <div class="lab" style="margin:8px 0 0"><span>Pliers</span><b id="cutv">0% cut</b></div>
+    <input id="cut" type="range" min="0" max="95" step="5" value="0" aria-label="Percent of cords pulled out">
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Look at the rack</span></div>
+    <div class="row"><button class="btn" id="sort" title="Move each knob to where its wires look on the retina">Sort by gaze</button><button class="btn" id="tmpl" title="Project every knob back through its wires onto the neon monitor">Show template</button></div>
+  </div>
+  <div class="sec nums" id="nums"></div>
+  <div class="foot"><button id="snd">sound off</button> · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+  <details>
+    <summary>What is this?</summary>
+        <p><b>The machine.</b> The parts follow the <a href="https://apps.dtic.mil/sti/tr/pdf/AD0236965.pdf">Mark I Perceptron Operators’ Manual</a> (Hay, Lynch &amp; Smith, Cornell Aeronautical Laboratory, 1960): 400 photoresistors in a 20×20 array, a 20×20 neon monitor with a 20×20 switch array below it, excitatory and inhibitory plugboards with 20 sockets per cell, 512 A-units eight to a card, eight R-units. An A-unit’s relay closes when its lit excitatory cords outnumber its lit inhibitory cords by the threshold θ (1 to 7). Each one’s potentiometer then adds between −11 and +11 volts to its R-unit. An IBM 704 printed the random wiring, up to 15 excitatory and 15 inhibitory cords per unit; the manual says starting number “1” had been used, so this page starts at 1 too, with a different generator. The shafts turn about 1/16 of a revolution a minute at full feedback, and a reset takes about twenty minutes.</p>
+    <p><b>The rule.</b> Section 7.5, “error correction”: show a slide; if the response is wrong, feed back to the A-units that fired until it flips. Novikoff (1962) proved the number of mistakes is finite whenever some setting of the knobs gets the whole tray right. Rosenblatt set out the theory in <a href="https://doi.org/10.1037/h0042519">1958</a>.</p>
+    <p><b>The ladder.</b> Over 60 random wirings with an 80-slide tray, tested on 200 slides it never saw. <b>Left or right:</b> median 8.5 mistakes, 98.2% right (93–100%); after only 50 slides, 96.8% (200 wirings). <b>E or X</b> anywhere on the retina: 72.5 mistakes, 70.5% (62.5–77%), rising to 86.2% with 320 slides. <b>One piece or two:</b> 77 mistakes, 50.5% (44–57%), and still 52.5% with 320 slides and 50.0% with 1,280. Shuffling the labels costs 83 mistakes on that tray but 1,696 on the left/right one: to this machine “connected” looks like noise. Both classes carry the same ink (52.0 and 52.1 lit cells), so there is nothing to count.</p>
+    <p><b>XOR.</b> With no hidden layer (X = 1, Y = 0, θ = 1) the knobs would need w<sub>L</sub> &gt; 0, w<sub>R</sub> &gt; 0 and w<sub>L</sub> + w<sub>R</sub> ≤ 0, which is impossible; 12 of 12 runs go 3 of 4 wrong on every pass and return to the same setting. With the random layer: median 3 mistakes, 60 of 60 solved. The layer is not trained and buys capacity, not insight: with no hidden layer it scores 99.5%, 67.8% and 51.5% on the three unseen tests above. <a href="https://en.wikipedia.org/wiki/Perceptrons_(book)">Minsky and Papert</a> (1969) analysed machines that do have A-units, and proved that the order needed for parity and for connectedness grows with the retina. The coin flip here is an experiment on this wiring, not their proof.</p>
+    <p><b>The wires.</b> Cutting 25, 50, 75 or 90% of the cords after left/right training leaves 97.5, 94.0, 85.5 or 66.8% right. Half cut, 3 more mistakes bring it to 97.0%. Re-patching with the knobs left alone gives 52.8%, and relearning takes 9 mistakes against 8 from scratch.</p>
+    <p><b>Real and not.</b> Every firing, knob and score is computed in your browser, in integers, and matches a separate numpy implementation bit for bit. These are my choices, because the manual doesn’t fix them: X 10, Y 5, θ 2; all 512 units plugged to R1; a knob’s travel of 16 ticks, taken as a 300° sweep, so one tick is 18.75° or 50 s of motor. Machine time adds 4 s a slide, the projector timer’s minimum. The manual’s “few millivolts” threshold is “above zero” here. The slides are generated: left/right echoes the <a href="https://news.cornell.edu/node/313946">1958 demonstration</a>, which ran on an IBM 704 before the Mark I <a href="https://en.wikipedia.org/wiki/Perceptron">was built in 1959</a>; E or X and one piece or two are my own, and no recorded Mark I experiment is being replayed. The look is an impression from the manual’s descriptions: the coloured knob caps, retina-shaped plugboards, chart and counters are mine. The real machine is at the Smithsonian.</p>
+  </details>
+</aside>
+<script type="module">
+// ---- Mark I engine: integers only, so the page and the Python reference agree bit for bit ----
+const MK=(()=>{
+ const SIDE=20,NS=400,NA=512,W=8,TRAY=80,TEST=200;
+ const rng=seed=>{let a=seed|0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
+ const ri=(r,n)=>Math.floor(r()*n);
+ // the manual's IBM 704 connection program: X excitatory + Y inhibitory per A-unit, no A-unit on the same S-unit twice, no S-unit used more than 20 times on either board
+ function wire(X,Y,seed,direct){
+  const ex=[],inh=[];
+  if(direct){for(let i=0;i<NA;i++){ex.push(i<NS?[i]:[]);inh.push([])}return{ex,inh,X:1,Y:0,seed,direct:true,rank:ranks(ex,inh,seed)}}
+  const r=rng(seed*2654435761+17|0),ce=new Int32Array(NS),ci=new Int32Array(NS);
+  const pick=(used,cnt)=>{for(let t=0;t<64;t++){const s=ri(r,NS);if(cnt[s]<20&&!used.has(s))return s}
+   const st=ri(r,NS);for(let k=0;k<NS;k++){const s=(st+k)%NS;if(cnt[s]<20&&!used.has(s))return s}return -1};
+  for(let i=0;i<NA;i++){const used=new Set(),e=[],h=[];
+   for(let k=0;k<X;k++){const s=pick(used,ce);if(s<0)break;used.add(s);ce[s]++;e.push(s)}
+   for(let k=0;k<Y;k++){const s=pick(used,ci);if(s<0)break;used.add(s);ci[s]++;h.push(s)}
+   ex.push(e);inh.push(h)}
+  return{ex,inh,X,Y,seed,direct:false,rank:ranks(ex,inh,seed)}}
+ // each cord's fixed place in the order the pliers take them: cutting p% pulls the cords whose rank is under p
+ function ranks(ex,inh,seed){const r=rng(seed*40503+91|0),out=[];for(let i=0;i<NA;i++){out.push({e:ex[i].map(()=>ri(r,10000)),h:inh[i].map(()=>ri(r,10000))})}return out}
+ // which A-units fire on this card (ascending ids): excitatory minus inhibitory lit S-units >= theta
+ function fire(w,bits,theta,cut){const out=[],lim=(cut||0)*100;
+  for(let i=0;i<NA;i++){let v=0;const e=w.ex[i],h=w.inh[i],re=w.rank[i].e,rh=w.rank[i].h;
+   for(let k=0;k<e.length;k++)if(bits[e[k]]&&re[k]>=lim)v++;
+   for(let k=0;k<h.length;k++)if(bits[h[k]]&&rh[k]>=lim)v--;
+   if(v>=theta)out.push(i)}
+  return out}
+ const sum=(v,act)=>{let s=0;for(let k=0;k<act.length;k++)s+=v[act[k]];return s};
+ // error correction, section 7.5: active units are driven one tick at a time until the response flips; a pot stops at +-W
+ function correct(v,act,target){let ticks=0;if(!act.length)return 0;
+  for(;;){const s=sum(v,act),resp=s>0?1:0;if(resp===target)return ticks;
+   let moved=false;const d=target?1:-1;
+   for(let k=0;k<act.length;k++){const i=act[k],n=v[i]+d;if(n>=-W&&n<=W){v[i]=n;moved=true}}
+   if(!moved)return ticks;ticks++}}
+ // ---- cards ----
+ const blank=()=>new Uint8Array(NS);
+ const rect=(b,x,y,w,h)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)if(i>=0&&i<SIDE&&j>=0&&j<SIDE)b[j*SIDE+i]=1};
+ // integer thick segment: every grid step along the longer axis stamps a t x t square
+ const seg=(b,x0,y0,x1,y1,t)=>{const dx=x1-x0,dy=y1-y0,n=Math.max(Math.abs(dx),Math.abs(dy),1);
+  for(let k=0;k<=n;k++){const x=x0+Math.floor((dx*k*2+n)/(2*n)),y=y0+Math.floor((dy*k*2+n)/(2*n));rect(b,x,y,t,t)}};
+ function cardLR(r){const b=blank(),k=4+ri(r,4),right=ri(r,2),x=(right?10:0)+ri(r,11-k),y=ri(r,21-k);rect(b,x,y,k,k);return{bits:b,label:right}}
+ function cardEX(r){const b=blank(),isX=ri(r,2),w=9+ri(r,4),h=11+ri(r,5),x=ri(r,21-w),y=ri(r,21-h),t=2,R=x+w-t,B=y+h-t;
+  if(isX){seg(b,x,y,R,B,t);seg(b,R,y,x,B,t)}
+  else{seg(b,x,y,x,B,t);seg(b,x,y,R,y,t);seg(b,x,B,R,B,t);const m=y+((h-t)>>1);seg(b,x,m,x+w-t-1-ri(r,2),m,t)}
+  return{bits:b,label:isX}}
+ const XORC=[[0,0],[1,0],[0,1],[1,1]];
+ function cardXOR(i){const b=blank(),[l,rr]=XORC[i];if(l)rect(b,2,7,6,6);if(rr)rect(b,12,7,6,6);return{bits:b,label:l^rr}}
+ // one or two meandering lines with the same ink; two pieces never touch, not even corner to corner
+ function snake(r,b,len,avoid){let x,y,tries=0;do{x=ri(r,SIDE);y=ri(r,SIDE);tries++}while(tries<400&&(b[y*SIDE+x]||avoid[y*SIDE+x]));
+  if(b[y*SIDE+x]||avoid[y*SIDE+x])return 0;
+  const DX=[1,0,-1,0],DY=[0,1,0,-1];let d=ri(r,4),n=0;b[y*SIDE+x]=1;n=1;
+  const mine=new Set([y*SIDE+x]);
+  for(let st=0;st<len*6&&n<len;st++){if(ri(r,100)<28)d=(d+(ri(r,2)?1:3))%4;const a=x+DX[d],c=y+DY[d];
+   if(a<0||a>=SIDE||c<0||c>=SIDE||avoid[c*SIDE+a]||b[c*SIDE+a]){d=(d+(ri(r,2)?1:3))%4;continue}
+   x=a;y=c;b[y*SIDE+x]=1;n++}
+  return n}
+ const halo=b=>{const h=blank();for(let j=0;j<SIDE;j++)for(let i=0;i<SIDE;i++)if(b[j*SIDE+i])for(let u=-1;u<=1;u++)for(let v=-1;v<=1;v++){const a=i+u,c=j+v;if(a>=0&&a<SIDE&&c>=0&&c<SIDE)h[c*SIDE+a]=1}return h};
+ const comps=b=>{const seen=new Uint8Array(NS);let c=0;for(let s=0;s<NS;s++){if(!b[s]||seen[s])continue;c++;const st=[s];seen[s]=1;while(st.length){const q=st.pop(),x=q%SIDE,y=q/SIDE|0;
+   for(const[u,v]of[[1,0],[-1,0],[0,1],[0,-1]]){const a=x+u,d=y+v;if(a<0||a>=SIDE||d<0||d>=SIDE)continue;const t=d*SIDE+a;if(b[t]&&!seen[t]){seen[t]=1;st.push(t)}}}}return c};
+ function cardCON(r){const two=ri(r,2),ink=44+ri(r,17);
+  for(let att=0;att<200;att++){const b=blank();
+   if(!two){const n=snake(r,b,ink,blank());if(n>=ink&&comps(b)===1)return{bits:b,label:0}}
+   else{const a=Math.floor(ink*(35+ri(r,31))/100),n=snake(r,b,a,blank());if(n<a)continue;const m=snake(r,b,ink-a,halo(b));if(m>=ink-a&&comps(b)===2)return{bits:b,label:1}}}
+  return cardCON(r)}
+ function deck(kind,seed,n){const r=rng(seed*48271+({lr:1,ex:2,xor:3,con:4})[kind]*1009|0),out=[];
+  if(kind==='xor'){for(let i=0;i<n;i++)out.push(cardXOR(i%4));return out}
+  for(let i=0;i<n;i++)out.push(kind==='lr'?cardLR(r):kind==='ex'?cardEX(r):cardCON(r));return out}
+ const trayOf=(kind,seed)=>deck(kind,seed,kind==='xor'?4:TRAY);
+ const testOf=(kind,seed)=>deck(kind,seed+7001,kind==='xor'?4:TEST);
+ // where a unit looks: mean position of its excitatory cords minus the inhibitory ones (doubled denominators stay integers, compared by cross-multiplying)
+ function prefs(w,cut){const out=[],lim=(cut||0)*100;for(let i=0;i<NA;i++){let ex=0,ey=0,en=0,hx=0,hy=0,hn=0;
+   w.ex[i].forEach((s,k)=>{if(w.rank[i].e[k]>=lim){ex+=s%SIDE;ey+=s/SIDE|0;en++}});w.inh[i].forEach((s,k)=>{if(w.rank[i].h[k]>=lim){hx+=s%SIDE;hy+=s/SIDE|0;hn++}});
+   out.push({x:(en?ex/en:9.5)-(hn?hx/hn:9.5),y:(en?ey/en:9.5)-(hn?hy/hn:9.5)})}return out}
+ // the rack order: 16 columns of 32, left to right by the x it looks at, top to bottom by y inside a column
+ function sortOrder(w,cut){const p=prefs(w,cut),ids=[...Array(NA).keys()].sort((a,b)=>p[a].x-p[b].x||a-b),pos=new Int32Array(NA);
+  for(let c=0;c<16;c++){const col=ids.slice(c*32,(c+1)*32).sort((a,b)=>p[a].y-p[b].y||a-b);col.forEach((id,row)=>{pos[id]=row*16+c})}return pos}
+ // the retina's learned template: every cord adds its knob's value to its S-unit, negated if inhibitory
+ function template(w,v,cut){const t=new Int32Array(NS),lim=(cut||0)*100;for(let i=0;i<NA;i++){if(!v[i])continue;
+   w.ex[i].forEach((s,k)=>{if(w.rank[i].e[k]>=lim)t[s]+=v[i]});w.inh[i].forEach((s,k)=>{if(w.rank[i].h[k]>=lim)t[s]-=v[i]})}return t}
+ const fnv=(arr)=>{let h=0x811c9dc5;for(let i=0;i<arr.length;i++){const x=arr[i]&0xffff;h=Math.imul(h^(x&255),16777619);h=Math.imul(h^(x>>8),16777619)}return h>>>0};
+ return{SIDE,NS,NA,W,TRAY,TEST,rng,ri,wire,fire,sum,correct,blank,rect,seg,deck,trayOf,testOf,comps,prefs,sortOrder,template,fnv}})();
+/* ================= page ================= */
+const Q=new URLSearchParams(location.search),FIXED=Q.has('fixed'),RM=!FIXED&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(FIXED||RM)document.documentElement.classList.add('still');
+const $=id=>document.getElementById(id);
+const {NS,NA,SIDE,W}=MK;
+const fmt=n=>n.toLocaleString('en-US'),R1=x=>Math.round(x*10)/10,clamp=(x,a,b)=>x<a?a:x>b?b:x;
+const TICK_S=50,SLIDE_S=4;// one tick = 18.75 degrees = 50 s at the manual's 1/16 rev a minute; the projector's fastest timer is 4 s
+const BAY={S:[6,6,232,668],P:[242,6,398,540],K:[644,6,236,540],T:[242,552,638,122],R:[884,6,170,668]};
+const NEON={x:22,y:112,c:10},SW={x:22,y:352,c:10};
+const SB={x:256,c:8,yE:46,yI:312},AB={x:536,px:5.4,py:5,yE:46,yI:312};
+const KN={x:654,y:44,px:13.8,py:15.6,gut:6,r:5.6};
+const DECKS=[['lr','Left / right'],['ex','E or X'],['xor','XOR'],['con','One piece or two'],['mine','Your slides']];
+const NAMES={lr:['LEFT','RIGHT'],ex:['E','X'],xor:['SAME','ONE ONLY'],con:['ONE PIECE','TWO PIECES'],mine:['0','1']};
+const RATES=[.5,1,2,4,10,30,80,200];
+const hex=c=>'#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+const WARM=[245,169,59],COOL=[63,178,220],NEUT=[42,39,35];
+const BINS=[...Array(13)].map((_,k)=>{const t=(k-6)/6,e=t>0?WARM:COOL,u=Math.abs(t);return hex(NEUT.map((n,i)=>n+(e[i]-n)*u))});
+const binOf=x=>clamp(Math.round(Math.sign(x)*Math.pow(Math.abs(x)/W,.4)*6),-6,6)+6;
+const S={seed:+Q.get('seed')||1,traySeed:+Q.get('seed')||1,X:10,Y:5,th:2,direct:false,cut:0,sorted:false,tmpl:false,run:false,rate:30,acc:0,snd:false,bits:MK.blank(),act:[],actSet:new Uint8Array(NA),userMode:false,my:MK.blank(),mine:[],
+ cyc:null,hold:false,showResp:false,needle:0,pct:0,lit:1,slide:null,probe:null,resetting:false,moving:0,wrongFlash:0,dispSum:0,motorRate:40,sortT:1,cur:null};
+let wiring=null,cords=null,byS=null,order=null,E=null,frame=0,simT=0,logs=[],lite=false,ema=.016;
+const v=new Int32Array(NA),vd=new Float32Array(NA),kp=new Float32Array(NA*2),kpFrom=new Float32Array(NA*2);
+const D={cords:true,lit:true,knobs:true,neon:true,tmpl:true,chart:true,nums:true,probe:true};
+const thNow=()=>S.direct?1:S.th;
+const log=e=>{if(logs.length<60000)logs.push(e)};
+// ---- engine glue ----
+function indexWires(){const ce=new Int32Array(NS),ci=new Int32Array(NS);byS=[...Array(NS)].map(()=>[]);cords=[];
+ let lc=(wiring.seed*7919+3)>>>0;const rnd=n=>{lc=Math.imul(lc,1664525)+1013904223>>>0;return(lc>>>8)%n};
+ for(let a=0;a<NA;a++){const col=a%16,row=a/16|0,ax=AB.x+col*AB.px+AB.px/2,rowsY=row*AB.py+AB.py/2;
+  const mk=(s,k,isI,rank,ki)=>{const c=s%SIDE,r=s/SIDE|0,y0=isI?SB.yI:SB.yE,x1=SB.x+c*SB.c+SB.c/2+((k%5)-2)*1.35,y1=y0+r*SB.c+SB.c/2+((k/5|0)-1.5)*1.35,y2=(isI?AB.yI:AB.yE)+rowsY;
+   const d=`M${R1(x1)} ${R1(y1)}C${R1(x1+14+rnd(70))} ${R1(y1+10+rnd(90))} ${R1(ax-14-rnd(70))} ${R1(y2+10+rnd(90))} ${R1(ax)} ${R1(y2)}`,o={a,s,i:isI,rank,d,tone:rnd(100)};cords.push(o);byS[s].push(o)};
+  wiring.ex[a].forEach((s,k)=>mk(s,ce[s]++,false,wiring.rank[a].e[k],k));wiring.inh[a].forEach((s,k)=>mk(s,ci[s]++,true,wiring.rank[a].h[k],k))}}
+function rewire(){wiring=MK.wire(S.direct?1:S.X,S.direct?0:S.Y,S.seed,S.direct);indexWires();order=MK.sortOrder(wiring,S.cut);log({k:'wire',X:wiring.X,Y:wiring.Y,seed:S.seed,direct:S.direct,th:thNow(),cut:S.cut});
+ if(E){E.acts=[];E.testActs=null;refreshUnseen()}placeKnobs(false);if(S.userMode||S.cur)reFire();D.cords=D.lit=D.knobs=D.tmpl=D.probe=D.nums=true;if(!FIXED&&!RM&&frame){const c=$('stc');c.style.opacity=.15;setTimeout(()=>{c.style.opacity=1},200)}}
+function setCut(p){S.cut=p;log({k:'cut',cut:p});if(E){E.acts=[];E.testActs=null;refreshUnseen()}order=MK.sortOrder(wiring,S.cut);placeKnobs(false);reFire();D.cords=D.lit=D.tmpl=D.knobs=D.nums=true}
+function setTheta(t){S.th=t;log({k:'th',th:t});if(E){E.acts=[];E.testActs=null;refreshUnseen()}reFire();D.lit=D.knobs=D.nums=true}
+function reFire(){if(!S.bits)return;S.act=MK.fire(wiring,S.bits,thNow(),S.cut);S.actSet.fill(0);S.act.forEach(a=>S.actSet[a]=1);D.lit=D.knobs=true}
+function newE(kind){const m=kind==='mine';return{kind,tray:m?S.mine:MK.trayOf(kind,S.traySeed),test:m||kind==='xor'?null:MK.testOf(kind,S.traySeed),acts:[],testActs:null,pos:0,pass:0,passErr:0,lastPass:null,cards:0,mist:0,ticks:0,last:0,clean:-1,hist:[],trace:[],hashes:new Map,cycle:null,at50:null,unseen:null}}
+function setDeck(kind){E=newE(kind);log({k:'deck',kind,seed:S.traySeed});refreshUnseen();D.chart=D.nums=true;syncUI()}
+function unseen(){if(!E.test)return null;if(!E.testActs)E.testActs=E.test.map(c=>MK.fire(wiring,c.bits,thNow(),S.cut));let ok=0;E.test.forEach((c,i)=>{if((MK.sum(v,E.testActs[i])>0?1:0)===c.label)ok++});log({k:'unseen',ok,n:E.test.length,cards:E.cards});return ok/E.test.length}
+function refreshUnseen(){E.unseen=unseen();if(E.unseen!=null)E.trace.push({c:E.cards,e:1-E.unseen});D.chart=D.nums=true}
+function deal(){const i=E.pos,c=E.tray[i],act=E.acts[i]||(E.acts[i]=MK.fire(wiring,c.bits,thNow(),S.cut)),s=MK.sum(v,act),resp=s>0?1:0,wrong=resp!==c.label;let ticks=0;
+ if(wrong){ticks=MK.correct(v,act,c.label);E.mist++;E.passErr++;E.last=E.cards+1;E.ticks+=ticks}
+ E.cards++;E.hist.push(wrong?1:0);
+ log({k:'card',deck:E.kind,i,a:act.length,s,r:resp,l:c.label,t:ticks,h:MK.fnv(v)});
+ if(E.test&&E.cards<=200&&E.cards%10===0){const u=unseen();E.unseen=u;E.trace.push({c:E.cards,e:1-u});if(E.cards===50)E.at50=u}
+ if(++E.pos>=E.tray.length){E.pos=0;passEnd()}
+ D.chart=D.nums=true;return{i,c,act,s,resp,wrong,ticks}}
+function passEnd(){E.lastPass=E.passErr;const h=MK.fnv(v);if(E.passErr===0){E.clean=E.pass;if(E.test)refreshUnseen()}
+ else{if(E.hashes.has(h)&&!E.cycle)E.cycle={from:E.hashes.get(h),len:E.pass-E.hashes.get(h)};else if(E.hashes.size<4000)E.hashes.set(h,E.pass);if(E.test&&(E.pass<40||E.pass%8===0))refreshUnseen()}
+ E.pass++;E.passErr=0}
+function present(T){S.userMode=false;$('myv').textContent='draw on the neon';S.cur=T;S.bits=T.c.bits;S.act=T.act;S.actSet.fill(0);T.act.forEach(a=>S.actSet[a]=1);S.slide={no:T.i+1,of:E.tray.length,label:T.c.label};D.neon=D.knobs=true;if(!S.run||S.rate<=2||frame%(lite?18:7)===0)D.lit=true}
+function resetKnobs(animate){v.fill(0);log({k:'reset'});if(!animate||RM){vd.fill(0);S.resetting=false}else{S.resetting=true}D.knobs=D.tmpl=true}
+// ---- static art ----
+const plate=(x,y,w,h,t,o={})=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${o.bg||'#14150f'}" stroke="rgba(255,255,255,.1)" stroke-width=".6"/><text x="${x+w/2}" y="${y+h/2+(o.dy||3.1)}" text-anchor="middle" font-size="${o.fs||9}" font-weight="600" fill="${o.fg||'#d8d2bb'}">${t}</text>`;
+const screw=(x,y)=>`<circle cx="${x}" cy="${y}" r="2.6" fill="url(#gScrew)" stroke="#0007" stroke-width=".5"/><path d="M${x-1.7} ${y-.7}L${x+1.7} ${y+.7}" stroke="#000a" stroke-width=".7"/>`;
+const cabinet=(k)=>{const[x,y,w,h]=BAY[k];return`<rect x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#ham)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#gShade)"/><rect x="${x+.5}" y="${y+.5}" width="${w-1}" height="${h-1}" fill="none" stroke="rgba(255,255,255,.14)"/><path d="M${x} ${y+h-.5}H${x+w}M${x+w-.5} ${y}V${y+h}" stroke="rgba(0,0,0,.55)"/>`+screw(x+7,y+7)+screw(x+w-7,y+7)+screw(x+7,y+h-7)+screw(x+w-7,y+h-7)};
+const defs=`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<filter id="ham" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="3" seed="8"/><feDiffuseLighting surfaceScale="2.1" diffuseConstant="1" lighting-color="#616b60"><feDistantLight azimuth="225" elevation="60"/></feDiffuseLighting></filter>
+<linearGradient id="gShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".07"/><stop offset=".35" stop-color="#000" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></linearGradient>
+<radialGradient id="gScrew" cx=".35" cy=".3"><stop offset="0" stop-color="#d9d6c8"/><stop offset="1" stop-color="#5a584e"/></radialGradient>
+<radialGradient id="gSkirt" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#b9b6a6"/><stop offset=".55" stop-color="#6c695c"/><stop offset="1" stop-color="#23221c"/></radialGradient>
+<pattern id="pKnob" x="${KN.x-KN.px/2}" y="${KN.y-KN.py/2}" width="${KN.px}" height="${KN.py}" patternUnits="userSpaceOnUse"><circle cx="${KN.px/2+.7}" cy="${KN.py/2+.9}" r="6.2" fill="#000" opacity=".45"/><circle cx="${KN.px/2}" cy="${KN.py/2}" r="${KN.r}" fill="url(#gSkirt)"/><circle cx="${KN.px/2}" cy="${KN.py/2}" r="4.7" fill="#17150f"/></pattern>
+<pattern id="pKnob2" x="${KN.x+KN.gut-KN.px/2}" y="${KN.y-KN.py/2}" width="${KN.px}" height="${KN.py}" patternUnits="userSpaceOnUse"><circle cx="${KN.px/2+.7}" cy="${KN.py/2+.9}" r="6.2" fill="#000" opacity=".45"/><circle cx="${KN.px/2}" cy="${KN.py/2}" r="${KN.r}" fill="url(#gSkirt)"/><circle cx="${KN.px/2}" cy="${KN.py/2}" r="4.7" fill="#17150f"/></pattern>
+<radialGradient id="gGl" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<pattern id="pGloss" x="${KN.x-KN.px/2}" y="${KN.y-KN.py/2}" width="${KN.px}" height="${KN.py}" patternUnits="userSpaceOnUse"><ellipse cx="${KN.px/2-1.4}" cy="${KN.py/2-1.9}" rx="2.3" ry="1.5" fill="url(#gGl)"/></pattern>
+<pattern id="pGloss2" x="${KN.x+KN.gut-KN.px/2}" y="${KN.y-KN.py/2}" width="${KN.px}" height="${KN.py}" patternUnits="userSpaceOnUse"><ellipse cx="${KN.px/2-1.4}" cy="${KN.py/2-1.9}" rx="2.3" ry="1.5" fill="url(#gGl)"/></pattern>
+<pattern id="pBulb" x="${NEON.x}" y="${NEON.y}" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="3.5" fill="#1f1a15" stroke="#3a342a" stroke-width=".5"/><circle cx="4.1" cy="4" r=".9" fill="#5a5245" opacity=".6"/></pattern>
+<pattern id="pSlot" x="${SW.x}" y="${SW.y}" width="10" height="10" patternUnits="userSpaceOnUse"><rect x="3.4" y="1" width="3.2" height="8" rx="1" fill="#0a0a07" stroke="#6a6556" stroke-width=".4"/></pattern>
+<pattern id="pS" x="${SB.x}" y="0" width="${SB.c}" height="${SB.c}" patternUnits="userSpaceOnUse"><rect width="${SB.c}" height="${SB.c}" fill="none" stroke="#000" stroke-opacity=".35" stroke-width=".4"/>${[...Array(20)].map((_,k)=>`<circle cx="${R1(SB.c/2+((k%5)-2)*1.35)}" cy="${R1(SB.c/2+((k/5|0)-1.5)*1.35)}" r=".42" fill="#c9a266"/>`).join('')}</pattern>
+<pattern id="pA" x="${AB.x}" y="0" width="${AB.px}" height="${AB.py}" patternUnits="userSpaceOnUse"><circle cx="${AB.px/2}" cy="${AB.py/2}" r="1.15" fill="#c9a266" stroke="#000" stroke-opacity=".5" stroke-width=".4"/></pattern>
+<pattern id="pGrid" x="266" y="560" width="22" height="11" patternUnits="userSpaceOnUse"><path d="M22 0V11M0 11H22" fill="none" stroke="#c0876f" stroke-opacity=".45" stroke-width=".5"/></pattern>
+<linearGradient id="gPaper" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5c5544"/><stop offset=".035" stop-color="#e8e1c9"/><stop offset=".965" stop-color="#ece5ce"/><stop offset="1" stop-color="#5c5544"/></linearGradient>
+<linearGradient id="gFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efe9d5"/><stop offset="1" stop-color="#cdc6ae"/></linearGradient>
+</defs></svg>`;
+document.body.insertAdjacentHTML('afterbegin',defs);
+const vb=k=>BAY[k].join(' ');
+function meter(cx,cy,r,a0,a1,labels,leg,x,y,w,h){let t='';for(let i=0;i<=20;i++){const a=(a0+(a1-a0)*i/20)*Math.PI/180,ma=i%5===0,r2=r-(ma?7:4);t+=`M${R1(cx+Math.sin(a)*r)} ${R1(cy-Math.cos(a)*r)}L${R1(cx+Math.sin(a)*r2)} ${R1(cy-Math.cos(a)*r2)}`}
+ const lab=labels.map(([u,s])=>{const a=(a0+(a1-a0)*u)*Math.PI/180;return`<text x="${R1(cx+Math.sin(a)*(r-14))}" y="${R1(cy-Math.cos(a)*(r-14)+3)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="#2a2820">${s}</text>`}).join('');
+ return`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#0c0c09"/><rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" rx="2" fill="url(#gFace)"/><path d="${t}" stroke="#2a2820" stroke-width=".8" fill="none"/>${lab}<text x="${cx}" y="${y+h-7}" text-anchor="middle" font-size="7.6" font-weight="600" fill="#4a4638">${leg}</text>`}
+const lampAt=(x,y,id,leg)=>`<circle cx="${x}" cy="${y}" r="4.1" fill="#0b0a07" stroke="#6a6556" stroke-width=".6"/><circle id="${id}" cx="${x}" cy="${y}" r="3.1" fill="#2a241c"/><text x="${x+8}" y="${y+2.9}" font-size="8" font-weight="600" fill="#d8d2bb">${leg}</text>`;
+function buildArt(){
+ const svg=(k,cls,body,extra='')=>`<svg class="${cls}" ${extra} viewBox="${vb(k)}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${body}</svg>`;
+ // ---- S-unit door
+ $('bS').innerHTML=svg('S','st',cabinet('S')+plate(20,16,204,15,'S-UNITS · 400 CADMIUM SULFIDE PHOTOCELLS',{fs:8.8})+
+  `<rect x="20" y="39" width="204" height="60" rx="2" fill="#0d0d0a" stroke="#6a6556" stroke-width=".5"/><text x="84" y="55" font-size="8.4" font-weight="600" fill="#a9a693">PROJECTOR GATE</text>`+
+  `<rect x="${NEON.x-5}" y="${NEON.y-5}" width="${200+10}" height="${200+10}" rx="2" fill="#080806" stroke="#6a6556" stroke-width=".6"/><rect x="${NEON.x}" y="${NEON.y}" width="200" height="200" fill="url(#pBulb)"/>`+
+  `<text x="122" y="${NEON.y+218}" text-anchor="middle" font-size="7.8" font-weight="600" fill="#d8d2bb">NEON MONITOR · DRAW HERE OR ON THE SWITCHES</text>`+
+  `<rect x="${SW.x-5}" y="${SW.y-5}" width="210" height="210" rx="2" fill="#23241e" stroke="#6a6556" stroke-width=".6"/><rect x="${SW.x}" y="${SW.y}" width="200" height="200" fill="url(#pSlot)"/>`+
+  plate(20,568,98,16,'SWITCH CONTROL',{fs:8.4})+plate(126,568,98,16,'CAMERA CONTROL',{fs:8.4,fg:'#7c7866'})+`<text x="122" y="606" text-anchor="middle" font-size="7.8" fill="#c4bfab">40 CIRCUIT BOARDS IN FIVE SHELVES</text><text x="122" y="618" text-anchor="middle" font-size="7.8" fill="#c4bfab">BEHIND THIS DOOR</text>`)+
+  svg('S','ac',`<path id="sHalo" fill="none" stroke="#ff6a1a" stroke-linecap="round" stroke-width="10" opacity=".2"/><g id="sTmpl"></g><path id="sCore" fill="none" stroke="#ff7a2a" stroke-linecap="round" stroke-width="6.2"/><path id="sHot" fill="none" stroke="#ffd9a8" stroke-linecap="round" stroke-width="2.6"/><path id="sProbeE" fill="none" stroke="#ffe7b4" stroke-width="1.1"/><path id="sProbeI" fill="none" stroke="#9fe2f7" stroke-width="1.1"/>
+  <path id="swDn" fill="#8d8878"/><path id="swUp" fill="#f5efd9"/>
+  <rect x="27" y="44" width="50" height="50" fill="#e9e2c9"/><path id="slide" fill="#1a1712"/><text id="slNo" class="m" x="84" y="70" font-size="10" fill="#ece6d2"></text><text id="slKey" class="m" x="84" y="85" font-size="9" fill="#f2a43a"></text>
+  <rect id="hit" x="${NEON.x}" y="${NEON.y}" width="200" height="${SW.y+200-NEON.y}" fill="transparent"/>`);
+ // ---- plugboards
+ const board=(x,y,w,h,p,t)=>`<rect x="${x-3}" y="${y-3}" width="${w+6}" height="${h+6}" rx="1.5" fill="#2c1c10" stroke="#0a0805" stroke-width=".8"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${p})"/><text x="${x+w/2}" y="${y-6}" text-anchor="middle" font-size="7.8" font-weight="600" fill="#d8d2bb">${t}</text>`;
+ const aw=16*AB.px,ah=32*AB.py;
+ $('bP').innerHTML=svg('P','st',cabinet('P')+plate(424,16,104,15,'EXCITATORY CORDS',{fs:8.6,fg:'#f2a43a'})+plate(424,282,104,15,'INHIBITORY CORDS',{fs:8.6,fg:'#7fd0ea'})+
+  board(SB.x,SB.yE,160,160,'pS','S-UNIT PLUGBOARD')+board(AB.x,AB.yE,aw,ah,'pA','A-UNITS')+board(SB.x,SB.yI,160,160,'pS','S-UNIT PLUGBOARD')+board(AB.x,AB.yI,aw,ah,'pA','A-UNITS'))+
+  svg('P','st',`<g id="cE"></g><g id="cI"></g>`,'id="stc"')+
+  svg('P','',`<path id="lEd" fill="none" stroke="#c9822a" stroke-width=".4" opacity=".22"/><path id="lId" fill="none" stroke="#2f86a6" stroke-width=".4" opacity=".22"/><path id="lE2" fill="none" stroke="#b86a1e" stroke-width=".5" opacity=".85"/><path id="lI2" fill="none" stroke="#2f7fa0" stroke-width=".5" opacity=".85"/><path id="lE" fill="none" stroke="#f7b552" stroke-width=".48" opacity=".9"/><path id="lI" fill="none" stroke="#6cd2f2" stroke-width=".48" opacity=".9"/>`,'id="lit"')+
+  svg('P','ac',`<path id="sLit" fill="#ff7a2a"/><path id="aLit" fill="none" stroke="#ff7a2a" stroke-linecap="round" stroke-width="3"/><path id="pE" fill="none" stroke="#fff3cf" stroke-width="1"/><path id="pI" fill="none" stroke="#c6efff" stroke-width="1"/><text id="wTxt" x="280" y="26" class="m" font-size="8.4" fill="#ece6d2"></text>`);
+ // ---- knob rack
+ const kw=KN.px*8,kh=KN.py*32,kxa=KN.x-KN.px/2,kxb=KN.x+KN.gut+KN.px*8-KN.px/2;
+ $('bK').innerHTML=svg('K','st',cabinet('K')+plate(654,14,214,14,'A-UNITS · 512 MOTOR-DRIVEN POTENTIOMETERS',{fs:8.2})+`<rect x="${kxa-1}" y="${KN.y-KN.py/2-2}" width="${kw+2}" height="${kh+3}" rx="1" fill="#0f100c"/><rect x="${kxb-1}" y="${KN.y-KN.py/2-2}" width="${kw+2}" height="${kh+3}" rx="1" fill="#0f100c"/><rect x="${kxa}" y="${KN.y-KN.py/2}" width="${kw}" height="${kh}" fill="url(#pKnob)"/><rect x="${kxb}" y="${KN.y-KN.py/2}" width="${kw}" height="${kh}" fill="url(#pKnob2)"/>`)+
+  svg('K','ac',`<g id="caps">${BINS.map((c,i)=>`<path id="cap${i}" fill="${c}"/>`).join('')}</g><rect x="${kxa}" y="${KN.y-KN.py/2}" width="${kw}" height="${kh}" fill="url(#pGloss)"/><rect x="${kxb}" y="${KN.y-KN.py/2}" width="${kw}" height="${kh}" fill="url(#pGloss2)"/><path id="rings" fill="none" stroke="#ff7a2a" stroke-width="1.15"/><path id="ptrs" fill="none" stroke="#f7f1dc" stroke-width="1.15" stroke-linecap="round"/><circle id="kProbe" r="7.4" fill="none" stroke="#fff" stroke-width="1.2" opacity="0"/><text id="kInfo" class="m" x="762" y="541" text-anchor="middle" font-size="7.6" fill="#ece6d2"></text>`);
+ // ---- chart paper
+ $('bT').innerHTML=svg('T','st',`<rect x="242" y="552" width="638" height="122" fill="#14150f"/><rect x="248" y="556" width="626" height="114" fill="url(#gPaper)"/><rect x="266" y="560" width="590" height="88" fill="url(#pGrid)"/><path d="M266 604H856" stroke="#a65a44" stroke-width=".8" stroke-dasharray="3 3"/><text x="852" y="601" text-anchor="end" font-size="8" font-weight="600" fill="#8a4a38">COIN FLIP</text><text x="852" y="645" text-anchor="end" font-size="8" font-weight="600" fill="#8a4a38">NO ERRORS</text><text x="266" y="662" font-size="8.6" font-weight="600" fill="#1d3f7a">ERRORS, LAST <tspan id="tW">40</tspan> SLIDES OF THE TRAY</text><text x="470" y="662" font-size="8.6" font-weight="600" fill="#b0301c">WRONG ON 200 SLIDES IT HAS NEVER SEEN</text>`)+
+  svg('T','ac',`<path id="tUn" fill="none" stroke="#c43620" stroke-width="1.3" stroke-linejoin="round"/><path id="tTr" fill="none" stroke="#1d3f7a" stroke-width="1.1" stroke-linejoin="round"/><circle id="tPen" r="2" fill="#1d3f7a"/>`);
+ // ---- response panel
+ const cx=969;let lamps='';for(let i=0;i<8;i++)lamps+=`<circle cx="${904+i*18.6}" cy="161" r="5.4" fill="#0b0a07" stroke="#6a6556" stroke-width=".6"/><circle ${i===0?'id="r1"':''} cx="${904+i*18.6}" cy="161" r="4.2" fill="#241d15"/><text x="${904+i*18.6}" y="176" text-anchor="middle" font-size="7.4" font-weight="600" fill="${i?'#8d8878':'#f2a43a'}">R${i+1}</text>`;
+ const counter=(y,id,leg)=>`<text x="${cx}" y="${y}" text-anchor="middle" font-size="8.4" font-weight="600" fill="#d8d2bb">${leg}</text><rect x="897" y="${y+4}" width="144" height="24" rx="1.5" fill="#080806" stroke="#6a6556" stroke-width=".6"/><text id="${id}" class="m" x="${cx}" y="${y+21}" text-anchor="middle" font-size="15.5" font-weight="500" fill="#f4efdc"></text>`;
+ $('bR').innerHTML=svg('R','st',cabinet('R')+plate(896,14,146,15,'RESPONSE PANEL',{fs:9})+meter(cx,124,74,-52,52,[[0,'−'],[.5,'0'],[1,'+']],'Σ ACTIVE A-UNIT VOLTS',896,34,146,112)+`<path d="M${cx+1} 49V62" stroke="#b0301c" stroke-width="1.5"/>`+lamps+`<rect x="896" y="184" width="146" height="37" rx="1.5" fill="#080806" stroke="#6a6556" stroke-width=".6"/>`+meter(cx,297,52,-48,48,[[0,'0'],[.5,'50'],[1,'100']],'ACTIVE A-UNITS, %',896,230,146,86)+
+  lampAt(902,332,'lReady','READY')+lampAt(902,348,'lResp','RESPOND')+lampAt(902,364,'lHold','HOLD VALUES')+lampAt(972,332,'lMot','MOTORS')+lampAt(972,348,'lRes','RESET')+lampAt(972,364,'lClean','CLEAN PASS')+
+  counter(392,'cCards','SLIDES SHOWN')+counter(436,'cMist','MISTAKES')+counter(480,'cTime','MACHINE TIME, H:MM:SS')+`<text x="${cx}" y="522" text-anchor="middle" font-size="7.8" fill="#c4bfab">4 S A SLIDE + 1/16 REV A MINUTE</text>`+`<rect x="896" y="540" width="146" height="40" rx="1.5" fill="#b9b29a" stroke="#0007" stroke-width=".6"/><text x="${cx}" y="557" text-anchor="middle" font-size="11" font-weight="600" fill="#14130d">MARK I · PROJECT PARA</text><text x="${cx}" y="571" text-anchor="middle" font-size="7.6" font-weight="600" fill="#2a281d">CORNELL AERONAUTICAL LABORATORY</text>`+`<text x="${cx}" y="604" text-anchor="middle" font-size="7.8" fill="#c4bfab">ALL 512 A-UNITS PLUGGED TO R1</text><text x="${cx}" y="618" text-anchor="middle" font-size="7.8" fill="#c4bfab">ERROR CORRECTION, BIPOLAR</text>`)+
+  svg('R','ac',`<text id="rWord" x="${cx}" y="209" text-anchor="middle" font-size="19" font-weight="600" fill="#f2a43a"></text><text id="rErr" x="1037" y="194" text-anchor="end" font-size="8" font-weight="600" fill="#ff5a3a"></text><line id="nSum" x1="${cx}" y1="124" x2="${cx}" y2="56" stroke="#111" stroke-width="1.2"/><circle cx="${cx}" cy="124" r="3.5" fill="#111"/><line id="nPct" x1="${cx}" y1="297" x2="${cx}" y2="251" stroke="#111" stroke-width="1"/><circle cx="${cx}" cy="297" r="2.6" fill="#111"/>`);
+ document.querySelectorAll('.st,.ac').forEach(s=>s.setAttribute('xmlns','http://www.w3.org/2000/svg'))}
+buildArt();
+const el={};for(const id of['sHalo','sCore','sHot','sTmpl','sProbeE','sProbeI','swDn','swUp','slide','slNo','slKey','cE','cI','lE','lI','lE2','lI2','lEd','lId','sLit','aLit','pE','pI','wTxt','rings','ptrs','kProbe','kInfo','tUn','tTr','tPen','tW','r1','rWord','rErr','nSum','nPct','lReady','lResp','lHold','lMot','lRes','lClean','cCards','cMist','cTime','lit'])el[id]=$(id);
+const caps=BINS.map((_,i)=>$('cap'+i));
+// ---- knob layout ----
+const kAt=p=>{const c=p%16,r=p/16|0;return[KN.x+c*KN.px+(c>=8?KN.gut:0),KN.y+r*KN.py]};
+function placeKnobs(snap){for(let i=0;i<NA;i++){kpFrom[i*2]=kp[i*2];kpFrom[i*2+1]=kp[i*2+1]}
+ if(snap||RM||FIXED&&frame===0){S.sortT=1;for(let i=0;i<NA;i++){const[x,y]=kAt(S.sorted?order[i]:i);kp[i*2]=x;kp[i*2+1]=y}}else S.sortT=0;D.knobs=true}
+// ---- painting ----
+function drawCords(){const lim=S.cut*100,tones=[[],[],[],[],[]],toneI=[[],[],[],[],[]];let n=0;
+ for(const c of cords){if(c.rank<lim)continue;n++;const t=c.tone<52?0:c.tone<78?1:c.tone<90?2:c.tone<96?3:4;(c.i?toneI:tones)[t].push(c.d)}
+ const pal=['#090907','#26231d','#544c3e','#7c2a1c','#26453a'];const mk=a=>a.map((l,i)=>`<path d="${l.join('')}" fill="none" stroke="${pal[i]}" stroke-width="${i===2?.42:.5}" opacity="${i===0?.82:.9}"/>`).join('');
+ el.cE.innerHTML=mk(tones);el.cI.innerHTML=mk(toneI);el.wTxt.textContent='';$('wv').textContent=fmt(n)+' cords'}
+function drawLit(){const lim=S.cut*100,ea=[],ia=[],ea2=[],ia2=[],ed=[],id=[];let sq='';
+ for(let s=0;s<NS;s++){if(!S.bits[s])continue;const c=s%SIDE,r=s/SIDE|0,x=SB.x+c*SB.c+.6;sq+=`M${R1(x)} ${R1(SB.yE+r*SB.c+.6)}h6.8v6.8h-6.8zM${R1(x)} ${R1(SB.yI+r*SB.c+.6)}h6.8v6.8h-6.8z`;
+  for(const o of byS[s]){if(o.rank<lim||(lite&&o.tone%3))continue;const dim=o.tone%2;(S.actSet[o.a]?(o.i?(dim?ia2:ia):(dim?ea2:ea)):(o.i?id:ed)).push(o.d)}}
+ el.sLit.setAttribute('d',sq);el.lE.setAttribute('d',ea.join(''));el.lI.setAttribute('d',ia.join(''));el.lE2.setAttribute('d',ea2.join(''));el.lI2.setAttribute('d',ia2.join(''));el.lEd.setAttribute('d',ed.join(''));el.lId.setAttribute('d',id.join(''));
+ let dots='';for(const a of S.act){const col=a%16,row=a/16|0,x=R1(AB.x+col*AB.px+AB.px/2);dots+=`M${x} ${R1(AB.yE+row*AB.py+AB.py/2)}h0M${x} ${R1(AB.yI+row*AB.py+AB.py/2)}h0`}el.aLit.setAttribute('d',dots)}
+function drawNeon(){let d='',dn='',up='';for(let s=0;s<NS;s++){const c=s%SIDE,r=s/SIDE|0,on=S.bits[s];if(on)d+=`M${NEON.x+c*NEON.c+5} ${NEON.y+r*NEON.c+5}h0`;
+  const sx=SW.x+c*SW.c+3.7,sy=SW.y+r*SW.c;if(on)up+=`M${sx} ${sy+1}h2.6v4h-2.6z`;else dn+=`M${sx} ${sy+5}h2.6v4h-2.6z`}
+ el.sHalo.setAttribute('d',d);el.sCore.setAttribute('d',d);el.sHot.setAttribute('d',d);el.swDn.setAttribute('d',dn);el.swUp.setAttribute('d',up);
+ let sl='';const sc=2.5;for(let s=0;s<NS;s++)if(S.bits[s])sl+=`M${27+(s%SIDE)*sc} ${44+(s/SIDE|0)*sc}h${sc}v${sc}h-${sc}z`;el.slide.setAttribute('d',sl);
+ if(S.userMode||!S.slide){el.slNo.textContent='YOUR SWITCHES';el.slKey.textContent=''}else{el.slNo.textContent=`SLIDE ${S.slide.no}/${S.slide.of}`;el.slKey.textContent='KEY '+S.slide.label+' · '+NAMES[E.kind][S.slide.label]}}
+function drawTemplate(){if(!S.tmpl){el.sTmpl.innerHTML='';return}const t=MK.template(wiring,v,S.cut);let mx=1;for(let i=0;i<NS;i++)mx=Math.max(mx,Math.abs(t[i]));const b=BINS.map(()=>'');
+ for(let s=0;s<NS;s++){const k=clamp(Math.round(t[s]/mx*6*1.6),-6,6)+6;if(k===6)continue;b[k]+=`M${NEON.x+(s%SIDE)*NEON.c} ${NEON.y+(s/SIDE|0)*NEON.c}h10v10h-10z`}
+ el.sTmpl.innerHTML=b.map((d,i)=>d?`<path d="${d}" fill="${BINS[i]}" opacity=".85"/>`:'').join('')}
+function drawKnobs(){const b=BINS.map(()=>''),r=4.4,rr=6.1;let pt='',ring='';
+ for(let i=0;i<NA;i++){const x=R1(kp[i*2]),y=R1(kp[i*2+1]),val=vd[i],k=binOf(val);b[k]+=`M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0`;
+  const a=val/W*150*Math.PI/180,sa=Math.sin(a),ca=Math.cos(a);pt+=`M${R1(x+sa*1.2)} ${R1(y-ca*1.2)}L${R1(x+sa*4.5)} ${R1(y-ca*4.5)}`;
+  if(S.actSet[i])ring+=`M${x-rr} ${y}a${rr} ${rr} 0 1 0 ${2*rr} 0a${rr} ${rr} 0 1 0 ${-2*rr} 0`}
+ b.forEach((d,i)=>caps[i].setAttribute('d',d));el.ptrs.setAttribute('d',pt);el.rings.setAttribute('d',ring)}
+function drawProbe(){const a=S.probe;if(a==null){el.kProbe.setAttribute('opacity',0);el.kInfo.textContent='';el.pE.setAttribute('d','');el.pI.setAttribute('d','');el.sProbeE.setAttribute('d','');el.sProbeI.setAttribute('d','');return}
+ const lim=S.cut*100;let de='',di='',se='',si='';const cell=s=>`M${NEON.x+(s%SIDE)*NEON.c+.6} ${NEON.y+(s/SIDE|0)*NEON.c+.6}h8.8v8.8h-8.8z`;
+ for(const c of cords)if(c.a===a&&c.rank>=lim){if(c.i){di+=c.d;si+=cell(c.s)}else{de+=c.d;se+=cell(c.s)}}
+ el.pE.setAttribute('d',de);el.pI.setAttribute('d',di);el.sProbeE.setAttribute('d',se);el.sProbeI.setAttribute('d',si);
+ el.kProbe.setAttribute('cx',kp[a*2]);el.kProbe.setAttribute('cy',kp[a*2+1]);el.kProbe.setAttribute('opacity',1);
+ el.kInfo.textContent=`A-UNIT ${a+1} · ${v[a]>0?'+':''}${v[a]} TICKS = ${v[a]>=0?'+':'−'}${(Math.abs(v[a])/W*11).toFixed(1)} V · ${wiring.ex[a].length}E ${wiring.inh[a].length}I`}
+function drawChart(){if(!E)return;const n=E.hist.length,x0=266,xw=590,y0=648,yh=88,trayN=E.tray.length||1,win=Math.min(Math.max(trayN,4),40),xmax=Math.max(trayN*2,n*1.08,40),X=c=>x0+c/xmax*xw,Y=e=>y0-e*yh;el.tW.textContent=win;
+ if(!n){el.tTr.setAttribute('d','');el.tPen.setAttribute('opacity',0)}else{let s=0,d='';const stride=Math.max(1,n/600|0);for(let i=0;i<n;i++){s+=E.hist[i];if(i>=win)s-=E.hist[i-win];if(i%stride===0||i===n-1){const e=s/Math.min(i+1,win);d+=(d?'L':'M')+R1(X(i+1))+' '+R1(Y(e))}}el.tTr.setAttribute('d',d);const e=s/Math.min(n,win);el.tPen.setAttribute('cx',R1(X(n)));el.tPen.setAttribute('cy',R1(Y(e)));el.tPen.setAttribute('opacity',1)}
+ let u='';E.trace.forEach((p,i)=>{u+=(i?'L':'M')+R1(X(p.c))+' '+R1(Y(p.e))});if(E.trace.length&&n)u+='L'+R1(X(n))+' '+R1(Y(E.trace[E.trace.length-1].e));el.tUn.setAttribute('d',u)}
+const hms=s=>{s=Math.round(s);const h=s/3600|0,m=(s%3600)/60|0,e=s%60;return`${h}:${String(m).padStart(2,'0')}:${String(e).padStart(2,'0')}`};
+function setText(n,t){if(n.textContent!==t)n.textContent=t}
+function lamp(n,on,col){const f=on?col:'#2a241c';if(n.getAttribute('fill')!==f)n.setAttribute('fill',f)}
+function drawPanel(){const cards=E?E.cards:0,mist=E?E.mist:0,ticks=E?E.ticks:0;setText(el.cCards,fmt(cards).padStart(7,' '));setText(el.cMist,fmt(mist).padStart(7,' '));setText(el.cTime,hms(cards*SLIDE_S+ticks*TICK_S));
+ el.nSum.setAttribute('transform',`rotate(${R1(S.needle)} 969 124)`);el.nPct.setAttribute('transform',`rotate(${R1(S.pct/100*96-48)} 969 297)`);
+ const r=S.showResp&&S.dispSum>0;lamp(el.r1,r,'#ffb648');const names=E?NAMES[E.kind]:['0','1'];setText(el.rWord,S.showResp?`R1 = ${r?1:0} · ${names[r?1:0]}`:'R1 ·');setText(el.rErr,S.wrongFlash>0?'ERROR':'');
+ el.rWord.setAttribute('fill',r?'#f2a43a':'#8d8878');el.rWord.setAttribute('font-size',(names[r?1:0].length>6)?15:19);
+ lamp(el.lReady,!S.showResp,'#7fe08a');lamp(el.lResp,S.showResp,'#ffb648');lamp(el.lHold,S.moving===0,'#d8d2bb');lamp(el.lMot,S.moving>0,'#ff5a3a');lamp(el.lRes,S.resetting,'#ff5a3a');lamp(el.lClean,E&&E.clean>=0,'#7fe08a')}
+function drawNums(){if(!E)return;const n=$('nums'),t=E.kind==='mine';const last=E.lastPass==null?'—':`${E.lastPass} of ${E.tray.length} wrong`,u=E.unseen==null?'—':(E.unseen*100).toFixed(1)+'% right';let h=`<span>Last pass through the tray</span><b>${last}</b><span>Slides it has never seen</span><b>${u}</b><span>Mistakes · last on slide</span><b>${fmt(E.mist)} · ${E.last||'—'}</b><span>A-units firing now</span><b>${S.act.length} · ${(S.act.length/NA*100).toFixed(1)}%</b>`;
+ if(E.cycle)h+=`<span>Knobs repeat every</span><b style="color:var(--neon)">${E.cycle.len} pass${E.cycle.len>1?'es':''}, forever</b>`;if(n.innerHTML!==h)n.innerHTML=h;$('trayv').textContent=t?`${S.mine.length} slide${S.mine.length===1?'':'s'}`:`${E.tray.length} slides`}
+function paint(){if(D.cords){drawCords();D.cords=false}if(D.lit){drawLit();D.lit=false}if(D.neon){drawNeon();D.neon=false}if(D.tmpl){drawTemplate();D.tmpl=false}if(D.knobs){drawKnobs();D.knobs=false}if(D.probe){drawProbe();D.probe=false}if(D.chart){drawChart();D.chart=false}if(D.nums&&(frame%6===0||FIXED||RM||!S.run)){drawNums();D.nums=false}drawPanel();el.lit.style.opacity=S.lit}
+// ---- sound (off until asked for) ----
+const A={ctx:null,hum:null};
+function audioOn(){if(A.ctx)return;A.ctx=new(window.AudioContext||window.webkitAudioContext)();const o=A.ctx.createOscillator(),f=A.ctx.createBiquadFilter(),g=A.ctx.createGain(),lfo=A.ctx.createOscillator(),lg=A.ctx.createGain();o.type='sawtooth';o.frequency.value=118;f.type='lowpass';f.frequency.value=620;g.gain.value=0;lfo.frequency.value=23;lg.gain.value=7;lfo.connect(lg);lg.connect(o.frequency);o.connect(f);f.connect(g);g.connect(A.ctx.destination);o.start();lfo.start();A.hum=g}
+function click(strength){if(!S.snd||!A.ctx)return;const t=A.ctx.currentTime,len=.03,b=A.ctx.createBuffer(1,A.ctx.sampleRate*len|0,A.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*7);const s=A.ctx.createBufferSource(),g=A.ctx.createGain(),f=A.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=2100;f.Q.value=1.2;s.buffer=b;g.gain.value=.22*strength;s.connect(f);f.connect(g);g.connect(A.ctx.destination);s.start(t)}
+function humTo(){if(!A.hum)return;const target=S.snd?Math.min(.11,S.moving/512*.3+(S.moving?.012:0)):0;A.hum.gain.setTargetAtTime(target,A.ctx.currentTime,.05)}
+// ---- running ----
+function startCard(){const T=deal();present(T);S.cyc={T,t:0,d:1/Math.min(S.rate,2),resp:false,mot:false};S.hold=T.wrong;S.showResp=false;S.lit=0;S.wrongFlash=0}
+function runTick(dt){if(S.resetting&&!S.cyc)return;if(S.cyc){const C=S.cyc;C.t+=dt;const u=C.t/C.d;S.lit=clamp(u/.16,0,1);if(!C.resp&&u>=.42){C.resp=true;S.showResp=true;click(.7)}
+  if(C.resp&&C.T.wrong&&!C.mot&&u>=.52){C.mot=true;S.hold=false;S.wrongFlash=1;S.motorRate=C.T.ticks/(C.d*.33);D.tmpl=true}
+  if(u>=1){S.cyc=null;S.hold=false;S.wrongFlash=0;if(E.clean>=0&&!S.loop)S.run=false;if(S.oneShot){S.oneShot=false;S.run=false}}return}
+ if(!S.run)return;if(E.tray.length===0){S.run=false;return}
+ if(S.rate<=2){startCard();return}
+ S.acc+=S.rate*dt;let n=Math.min(Math.floor(S.acc),60);S.acc-=n;let last=null;for(let i=0;i<n;i++){last=deal();if(E.clean>=0&&!S.loop){S.run=false;break}}
+ if(last){present(last);S.hold=false;S.showResp=true;S.lit=1;S.motorRate=Math.max(40,S.rate);if(last.wrong)S.wrongFlash=.12;D.tmpl=frame%8===0||!S.run}
+ if(S.wrongFlash>0)S.wrongFlash-=dt}
+function animTick(dt){S.moving=0;let ch=false;if(!S.hold){const rate=(S.resetting?W/1.9:Math.max(S.motorRate,6))*dt;for(let i=0;i<NA;i++){const d=v[i]-vd[i];if(d!==0){S.moving++;vd[i]=Math.abs(d)<=rate?v[i]:vd[i]+Math.sign(d)*rate;ch=true}}}
+ if(S.resetting&&S.moving===0){S.resetting=false;D.tmpl=true}
+ if(ch)D.knobs=true;if(ch&&S.tmpl&&frame%6===0)D.tmpl=true;if(ch&&S.probe!=null)D.probe=true;
+ if(S.sortT<1){S.sortT=Math.min(1,S.sortT+dt/1.15);const e=S.sortT*S.sortT*(3-2*S.sortT);for(let i=0;i<NA;i++){const[x,y]=kAt(S.sorted?order[i]:i);kp[i*2]=kpFrom[i*2]+(x-kpFrom[i*2])*e;kp[i*2+1]=kpFrom[i*2+1]+(y-kpFrom[i*2+1])*e}D.knobs=true}
+ let s=0;for(let k=0;k<S.act.length;k++)s+=vd[S.act[k]];S.dispSum=s;
+ const shown=(S.cyc&&S.cyc.t/S.cyc.d<.16)?0:s,target=clamp(Math.asinh(shown/5)/Math.asinh(40),-1,1)*52,kk=1-Math.exp(-dt*(S.rate>10&&S.run?30:11));S.needle+=(target-S.needle)*kk;
+ const tp=S.act.length/NA*100;S.pct+=(tp-S.pct)*(1-Math.exp(-dt*10));if(S.snd)humTo()}
+function instantRun(){let guard=0;const lim=E.kind==='xor'&&S.direct?64:E.tray.length*400;while(guard++<lim&&E.clean<0&&E.tray.length){present(deal())}vd.set(v);finishInstant()}
+function finishInstant(){vd.set(v);S.resetting=false;S.showResp=true;S.lit=1;S.hold=false;S.moving=0;let s=0;for(const a of S.act)s+=v[a];S.dispSum=s;S.needle=clamp(Math.asinh(s/5)/Math.asinh(40),-1,1)*52;S.pct=S.act.length/NA*100;D.knobs=D.neon=D.lit=D.tmpl=D.chart=D.nums=D.probe=true;paint()}
+// ---- user side ----
+const CAP=$('caption');let capText='',capTimer=0;
+function caption(h){if(h===capText)return;capText=h;if(FIXED||RM){CAP.innerHTML=h;return}CAP.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{CAP.innerHTML=h;CAP.classList.remove('fade')},260)}
+const YOUR="<b>Your turn.</b> Flip the switches by drawing on the neon and the machine answers at once. Teach it with the two buttons, pick a tray, rewire the plugboard, take the pliers to the cords.";
+const tour={on:false,i:0,t:0};
+function touch(){if(tour.on){tour.on=false;S.loop=false;S.cyc=null;S.hold=false;caption(YOUR);syncUI()}}
+function syncUI(){document.querySelectorAll('#decks .chip').forEach(b=>b.classList.toggle('on',E&&b.dataset.k===E.kind));
+ $('run').textContent=S.run?'Pause':'Run';$('run').classList.toggle('on',S.run);$('direct').classList.toggle('on',S.direct);$('sort').classList.toggle('on',S.sorted);$('tmpl').classList.toggle('on',S.tmpl);$('snd').textContent=S.snd?'sound on':'sound off';
+ $('xv').textContent=S.direct?1:S.X;$('yv').textContent=S.direct?0:S.Y;$('tv').textContent=thNow();$('x').value=S.X;$('y').value=S.Y;$('th').value=S.th;$('cut').value=S.cut;$('cutv').textContent=S.cut+'% cut';$('rate').value=RATES.reduce((b,r,i)=>Math.abs(r-S.rate)<Math.abs(RATES[b]-S.rate)?i:b,0);$('ratev').textContent=(S.rate<1?S.rate:fmt(S.rate))+' slides/s'}
+DECKS.forEach(([k,n])=>{const b=document.createElement('button');b.className='chip';b.dataset.k=k;b.textContent=n;b.onclick=()=>{touch();S.cyc=null;S.hold=false;if(k!=='mine')resetKnobs(true);setDeck(k);S.acc=0;if(E.tray.length){S.run=true;S.oneShot=false;if(RM)instantRun()}else{S.run=false;caption('<b>Your tray is empty.</b> Draw a slide on the neon, then press <span class="m">Teach 1</span> or <span class="m">Teach 0</span>. Each one goes in the tray.')}syncUI()};$('decks').appendChild(b)});
+$('run').onclick=()=>{touch();if(S.run){S.run=false}else{if(!E.tray.length)return;if(E.clean>=0){E.clean=-1;D.nums=true}S.run=true;if(RM){instantRun();S.run=false}}syncUI()};
+$('one').onclick=()=>{touch();if(!E.tray.length)return;S.run=false;if(RM){present(deal());finishInstant();syncUI();return}if(S.cyc)return;S.oneShot=true;const r=S.rate;S.rate=Math.min(S.rate,1);startCard();S.cyc.d=1;S.rate=r;syncUI()};
+$('reset').onclick=()=>{touch();S.cyc=null;S.hold=false;resetKnobs(true);setDeck(E.kind);S.run=false;syncUI();if(RM)finishInstant()};
+$('rate').oninput=e=>{touch();S.rate=RATES[+e.target.value];S.acc=0;syncUI()};
+$('x').oninput=e=>{touch();S.X=+e.target.value;S.direct=false;rewire();syncUI();if(RM)finishInstant()};
+$('y').oninput=e=>{touch();S.Y=+e.target.value;S.direct=false;rewire();syncUI();if(RM)finishInstant()};
+$('th').oninput=e=>{touch();S.th=+e.target.value;if(S.direct){S.direct=false;rewire()}else setTheta(S.th);if(E)E.clean=-1;syncUI();if(RM)finishInstant()};
+$('patch').onclick=()=>{touch();S.seed=S.seed+1;S.direct=false;S.cyc=null;S.hold=false;rewire();setDeck(E.kind);caption(`<b>Re-patched</b> from random number ${S.seed}, knobs untouched: they now mean nothing, so it is back to guessing until it relearns.`);S.run=!!E.tray.length;syncUI();if(RM){instantRun();S.run=false;syncUI()}};
+$('direct').onclick=()=>{touch();S.direct=!S.direct;S.cyc=null;S.hold=false;resetKnobs(true);rewire();setDeck(E.kind);S.run=!!E.tray.length;syncUI();if(RM){instantRun();S.run=false;syncUI()}};
+$('cut').oninput=e=>{touch();setCut(+e.target.value);if(E)E.clean=-1;syncUI();if(RM)finishInstant()};
+$('sort').onclick=()=>{touch();S.sorted=!S.sorted;order=MK.sortOrder(wiring,S.cut);placeKnobs(false);syncUI();if(RM){placeKnobs(true);finishInstant()}};
+$('tmpl').onclick=()=>{touch();S.tmpl=!S.tmpl;D.tmpl=true;syncUI();if(RM)paint()};
+$('snd').onclick=()=>{S.snd=!S.snd;if(S.snd){audioOn();A.ctx.resume()}humTo();syncUI()};
+$('tourb').onclick=()=>startTour();
+// drawing on the neon or the switches
+const hit=$('hit');let drawing=null;
+function cellAt(ev){const m=hit.getScreenCTM().inverse(),p=new DOMPoint(ev.clientX,ev.clientY).matrixTransform(m);const inN=p.y<NEON.y+200,g=inN?NEON:SW,c=Math.floor((p.x-g.x)/g.c),r=Math.floor((p.y-g.y)/g.c);return c>=0&&c<SIDE&&r>=0&&r<SIDE?{c,r,inN}:null}
+function paintCell(c,r,val,big){const size=big?2:1;for(let j=r;j<r+size;j++)for(let i=c;i<c+size;i++)if(i>=0&&i<SIDE&&j>=0&&j<SIDE)S.my[j*SIDE+i]=val}
+function useMy(){S.userMode=true;S.cur=null;S.slide=null;S.bits=S.my;S.showResp=true;S.lit=1;S.hold=false;reFire();D.neon=D.lit=true;D.nums=true;const nLit=S.bits.reduce((a,b)=>a+b,0);$('myv').textContent=`${nLit} cell${nLit===1?'':'s'} lit`;if(RM)finishInstant()}
+hit.addEventListener('pointerdown',ev=>{const g=cellAt(ev);if(!g)return;ev.preventDefault();touch();S.run=false;S.cyc=null;syncUI();if(!S.userMode){if(S.bits!==S.my)S.my.set(S.bits)}const val=S.my[g.r*SIDE+g.c]?0:1;drawing={val,big:g.inN};hit.setPointerCapture(ev.pointerId);paintCell(g.c,g.r,val,g.inN);useMy()});
+hit.addEventListener('pointermove',ev=>{if(!drawing)return;const g=cellAt(ev);if(g){paintCell(g.c,g.r,drawing.val,drawing.big);useMy()}});
+const stopDraw=ev=>{if(!drawing)return;drawing=null;log({k:'probe',bits:hexOf(S.my),a:S.act.length,s:MK.sum(v,S.act)})};hit.addEventListener('pointerup',stopDraw);hit.addEventListener('pointercancel',stopDraw);
+const hexOf=b=>{let h='';for(let i=0;i<NS;i+=4)h+=((b[i]<<3)|(b[i+1]<<2)|(b[i+2]<<1)|b[i+3]).toString(16);return h};
+function teach(target){touch();S.run=false;S.cyc=null;if(!S.userMode){S.my.set(S.bits);useMy()}const act=S.act;const before=MK.sum(v,act);const ticks=MK.correct(v,act,target);S.hold=false;S.motorRate=Math.max(4,ticks/.5);S.mine.push({bits:S.my.slice(),label:target});log({k:'teach',bits:hexOf(S.my),target,a:act.length,s:before,t:ticks,h:MK.fnv(v)});
+ const names=NAMES[E.kind];caption(!act.length?'<b>No A-unit fired</b> on this pattern, so there is nothing for the motors to turn. Light more cells, or lower θ.':ticks?`<b>${act.length} knobs</b> turned ${ticks} tick${ticks>1?'s':''} (${ticks*TICK_S} s on the real motors). R1 now says ${target}.`:`R1 already said ${target}, so nothing moved: error correction only acts on mistakes.`);
+ D.tmpl=D.nums=true;$('trayv').textContent=E.kind==='mine'?`${S.mine.length} slides`:$('trayv').textContent;if(E.kind==='mine'){E.tray=S.mine}syncUI();if(RM)finishInstant()}
+$('t1').onclick=()=>teach(1);$('t0').onclick=()=>teach(0);
+$('clear').onclick=()=>{touch();S.run=false;S.cyc=null;S.my.fill(0);useMy();syncUI()};
+$('bK').addEventListener('pointermove',ev=>{const s=$('bK').querySelector('.ac'),m=s.getScreenCTM().inverse(),p=new DOMPoint(ev.clientX,ev.clientY).matrixTransform(m);let best=null,bd=120;for(let i=0;i<NA;i++){const dx=kp[i*2]-p.x,dy=kp[i*2+1]-p.y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=i}}if(best!==S.probe){S.probe=best;D.probe=true;if(RM||FIXED)paint()}});
+$('bK').addEventListener('pointerleave',()=>{if(S.probe!=null){S.probe=null;D.probe=true;if(RM||FIXED)paint()}});
+// ---- the tour, on simulated time ----
+const pct=x=>(x*100).toFixed(x>.995||x===0?0:1)+'%';
+const STEPS=[
+ {d:4.2,enter(){S.rate=.8;S.run=false;S.loop=true;caption('The memory of a learning machine: <b>512 knobs</b>, each on its own small motor, built at Cornell Aeronautical Laboratory in 1959. Right now they remember how to tell <b>E</b> from <b>X</b>.')},during(t){if(t>1.1)S.run=true}},
+ {d:3.6,enter(){S.run=false;S.cyc=null;S.hold=false;S.bits=MK.blank();S.act=[];S.actSet.fill(0);S.slide=null;S.showResp=false;D.neon=D.lit=true;resetKnobs(true);setDeck('lr');caption('Reset. Every knob drives back to zero. The manual allows <b>about twenty minutes</b> for this.')}},
+ {d:7,enter(){S.rate=.62;S.run=true;caption('A slide lands on <b>400 photocells</b>: which side is the square on? Cords wired from a random-number printout feed <b>A-units</b>, which fire if enough of their lit cells say so. Add up the knobs of the units that fired; over zero, R1 lights.')}},
+ {d:6.5,enter(){caption('Wrong answer. Feedback goes only to the units that <b>fired</b>. Their motors turn until the needle crosses zero and the lamp flips. That is the whole learning rule.')}},
+ {until(){return E.clean>=0},min:3,max:14,enter(){S.rate=30;S.loop=false;S.run=true;caption('Faster. In July 1958 the Navy showed the idea running on an IBM 704: after 50 tries it could tell cards marked left from cards marked right.')},during(){if(E.at50!=null)caption(`Faster. In July 1958 the Navy showed the idea running on an IBM 704: after 50 tries it could tell cards marked left from cards marked right. Here, after 50 slides: <b>${pct(E.at50)}</b> right on slides it has never seen.`)}},
+ {d:5,enter(){caption(`Clean pass: <b>${E.mist} mistakes</b>, the last on slide ${E.last}. Those ${E.ticks} corrections are ${Math.round(E.ticks*TICK_S/60)} minutes of motor time at the real machine’s 1/16 of a revolution a minute. Nobody told it what “left” means.`)}},
+ {d:6.5,enter(){S.sorted=true;order=MK.sortOrder(wiring,S.cut);placeKnobs(false);S.tmpl=true;D.tmpl=true;caption('The knobs look random because the wiring is. Sort the rack by where each unit’s cords land on the retina, and project it back through the wires: <span class="c">one side</span> of the retina now votes against the <span style="color:#f5a93b">other</span>.');syncUI()}},
+ {d:6,enter(){this.st=0;caption('Pliers. <b>Half the cords</b> come out. The manual warns they can snap off if pulled crooked.')},during(t){const p=Math.min(50,Math.floor(t/2.4*10)*5);if(p!==S.cut){setCut(p);syncUI()}if(t>2.6&&E.unseen!=null)caption(`Pliers. <b>Half the cords</b> are gone and it still gets <b>${pct(E.unseen)}</b> of unseen slides right. No single wire holds anything: the memory is spread across hundreds of units.`)}},
+ {d:8.5,enter(){S.tmpl=false;D.tmpl=true;S.cut=0;S.direct=true;S.sorted=true;v.fill(0);vd.fill(0);log({k:'reset'});rewire();setDeck('xor');S.rate=2;S.loop=true;S.run=true;placeKnobs(false);caption('Now the textbook wiring: one cord from each photocell to one knob, <b>no hidden layer</b>. Four slides: left block, right block, both, neither. R1 should light for exactly one block.');syncUI()},during(t){if(t>3.6&&E.lastPass!=null)caption(`<b>${E.lastPass} of 4 wrong on every pass</b>, and the knobs end each pass exactly where they started. It will do this forever: no setting of these knobs can solve XOR.`)}},
+ {d:8.5,enter(){S.direct=false;v.fill(0);vd.fill(0);log({k:'reset'});S.cyc=null;S.hold=false;S.sorted=false;rewire();setDeck('xor');placeKnobs(false);S.rate=2;S.run=true;S.loop=false;caption('Plug the random wiring back in. Same four slides.');syncUI()},during(t){if(E.clean>=0&&t>2)caption(`Plug the random wiring back in. Same four slides: <b>${E.mist} mistake${E.mist===1?'':'s'}</b> and it is solved. “Perceptrons can’t do XOR” is true only without the hidden layer, and the Mark I was built with one.`)}},
+ {until(){return E.clean>=0},min:8,max:20,enter(){S.cyc=null;S.hold=false;resetKnobs(true);setDeck('con');S.rate=80;S.loop=false;S.run=true;caption('What does stop it? <b>One piece or two?</b> Each slide has the same ink, drawn as one line or as two. It sets about memorising the tray.');syncUI()},during(){if(E.clean>=0&&E.unseen!=null)caption(`It memorises all ${E.tray.length} slides in ${E.mist} mistakes, then gets <b>${pct(E.unseen)}</b> of 200 new ones right: a coin flip. Minsky and Papert proved in 1969 that no fixed number of cords per unit is enough for this as the retina grows.`)}},
+ {d:6.5,enter(){if(E.unseen!=null)caption(`It memorises all ${E.tray.length} slides in ${E.mist} mistakes, then gets <b>${pct(E.unseen)}</b> of 200 new ones right: a coin flip. Minsky and Papert proved in 1969 that no fixed number of cords per unit is enough for this as the retina grows.`)}},
+ {d:.1,enter(){tour.on=false;S.loop=false;caption(YOUR);syncUI()}}
+];
+function runStep(i){tour.i=i;tour.t=0;const s=STEPS[i];if(s.enter)s.enter.call(s)}
+function tourTick(dt){if(!tour.on)return;tour.t+=dt;const s=STEPS[tour.i];if(s.during)s.during.call(s,tour.t);const done=s.until?(s.until()&&tour.t>=s.min)||tour.t>=s.max:tour.t>=s.d;if(done&&tour.i<STEPS.length-1)runStep(tour.i+1);syncIf()}
+let syncF=0;function syncIf(){if(frame-syncF>20){syncF=frame;syncUI()}}
+function openingState(){// the opening picture: a machine that has already learned E from X, with an X on the retina
+ S.sorted=false;S.direct=false;S.cut=0;S.tmpl=false;S.X=10;S.Y=5;S.th=2;S.run=false;S.loop=false;S.cyc=null;S.hold=false;S.resetting=false;S.userMode=false;
+ S.seed=S.traySeed;rewire();v.fill(0);log({k:'reset'});setDeck('ex');let g=0;while(E.clean<0&&g++<4000)deal();vd.set(v);
+ let i=0;while(i<E.tray.length&&!(E.tray[i].label===1&&E.tray[i].bits.reduce((a,b)=>a+b,0)>66))i++;i=i%E.tray.length;
+ const c=E.tray[i],act=MK.fire(wiring,c.bits,thNow(),S.cut);present({i,c,act});S.showResp=true;S.lit=1;let s=0;for(const a of act)s+=v[a];S.dispSum=s;S.needle=clamp(Math.asinh(s/5)/Math.asinh(40),-1,1)*52;S.pct=act.length/NA*100;placeKnobs(true);D.cords=D.lit=D.knobs=D.neon=D.tmpl=D.chart=D.nums=true}
+function startTour(){const was=frame;openingState();if(RM){caption('<b>The Mark I Perceptron</b>, 1959: 400 photocells, a plugboard wired from a random-number printout, and 512 knobs on motors. These knobs have learned <b>E</b> from <b>X</b>. Pick a tray, draw on the neon, or take the pliers to the cords.');syncUI();paint();return}tour.on=true;runStep(0);syncUI();paint()}
+// ---- layout ----
+function fit(){const phone=innerWidth<=820,m=$('machine');const set=(id,k,vbx)=>{const b=$(id);if(!phone){const[x,y,w,h]=BAY[k];b.style.left=(x/1060*100)+'%';b.style.top=(y/680*100)+'%';b.style.width=(w/1060*100)+'%';b.style.height=(h/680*100)+'%'}b.querySelectorAll('svg').forEach(s=>s.setAttribute('viewBox',phone&&vbx?vbx:vb(k)))};
+ set('bS','S','6 34 232 288');set('bP','P');set('bK','K');set('bT','T');set('bR','R','884 28 170 198');
+ if(!phone){const r=$('mwrap').getBoundingClientRect(),w=r.width-24,h=r.height-10,k=Math.max(.45,Math.min(w/1060,h/680));m.style.width=Math.floor(1060*k)+'px';m.style.height=Math.floor(680*k)+'px'}}
+addEventListener('resize',()=>{fit();if(FIXED||RM)paint()});
+// ---- clock ----
+function tick(dt){frame++;simT+=dt;tourTick(dt);runTick(dt);animTick(dt);if(S.run!==S.runWas){S.runWas=S.run;syncUI()}window.__frame=frame;window.__state={t:simT,frame,tourStep:tour.i,tourOn:tour.on,deck:E&&E.kind,cards:E&&E.cards,mist:E&&E.mist,moving:S.moving,needle:S.needle}}
+let last=0;function loop(ts){requestAnimationFrame(loop);const raw=last?(ts-last)/1000:1/60,dt=Math.min(.05,raw);last=ts;ema+=(Math.min(raw,.2)-ema)*.06;if(frame>40){if(ema>.04)lite=true;else if(ema<.022)lite=false}tick(dt);paint()}
+window.step=n=>{for(let i=0;i<n;i++)tick(1/60);paint();return window.__state};
+let ready=false;
+window.perceptron={state(){if(!ready)return{ready:false};return{ready:true,seed:S.seed,X:S.direct?1:S.X,Y:S.direct?0:S.Y,th:thNow(),direct:S.direct,cut:S.cut,sorted:S.sorted,tmpl:S.tmpl,run:S.run,rate:S.rate,deck:E.kind,cards:E.cards,mist:E.mist,ticks:E.ticks,last:E.last,clean:E.clean,pass:E.pass,lastPass:E.lastPass,unseen:E.unseen,at50:E.at50,cycle:E.cycle,act:S.act.length,resp:S.dispSum>0?1:0,sum:MK.sum(v,S.act),v:[...v],vd:[...vd].map(x=>R1(x)),hash:MK.fnv(v),moving:S.moving,resetting:S.resetting,needle:S.needle,cap:capText,tour:{on:tour.on,i:tour.i},userMode:S.userMode,mine:S.mine.length,bits:hexOf(S.bits),order:[...order],template:[...MK.template(wiring,v,S.cut)],cords:cords.filter(c=>c.rank>=S.cut*100).length,wrongFlash:S.wrongFlash,snd:S.snd,probe:S.probe,frame,RM,FIXED}},log(){return logs}};
+fit();
+if(Q.has('notour')){openingState();caption(YOUR);syncUI();paint()}else startTour();
+ready=true;
+if(FIXED){paint()}else if(RM){paint()}else requestAnimationFrame(loop);
+if(document.fonts&&document.fonts.ready)Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(()=>{fit();if(FIXED||RM)paint()});
+</script>
+</body>
+</html>
