@@ -1,5 +1,15 @@
 [
  {
+  "slug": "lottery-scratchcards",
+  "title": "Lottery Scratchcards",
+  "no": "034",
+  "date": "2026-11-02",
+  "kind": "Pruning \u00b7 three.js scratch cards",
+  "blurb": "A strip of scratch cards, each one the same small network trained in your browser on real handwriting. After every round the smallest wires are punched out and the survivors go back to their starting numbers. A twentieth of the wires still reads strangers' digits; the same holes with new numbers do worse.",
+  "color": "#300028",
+  "exhibit": "scratchcards"
+ },
+ {
   "slug": "perceptron-mark-i",
   "title": "Mark I Perceptron",
   "no": "033",
