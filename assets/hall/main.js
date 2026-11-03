@@ -1,10 +1,9 @@
-// Curio hall · renderer, walking camera, picking, portal culling, post-processing, HUD and the open-a-case animation.
+// Curio hall · renderer, walking camera, picking, portal culling, room streaming, post-processing, HUD and the open-a-case animation.
 import * as THREE from '../vendor/three.module.min.js';
 import * as BGU from '../vendor/three-addons.js';
-import {EXHIBITS} from '../exhibits.js';
 import {makeTextures,mulberry} from './tex.js';
 import {makeGeo} from './geo.js';
-import {buildHall,K,plan} from './build.js';
+import {buildHall,K,plan,LANES} from './build.js';
 import {makeNav} from './nav.js';
 const {EffectComposer,RenderPass,UnrealBloomPass,OutputPass,ShaderPass}=BGU;
 
@@ -24,7 +23,7 @@ export async function startHall({list,V,openExhibit,esc}){
  const t0=performance.now();
  const X=makeTextures(THREE,{aniso:Math.min(8,R.capabilities.getMaxAnisotropy()),hi});const tTex=performance.now()-t0;
  const G=makeGeo(THREE,BGU);
- const W=buildHall(THREE,{G,X,BGU,list,EXHIBITS,tier,aniso:Math.min(8,R.capabilities.getMaxAnisotropy())});
+ const W=buildHall(THREE,{G,X,BGU,list,tier,aniso:Math.min(8,R.capabilities.getMaxAnisotropy())});
  for(const r of W.rooms)root.add(r.group);root.add(W.sky);
  const tHall=performance.now()-t0-tTex;
  const nav=makeNav(W,{r:.3});
@@ -40,6 +39,16 @@ export async function startHall({list,V,openExhibit,esc}){
  let ENV=null,tEnv=0;const withEnv=o=>{if(ENV)o.traverse(n=>{if(n.material)for(const m of [].concat(n.material))if(m.isMeshStandardMaterial&&!m.envMap){m.envMap=ENV;m.needsUpdate=true}})};
  {const pm=new THREE.PMREMGenerator(R);W.rooms.forEach(r=>r.group.visible=r.id===0);root.position.set(0,-2.2,0);root.updateMatrixWorld(true);
   const te=performance.now();const rt=pm.fromScene(S,.035,.1,80);tEnv=performance.now()-te;ENV=rt.texture;root.position.set(0,0,0);root.updateMatrixWorld(true);pm.dispose();withEnv(root)}
+
+ // ---------- mini exhibits: each one is /<slug>/mini.js, fetched when its room comes within a door of the visitor
+ const base=new URL('./',location.href),freeObj=o=>o.traverse(n=>{if(n.geometry)n.geometry.dispose();for(const m of [].concat(n.material||[])){for(const k in m)if(m[k]&&m[k].isTexture)m[k].dispose();m.dispose()}});
+ const stub=()=>({obj:null,mats:[],tick:null,stub:true});let specLoads=0,specFails=0;
+ function loadSpec(rec){if(rec.state)return rec.p||Promise.resolve();rec.state=1;const gen=rec.gen=(rec.gen||0)+1;
+  rec.p=import(new URL(encodeURIComponent(rec.d.slug)+'/mini.js',base).href).then(mod=>mod.default(THREE,rec.col)).catch(e=>{specFails++;console.warn('Curio: no mini exhibit for '+rec.d.slug+' ('+e.message+'); showing a stand-in');
+    const m=new THREE.MeshStandardMaterial({color:rec.col,emissive:rec.col,emissiveIntensity:.4});return{obj:new THREE.Mesh(new THREE.IcosahedronGeometry(.4,1),m),mats:[m]}})
+   .then(xb=>{if(rec.state!==1||rec.gen!==gen){freeObj(xb.obj);return}rec.state=2;specLoads++;xb.mats=xb.mats||[];rec.spec.add(xb.obj);rec.xb=xb;if(rec.slot)rec.slot.xb=xb;withEnv(rec.spec)});return rec.p}
+ function freeSpec(rec){if(!rec.state)return;if(rec.xb&&rec.xb.obj){rec.spec.remove(rec.xb.obj);freeObj(rec.xb.obj)}rec.xb=null;rec.state=0;rec.p=null;if(rec.slot)rec.slot.xb=stub()}
+ for(const r of W.specs)if(r.slot)r.slot.xb=stub();
 
  // ---------- post
  let comp=null,bloom=null,fin=null;
@@ -58,7 +67,8 @@ export async function startHall({list,V,openExhibit,esc}){
  const DOORS=[];for(const r of W.rooms)for(const [s,j] of Object.entries(r.doors))if(j!=null&&r.id<j){const d={n:[0,-1],e:[1,0],s:[0,1],w:[-1,0]}[s],cx=r.cx+d[0]*8,cz=r.cz+d[1]*8,t=[-d[1],d[0]];
   DOORS.push({a:r.id,b:j,p:[[-1,0],[1,0],[1,1],[-1,1]].map(([u,v])=>new THREE.Vector3(cx+t[0]*u*1.55,v*(K.DH+.05),cz+t[1]*u*1.55)),c:new THREE.Vector3(cx,K.DH/2,cz)})}
  const proj=new THREE.Vector3();
- function visibleRooms(cur){const vis=new Set([cur]);const walk=(room,rect,depth)=>{if(depth>4)return;for(const d of DOORS){const o=d.a===room?d.b:d.b===room?d.a:null;if(o==null)continue;
+ // two rooms deep through doors, never more: the rotunda no longer draws galleries it cannot really see
+ function visibleRooms(cur){const vis=new Set([cur]);const walk=(room,rect,depth)=>{if(depth>1)return;for(const d of DOORS){const o=d.a===room?d.b:d.b===room?d.a:null;if(o==null)continue;
    let x0=1,x1=-1,y0=1,y1=-1,behind=0;for(const p of d.p){proj.copy(p).applyMatrix4(cam.matrixWorldInverse);if(proj.z>-.05){behind++;continue}proj.applyMatrix4(cam.projectionMatrix);x0=Math.min(x0,proj.x);x1=Math.max(x1,proj.x);y0=Math.min(y0,proj.y);y1=Math.max(y1,proj.y)}
    if(behind===4)continue;if(behind){if(d.c.distanceTo(cam.position)>3.2)continue;x0=-1;x1=1;y0=-1;y1=1}
    const nr=[Math.max(rect[0],x0),Math.min(rect[1],x1),Math.max(rect[2],y0),Math.min(rect[3],y1)];if(nr[0]>=nr[1]||nr[2]>=nr[3])continue;
@@ -74,14 +84,15 @@ export async function startHall({list,V,openExhibit,esc}){
  const $=id=>document.getElementById(id);
  const card=$('card'),hint=$('hint'),toast=$('toast'),mapC=$('map'),dir=$('dirlist'),joyEl=$('joy'),ring=new THREE.Mesh(new THREE.RingGeometry(.22,.27,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xffe2a8,transparent:true,opacity:.0,depthWrite:false,fog:false}));
  ring.renderOrder=8;root.add(ring);
- hint.textContent=coarse?'Left thumb walks · drag to look · tap a case to open':'W A S D to walk · drag to look around · click the floor to go there · click a case to open';
- const bySlot=new Map(W.slots.filter(s=>s.i>=0).map(s=>[s.i,s]));
- {const P_=plan(list);dir.innerHTML=P_.rooms.map(r=>`<li class="rm"><b>${esc(r.name)}</b>${r.kind==='gallery'&&r.dates?` <i>${esc(r.dates)}</i>`:''}<ul>${r.ex.map(e=>`<li><a href="${esc('./'+encodeURIComponent(e.d.slug)+'/')}" data-i="${e.i}"><span>No. ${esc(e.d.no)}</span> ${esc(e.d.title)}</a></li>`).join('')}</ul></li>`).join('')}
+ hint.textContent=coarse?'Left thumb walks · drag to look · tap a case or drawer to open':'W A S D to walk · drag to look around · click the floor to go there · click a case or a drawer to open';
+ const bySlot=new Map();for(const s of W.slots)if(s.i>=0&&(!bySlot.has(s.i)||bySlot.get(s.i).kind==='drawer'))bySlot.set(s.i,s); // an exhibit on show is walked to in its case, else to its drawer
+ {const P_=plan(list),li=e=>`<li><a href="${esc('./'+encodeURIComponent(e.d.slug)+'/')}" data-i="${e.i}"><span>No. ${esc(e.d.no)}</span> ${esc(e.d.title)}</a></li>`;
+  dir.innerHTML=P_.rooms.map(r=>`<li class="rm"><b>${esc(r.name)}</b>${r.kind==='gallery'&&r.dates?` <i>${esc(r.dates)}</i>`:''}${r.kind==='stacks'?` <i>${esc(r.ex.length?r.ex.length+' kept only here':'a drawer for each of the '+r.all.length)}</i>`:''}<ul>${r.ex.map(li).join('')}</ul></li>`).join('')}
  dir.addEventListener('click',e=>{const a=e.target.closest('a');if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.button)return;e.preventDefault();goTo(+a.dataset.i);if(mobile)$('plan').classList.remove('open')});
  $('plantoggle').addEventListener('click',()=>$('plan').classList.toggle('open'));
- let shown=-1;const showCard=sl=>{const i=sl?sl.i:-1;if(i===shown)return;shown=i;if(i<0){card.classList.remove('on');return}const d=sl.d;
+ let shown=-1,shownSlot=null;const showCard=sl=>{const i=sl?sl.i:-1;shownSlot=sl;if(i===shown)return;shown=i;if(i<0){card.classList.remove('on');return}const d=sl.d;
   card.innerHTML=`<a href="${esc('./'+encodeURIComponent(d.slug)+'/')}"><b>No. ${esc(d.no)} · ${esc(d.kind)}</b><h2>${esc(d.title)}</h2><p>${esc(d.blurb)}</p><span>Open the exhibit →</span></a>`;card.classList.add('on')};
- card.addEventListener('click',e=>{if(shown>=0&&!(e.metaKey||e.ctrlKey||e.shiftKey||e.button)&&e.target.closest('a')){e.preventDefault();goTo(shown)}});
+ card.addEventListener('click',e=>{if(shown>=0&&!(e.metaKey||e.ctrlKey||e.shiftKey||e.button)&&e.target.closest('a')){e.preventDefault();goTo(shown,shownSlot||undefined)}});
  let toastT=0,lastRoom=-1;const showToast=r=>{toast.innerHTML=`<b>${esc(r.name)}</b><span>${esc(r.kind==='rotunda'?'New acquisition · No. '+(W.centre?W.centre.d.no:''):[r.sub,r.dates].filter(Boolean).join(' · '))}</span>`;toast.classList.add('on');toastT=3.2};
 
  // minimap
@@ -93,14 +104,15 @@ export async function startHall({list,V,openExhibit,esc}){
  function drawMap(vis,cur){const w=mapC.clientWidth,h=mapC.clientHeight;mg.clearRect(0,0,w,h);
   for(const r of W.rooms){const on=vis.has(r.id);mg.fillStyle=r.id===cur?'rgba(217,167,74,.22)':on?'rgba(239,228,204,.08)':'rgba(239,228,204,.04)';mg.strokeStyle=r.id===cur?'#d9a74a':'rgba(239,228,204,.4)';mg.lineWidth=1;
    mg.beginPath();if(r.kind==='rotunda'){for(let k=0;k<8;k++){const a=(k+.5)*Math.PI/4,R_=7.8/Math.cos(Math.PI/8),[x,y]=mp(r.cx+Math.cos(a)*R_,r.cz+Math.sin(a)*R_);k?mg.lineTo(x,y):mg.moveTo(x,y)}mg.closePath()}
-   else{const [x,y]=mp(r.cx-7.8,r.cz-7.8);mg.rect(x,y,15.6*mapScale,15.6*mapScale)}mg.fill();mg.stroke()}
+   else{const [x,y]=mp(r.cx-7.8,r.cz-7.8);mg.rect(x,y,15.6*mapScale,15.6*mapScale)}mg.fill();mg.stroke();
+   if(r.kind==='stacks'){const [x,y]=mp(r.cx-7.2,r.cz-7.2);mg.strokeStyle='rgba(217,167,74,.75)';mg.lineWidth=Math.max(1.5,.6*mapScale);mg.strokeRect(x,y,14.4*mapScale,14.4*mapScale);mg.fillStyle=mg.strokeStyle;mg.font='700 8px "Courier New",monospace';mg.textAlign='center';const [tx,ty]=mp(r.cx,r.cz);mg.fillText('STACKS',tx,ty+3);mg.textAlign='left'}}
   mg.fillStyle='#0b0806';for(const d of DOORS){const [x,y]=mp(d.c.x,d.c.z),hor=Math.abs(d.p[0].x-d.p[1].x)>.1;mg.fillRect(x-(hor?1.5:.5)*mapScale,y-(hor?.5:1.5)*mapScale,(hor?3:1)*mapScale,(hor?1:3)*mapScale)}
-  for(const s of W.slots){const [x,y]=mp(s.center.x,s.center.z);mg.beginPath();mg.arc(x,y,s===mapHover?4:2.6,0,7);mg.fillStyle=s.i>=0?'#'+s.col.getHexString():'rgba(239,228,204,.25)';mg.fill();if(s===mapHover){mg.strokeStyle='#fff';mg.stroke()}}
+  for(const s of W.slots){if(s.kind==='drawer'&&s!==mapHover)continue;const [x,y]=mp(s.center.x,s.center.z);mg.beginPath();mg.arc(x,y,s===mapHover?4:2.6,0,7);mg.fillStyle=s.i>=0?'#'+s.col.getHexString():'rgba(239,228,204,.25)';mg.fill();if(s===mapHover){mg.strokeStyle='#fff';mg.stroke()}}
   const [px,py]=mp(P.x,P.z),fw=-P.yaw-Math.PI/2;mg.fillStyle='rgba(255,226,168,.18)';mg.beginPath();mg.moveTo(px,py);mg.arc(px,py,26,fw-.5,fw+.5);mg.closePath();mg.fill();
   mg.fillStyle='#ffe2a8';mg.beginPath();mg.moveTo(px+Math.cos(fw)*6,py+Math.sin(fw)*6);mg.lineTo(px+Math.cos(fw+2.5)*4.5,py+Math.sin(fw+2.5)*4.5);mg.lineTo(px+Math.cos(fw-2.5)*4.5,py+Math.sin(fw-2.5)*4.5);mg.fill();
   if(mapHover&&mapHover.d){mg.font='700 10px "Courier New",monospace';const t='No. '+mapHover.d.no+' '+mapHover.d.title,tw=mg.measureText(t).width;const [x,y]=mp(mapHover.center.x,mapHover.center.z);
    const bx=Math.max(4,Math.min(w-tw-12,x-tw/2-4));mg.fillStyle='rgba(11,8,6,.9)';mg.fillRect(bx,y-22,tw+8,14);mg.fillStyle='#efe4cc';mg.fillText(t,bx+4,y-12)}}
- const mapPick=e=>{const b=mapC.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;let best=null,bd=9;for(const s of W.slots){if(s.i<0)continue;const [sx,sy]=mp(s.center.x,s.center.z),d=Math.hypot(sx-x,sy-y);if(d<bd){bd=d;best=s}}
+ const mapPick=e=>{const b=mapC.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;let best=null,bd=9;for(const s of W.slots){if(s.i<0||s.kind==='drawer')continue;const [sx,sy]=mp(s.center.x,s.center.z),d=Math.hypot(sx-x,sy-y);if(d<bd){bd=d;best=s}}
   return{slot:best,x:(x-mapOff[0])/mapScale,z:(y-mapOff[1])/mapScale}};
  mapC.addEventListener('pointermove',e=>{mapHover=mapPick(e).slot});mapC.addEventListener('pointerleave',()=>mapHover=null);
  mapC.addEventListener('click',e=>{interact();const m=mapPick(e);if(m.slot)goTo(m.slot.i);else walkTo(m.x,m.z,{fast:true})});
@@ -109,9 +121,11 @@ export async function startHall({list,V,openExhibit,esc}){
  // ---------- walking to things
  function walkTo(x,z,{fast=false,face=null,then=null}={}){const p=nav.path(P.x,P.z,x,z);if(!p||!p.length){then&&then(false);return false}P.path=p;P.fast=fast;P.face=face;P.onArrive=then;
   ring.position.set(p[p.length-1].x,.012,p[p.length-1].z);ring.material.opacity=.9;return true}
- function goTo(i){const sl=bySlot.get(i);if(!sl||A.i>=0||V.open>=0)return;interact();const v=sl.view,d=Math.hypot(P.x-v.x,P.z-v.z);
-  const near=d<2.6&&curRoom()===sl.room&&Math.abs(angDiff(P.yaw,v.yaw))<1.2;if(near){openExhibit(i);return}
-  walkTo(v.x,v.z,{fast:d>9,face:v.yaw,then:okk=>{if(okk!==false)openExhibit(i)}})}
+ // goTo(i) walks to exhibit i's case (or its drawer in the stacks); goTo(i,slot) to that very case or drawer
+ let wantSlot=null;const openAt=(i,sl)=>{wantSlot=sl;openExhibit(i);wantSlot=null};
+ function goTo(i,sl=bySlot.get(i)){if(!sl||A.i>=0||V.open>=0)return;interact();const v=sl.view,d=Math.hypot(P.x-v.x,P.z-v.z);
+  const near=d<2.6&&curRoom()===sl.room&&Math.abs(angDiff(P.yaw,v.yaw))<1.2;if(near){openAt(i,sl);return}
+  walkTo(v.x,v.z,{fast:d>9,face:v.yaw,then:okk=>{if(okk!==false)openAt(i,sl)}})}
  const angDiff=(a,b)=>{let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d};
 
  // ---------- picking
@@ -120,7 +134,9 @@ export async function startHall({list,V,openExhibit,esc}){
  function pick(){ray.setFromCamera(mouse,cam);ray.far=34;const hits=W.proxies.hit.filter(h=>visible.has(h.userData.slot.room));
   const a=ray.intersectObjects(hits,false)[0],w=ray.intersectObjects(W.proxies.wall,false)[0],f=ray.intersectObjects(W.proxies.floor.filter(m=>visible.has(m.userData.room)),false)[0];
   const da=a?a.distance:1e9,dw=w?w.distance:1e9,df=f?f.distance:1e9;
-  if(a&&da<=dw&&da<=df&&da<14)return{slot:a.object.userData.slot};if(f&&df<dw&&nav.freeAt(f.point.x,f.point.z))return{floor:f.point};return{}}
+  if(a&&da<=dw&&da<=df&&da<14)return{slot:a.object.userData.slot};
+  if(W.stacks&&visible.has(W.stacks.room)){const k=W.stacks.pick(ray);if(k&&k.distance<=dw+.05&&k.distance<=df&&k.distance<9)return k.slot?{slot:k.slot}:{}}
+  if(f&&df<dw&&nav.freeAt(f.point.x,f.point.z))return{floor:f.point};return{}}
 
  // ---------- input
  let drag=null,intro=RM||FIXED&&Q.has('noIntro')?1:0,introFast=false;const interact=()=>{if(intro<1)introFast=true}; // touching anything lands the fly-in quickly instead of cutting
@@ -136,14 +152,14 @@ export async function startHall({list,V,openExhibit,esc}){
    if(drag.moved>5){yawT+=dx*LOOK*(coarse?1.25:1);pitchT=Math.max(-1.15,Math.min(1.2,pitchT+dy*LOOK*(coarse?1.25:1)));cv.classList.add('drag');P.face=null}}});
  const endPtr=e=>{if(joy.on&&e.pointerId===joy.id){joy.on=false;joy.x=joy.y=0;joyEl.classList.remove('on');return}
   if(!drag||e.pointerId!==drag.id)return;const was=drag;drag=null;cv.classList.remove('drag');
-  if(e.type==='pointerup'&&was.moved<=6){setMouse(e);const h=pick();if(h.slot)goTo(h.slot.i);else if(h.floor)walkTo(h.floor.x,h.floor.z)}
+  if(e.type==='pointerup'&&was.moved<=6){setMouse(e);const h=pick();if(h.slot)goTo(h.slot.i,h.slot);else if(h.floor)walkTo(h.floor.x,h.floor.z)}
   if(e.pointerType!=='mouse')mouse.set(9,9)};
  cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
  cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!drag)mouse.set(9,9)});
- addEventListener('wheel',e=>{if(A.i>=0||V.open>=0||e.target.closest&&e.target.closest('#plan'))return;interact();P.path=null;wheelV-=e.deltaY*(e.deltaMode?.6:.012);wheelV=Math.max(-6,Math.min(6,wheelV));e.preventDefault()},{passive:false});
+ addEventListener('wheel',e=>{if(A.i>=0||V.open>=0||e.target.closest&&e.target.closest('#plan,#stacks'))return;interact();P.path=null;wheelV-=e.deltaY*(e.deltaMode?.6:.012);wheelV=Math.max(-6,Math.min(6,wheelV));e.preventDefault()},{passive:false});
  addEventListener('keydown',e=>{if(A.i>=0||V.open>=0||e.metaKey||e.ctrlKey||e.altKey)return;if(e.target.closest&&e.target.closest('input,textarea'))return;const k=e.key.toLowerCase();
   if(['w','a','s','d','q','e','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(k)){keys.add(k);interact();P.path=null;P.face=null;if(k.startsWith('arrow'))e.preventDefault()}
-  if(e.key==='Enter'&&hover)goTo(hover.i)});
+  if(e.key==='Enter'&&hover)goTo(hover.i,hover)});
  addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));addEventListener('blur',()=>keys.clear());
  addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight);if(comp){comp.setSize(innerWidth,innerHeight);bloom.setSize(innerWidth,innerHeight)}mapFit();W.dustMat.uniforms.px.value=PR*(innerHeight/900)});
 
@@ -151,7 +167,7 @@ export async function startHall({list,V,openExhibit,esc}){
  const A={i:-1,t:0,dir:0,cb:null,dur:1.6,slot:null,from:{p:new THREE.Vector3(),q:new THREE.Quaternion()}};const flood=$('flood');
  const toP=new THREE.Vector3(),toQ=new THREE.Quaternion(),mtx=new THREE.Matrix4();
  const placeAt=sl=>{P.x=sl.view.x;P.z=sl.view.z;P.yaw=yawT=sl.view.yaw;P.pitch=pitchT=-.05;P.vx=P.vz=0;P.path=null;intro=1};
- V.enter=(i,cb,instant)=>{const sl=bySlot.get(i);if(!sl){cb&&cb();return}P.path=null;
+ V.enter=(i,cb,instant)=>{const sl=wantSlot&&wantSlot.i===i?wantSlot:bySlot.get(i);if(!sl){cb&&cb();return}P.path=null;
   const far=Math.hypot(P.x-sl.view.x,P.z-sl.view.z)>4||curRoom()!==sl.room;if(instant||far)placeAt(sl);
   syncCam(0);A.from.p.copy(cam.position);A.from.q.copy(cam.quaternion);A.i=i;A.slot=sl;A.cb=cb;
   if(instant){A.t=1;A.dir=0;sl.open(1);applyEnter(1)}else{A.t=0;A.dir=1}};
@@ -159,6 +175,23 @@ export async function startHall({list,V,openExhibit,esc}){
  function applyEnter(u){const sl=A.slot;mtx.lookAt(sl.enter.pos,sl.enter.look,cam.up);toQ.setFromRotationMatrix(mtx);toP.copy(sl.enter.pos);
   const ec=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2,cm=Math.min(1,ec*1.15);cam.position.lerpVectors(A.from.p,toP,cm);cam.quaternion.slerpQuaternions(A.from.q,toQ,cm);
   sl.open(Math.max(0,Math.min(1,(u-.35)/.4)));const fl=Math.max(0,(u-.6)/.4);flood.style.opacity=(fl*fl).toFixed(3);sl.h=Math.max(sl.h,u);cam.updateMatrixWorld()}
+
+ // ---------- room streaming: rooms within a door (or in sight) get their labels, pictures and mini exhibits; three doors away they are freed again
+ const FAR=3;let hop=[],hopFrom=-1;
+ const hops=from=>{const d=W.rooms.map(()=>1e9),q=[from];d[from]=0;while(q.length){const a=q.shift();for(const b of W.rooms[a].adj)if(d[b]>d[a]+1){d[b]=d[a]+1;q.push(b)}}return d};
+ function wake(r){r.loaded=true;r.gen=(r.gen||0)+1;for(const L of W.lazy)if(L.room===r.id)L.run(r.gen);for(const s of W.specs)if(s.room===r.id)loadSpec(s);withEnv(r.group)}
+ function sleep(r){r.loaded=false;for(const L of W.lazy)if(L.room===r.id&&L.free)L.free();W.ogQueue=W.ogQueue.filter(q=>q.room!==r.id);for(const s of W.specs)if(s.room===r.id)freeSpec(s)}
+ const LP=W.lightPoints.map(l=>({room:l.room,light:{pos:l.pos,target:l.target},center:l.target,h:0,angle:.62,power:120})); // broad washes over the stacks' cabinets
+
+ // ---------- the stacks' filter: lane and year chips; matching drawers stand proud
+ const stEl=$('stacks');let stOn=false;
+ function applyFilter(lane,year){if(!W.stacks)return 0;const n=W.stacks.setFilter(lane,year),F=W.stacks.filter;
+  for(const b of stEl.querySelectorAll('button'))b.classList.toggle('on',b.dataset.lane!=null?b.dataset.lane===F.lane:b.dataset.year===F.year);
+  $('sthits').textContent=F.lane==='all'&&F.year==='all'?`${W.stacks.filled} exhibits · ${W.stacks.drawers} drawers`:`${n} drawer${n===1?'':'s'} pulled forward`;return n}
+ if(W.stacks){const C=W.stacks.counts,chip=(k,v,label,n)=>`<button type="button" data-${k}="${esc(v)}"${n?'':' disabled'}>${esc(label)} <i>${n}</i></button>`;
+  $('stlane').innerHTML=chip('lane','all','All',W.stacks.filled)+Object.entries(LANES).map(([k,l])=>chip('lane',k,l,C.lane[k]||0)).join('');
+  $('styear').innerHTML=chip('year','all','All years',W.stacks.filled)+Object.keys(C.year).sort().map(y=>chip('year',y,y,C.year[y])).join('');
+  stEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;interact();const F=W.stacks.filter;applyFilter(b.dataset.lane??F.lane,b.dataset.year??F.year)});applyFilter('all','all')}
 
  // ---------- loop
  let T=0,frame=0,lastNow=performance.now(),fpsAcc=0,fpsN=0,fpsT=0,quality=hi?3:1,spotTick=0;
@@ -195,8 +228,10 @@ export async function startHall({list,V,openExhibit,esc}){
    else if(!A.dir&&V.open>=0)flood.style.opacity=0}
   else syncCam(dt);
   // rooms
-  const cur=curRoom();visible=visibleRooms(cur);const warm=new Set([...visible,...W.rooms[cur].adj]);for(const r of W.rooms){const v=visible.has(r.id);if(r.group.visible!==v)r.group.visible=v;if(warm.has(r.id)&&!r.loaded){r.loaded=true;for(const L of W.lazy)if(L.room===r.id)L.run();withEnv(r.group)}}
+  const cur=curRoom();visible=visibleRooms(cur);const warm=new Set([...visible,...W.rooms[cur].adj]);if(cur!==hopFrom){hopFrom=cur;hop=hops(cur)}
+  for(const r of W.rooms){const v=visible.has(r.id);if(r.group.visible!==v)r.group.visible=v;if(warm.has(r.id)&&!r.loaded)wake(r);else if(r.loaded&&hop[r.id]>=FAR&&!(A.slot&&A.slot.room===r.id))sleep(r)}
   if(cur!==lastRoom){if(lastRoom>=0||intro>=1)showToast(W.rooms[cur]);lastRoom=cur}
+  {const inSt=!!W.stacks&&cur===W.stacks.room;if(inSt!==stOn){stOn=inSt;stEl.classList.toggle('on',inSt);document.body.classList.toggle('in-stacks',inSt)}}
   if(toastT>0){toastT-=dt;if(toastT<=0)toast.classList.remove('on')}
   // hover & card
   hover=null;floorHit=null;if(A.i<0&&V.open<0&&!(drag&&drag.moved>5)&&mouse.x<5){const h=pick();hover=h.slot||null;floorHit=h.floor||null}
@@ -205,15 +240,16 @@ export async function startHall({list,V,openExhibit,esc}){
   let near=null,nd=3.4;if(!hover&&A.i<0){fwd.set(-Math.sin(P.yaw),0,-Math.cos(P.yaw));for(const s of W.slots){if(s.i<0||s.room!==cur)continue;tmp.set(s.center.x-P.x,0,s.center.z-P.z);const d=tmp.length();if(d<nd&&tmp.normalize().dot(fwd)>.8){nd=d;near=s}}}
   const focus=A.i>=0?A.slot:hover||near;showCard(A.i>=0||V.open>=0?null:focus);
   // exhibits
-  for(const s of W.slots){if(s.i<0||!visible.has(s.room))continue;const isF=s===focus;s.h+=((isF?1:0)-s.h)*Math.min(1,dt*6);
+  for(const s of W.slots){if(s.i<0||s.kind==='drawer'||!visible.has(s.room))continue;const isF=s===focus;s.h+=((isF?1:0)-s.h)*Math.min(1,dt*6);
    const dist=Math.hypot(s.center.x-cam.position.x,s.center.z-cam.position.z);
    if(!RM){s.spec.rotation.y=Math.sin(T*.35+s.i)*.6+s.h*Math.sin(T*1.2)*.3;if(s.xb.tick&&(dist<13||s.h>.05))s.xb.tick(T+s.i,dt,s.h)}
    s.spec.position.y=(s.kind==='jar'?1.76:1.54)+(RM?0:Math.sin(T*1.5+s.i)*.035)+s.h*.04;
    s.xb.mats.forEach(m=>m.emissiveIntensity=(m.userData.b??=m.emissiveIntensity)+s.h*1.0);s.halo.material.opacity=.22+s.h*.5;s.halo.scale.setScalar((s.kind==='jar'?1.9:1.25)+s.h*.6)}
-  // spot pool: the nearest lit cases in view get a real light
-  if(--spotTick<=0){spotTick=10;const c=W.slots.filter(s=>s.i>=0&&s.kind==='case'&&visible.has(s.room)).map(s=>[s,Math.hypot(s.center.x-P.x,s.center.z-P.z)]).sort((a,b)=>a[1]-b[1]).slice(0,NS);
-   spots.forEach((sp,k)=>{const e=c[k];sp.userData.s=e?e[0]:null;if(e){sp.position.copy(e[0].light.pos);sp.target.position.copy(e[0].light.target);sp.target.updateMatrixWorld()}})}
-  spots.forEach(sp=>{const s=sp.userData.s;const want=s?85*(1+s.h*.8):0;sp.intensity+=(want-sp.intensity)*Math.min(1,dt*8)});
+  if(W.stacks&&visible.has(W.stacks.room)){W.stacks.detail(cur===W.stacks.room||W.rooms[cur].adj.includes(W.stacks.room));W.stacks.tick(dt,focus&&focus.kind==='drawer'?focus:null)}
+  // spot pool: the nearest lit cases (and the stacks' cabinet washers) in view get a real light
+  if(--spotTick<=0){spotTick=10;const c=W.slots.filter(s=>s.i>=0&&s.kind==='case'&&visible.has(s.room)).concat(LP.filter(l=>visible.has(l.room))).map(s=>[s,Math.hypot(s.center.x-P.x,s.center.z-P.z)]).sort((a,b)=>a[1]-b[1]).slice(0,NS);
+   spots.forEach((sp,k)=>{const e=c[k];sp.userData.s=e?e[0]:null;if(e){sp.position.copy(e[0].light.pos);sp.target.position.copy(e[0].light.target);sp.target.updateMatrixWorld();sp.angle=e[0].angle||.36;sp.penumbra=e[0].angle?.85:.7}})}
+  spots.forEach(sp=>{const s=sp.userData.s;const want=s?(s.power||85)*(1+s.h*.8):0;sp.intensity+=(want-sp.intensity)*Math.min(1,dt*8)});
   if(W.centre){key.intensity=900*(1+W.centre.h*.5)*(visible.has(0)?1:0)}
   // ambience
   W.shaftMats.shaft.uniforms.t.value=RM?0:T;W.dustMat.uniforms.t.value=RM?0:T;if(fin){fin.uniforms.t.value=FIXED?0:T%10}
@@ -222,7 +258,8 @@ export async function startHall({list,V,openExhibit,esc}){
  // og plates load two at a time, rooms in view first
  let ogBusy=0;const ogLoader=new THREE.TextureLoader();
  function pumpOg(){while(ogBusy<2&&W.ogQueue.length){let k=W.ogQueue.findIndex(q=>visible.has(q.room));if(k<0)k=0;const q=W.ogQueue.splice(k,1)[0];ogBusy++;
-  ogLoader.load(q.url,t=>{ogBusy--;q.apply(t)},undefined,()=>{ogBusy--})}}
+  const live=()=>{const r=W.rooms[q.room];return r.loaded&&r.gen===q.gen};const ok=t=>{ogBusy--;if(live())q.apply(t);else t.dispose()};
+  ogLoader.load(q.url,ok,undefined,()=>{if(q.alt&&live())ogLoader.load(q.alt,ok,undefined,()=>{ogBusy--});else ogBusy--})}}
  function render(){if(comp)comp.render();else R.render(S,cam)}
 
  // ---------- adaptive quality (high tier only): step down resolution, then bloom, when frames run long
@@ -230,14 +267,18 @@ export async function startHall({list,V,openExhibit,esc}){
   if(avg>1/42&&quality>0){quality--;if(quality===2){PR=Math.max(1,PR-.35)}else if(quality===1){PR=1}else if(quality===0){bloom.enabled=false}
    R.setPixelRatio(PR);comp.setPixelRatio(PR);comp.setSize(innerWidth,innerHeight);W.dustMat.uniforms.px.value=PR*(innerHeight/900)}}
 
+ // the rooms around the start are dressed before the veil lifts (their mini exhibits included, up to a few seconds' wait)
+ {const c0=curRoom(),w0=new Set([c0,...W.rooms[c0].adj]);for(const id of w0)wake(W.rooms[id]);
+  await Promise.race([Promise.all(W.specs.filter(r=>w0.has(r.room)).map(r=>r.p)),new Promise(r=>setTimeout(r,FIXED?20000:5000))])}
  // compile every material up front (in parallel where the driver allows) so the first walk through a door does not hitch
  W.rooms.forEach(r=>r.group.visible=true);syncCam(0);try{if(R.extensions.has('KHR_parallel_shader_compile'))await R.compileAsync(S,cam);else R.compile(S,cam)}catch(_){}
  const readyMs=performance.now()-t0;document.getElementById('veil').style.opacity=0;
  const state=()=>({ready:true,tier,quality,pixelRatio:PR,buildMs:Math.round(buildMs),readyMs:Math.round(readyMs),timing:{tex:Math.round(tTex),hall:Math.round(tHall),nav:Math.round(buildMs-tTex-tHall),env:Math.round(tEnv)},x:+P.x.toFixed(3),z:+P.z.toFixed(3),yaw:+P.yaw.toFixed(3),pitch:+P.pitch.toFixed(3),room:curRoom(),
   visible:[...visible],walking:!!P.path,path:P.path?P.path.map(p=>[+p.x.toFixed(2),+p.z.toFixed(2)]):null,hover:hover?hover.i:-1,card:shown,intro,open:A.i,doorT:A.t,
   rooms:W.rooms.map(r=>({id:r.id,name:r.name,kind:r.kind,cx:r.cx,cz:r.cz,adj:r.adj,ex:r.ex.map(e=>e.d.slug)})),slots:W.slots.map(s=>({i:s.i,slug:s.d?s.d.slug:null,room:s.room,q:s.q,x:+s.center.x.toFixed(2),z:+s.center.z.toFixed(2),view:s.view||null})),
-  calls:R.info.render.calls,tris:R.info.render.triangles,textures:R.info.memory.textures,geometries:R.info.memory.geometries,frame,T:+T.toFixed(3)});
- const api={state,goTo,walkTo,teleport:(x,z,yaw=P.yaw,pitch=0)=>{P.x=x;P.z=z;P.yaw=yawT=yaw;P.pitch=pitchT=pitch;P.vx=P.vz=0;P.path=null;intro=1},
+  calls:R.info.render.calls,tris:R.info.render.triangles,textures:R.info.memory.textures,geometries:R.info.memory.geometries,frame,T:+T.toFixed(3),
+  loaded:W.rooms.filter(r=>r.loaded).map(r=>r.id),specs:{total:W.specs.length,live:W.specs.filter(r=>r.state===2).length,loads:specLoads,fails:specFails},stacks:W.stacks?W.stacks.state():null});
+ const api={state,goTo,walkTo,filter:applyFilter,teleport:(x,z,yaw=P.yaw,pitch=0)=>{P.x=x;P.z=z;P.yaw=yawT=yaw;P.pitch=pitchT=pitch;P.vx=P.vz=0;P.path=null;intro=1},
   look:(yaw,pitch)=>{yawT=yaw;pitchT=pitch;P.yaw=yaw;P.pitch=pitch},key:(k,on)=>on?keys.add(k):keys.delete(k),nav,THREE,R,S,cam,W,A,P};
  window.__archive=api;
  if(V.open>=0)V.enter(V.open,null,true); // a deep link opened the viewer before the hall was ready

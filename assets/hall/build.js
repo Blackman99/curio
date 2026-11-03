@@ -1,13 +1,21 @@
 // Curio hall · the building: floor plan, rooms, cases, signage and the baked light. main.js drives it.
-// Plan: an octagonal rotunda holds the newest exhibit; galleries of eight wall cases spiral out around it on a 16 m grid
-// (N, NE, E, SE, S, …). Every exhibit keeps its place as the collection grows: No. k sits in gallery ⌊(k-1)/8⌋, slot (k-1)%8.
+// Plan: an octagonal rotunda holds the newest exhibit; eight galleries of eight wall cases ring it on a 16 m grid
+// (N, NE, E, SE, S, SW, W, NW). No. k sits in gallery ⌊(k-1)/8⌋, slot (k-1)%8, and gallery g stands in ring cell g mod 8:
+// the permanent show is the newest eight galleries, so a ninth gallery takes the cell of the oldest one.
+// North of the north gallery, The Stacks keeps a card-catalogue drawer for every exhibit ever shown, so the building
+// stays the same size however long the collection grows.
 import {mulberry,canvas} from './tex.js';
 
 export const K={CELL:16,IN:7.8,GH:5.6,DWH:1.5,DH:4.2,LA:3.5,LW:6.5,LP:8.4,SLOT:4.4,CD:.8,RH:8.2,EYE:1.62,HL:7.8*Math.tan(Math.PI/8)};
+// the stacks' card-catalogue cabinets: depth, height, drawer pitch, rows, lowest drawer, drawer front size
+export const CAB={D:.6,H:2.3,PX:.36,PY:.22,ROWS:9,Y0:.2,W:.34,HT:.2,T:.025};
 export const MOON=[-.25,1,.18];               // toward the moon: a point at height h throws its shadow (+.25h, -.18h) away
 const MX=.25,MZ=-.18;
 export const SERIF='"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif',MONO='"Courier New",Courier,monospace';
-const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV'];
+const roman=n=>{let s='';for(const [v,r] of [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']])while(n>=v){s+=r;n-=v}return s};
+export const ON_SHOW=8; // galleries kept on the floor
+export const LANES={'3d':'Machines & models',web:'Web platform',science:'Science & maths',ml:'AI · ML'};
+export const laneOf=d=>LANES[d&&d.lane]?d.lane:'ml';
 const WALLC=['#8c3326','#2e6450','#37507f','#8a6430','#673b6c','#386a6f','#7c3d28','#525866'];
 const SIDES=['n','e','s','w'],SD={n:[0,-1],e:[1,0],s:[0,1],w:[-1,0]};
 const WF={n:{t:[1,0],n:[0,1]},e:{t:[0,1],n:[-1,0]},s:{t:[-1,0],n:[0,-1]},w:{t:[0,-1],n:[1,0]}};
@@ -21,17 +29,21 @@ function spiral(n){const out=[];for(let r=1;out.length<n;r++){for(let x=0;x<=r;x
 
 export function plan(list){
  const chrono=list.map((d,i)=>({d,i})).sort((a,b)=>String(a.d.no).localeCompare(String(b.d.no))||String(a.d.date).localeCompare(String(b.d.date)));
- const newest=chrono.length?chrono[chrono.length-1]:null,rest=chrono.slice(0,-1),G=Math.max(1,Math.ceil(rest.length/8));
- const rooms=[{id:0,kind:'rotunda',ci:0,cj:0,cx:0,cz:0,name:'The Rotunda',sub:'New acquisition',ex:newest?[newest]:[]}];
- spiral(G).forEach(([ci,cj],g)=>{const ex=rest.slice(g*8,g*8+8),a=ex[0],b=ex[ex.length-1];
-  rooms.push({id:g+1,kind:'gallery',gi:g,ci,cj,cx:ci*K.CELL,cz:cj*K.CELL,name:'Gallery '+ROMAN[g%ROMAN.length],ex,color:WALLC[g%WALLC.length],
-   sub:a?`Nos. ${a.d.no} – ${String(g*8+8).padStart(3,'0')}`:'',dates:a?dateSpan(a.d.date,b.d.date):''})});
+ const newest=chrono.length?chrono[chrono.length-1]:null,rest=chrono.slice(0,-1),G=Math.max(1,Math.ceil(rest.length/8)),g0=Math.max(0,G-ON_SHOW);
+ const rooms=[{id:0,kind:'rotunda',ci:0,cj:0,cx:0,cz:0,name:'The Rotunda',sub:'New acquisition',ex:newest?[newest]:[]}],ring=spiral(ON_SHOW);
+ for(let g=g0;g<G;g++){const [ci,cj]=ring[g%ON_SHOW],ex=rest.slice(g*8,g*8+8),a=ex[0],b=ex[ex.length-1];
+  rooms.push({id:rooms.length,kind:'gallery',gi:g,ci,cj,cx:ci*K.CELL,cz:cj*K.CELL,name:'Gallery '+roman(g+1),ex,color:WALLC[g%WALLC.length],
+   sub:a?`Nos. ${a.d.no} – ${String(g*8+8).padStart(3,'0')}`:'',dates:a?dateSpan(a.d.date,b.d.date):''})}
+ // The Stacks: every exhibit has a drawer here; the ones that have left the galleries live only here
+ const archived=rest.slice(0,g0*8);
+ rooms.push({id:rooms.length,kind:'stacks',ci:0,cj:-2,cx:0,cz:-2*K.CELL,name:'The Stacks',sub:'A drawer for every exhibit',ex:archived,all:chrono,color:'#4a3a2a',
+  dates:chrono.length?dateSpan(chrono[0].d.date,chrono[chrono.length-1].d.date):''});
  const at=new Map(rooms.map(r=>[r.ci+','+r.cj,r.id]));
  for(const r of rooms){r.doors={};r.adj=[];for(const s of SIDES){const j=at.get((r.ci+SD[s][0])+','+(r.cj+SD[s][1]));r.doors[s]=j??null;if(j!=null)r.adj.push(j)}}
- return{rooms,newest,chrono}}
+ return{rooms,newest,chrono,archived,shown:rest.slice(g0*8)}}
 
 // ---------------------------------------------------------------------------------------------------------------
-export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
+export function buildHall(T,{G,X,BGU,list,tier,aniso}){
  const V3=T.Vector3,hi=tier==='high',{rooms,newest}=plan(list),IN=K.IN,GH=K.GH,DWH=K.DWH,DH=K.DH;
  const tex=(c,srgb=true)=>{const t=new T.CanvasTexture(c);if(srgb)t.colorSpace=T.SRGBColorSpace;t.anisotropy=aniso;return t};
  const cl=(t,rx,ry=rx,rot=0)=>{const c=t.clone();c.repeat.set(rx,ry);c.rotation=rot;c.needsUpdate=true;return c};
@@ -143,18 +155,20 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
  function lanternBars(){const A=new V3(0,K.LP,0),C=[[-K.LA,-K.LA],[K.LA,-K.LA],[K.LA,K.LA],[-K.LA,K.LA]].map(([x,z])=>new V3(x,K.LW,z)),out=[];
   for(let k=0;k<4;k++){const a=C[k],b=C[(k+1)%4];out.push([a,A],[a,b]);for(let f=1;f<6;f++)out.push([a.clone().lerp(b,f/6),A]);for(const g of [1/3,2/3])out.push([a.clone().lerp(A,g),b.clone().lerp(A,g)])}return out}
  const bakeCache={};
- function galleryFloorBake(mask){const key='gf'+SIDES.map(s=>mask[s]?1:0).join('');if(bakeCache[key])return bakeCache[key];
+ function galleryFloorBake(mask,st=false){const key='gf'+(st?'s':'')+SIDES.map(s=>mask[s]?1:0).join('');if(bakeCache[key])return bakeCache[key];
+  const inset=st?CAB.D:0; // the stacks' cabinets stand 0.6 m out from the walls: shade along their plinths instead
   const S=512,a=canvas(S,S),g=a.getContext('2d'),l=canvas(S,S),h=l.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,S,S);
   // ambient occlusion along the walls, open at doorways
   for(const s of SIDES){const f=WF[s];for(const [s0,s1] of mask[s]?[[-IN,-DWH-.15],[DWH+.15,IN]]:[[-IN,IN]]){
-   const P=[0,1].map(k=>{const sv=k?s1:s0;return[-f.n[0]*IN+f.t[0]*sv,-f.n[1]*IN+f.t[1]*sv]}),Q=P.map(p=>[p[0]+f.n[0]*1.1,p[1]+f.n[1]*1.1]);
+   const P=[0,1].map(k=>{const sv=k?s1:s0;return[-f.n[0]*(IN-inset)+f.t[0]*sv,-f.n[1]*(IN-inset)+f.t[1]*sv]}),Q=P.map(p=>[p[0]+f.n[0]*1.1,p[1]+f.n[1]*1.1]);
    const gr=g.createLinearGradient(px16(P[0][0]),px16(P[0][1]),px16(Q[0][0]),px16(Q[0][1]));gr.addColorStop(0,'rgba(0,0,0,.5)');gr.addColorStop(.25,'rgba(0,0,0,.18)');gr.addColorStop(1,'rgba(0,0,0,0)');
    g.fillStyle=gr;g.beginPath();g.moveTo(px16(P[0][0]),px16(P[0][1]));g.lineTo(px16(P[1][0]),px16(P[1][1]));g.lineTo(px16(Q[1][0]),px16(Q[1][1]));g.lineTo(px16(Q[0][0]),px16(Q[0][1]));g.fill()}}
-  for(const s of SIDES)for(const sv of [-K.SLOT,K.SLOT]){const f=WF[s],x=-f.n[0]*IN+f.t[0]*sv+f.n[0]*K.CD,z=-f.n[1]*IN+f.t[1]*sv+f.n[1]*K.CD;
+  if(!st)for(const s of SIDES)for(const sv of [-K.SLOT,K.SLOT]){const f=WF[s],x=-f.n[0]*IN+f.t[0]*sv+f.n[0]*K.CD,z=-f.n[1]*IN+f.t[1]*sv+f.n[1]*K.CD;
    softRect(g,px16(x-.6),px16(z-.6),1.2*32,1.2*32,18,.75);softRect(g,px16(x-.54),px16(z-.54),1.08*32,1.08*32,5,.8)}
-  softRect(g,px16(-1.02),px16(-.3),2.04*32,.6*32,10,.55);for(const [x,z] of [[-.85,-.2],[.85,-.2],[-.85,.2],[.85,.2]])softRect(g,px16(x-.05),px16(z-.05),3.2,3.2,4,.6);
+  if(st){softRect(g,px16(-1.25),px16(-.52),2.5*32,1.04*32,18,.5);for(const [x,z] of [[-1.1,-.4],[1.1,-.4],[-1.1,.4],[1.1,.4]])softRect(g,px16(x-.05),px16(z-.05),3.2,3.2,4,.6)}
+  else{softRect(g,px16(-1.02),px16(-.3),2.04*32,.6*32,10,.55);for(const [x,z] of [[-.85,-.2],[.85,-.2],[-.85,.2],[.85,.2]])softRect(g,px16(x-.05),px16(z-.05),3.2,3.2,4,.6)}
   h.fillStyle='#000';h.fillRect(0,0,S,S);h.globalCompositeOperation='lighter';
-  for(const s of SIDES)for(const sv of [-K.SLOT,K.SLOT]){const f=WF[s],x=-f.n[0]*IN+f.t[0]*sv+f.n[0]*1.55,z=-f.n[1]*IN+f.t[1]*sv+f.n[1]*1.55;
+  for(const s of SIDES)for(const sv of st?[-4.6,0,4.6]:[-K.SLOT,K.SLOT]){if(st&&mask[s]&&!sv)continue;const f=WF[s],x=-f.n[0]*IN+f.t[0]*sv+f.n[0]*1.55,z=-f.n[1]*IN+f.t[1]*sv+f.n[1]*1.55;
    const gr=h.createRadialGradient(px16(x),px16(z),0,px16(x),px16(z),1.9*32);gr.addColorStop(0,'rgba(255,190,120,.8)');gr.addColorStop(.5,'rgba(255,170,100,.3)');gr.addColorStop(1,'rgba(255,160,90,0)');h.fillStyle=gr;h.fillRect(0,0,S,S)}
   {const gr=h.createRadialGradient(256,256,0,256,256,7.5*32);gr.addColorStop(0,'rgba(140,112,90,.45)');gr.addColorStop(1,'rgba(110,88,70,.3)');h.fillStyle=gr;h.fillRect(0,0,S,S)}
   moonPatch(h);
@@ -184,7 +198,7 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
   const A=tex(a,false),Lm=tex(l);for(const t of [A,Lm])t.channel=1;return bakeCache.c={ao:A,lm:Lm}}
 
  // ---------------- world containers
- const world={rooms:[],slots:[],shapes:[],proxies:{floor:[],wall:[],hit:[]},shafts:[],dust:[],M,K,start:{x:0,z:5.4,yaw:0},lazy:[],ogQueue:[]};
+ const world={rooms:[],slots:[],shapes:[],proxies:{floor:[],wall:[],hit:[]},shafts:[],dust:[],M,K,start:{x:0,z:5.4,yaw:0},lazy:[],ogQueue:[],specs:[],lightPoints:[],stacks:null};
  const dynamic=[];
 
  // ---------------- case pieces shared by all wall cases
@@ -207,16 +221,16 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
   for(const g of CG.static)add('glass',g.clone(),Mc)}
  // the dynamic part of a case: door, specimen, halo, pick box
  const dotT=tex((()=>{const c=canvas(64,64),g=c.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(.4,'rgba(255,255,255,.35)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c})());
- function specimen(d,scale){const col=new T.Color(d.color||'#c8321e');let X=EXHIBITS[d.exhibit];
-  if(!X){console.warn('Curio: demo '+d.slug+' has no exhibit builder; add one to assets/exhibits.js');X=(T,c)=>{const m=new T.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.4});return{obj:new T.Mesh(new T.IcosahedronGeometry(.4,1),m),mats:[m]}}}
-  const xb=X(T,col),spec=new T.Group();spec.add(xb.obj);spec.userData.x=xb;spec.scale.setScalar(scale);return{spec,col,xb}}
+ // the mini exhibit itself is fetched later from /<slug>/mini.js (main.js loads it when its room comes near): an empty stand-in until then
+ function specimen(d,scale,room){const col=new T.Color(d.color||'#c8321e'),spec=new T.Group(),xb={obj:null,mats:[],tick:null,stub:true};spec.scale.setScalar(scale);
+  const rec={room,d,col,spec,slot:null,state:0};world.specs.push(rec);return{spec,col,xb,rec}}
  function caseDynamic(room,Mc,e,q){const grp=new T.Group();Mc.decompose(grp.position,grp.quaternion,grp.scale);
   if(!e){const n=new V3(0,0,1).applyQuaternion(grp.quaternion),c=at(Mc,0,PB+PH/2,0);const slot={i:-1,d:null,room:room.id,q,kind:'sealed',grp,center:c,normal:n,h:0,sealed:true};world.slots.push(slot);return slot}
   const door=new T.Group();door.position.set(-PANE/2,PB+PH/2,PANE/2);door.add(new T.Mesh(CG.door,M.glass));door.add(new T.Mesh(CG.doorFrame,M.brass));
   const lock=new T.Mesh(box(.03,.07,.018),M.brass);lock.position.set(PANE-.04,0,.012);door.add(lock);grp.add(door);
   const hit=new T.Mesh(new T.BoxGeometry(1.12,2.3,1.12),new T.MeshBasicMaterial({visible:false}));hit.position.y=1.15;grp.add(hit);
-  let spec=null,halo=null,col=new T.Color('#776655'),xb=null;
-  if(e){({spec,col,xb}=specimen(e.d,.92));spec.position.y=PB+PH/2+.02;grp.add(spec);
+  let spec=null,halo=null,col=new T.Color('#776655'),xb=null,rec=null;
+  if(e){({spec,col,xb,rec}=specimen(e.d,.92,room.id));spec.position.y=PB+PH/2+.02;grp.add(spec);
    halo=new T.Sprite(new T.SpriteMaterial({map:dotT,color:col,transparent:true,blending:T.AdditiveBlending,depthWrite:false,opacity:.3}));halo.scale.setScalar(1.3);halo.position.set(0,PB+PH/2,-.15);grp.add(halo)}
   room.group.add(grp);
   const n=new V3(0,0,1).applyQuaternion(grp.quaternion),c=at(Mc,0,PB+PH/2,0);
@@ -224,14 +238,88 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
    open:u=>{door.rotation.y=-(1-Math.pow(1-u,3))*1.95},
    light:{pos:at(Mc,0,GH-.12,K.IN-3.9-K.CD+0),target:c.clone().setY(1.25)},
    view:{x:c.x+n.x*1.9,z:c.z+n.z*1.9,yaw:Math.atan2(n.x,n.z)},enter:{pos:c.clone().addScaledVector(n,.98),look:c.clone()}};
-  hit.userData.slot=slot;world.proxies.hit.push(hit);world.slots.push(slot);return slot}
+  if(rec)rec.slot=slot;hit.userData.slot=slot;world.proxies.hit.push(hit);world.slots.push(slot);return slot}
+
+
+ // ---------------- the stacks: card-catalogue cabinets along the walls, one drawer per exhibit, oldest first
+ // (north wall left to right, then east, the two runs beside the south door, then west; each column top to bottom)
+ function catalogue(add,room,WM,mask,wp){const D=CAB.D,places=[],Hc=CAB.H-.1;
+  for(const s of SIDES){const m=WM[s],segs=mask[s]?[[-IN+D,-DWH-.3],[DWH+.3,IN-D]]:[[-IN+D,IN-D]];
+   for(const [a,b] of segs){const L=b-a,mid=(a+b)/2;
+    add('walnutD',box(L,Hc,D-.02,mid,.1+Hc/2,(D-.02)/2),m);add('black',box(L-.02,.1,.02,mid,.05,D-.09),m);
+    add('walnut',rb(L+.03,.05,D+.03,.01,mid,CAB.H+.025,D/2),m);add('walnut',rb(L+.08,.07,D+.08,.012,mid,CAB.H+.085,D/2+.02),m);
+    add('brass',G.rod(new V3(a+.04,CAB.H-.07,D+.035),new V3(b-.04,CAB.H-.07,D+.035),.011),m); // ladder rail
+    const n=Math.floor((L-.04)/CAB.PX),pad=(L-n*CAB.PX)/2;
+    for(let c=0;c<n;c++)for(let r=0;r<CAB.ROWS;r++)places.push({s,m,sv:a+pad+CAB.PX*(c+.5),y:CAB.Y0+CAB.PY*(CAB.ROWS-1-r)+CAB.PY/2});
+    world.shapes.push({type:'seg',a:wp(s,a,D),b:wp(s,b,D),room:room.id});
+    world.proxies.wall.push(new T.Mesh(new T.PlaneGeometry(L,CAB.H+.12).translate(mid,(CAB.H+.12)/2,D).applyMatrix4(m)))}
+   if(mask[s])for(const e of [-DWH-.3,DWH+.3])world.shapes.push({type:'seg',a:wp(s,e,0),b:wp(s,e,D),room:room.id});
+   // track spots washing the cabinet fronts
+   for(const sv of [-4.6,0,4.6]){if(mask[s]&&!sv)continue;const lp=at(m,sv*.85,GH-.16,IN-3.9),tg=new V3(...(([x,z])=>[x,1.25,z])(wp(s,sv,D)));
+    world.lightPoints.push({room:room.id,pos:lp,target:tg});const dir=tg.clone().sub(lp).normalize(),tip=lp.clone().addScaledVector(dir,.17);
+    add('brass',G.rod(new V3(lp.x,GH-.03,lp.z),new V3(lp.x,lp.y+.03,lp.z),.012));add('black',G.rod(lp.clone(),tip,.05,16));
+    add('lamp',new T.CircleGeometry(.04,16).lookAt(dir).translate(tip.x+dir.x*.002,tip.y+dir.y*.002,tip.z+dir.z*.002))}}
+  for(const [sx,sz] of [[-1,-1],[1,-1],[1,1],[-1,1]]){const x=room.cx+sx*(IN-(D-.02)/2),z=room.cz+sz*(IN-(D-.02)/2);
+   add('walnutD',box(D-.02,Hc,D-.02,x,.1+Hc/2,z));add('walnut',rb(D+.03,.05,D+.03,.01,x,CAB.H+.025,z));add('walnut',rb(D+.08,.07,D+.08,.012,x,CAB.H+.085,z))}
+  // drawers: four instanced meshes (front, brass card holder, paper card, pull) share one matrix per drawer
+  const N=places.length,n=Math.min(N,room.all.length);if(room.all.length>N)console.warn(`Curio: the stacks hold ${N} drawers; ${room.all.length-N} exhibits have none yet`);
+  // kept cheap (~70 triangles a drawer): 1,300 of them are in view through two doors from the rotunda
+  const fz=CAB.T/2,frontG=boxUV(G.rbox(CAB.W,CAB.HT,CAB.T,.006,1)),holderG=box(.206,.084,.004,0,.035,fz+.002),cardG=new T.PlaneGeometry(.19,.068).translate(0,.035,fz+.0045),
+   pullG=G.merge([G.rod(new V3(-.055,-.052,fz+.022),new V3(.055,-.052,fz+.022),.008,6),box(.008,.008,.022,-.055,-.052,fz+.011),box(.008,.008,.022,.055,-.052,fz+.011)]);
+  const off=new T.InstancedBufferAttribute(new Float32Array(N*2),2);cardG.setAttribute('cardOff',off);
+  const cardMat=std({color:0xffffff,roughness:.7,envMapIntensity:.25});
+  cardMat.onBeforeCompile=sh=>{sh.vertexShader='attribute vec2 cardOff;\n'+sh.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\n vMapUv+=cardOff;\n#endif')};cardMat.customProgramCacheKey=()=>'curio-card';
+  const IM=(g,mat)=>{const im=new T.InstancedMesh(g,mat,N);im.frustumCulled=false;room.group.add(im);return im};
+  const fronts=IM(frontG,M.walnut),holders=IM(holderG,M.brass),cards=IM(cardG,cardMat),pulls=IM(pullG,M.brass),meshes=[fronts,holders,cards,pulls];
+  const base=places.map(p=>tr(p.m,p.sv,p.y,D+fz)),pos=new Float32Array(N),want=new Float32Array(N),mtx=M4(),c1=new T.Color(),c2=new T.Color();
+  const put=k=>{mtx.copy(base[k]).multiply(M4().makeTranslation(0,0,pos[k]));for(const im of meshes)im.setMatrixAt(k,mtx)};
+  for(let k=0;k<N;k++){put(k);fronts.setColorAt(k,c1.setRGB(1,1,1));cards.setColorAt(k,c1)}for(const im of meshes)im.computeBoundingSphere();
+  // the pulled-out drawer's tray and index cards
+  const tray=new T.Group(),td=.42;{const parts=[box(CAB.W-.02,.012,td,0,-CAB.HT/2+.016,-td/2),box(.01,CAB.HT-.05,td,-CAB.W/2+.015,-.015,-td/2),box(.01,CAB.HT-.05,td,CAB.W/2-.015,-.015,-td/2),box(CAB.W-.02,CAB.HT-.05,.01,0,-.015,-td+.005)];
+   tray.add(new T.Mesh(G.merge(parts),M.walnutD));const R=mulberry(11),pc=[];for(let i=0;i<14;i++)pc.push(box(CAB.W-.05,.13+R()*.012,.003,0,-.03,-.05-i*.026).rotateX(-.08-R()*.06));
+   tray.add(new T.Mesh(G.merge(pc),M.linen));tray.visible=false;room.group.add(tray)}
+  const slots=[];
+  for(let k=0;k<n;k++){const p=places[k],e=room.all[k],f=WF[p.s],nn=new V3(f.n[0],0,f.n[1]),c=at(p.m,p.sv,p.y,D+fz);
+   const slot={i:e.i,d:e.d,room:room.id,q:k,kind:'drawer',inst:k,center:c,normal:nn,h:0,sealed:false,u:0,
+    open:u=>{slot.u=u},view:{x:c.x+nn.x*1.45,z:c.z+nn.z*1.45,yaw:Math.atan2(nn.x,nn.z)},
+    enter:{pos:c.clone().addScaledVector(nn,.62).add(new V3(0,.34,0)),look:c.clone().addScaledVector(nn,.2).add(new V3(0,-.07,0))}};
+   slots.push(slot);world.slots.push(slot)}
+  // labels: one atlas of 128×48 cards (cell 0 is a blank card for empty drawers), drawn when the room comes near
+  let atlas=null;const COLS=16,CW=128,CH=48;
+  world.lazy.push({room:room.id,run:()=>{const rows=Math.max(1,Math.ceil((n+1)/COLS)),cv=canvas(COLS*CW,rows*CH),g=cv.getContext('2d');
+    const card=(cell,d)=>{const x=(cell%COLS)*CW,y=Math.floor(cell/COLS)*CH;g.fillStyle='#f0e7d0';g.fillRect(x,y,CW,CH);g.strokeStyle='#8a6a44';g.lineWidth=2;g.strokeRect(x+3,y+3,CW-6,CH-6);if(!d)return;
+     g.textBaseline='alphabetic';g.fillStyle='#b62d1b';g.font=`700 19px ${MONO}`;g.fillText('No. '+d.no,x+10,y+23);g.fillStyle=d.color||'#c8321e';g.beginPath();g.arc(x+CW-17,y+16,6,0,7);g.fill();
+     g.fillStyle='#1d1a16';g.font=`600 13px ${SERIF}`;let t=String(d.title);if(g.measureText(t).width>CW-20){while(t.length>2&&g.measureText(t+'…').width>CW-20)t=t.slice(0,-1);t+='…'}g.fillText(t,x+10,y+39)};
+    card(0,null);for(let k=0;k<n;k++)card(k+1,room.all[k].d);
+    atlas=tex(cv);atlas.wrapS=atlas.wrapT=T.ClampToEdgeWrapping;atlas.repeat.set(1/COLS,1/rows);
+    for(let k=0;k<N;k++){const cell=k<n?k+1:0;off.setXY(k,(cell%COLS)/COLS,(rows-1-Math.floor(cell/COLS))/rows)}off.needsUpdate=true;cardMat.map=atlas;cardMat.needsUpdate=true},
+   free:()=>{if(!atlas)return;cardMat.map=null;cardMat.needsUpdate=true;atlas.dispose();atlas=null}});
+  // filter by lane and year: matching drawers stand proud, the rest go dark
+  const F={lane:'all',year:'all'},match=k=>{if(k>=n)return F.lane==='all'&&F.year==='all';const d=room.all[k].d;return(F.lane==='all'||laneOf(d)===F.lane)&&(F.year==='all'||String(d.date).startsWith(F.year))};
+  const counts={lane:{},year:{}};for(const e of room.all){const l=laneOf(e.d),y=String(e.d.date).slice(0,4);counts.lane[l]=(counts.lane[l]||0)+1;counts.year[y]=(counts.year[y]||0)+1}
+  let anim=0,openK=-1;
+  const setFilter=(lane=F.lane,year=F.year)=>{F.lane=lane;F.year=year;const on=lane!=='all'||year!=='all';let hits=0;
+   for(let k=0;k<N;k++){const ok=match(k);if(ok&&k<n)hits++;want[k]=on&&ok?.045:0;const v=ok?1:.3;fronts.setColorAt(k,c1.setRGB(v,v*.97,v*.94));cards.setColorAt(k,c2.setRGB(ok?1:.42,ok?1:.4,ok?1:.38))}
+   fronts.instanceColor.needsUpdate=cards.instanceColor.needsUpdate=true;anim=1;return hits};
+  const tick=(dt,focus)=>{let dirty=false;const k8=Math.min(1,dt*8),k6=Math.min(1,dt*6);
+   for(const s of slots){const f=s===focus?1:0;if(f||s.h>.001){s.h+=(f-s.h)*k6;if(s.h<.001)s.h=0;anim=Math.max(anim,.05)}}
+   const A_=slots.find(s=>s.u>0);openK=A_?A_.inst:-1;
+   if(anim>0||openK>=0){anim=Math.max(0,anim-dt);
+    for(let k=0;k<N;k++){const s=k<n?slots[k]:null,u=s?s.u:0,t=want[k]+(s?.035*s.h:0),ease=u<=0?0:1-Math.pow(1-u,3);let p=pos[k];
+     if(u>0)p=t+.38*ease;else p+=(t-p)*k8;if(Math.abs(p-pos[k])>1e-5){pos[k]=p;put(k);dirty=true}}}
+   if(dirty)for(const im of meshes)im.instanceMatrix.needsUpdate=true;
+   tray.visible=openK>=0;if(openK>=0){mtx.copy(base[openK]).multiply(M4().makeTranslation(0,0,pos[openK]));mtx.decompose(tray.position,tray.quaternion,tray.scale)}};
+  const pick=ray=>{const h=ray.intersectObject(fronts,false)[0];if(!h)return null;const k=h.instanceId;return{distance:h.distance,slot:k<n?slots[k]:null}};
+  const frontLo=box(CAB.W,CAB.HT,CAB.T);let det=true;const detail=on=>{if(on===det)return;det=on;holders.visible=pulls.visible=on;fronts.geometry=on?frontG:frontLo}; // from other rooms: plain boxes, no brass
+  world.stacks={room:room.id,drawers:N,filled:n,filter:F,counts,setFilter,tick,pick,slots,meshes,detail,
+   state:()=>({drawers:N,filled:n,filter:{...F},standingProud:[...want].filter(v=>v>0).length,open:openK})}}
 
  // ---------------- gallery
  function gallery(room){
-  const B={},add=(k,g,m)=>{if(m)g.applyMatrix4(m);(B[k]??=[]).push(g)},{cx,cz}=room,mask={};for(const s of SIDES)mask[s]=room.doors[s]!=null;
+  const B={},add=(k,g,m)=>{if(m)g.applyMatrix4(m);(B[k]??=[]).push(g)},{cx,cz}=room,mask={},ST=room.kind==='stacks';for(const s of SIDES)mask[s]=room.doors[s]!=null;
   const WM={};for(const s of SIDES){const f=WF[s];WM[s]=wallMat(f.t,f.n,[cx-f.n[0]*IN,cz-f.n[1]*IN])}
   const wp=(s,sv,d=0)=>{const f=WF[s];return[cx-f.n[0]*IN+f.t[0]*sv+f.n[0]*d,cz-f.n[1]*IN+f.t[1]*sv+f.n[1]*d]};
-  const fb=galleryFloorBake(mask),wb=galleryWallBake(),cb=ceilingBake();
+  const fb=galleryFloorBake(mask,ST),wb=galleryWallBake(),cb=ceilingBake();
   const floorM=parquetMat(fb.lm,fb.ao),plM=plasterMat(room.color,wb.lm,wb.ao,true),ceM=M.ceilingFor(cb.lm,cb.ao);
   const borderM=std({map:cl(X.walnut.map,1/1.1),normalMap:cl(X.walnut.normal,1/1.1),normalScale:new T.Vector2(.4,.4),color:0x9a8070,roughness:.38,lightMap:fb.lm,lightMapIntensity:8,aoMap:fb.ao,envMapIntensity:.9});
   const uvF=p=>[p[0],-p[2]],uv1F=p=>[(p[0]-cx+8)/16,1-(p[2]-cz+8)/16];
@@ -256,8 +344,9 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
     const other=rooms[room.doors[s]];const c=tex(giltText([{t:(other.kind==='rotunda'?'THE ROTUNDA':other.name.toUpperCase()),y:.42,size:96,weight:'600',track:14},{t:other.kind==='rotunda'?'NEW ACQUISITION':(other.sub||''),y:.82,size:40,weight:'400',fam:MONO,track:6}],1024,192),false);
     add('_decal',{g:new T.PlaneGeometry(2.7,.506).translate(0,4.89,.01),m,mat:decal(c)})}
    else if(SIDES.filter(x=>!mask[x])[0]===s){const c=tex(giltText([{t:room.name.toUpperCase(),y:.3,size:150,weight:'600',track:24},{t:room.sub,y:.62,size:56,weight:'400',fam:SERIF},{t:room.dates,y:.84,size:40,weight:'400',fam:MONO,track:4}],1024,512),false);
-    add('_decal',{g:new T.PlaneGeometry(3.4,1.7).translate(0,3.25,.01),m,mat:decal(c)})}
-   else{world.lazy.push({room:room.id,run:()=>{const t=tex(directoryCanvas(room));const mm=new T.Mesh(new T.PlaneGeometry(1.5,1.5).translate(0,2.75,.03).applyMatrix4(m),paperMat(t));room.group.add(mm)}});
+    add('_decal',{g:new T.PlaneGeometry(3.4,1.7).translate(0,ST?3.62:3.25,.01),m,mat:decal(c)})}
+   else if(!ST){let mm=null;world.lazy.push({room:room.id,run:()=>{const t=tex(directoryCanvas(room));mm=new T.Mesh(new T.PlaneGeometry(1.5,1.5).translate(0,2.75,.03).applyMatrix4(m),paperMat(t));room.group.add(mm)},
+     free:()=>{if(!mm)return;room.group.remove(mm);mm.geometry.dispose();mm.material.map.dispose();mm.material.dispose();mm=null}});
     add('walnut',rb(1.62,1.62,.03,.008,0,2.75,.015),m)}}
   // continuous skirting and chair rail, broken only at doors; cornice all round
   const first=SIDES.findIndex(s=>mask[s]),runs=[];
@@ -279,17 +368,22 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
    for(const [a,b] of lanternBars())add('iron',G.bar(a.clone().add(new V3(cx,0,cz)),b.clone().add(new V3(cx,0,cz)),.05,.07));
    const tq=3.9;for(let k=0;k<4;k++){const a=[[-tq,-tq],[tq,-tq],[tq,tq],[-tq,tq]][k],b=[[-tq,-tq],[tq,-tq],[tq,tq],[-tq,tq]][(k+1)%4];add('brass',G.bar(new V3(cx+a[0],GH-.025,cz+a[1]),new V3(cx+b[0],GH-.025,cz+b[1]),.04,.05))}}
   // slots: frame + plate, picture light, wall label, case, track spot
-  for(const s of SIDES)for(const k of [0,1]){const q=SIDES.indexOf(s)*2+k,sv=k?K.SLOT:-K.SLOT,m=WM[s],e=room.ex[q];
+  if(ST)catalogue(add,room,WM,mask,wp);
+  else for(const s of SIDES)for(const k of [0,1]){const q=SIDES.indexOf(s)*2+k,sv=k?K.SLOT:-K.SLOT,m=WM[s],e=room.ex[q];
    const Mc=tr(m,sv,0,K.CD);caseStatic(add,Mc,!e);const slot=caseDynamic(room,Mc,e,q);
    add('gilt',G.frame(2.13,1.27,PR.gilt).translate(sv,3.05,0),m);
    const plate=new T.Mesh(new T.PlaneGeometry(1.81,.95).translate(sv,3.05,.014).applyMatrix4(m),e?std({color:0x2a2018,roughness:.55,envMapIntensity:.4}):M.velvet);room.group.add(plate);
-   if(e){slot.plate=plate;world.lazy.push({room:room.id,run:()=>{plate.material.map=tex(plateCanvas(e.d));plate.material.color.set(0xffffff);plate.material.needsUpdate=true;world.ogQueue.push({room:room.id,url:'./'+encodeURIComponent(e.d.slug)+'/og.png',apply:t=>{t.colorSpace=T.SRGBColorSpace;t.anisotropy=aniso;plate.material.map=t;plate.material.color.set(0xffffff);plate.material.needsUpdate=true}})}})}
+   // the picture: a painted title card at once, then the exhibit's 512 px thumb.webp (og.png only if the thumbnail is missing)
+   if(e){slot.plate=plate;const pm=plate.material,swap=t=>{const o=pm.map;pm.map=t;pm.color.set(t?0xffffff:0x2a2018);pm.needsUpdate=true;if(o&&o!==t)o.dispose()};
+    world.lazy.push({room:room.id,run:gen=>{swap(tex(plateCanvas(e.d)));const u='./'+encodeURIComponent(e.d.slug)+'/';
+      world.ogQueue.push({room:room.id,gen,url:u+'thumb.webp',alt:u+'og.png',apply:t=>{t.colorSpace=T.SRGBColorSpace;t.anisotropy=aniso;swap(t)}})},
+     free:()=>swap(null)})}
    // picture light: wall plate, two arms, hooded bar with a glowing slot
    add('brass',rb(.12,.08,.02,.006,sv,3.78,.01),m);for(const e2 of [-.18,.18])add('brass',G.rod(new V3(sv+e2*.2,3.78,.02),new V3(sv+e2,3.86,.3),.009),m);
    add('brass',G.rod(new V3(sv-.55,3.86,.33),new V3(sv+.55,3.86,.33),.035,16),m);add('lamp',box(1.02,.012,.03,sv,3.822,.335),m);
    // label
    const lab=new T.Mesh(new T.PlaneGeometry(.4,.25).translate(sv+1.02,1.42,.0135).applyMatrix4(m),paperMat(null));room.group.add(lab);add('walnutD',rb(.43,.28,.012,.003,sv+1.02,1.42,.004),m);
-   world.lazy.push({room:room.id,run:()=>{lab.material.map=tex(e?labelCanvas(e.d):sealedLabel());lab.material.needsUpdate=true}});
+   world.lazy.push({room:room.id,run:()=>{lab.material.map=tex(e?labelCanvas(e.d):sealedLabel());lab.material.needsUpdate=true},free:()=>{const t=lab.material.map;lab.material.map=null;lab.material.needsUpdate=true;t&&t.dispose()}});
    // track spot aimed at the case
    const lp=at(m,sv*.85,GH-.16,IN-3.9);slot.light={pos:lp,target:slot.center.clone().setY(1.3)};
    const dir=slot.light.target.clone().sub(lp).normalize(),can=lp.clone(),tip=lp.clone().addScaledVector(dir,.17);
@@ -301,14 +395,21 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
    if(quads.length){const pm=std({color:0xffffff,metalness:.9,roughness:.32,envMapIntensity:1.3}),mesh=new T.Mesh(G.merge(quads),pm);room.group.add(mesh);
     world.lazy.push({room:room.id,run:()=>{const c=canvas(1024,512),g=c.getContext('2d');slotsHere.forEach((sl,k)=>{const x=(k%2)*512,y=(3-Math.floor(k/2))*128;const gr=g.createLinearGradient(x,y,x,y+128);gr.addColorStop(0,'#e8c27a');gr.addColorStop(1,'#b4843c');g.fillStyle=gr;g.fillRect(x,y,512,128);
      g.strokeStyle='#7a5520';g.lineWidth=6;g.strokeRect(x+8,y+8,496,112);g.fillStyle='#3a2810';g.textAlign='center';g.textBaseline='middle';g.font=`700 44px ${SERIF}`;g.fillText(sl.d?('No. '+sl.d.no):'—',x+256,y+66)});
-     pm.map=tex(c);pm.needsUpdate=true}})}}
-  // bench
-  {const by=.44;add('leather',rb(1.96,.1,.52,.04,cx,by+.05,cz));add('walnut',rb(2.02,.06,.56,.01,cx,by-.02,cz));
+     pm.map=tex(c);pm.needsUpdate=true},free:()=>{const t=pm.map;pm.map=null;pm.needsUpdate=true;t&&t.dispose()}})}}
+  // bench (in the stacks: a reading table with a banker's lamp)
+  if(ST){const ty=.76;add('walnut',rb(2.4,.05,1.0,.012,cx,ty-.025,cz));add('walnutD',box(2.1,.1,.78,cx,ty-.1,cz));
+   for(const [x,z] of [[-1.1,-.4],[1.1,-.4],[-1.1,.4],[1.1,.4]])add('walnutD',G.lathe([[0,0],[.035,0],[.04,.04],[.03,.08],[.026,.4],[.036,.5],[.03,.56],[.032,ty-.15],[0,ty-.15]],16).translate(cx+x,0,cz+z));
+   const lx=cx+.62,lz=cz-.18;add('brass',G.lathe([[0,0],[.1,0],[.1,.015],[.06,.03],[.02,.04],[0,.04]],24).translate(lx,ty,lz));add('brass',G.rod(new V3(lx,ty+.03,lz),new V3(lx,ty+.36,lz),.012));
+   add('brass',G.rod(new V3(lx-.02,ty+.36,lz),new V3(lx-.02,ty+.36,lz+.09),.008));
+   add('jade',new T.CylinderGeometry(.11,.11,.36,24,1,true,0,Math.PI).rotateZ(Math.PI/2).translate(lx,ty+.42,lz+.08));add('lamp',box(.3,.012,.02,lx,ty+.37,lz+.08));
+   for(let k=0;k<5;k++)add('linen',box(.15,.002,.1).rotateY(k*.05).translate(cx-.55+k*.035,ty+.002+k*.002,cz+.08-k*.025)); // a little stack of index cards
+   world.shapes.push({type:'box',x:cx,z:cz,hx:1.25,hz:.55,room:room.id});world.proxies.wall.push(new T.Mesh(new T.BoxGeometry(2.4,ty,1.0).translate(cx,ty/2,cz)))}
+  else{const by=.44;add('leather',rb(1.96,.1,.52,.04,cx,by+.05,cz));add('walnut',rb(2.02,.06,.56,.01,cx,by-.02,cz));
    for(const [x,z] of [[-.85,-.2],[.85,-.2],[-.85,.2],[.85,.2]])add('walnut',G.lathe([[0,0],[.03,0],[.032,.03],[.026,.06],[.022,.2],[.03,.26],[.022,.3],[.025,by-.05],[0,by-.05]],16).translate(cx+x,0,cz+z));
    for(const z of [-.2,.2])add('walnut',box(1.7,.03,.03,cx,.12,cz+z));
    world.shapes.push({type:'box',x:cx,z:cz,hx:1.05,hz:.32,room:room.id});world.proxies.wall.push(new T.Mesh(new T.BoxGeometry(2.04,.5,.56).translate(cx,.25,cz)))}
   // palms in two opposite corners
-  palm(add,cx-7.05,cz+7.05,room.id*31+1,room.id);palm(add,cx+7.05,cz-7.05,room.id*31+2,room.id);
+  if(!ST){palm(add,cx-7.05,cz+7.05,room.id*31+1,room.id);palm(add,cx+7.05,cz-7.05,room.id*31+2,room.id)}
   // ceiling furniture: smoke detectors, one camera dome
   for(const [x,z] of [[-5.6,-5.6],[5.6,5.6]])add('white',G.lathe([[0,0],[.075,0],[.075,.02],[.06,.035],[0,.035]],20).rotateX(Math.PI).translate(cx+x,GH,cz+z));
   add('black',new T.SphereGeometry(.07,16,8,0,Math.PI*2,Math.PI/2,Math.PI/2).translate(cx+7.2,GH-.02,cz-7.2));add('white',G.lathe([[0,0],[.09,0],[.09,.025],[0,.025]],20).rotateX(Math.PI).translate(cx+7.2,GH,cz-7.2));
@@ -319,7 +420,8 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
    if(mask[s])for(const e of [-DWH,DWH]){world.shapes.push({type:'seg',a:wp(s,e,0),b:wp(s,e,-.2),room:room.id})}
    for(const [s0,s1,y0,y1] of mask[s]?[[-IN,-DWH,0,GH],[DWH,IN,0,GH],[-DWH,DWH,DH,GH]]:[[-IN,IN,0,GH]])world.proxies.wall.push(new T.Mesh(new T.PlaneGeometry(s1-s0,y1-y0).translate((s0+s1)/2,(y0+y1)/2,0).applyMatrix4(WM[s])))}
   const fp=new T.Mesh(new T.PlaneGeometry(2*IN+.4,2*IN+.4).rotateX(-Math.PI/2).translate(cx,0,cz));fp.userData.room=room.id;world.proxies.floor.push(fp);
-  room.walk=(x,z,r)=>{const lx=x-cx,lz=z-cz;if(Math.abs(lx)<IN-r&&Math.abs(lz)<IN-r)return true;for(const s of SIDES)if(mask[s]){const f=WF[s],sv=lx*f.t[0]+lz*f.t[1],d=lx*f.n[0]+lz*f.n[1]+IN;if(Math.abs(sv)<DWH-r&&d<=r+.01&&d>-.21)return true}return false};
+  const inner=ST?IN-CAB.D-.02:IN; // in the stacks the cabinets eat 0.6 m of floor along every wall, except in front of the door
+  room.walk=(x,z,r)=>{const lx=x-cx,lz=z-cz;if(Math.abs(lx)<inner-r&&Math.abs(lz)<inner-r)return true;for(const s of SIDES)if(mask[s]){const f=WF[s],sv=lx*f.t[0]+lz*f.t[1],d=lx*f.n[0]+lz*f.n[1]+IN;if(Math.abs(sv)<DWH-r&&d<=IN-inner+r+.05&&d>-.21)return true}return false};
   room.inside=(x,z)=>Math.abs(x-cx)<=IN+.2&&Math.abs(z-cz)<=IN+.2;
   return{B,mats:{floor:floorM,wall:plM,ceil:ceM,border:borderM}}}
 
@@ -418,9 +520,10 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
     // arch moulding around the niche
     {const pts=[[1.4,-.35],[1.4,-4.6]];for(let i=1;i<24;i++){const a=i/24*Math.PI;pts.push([Math.cos(a)*1.4,-(4.6+Math.sin(a)*1.4)])}pts.push([-1.4,-4.6],[-1.4,-.35]);add('marbleW',G.sweep(pts,PR.arch.map(([o,y])=>[o*1.1,y*1.3])).rotateX(Math.PI/2),m)}
     // lunette with the Curio mark
-    world.lazy.push({room:room.id,run:()=>{const lc=canvas(512,256),lg=lc.getContext('2d');lg.fillStyle='#3a110c';lg.fillRect(0,0,512,256);const t=tex(lc);const mm=new T.Mesh(new T.CircleGeometry(1.36,32,0,Math.PI).translate(0,4.6,-ND+.012).applyMatrix4(m),std({map:t,roughness:.6,envMapIntensity:.6}));
+    {let mm=null;world.lazy.push({room:room.id,run:()=>{const lc=canvas(512,256),lg=lc.getContext('2d');lg.fillStyle='#3a110c';lg.fillRect(0,0,512,256);const t=tex(lc);mm=new T.Mesh(new T.CircleGeometry(1.36,32,0,Math.PI).translate(0,4.6,-ND+.012).applyMatrix4(m),std({map:t,roughness:.6,envMapIntensity:.6}));
      const uvA=mm.geometry.attributes.uv;for(let i=0;i<uvA.count;i++)uvA.setXY(i,uvA.getX(i),uvA.getY(i)*2-1);room.group.add(mm);
-     const img=new Image();img.onload=()=>{lg.drawImage(img,256-112,24,224,224);t.needsUpdate=true};img.src='./assets/logo.svg'}});
+     const img=new Image();img.onload=()=>{lg.drawImage(img,256-112,24,224,224);t.needsUpdate=true};img.src='./assets/logo.svg'},
+     free:()=>{if(!mm)return;room.group.remove(mm);mm.geometry.dispose();mm.material.map.dispose();mm.material.dispose();mm=null}})}
     cabinet(add,m,f.k)}
    // dado: green marble panels between white marble skirting and a gilt rail
    for(const [s0,s1] of f.side?[[-HL,-DWH-.38],[DWH+.38,HL]]:[[-HL,-1.65],[1.65,HL]]){add('marbleG',quad([[s0,.16,.015],[s1,.16,.015],[s1,1.0,.015],[s0,1.0,.015]],p=>[p[0],p[1]]),m)}}
@@ -455,14 +558,14 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
    const jarG=new T.CylinderGeometry(.64,.64,1.32,64,1,true).translate(0,1.08+.66,0),domeG=new T.SphereGeometry(.64,64,24,0,Math.PI*2,0,Math.PI/2).translate(0,2.4,0);
    jar.add(new T.Mesh(jarG,M.glass),new T.Mesh(domeG,M.glass));const ringM=new T.Mesh(new T.TorusGeometry(.645,.022,10,64).rotateX(Math.PI/2).translate(0,1.09,0),M.brass);jar.add(ringM);
    const knob=new T.Mesh(G.lathe([[0,0],[.05,0],[.03,.04],[.06,.09],[.04,.14],[0,.15]],24).translate(0,3.03,0),M.brass);jar.add(knob);
-   const {spec,col,xb}=specimen(e.d,1.3);spec.position.y=1.76;grp.add(spec);
+   const {spec,col,xb,rec}=specimen(e.d,1.3,0);spec.position.y=1.76;grp.add(spec);
    const halo=new T.Sprite(new T.SpriteMaterial({map:dotT,color:col,transparent:true,blending:T.AdditiveBlending,depthWrite:false,opacity:.35}));halo.scale.setScalar(1.9);halo.position.set(0,1.76,-.2);grp.add(halo);
    const hit=new T.Mesh(new T.CylinderGeometry(.9,.9,3.2,16),new T.MeshBasicMaterial({visible:false}));hit.position.y=1.6;grp.add(hit);room.group.add(grp);
    const c=new V3(0,1.76,0),n=new V3(0,0,1);
    const slot={i:e.i,d:e.d,room:0,q:0,kind:'jar',grp,door:jar,spec,halo,hit,xb,col,center:c,normal:n,h:0,sealed:false,
     open:u=>{const k=1-Math.pow(1-u,3);jar.position.y=k*2.1;jar.rotation.z=k*.12},
     light:{pos:new V3(0,oy-.4,0),target:c.clone()},view:{x:0,z:3.6,yaw:0},enter:{pos:new V3(0,1.76,1.25),look:c.clone()}};
-   hit.userData.slot=slot;world.proxies.hit.push(hit);world.slots.push(slot);world.centre=slot;
+   rec.slot=slot;hit.userData.slot=slot;world.proxies.hit.push(hit);world.slots.push(slot);world.centre=slot;
    for(let k=0;k<8;k++){const an=(k+.5)*Math.PI/4,x=Math.cos(an)*2.2,z=Math.sin(an)*2.2;add('brass',G.lathe([[0,0],[.16,0],[.16,.02],[.05,.05],[.03,.08],[.025,.88],[.035,.9],[0,.9]],24).translate(x,0,z));
     add('brass',new T.SphereGeometry(.05,16,12).translate(x,.94,z));
     const an2=(k+1.5)*Math.PI/4,x2=Math.cos(an2)*2.2,z2=Math.sin(an2)*2.2,pts=[];for(let i=0;i<=12;i++){const t=i/12;pts.push(new V3(x+(x2-x)*t,.86-.2*4*t*(1-t),z+(z2-z)*t))}
@@ -472,7 +575,7 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
    const lm=M4().makeTranslation(0,0,2.85);add('brass',G.lathe([[0,0],[.2,0],[.2,.02],[.05,.05],[.03,.1],[.03,.92],[0,.92]],24),lm);
    const tilt=M4().makeTranslation(0,1.0,2.85).multiply(M4().makeRotationX(-.6));add('walnutD',rb(.62,.42,.03,.01),tilt);
    const lab=new T.Mesh(new T.PlaneGeometry(.58,.3625).translate(0,0,.018).applyMatrix4(tilt),paperMat(null));room.group.add(lab);
-   world.lazy.push({room:0,run:()=>{lab.material.map=tex(labelCanvas(e.d,'NEW ACQUISITION'));lab.material.needsUpdate=true}});
+   world.lazy.push({room:0,run:()=>{lab.material.map=tex(labelCanvas(e.d,'NEW ACQUISITION'));lab.material.needsUpdate=true},free:()=>{const t=lab.material.map;lab.material.map=null;lab.material.needsUpdate=true;t&&t.dispose()}});
    world.shapes.push({type:'circle',x:0,z:2.85,r:.35,room:0})}
   // palms flanking the entrance
   for(const e of [-1,1])palm(add,e*2.3,6.95,90+e,0);
@@ -541,7 +644,8 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
 
  // ---------------- assemble rooms
  M.frond=std({map:X.frond,alphaTest:.45,side:T.DoubleSide,roughness:.62,envMapIntensity:.35});M.frondStem=std({color:0x4f4a28,roughness:.7});
- const sharedMat={frond:M.frond,frondStem:M.frondStem,walnut:M.walnut,walnutD:M.walnutD,brass:M.brass,gilt:M.gilt,iron:M.iron,velvet:M.velvet,leather:M.leather,linen:M.linen,marbleW:M.marbleW,marbleG:M.marbleG,
+ M.jade=std({color:0x0e5a32,emissive:0x1f7a44,emissiveIntensity:.55,roughness:.18,metalness:.1,side:T.DoubleSide,envMapIntensity:1.2});
+ const sharedMat={jade:M.jade,frond:M.frond,frondStem:M.frondStem,walnut:M.walnut,walnutD:M.walnutD,brass:M.brass,gilt:M.gilt,iron:M.iron,velvet:M.velvet,leather:M.leather,linen:M.linen,marbleW:M.marbleW,marbleG:M.marbleG,
   lamp:M.lamp,lampSoft:M.lampSoft,white:M.white,black:M.black,glass:M.glass,glassSky:M.glassSky,niche:M.niche,dome:M.dome};
  for(const r of rooms){r.group=new T.Group();r.group.name=r.name;
   const {B,mats}=r.kind==='rotunda'?rotunda(r):gallery(r);

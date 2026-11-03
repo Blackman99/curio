@@ -40,6 +40,11 @@ h1 em{display:block;font-size:.5em;letter-spacing:.02em;color:var(--red);font-st
 #joy.on{display:block}#joy i{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:rgba(217,167,74,.75)}
 #veil b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:700 11px "Courier New",monospace;letter-spacing:.32em;color:var(--brass);text-transform:uppercase}
 #src{bottom:20px;right:24px;pointer-events:auto;font:11px "Courier New",monospace}#src a{color:#efe4cc88}
+#stacks{top:118px;left:26px;width:min(300px,calc(100vw - 300px));pointer-events:auto;background:rgba(13,9,6,.8);border:1px solid rgba(217,167,74,.35);box-shadow:0 10px 40px rgba(0,0,0,.5);padding:10px 12px 9px;opacity:0;transform:translateY(-6px);transition:opacity .5s,transform .5s;visibility:hidden}
+#stacks.on{opacity:1;transform:none;visibility:visible}#stacks>b{display:block;font:700 10px/1 "Courier New",monospace;letter-spacing:.26em;color:var(--brass);text-transform:uppercase;margin-bottom:8px}
+#stacks div{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}#stacks button{font:12px/1 Georgia,serif;color:var(--paper);background:none;border:1px solid rgba(239,228,204,.3);padding:5px 7px;cursor:pointer}
+#stacks button i{font:700 9px "Courier New",monospace;font-style:normal;color:#efe4cc88}#stacks button:hover:not(:disabled){border-color:var(--brass)}#stacks button.on{background:var(--brass);border-color:var(--brass);color:var(--ink)}#stacks button.on i{color:var(--ink)}
+#stacks button:disabled{opacity:.35;cursor:default}#stacks span{display:block;font:10px "Courier New",monospace;letter-spacing:.08em;color:#efe4cc99}
 #veil{position:fixed;inset:0;background:#0b0806;z-index:5;transition:opacity 1.4s;pointer-events:none}
 /* fallback list */
 #list{display:none;min-height:100%;overflow:auto;padding:40px 6vw 60px;background:var(--paper);color:var(--ink)}
@@ -51,7 +56,8 @@ body.flat{overflow:auto}body.flat #list{display:block}body.flat .hud,body.flat c
 #list .note{font:13px "Courier New",monospace;margin-top:24px}#list .note a{color:var(--red)}
 @media(max-width:640px){#brand{top:14px;left:14px;gap:10px}#brand img{width:42px}#brand h1{font-size:22px}#brand .kicker{font-size:9px}#hint{font-size:9px;white-space:normal;text-align:center;width:88vw;bottom:14px}
  #plan{top:12px;right:12px;width:132px;padding:6px}#plan header>span{display:none}#map{width:120px;height:110px;margin-top:6px}#plantoggle{width:100%}
- #plan.open{width:auto;left:12px}#plan.open #map{display:none}#toast{top:86px}#card{bottom:54px}#src{display:none}}
+ #plan.open{width:auto;left:12px}#plan.open #map{display:none}#toast{top:86px}#card{bottom:54px}#src{display:none}
+ #stacks{top:auto;bottom:64px;left:12px;width:calc(100vw - 24px);padding:8px}body.in-stacks #card{bottom:150px}#stacks>b{display:none}#stacks button{font-size:11px;padding:4px 6px}}
 
 /* exhibit viewer */
 #flood{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,#fff6e0 0,#ffd9a0 35%,rgba(255,190,110,0) 75%)}
@@ -78,6 +84,7 @@ body.flat{overflow:auto}body.flat #list{display:block}body.flat .hud,body.flat c
 <nav class="hud" id="plan" aria-label="Floor plan and directory"><header><span>Floor plan</span><button id="plantoggle" type="button" aria-controls="dirlist">Directory</button></header><canvas id="map" aria-label="Floor plan: click a case to walk to it"></canvas><ul id="dirlist"></ul></nav>
 <div class="hud" id="toast" aria-live="polite"></div><div id="joy" aria-hidden="true"><i></i></div>
 <div class="hud" id="card" role="status" aria-live="polite"></div>
+<nav class="hud" id="stacks" aria-label="Filter the drawers in The Stacks"><b>The Stacks · pull a drawer</b><div id="stlane"></div><div id="styear"></div><span id="sthits"></span></nav>
 <div class="hud" id="hint">Walk with W A S D · drag to look · click a case to open</div>
 <div class="hud" id="src"><a href="https://github.com/Blackman99/curio">Source</a> · <a href="?list">List view</a></div>
 <main id="list"><header><img src="assets/logo.svg" alt="Curio logo"><div><div class="kicker" style="color:var(--red)">Specimens of ingenuity</div><h1>Curio <em>A cabinet of&nbsp;curiosities</em></h1><p>Small, hands-on experiments that run entirely in your browser.</p></div></header>
