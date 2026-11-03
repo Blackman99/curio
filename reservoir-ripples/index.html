@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reservoir Ripples — a ripple tank that learns to predict chaos</title>
+<meta name="description" content="Reservoir computing in a ripple tank. Sixteen dippers dunk to a chaotic signal, 273 floats ride the ripples, and one least-squares solve trains a single readout layer. Unplug the signal and the tank keeps drawing Mackey–Glass on its own, for hundreds of steps. Really computed in your browser.">
+<meta property="og:title" content="Reservoir Ripples">
+<meta property="og:description" content="A ripple tank as a recurrent neural network: nothing in the water is trained, only one readout layer. Unplug the signal and it keeps predicting chaos on its own. Splash it, thin it, take its bends away.">
+<meta property="og:image" content="https://blackman99.github.io/curio/reservoir-ripples/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Reservoir Ripples">
+<meta name="twitter:description" content="Reservoir computing in a ripple tank: train only the readout, unplug the signal, and watch the water keep predicting a chaotic series on its own.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/reservoir-ripples/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#071014;--paper:#eef3ef;--paper2:#a9bab6;--amber:#f0b54a;--red:#ff5f4a;--cyan:#7fe3e0;--line:rgba(220,240,236,.15);--panel:rgba(8,15,18,.9)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+.mono{font-family:'DM Mono',ui-monospace,Menlo,monospace}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at 36% 40%,#12303a 0,#0a181e 52%,#04090b 100%)}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#c.wet{cursor:crosshair}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(5,11,13,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--amber);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(6,12,14,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--amber);color:#1a1205;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);text-shadow:0 1px 4px #000}
+h1{margin:9px 0 0;font:400 clamp(32px,3.2vw,48px)/1 'DM Serif Display',Georgia,serif;letter-spacing:.005em;color:#e9fbf6;text-shadow:0 2px 0 #0d4a52,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:860px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(5,11,13,.66);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#f4fbf8;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--amber)}
+#caption .r{color:#ff8a78;font-weight:600}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(220,250,245,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+.read{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 19px/1 'DM Mono',monospace;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{font-size:25px;color:#ffd27a}
+.rd small{font:400 10.5px/1.15 'DM Mono',monospace;color:var(--paper2)}
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn{border:1px solid var(--line);background:rgba(240,181,74,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(240,181,74,.18);border-color:var(--amber);outline:none}
+.btn.go{background:var(--amber);border-color:var(--amber);color:#1b1305;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd27a}
+.btn.red{background:rgba(255,95,74,.16);border-color:var(--red);color:#ffd9d2}
+.btn:disabled{opacity:.45;cursor:default}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(240,181,74,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--amber);color:#1b1305;font-weight:500}
+.ctl{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px 8px}
+.ctl .lab{margin-bottom:5px;letter-spacing:.11em;font-size:9.5px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#7fe3e0,#1d3a40 55%,#6b4d18);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#7fe3e0,#1d3a40 55%,#6b4d18)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--amber) 45%,#5d3f06 120%);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--amber) 45%,#5d3f06 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--amber);outline-offset:3px}
+.ends{display:flex;justify-content:space-between;font:400 10px/1 'DM Mono',monospace;color:var(--paper2);margin-top:1px}
+#curves,#draw{display:block;width:100%;height:84px;border-radius:9px;background:#050b0d;border:1px solid rgba(255,255,255,.07)}
+#draw{height:96px;cursor:crosshair;touch-action:none;display:none;margin-top:8px}
+.drawing #draw{display:block}
+.hint{font:400 10.5px/1.35 'DM Mono',monospace;color:var(--paper2);margin-top:5px}
+.row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--amber);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--amber)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(230,245,240,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--amber);text-decoration:underline;font:inherit}
+@media (min-height:860px) and (min-width:821px){#curves{height:96px}}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(28px,2.8vw,40px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:17px}.rd.big b{font-size:22px}#curves{height:70px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:34px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  #caption{font-size:16px;min-height:6.9em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,380px);margin-top:4px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(9,16,19,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+.lite #title,.lite #story{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(5,11,13,.84)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 035 · Reservoir computing</span>
+  <h1>Reservoir Ripples</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A ripple tank seen from above, lit from below. Sixteen motorised dippers on the two short walls dunk in time with a signal; 273 floats ride the ripples and glow with the square of their height. Under the tank a chart recorder draws the true signal in ink and the tank's guess in red."></canvas>
+</div>
+<aside id="panel" aria-label="Results and controls">
+  <div class="sec">
+    <div class="lab"><span>The tank's guess</span><b id="modev">listening</b></div>
+    <div class="read">
+      <div class="rd big"><span>In step for</span><b id="rstep">–</b><small id="rstep2">steps unplugged</small></div>
+      <div class="rd"><span>Error at 84</span><b id="r84">–</b><small>of the spread</small></div>
+      <div class="rd"><span>Trained</span><b id="rw">–</b><small id="rw2">weights</small></div>
+    </div>
+  </div>
+  <div class="sec mode">
+    <button class="btn go" id="plug" title="Disconnect the signal: the dippers follow the tank's own guesses">Unplug · let it dream</button>
+    <button class="btn" id="splash" title="Poke the water once (or click the tank)">Splash the water</button>
+  </div>
+  <div class="sec" id="sigsec">
+    <div class="lab"><span>Signal it learns</span><b id="sigv">Mackey–Glass τ 17</b></div>
+    <div class="seg" id="task"><button data-v="mg" aria-pressed="true">Mackey–Glass</button><button data-v="mg30" aria-pressed="false">τ 30</button><button data-v="sine" aria-pressed="false">hum</button><button data-v="draw" aria-pressed="false">draw</button></div>
+    <canvas id="draw" aria-label="Draw one cycle of a signal for the tank to learn"></canvas>
+  </div>
+  <div class="sec ctl">
+    <div><div class="lab"><span>Dippers</span></div>
+      <div class="seg" id="psi"><button data-v="tanh" aria-pressed="true" title="Each dipper squashes the signal with its own tanh">tanh</button><button data-v="lin" aria-pressed="false" title="Each dipper just scales the signal">straight</button></div></div>
+    <div><div class="lab"><span>Lamps</span></div>
+      <div class="seg" id="eye"><button data-v="sq" aria-pressed="true" title="Each float reports its height and its lamp, the height squared">h &amp; h²</button><button data-v="lin" aria-pressed="false" title="Each float reports its height only">h only</button></div></div>
+    <div><div class="lab"><span>Water</span></div>
+      <div class="seg" id="water"><button data-v="in" aria-pressed="true">in</button><button data-v="out" aria-pressed="false" title="The readout sees only the signal itself">drained</button></div></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Viscosity</span><b id="viscv">1% per tick</b></div>
+    <input id="visc" type="range" min="0" max="8" value="3" step="1" aria-label="How quickly ripples die away">
+    <div class="ends"><span>thin, rings for long</span><span>syrup</span></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Sixteen dippers</span><b id="seedv">seed 7</b></div>
+    <canvas id="curves" aria-label="How far each dipper plunges for each value of the signal"></canvas>
+    <div class="row2" style="margin-top:7px"><button class="btn" id="newt" title="New random dippers, trained again">New dippers</button><button class="btn" id="retrain" title="Listen to the signal again and solve for the readout">Retrain</button><button class="btn" id="tourb2" title="Play the guided tour from the start">Replay tour</button></div>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p><b>A bucket that learns.</b> In reservoir computing you do not train the network. You pour a signal into something with rich, fading dynamics (here a tank of water) and train only a linear readout that looks at its state. This tank is simulated: a 64 × 40 grid obeying the damped linear wave equation, with reflecting walls and 1% of each ripple's speed lost per tick. Sixteen dippers sit on the short walls. Every step each one dips in and back out by tanh(<i>a</i>·<i>u</i> + <i>b</i>) − tanh(<i>b</i>), with its own random <i>a</i> (1 to 6, either sign) and <i>b</i> (−2 to 2), and the water then runs 12 ticks. 273 floats on a 21 × 13 grid each report two numbers: their height <i>h</i> and their lamp, <i>h</i>². The readout is a weighted sum of those 546 numbers plus the signal itself and a constant: 548 weights, from one ridge regression (λ = 10⁻⁸ per sample, on standardised readings) over 2,000 steps after a 300-step warm-up. The water, the dippers and the floats are never adjusted.</p>
+    <p><b>Unplugged.</b> Pull the plug and the guess becomes the next input, so the tank runs on its own. The signal is Mackey–Glass with delay τ = 17, read once per time unit and squashed by tanh(<i>x</i> − 1), the setup Jaeger and Haas used. Across 20 random tanks (seeds 1 to 20), unplugged right after training, the dream stays within 0.3 of the signal's spread for a median of 1,092 steps (762 to 1,650; seed 7, the default, 1,102). The error at the 84th step, root-mean-square over the 20, is 1.8×10<sup>−4</sup> of the spread; Jaeger and Haas scored that step with a 1,000-neuron network trained on 3,000 steps. After it slips off the timeline, all 20 of the 20 keep drawing the same spread and range: it loses the future, not the shape.</p>
+    <p><b>The bends.</b> Small waves add up linearly, so the water itself is a linear filter with a long, fading memory. The nonlinearity comes from two places, and you can take each away (medians over the same 20 tanks): lamps off, 742 steps; straight dippers, 31.5; both straight, 10; and with the tank drained, so the readout sees only the signal and its square, 1. Viscosity matters both ways: thin water that rings for long holds 432 steps, the default 1,092, syrup 408. The wilder τ = 30 holds 493.</p>
+    <p><b>Splashes.</b> A splash is a poke in and out, so it adds no water. While the tank listens, its guess is back within 0.001 of an unsplashed twin's after at most 108 steps (median 90.5): the memory fades on its own, which is what makes it a reservoir (the "echo state" property). While it dreams, a splash at step 150 parts the dream from its unsplashed twin a median 115 steps later, and all 20 of 20 still look like Mackey–Glass.</p>
+    <p><b>A real bucket.</b> In 2003 Chrisantha Fernando and Sampsa Sojakka put a glass tank of water on an overhead projector, drove small weights into it with motors on its sides, filmed the light at 5 frames a second, ran a Sobel edge filter with a threshold over each frame (their bend), and trained 50 perceptrons on a 32 × 24 grid. The bucket solved XOR on 85% of new frames and told a spoken "zero" from "one" with 1.5% training error, against 25% for the raw sound. They noticed the XOR solution used where the waves were, not their interference.</p>
+    <p><b>What is real.</b> Every number on this page is computed in your browser in 64-bit floats: the wave equation, the dippers, the 2,000-row least-squares solve (the page's own Cholesky), every guess. The same arithmetic re-run in numpy gives the same bits. What is not real: the water. Real water has surface tension, splashes that add volume, big waves that are not linear, evaporation and noise, all of which troubled the 2003 bucket. The picture of the surface is the true height field through a contrast curve, and the lamps glow on a log scale.</p>
+    <p>Sources: Fernando and Sojakka, <a href="https://doi.org/10.1007/978-3-540-39432-7_63">Pattern Recognition in a Bucket</a> (ECAL 2003); Jaeger and Haas, <a href="https://doi.org/10.1126/science.1091277">Harnessing Nonlinearity</a> (Science, 2004); Maass, Natschläger and Markram, <a href="https://doi.org/10.1162/089976602760407955">Real-Time Computing Without Stable States</a> (Neural Computation, 2002); Mackey and Glass, <a href="https://doi.org/10.1126/science.267326">Oscillation and Chaos in Physiological Control Systems</a> (Science, 1977).</p>
+  </details>
+  <div class="foot">Click the water to splash it · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script>
+// ===== Reservoir Ripples engine (shared by page + node; bit-exact with ref.py) =====
+const RR=(()=>{
+const NX=64,NY=40,NC=NX*NY,C2=0.2,SUB=12,SRAD=1.5;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function xexp(x){ // deterministic exp: halve until |r|<=0.5, Taylor deg 16, square back
+  if(!(x===x))return NaN; if(x>700)return Infinity; if(x<-700)return 0;
+  let r=x,k=0; while(r>0.5||r<-0.5){r=r/2;k++;}
+  let s=1,t=1; for(let n=1;n<=16;n++){t=t*r/n;s=s+t;}
+  for(let i=0;i<k;i++)s=s*s; return s;}
+function xtanh(x){ if(!(x===x))return NaN; if(x>20)return 1; if(x<-20)return -1; const e=xexp(2*x); return (e-1)/(e+1);}
+const TWO_PI=6.283185307179586;
+function xsin(x){ const n=Math.floor(x/TWO_PI+0.5); let r=x-n*TWO_PI; // |r|<=pi
+  let s=r,t=r,r2=r*r; for(let k=1;k<=12;k++){t=-t*r2/((2*k)*(2*k+1));s=s+t;} return s;}
+// Mackey-Glass, RK4 dt=0.1, delayed values linearly interpolated, sampled every 1
+function mackeyGlass(n,tau=17,x0=1.2,burn=1000){
+  const dt=0.1,sub=10,d=Math.round(tau/dt),N=(n+burn)*sub+d+1,x=new Float64Array(N);
+  for(let i=0;i<=d;i++)x[i]=x0;
+  const f=(xt,xd)=>{const p=xd*xd,p2=p*p,p4=p2*p2,x10=p4*p;return 0.2*xd/(1.0+x10)-0.1*xt;};
+  for(let i=d;i<N-1;i++){const xd0=x[i-d],xd1=x[i-d+1],xdm=0.5*(xd0+xd1);
+    const k1=f(x[i],xd0),k2=f(x[i]+0.5*dt*k1,xdm),k3=f(x[i]+0.5*dt*k2,xdm),k4=f(x[i]+dt*k3,xd1);
+    x[i+1]=x[i]+dt/6.0*(k1+2*k2+2*k3+k4);}
+  const out=new Float64Array(n); for(let j=0;j<n;j++)out[j]=x[d+(burn+j)*sub]; return out;}
+function makeSignal(task,n,opt={}){
+  const u=new Float64Array(n);
+  if(task==='mg'||task==='mg30'){const s=mackeyGlass(n,task==='mg30'?30:17);for(let i=0;i<n;i++)u[i]=xtanh(s[i]-1.0);}
+  else if(task==='sine'){const P=opt.period||23;for(let i=0;i<n;i++)u[i]=0.4*xsin(TWO_PI*i/P);}
+  else if(task==='draw'){const c=opt.cycle;const L=c.length;for(let i=0;i<n;i++)u[i]=c[i%L];}
+  return u;}
+function makeTank(cfg){
+  const c=Object.assign({seed:7,damp:0.01,nd:16,psi:'tanh',eye:'sq',drain:false},cfg);
+  const rnd=mulberry32(c.seed);
+  const a=new Float64Array(c.nd),b=new Float64Array(c.nd),pos=[];
+  for(let k=0;k<c.nd;k++){const r1=rnd(),r2=rnd(),r3=rnd();a[k]=(1+5*r1)*(r2<0.5?-1:1);b[k]=-2+4*r3;}
+  const half=c.nd>>1;
+  for(let k=0;k<c.nd;k++){const left=k<half,j=left?k:k-half;pos.push([left?4:NX-5,NY*(j+0.5)/half]);}
+  const G=[];for(let k=0;k<c.nd;k++){const g=new Float64Array(NC),x0=pos[k][0],y0=pos[k][1];
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const dx=x-x0,dy=y-y0;g[y*NX+x]=xexp(-(dx*dx+dy*dy)/(2*SRAD*SRAD));}G.push(g);}
+  const tb=new Float64Array(c.nd);for(let k=0;k<c.nd;k++)tb[k]=xtanh(b[k]);
+  const P=[];for(let y=1;y<NY-1;y+=3)for(let x=1;x<NX-1;x+=3)P.push(y*NX+x);
+  const NP=P.length,NF=c.drain?3:(c.eye==='sq'?2*NP:NP)+2;
+  return {c,a,b,tb,pos,G,P,NP,NF,h:new Float64Array(NC),v:new Float64Array(NC),L:new Float64Array(NC),bump:new Float64Array(NC),drv:new Float64Array(c.nd),u:0,steps:0,pokes:[]};}
+function drive(T,u){const c=T.c;for(let k=0;k<c.nd;k++){T.drv[k]=c.psi==='tanh'?xtanh(T.a[k]*u+T.b[k])-T.tb[k]:T.a[k]*u;}}
+function lap(T){const h=T.h,L=T.L;
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x,hc=h[i];
+    const hE=x<NX-1?h[i+1]:hc,hW=x>0?h[i-1]:hc,hS=y<NY-1?h[i+NX]:hc,hN=y>0?h[i-NX]:hc;
+    L[i]=hE+hW+hS+hN-4*hc;}}
+function step(T,u){ // one sample: pulse the dippers, SUB wave substeps
+  drive(T,u);const bump=T.bump,h=T.h,v=T.v,L=T.L,k1=1-T.c.damp;
+  bump.fill(0);for(let k=0;k<T.c.nd;k++){const g=T.G[k],p=T.drv[k];for(let i=0;i<NC;i++)bump[i]=bump[i]+p*g[i];}
+  for(const g of T.pokes)for(let i=0;i<NC;i++)bump[i]=bump[i]+g[i];T.pokes.length=0;
+  for(let s=0;s<SUB;s++){
+    if(s===0)for(let i=0;i<NC;i++)h[i]=h[i]+bump[i];
+    if(s===(SUB>>1))for(let i=0;i<NC;i++)h[i]=h[i]-bump[i];
+    lap(T);
+    for(let i=0;i<NC;i++){v[i]=v[i]*k1+C2*L[i];h[i]=h[i]+v[i];}}
+  T.u=u;T.steps++;}
+function feats(T,u,out){const f=out||new Float64Array(T.NF);
+  if(T.c.drain){f[0]=u;f[1]=u*u;f[2]=1;return f;}
+  const NP=T.NP;for(let p=0;p<NP;p++){const hv=T.h[T.P[p]];f[p]=hv;if(T.c.eye==='sq')f[NP+p]=hv*hv;}
+  const o=T.c.eye==='sq'?2*NP:NP;f[o]=u;f[o+1]=1;return f;}
+function splash(T,x0,y0,amp,rad){const g=new Float64Array(NC);for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const dx=x-x0,dy=y-y0;g[y*NX+x]=amp*xexp(-(dx*dx+dy*dy)/(2*rad*rad));}T.pokes.push(g);}
+// --- ridge readout ---
+function Trainer(NF){return {NF,n:0,S:new Float64Array(NF),Q:null,rows:[],ys:[]};}
+function* ridgeGen(rows,ys,lam){ // yields now and then so the page can spread the solve over frames
+  const n=rows.length,NF=rows[0].length,mu=new Float64Array(NF),sd=new Float64Array(NF);
+  for(let t=0;t<n;t++){const r=rows[t];for(let i=0;i<NF;i++)mu[i]=mu[i]+r[i];}
+  for(let i=0;i<NF;i++)mu[i]=mu[i]/n;
+  for(let t=0;t<n;t++){const r=rows[t];for(let i=0;i<NF;i++){const d=r[i]-mu[i];sd[i]=sd[i]+d*d;}}
+  for(let i=0;i<NF;i++){sd[i]=Math.sqrt(sd[i]/n);if(sd[i]<1e-12)sd[i]=1;}
+  mu[NF-1]=0;sd[NF-1]=1;
+  const A=new Float64Array(NF*NF),rhs=new Float64Array(NF),z=new Float64Array(NF);
+  for(let t=0;t<n;t++){const r=rows[t],y=ys[t];for(let i=0;i<NF;i++)z[i]=(r[i]-mu[i])/sd[i];
+    for(let i=0;i<NF;i++){const zi=z[i],o=i*NF;for(let j=0;j<=i;j++)A[o+j]=A[o+j]+zi*z[j];rhs[i]=rhs[i]+zi*y;}
+    if((t&15)===15)yield 0.9*t/n;}
+  const ln=lam*n;for(let i=0;i<NF;i++)A[i*NF+i]=A[i*NF+i]+ln;
+  const Lc=new Float64Array(NF*NF);
+  for(let j=0;j<NF;j++){let s=0;const oj=j*NF;for(let k=0;k<j;k++)s=s+Lc[oj+k]*Lc[oj+k];
+    const d=A[oj+j]-s;const ljj=Math.sqrt(d);Lc[oj+j]=ljj;
+    for(let i=j+1;i<NF;i++){const oi=i*NF;let s2=0;for(let k=0;k<j;k++)s2=s2+Lc[oi+k]*Lc[oj+k];Lc[oi+j]=(A[oi+j]-s2)/ljj;}
+    if((j&31)===31)yield 0.9+0.1*j/NF;}
+  const yv=new Float64Array(NF),w=new Float64Array(NF);
+  for(let i=0;i<NF;i++){let s=0;const oi=i*NF;for(let k=0;k<i;k++)s=s+Lc[oi+k]*yv[k];yv[i]=(rhs[i]-s)/Lc[oi+i];}
+  for(let i=NF-1;i>=0;i--){let s=0;for(let k=i+1;k<NF;k++)s=s+Lc[k*NF+i]*w[k];w[i]=(yv[i]-s)/Lc[i*NF+i];}
+  return {mu,sd,w};}
+function solveRidge(rows,ys,lam){const g=ridgeGen(rows,ys,lam);let r;while(!(r=g.next()).done);return r.value;}
+function readout(R,f){let s=0;const NF=f.length;for(let i=0;i<NF;i++)s=s+(f[i]-R.mu[i])/R.sd[i]*R.w[i];return s;}
+function fnv(arr){let h=0x811c9dc5;const b=new Uint8Array(arr.buffer,arr.byteOffset,arr.byteLength);for(let i=0;i<b.length;i++){h^=b[i];h=Math.imul(h,16777619);}return(h>>>0).toString(16).padStart(8,'0');}
+return {NX,NY,NC,C2,SUB,mulberry32,xexp,xtanh,xsin,mackeyGlass,makeSignal,makeTank,step,feats,splash,ridgeGen,solveRidge,readout,fnv,drive};
+})();
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=RM||STILL;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+if(Q.has('og'))document.documentElement.classList.add('og');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,sstep=t=>t*t*(3-2*t);
+const comma=n=>n.toLocaleString('en-US');
+const fe=x=>x==null||!isFinite(x)?'–':x>=0.1?x.toFixed(2):x>=0.01?x.toFixed(3):x.toPrecision(2);
+const {NX,NY}=RR;
+const fx=RR.mulberry32(20261103);
+const EMBED=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+
+/* ---------- settings ---------- */
+const VISC=[0.002,0.004,0.007,0.01,0.015,0.025,0.04,0.07,0.12];
+const WASH=300,NTR=2000,LAM=1e-8,PACE=24;
+const DEF_CYCLE=(()=>{const c=[];for(let i=0;i<48;i++){const x=i/48;const d=x-.3;c.push(+(-0.22+0.62*Math.exp(-d*d/.0009)-0.3*Math.exp(-((x-.37)**2)/.0007)+0.16*Math.exp(-((x-.66)**2)/.004)).toFixed(3))}return c})();
+const DEF={task:'mg',seed:7,vi:3,psi:'tanh',eye:'sq',drain:false};
+const S={...DEF,cycle:DEF_CYCLE.slice()};
+const TASKNAME={mg:'Mackey–Glass τ 17',mg30:'Mackey–Glass τ 30',sine:'a hum (sine)',draw:'your drawing'};
+const cfgOf=()=>({task:S.task,seed:S.seed,damp:VISC[S.vi],psi:S.psi,eye:S.eye,drain:S.drain,...(S.task==='draw'?{cycle:S.cycle.slice()}:{}),...(S.task==='sine'?{period:23}:{})});
+
+/* ---------- one session: a tank, its signal, its readout ---------- */
+let G=null,LOGS=[],logId=0;
+function sigKey(c){return c.task==='draw'?'draw:'+c.cycle.join(','):c.task}
+let SIG={key:'',u:null};
+function signal(c,n){const k=sigKey(c);if(SIG.key!==k||SIG.u.length<n){SIG={key:k,u:RR.makeSignal(c.task,n,{period:23,cycle:c.cycle})}}return SIG.u}
+function newSession(c,opt={}){
+ const N=WASH+NTR+6000,u=signal(c,N);
+ const T=RR.makeTank({seed:c.seed,damp:c.damp,psi:c.psi,eye:c.eye,drain:c.drain});
+ const g={id:++logId,c,T,u,N:u.length,t:0,prev:0,mode:'train',phase:'sim',R:null,NF:T.NF,f:new Float64Array(T.NF),rows:[],ys:[],sd:0,
+  red:new Float64Array(u.length).fill(NaN),inp:new Float64Array(u.length).fill(NaN),kind:new Int8Array(u.length).fill(-1),
+  gen:null,prog:0,dream:null,seg:null,resync:-1,lastE:[],splashes:[],thenDream:!!opt.thenDream,autoDream:opt.autoDream??-1,stopAt:-1,
+  log:{id:logId,cfg:{...c,...(c.cycle?{cycle:c.cycle.slice()}:{})},NF:T.NF,n:NTR,wash:WASH,lam:LAM,whash:null,sd:null,segs:[]}};
+ LOGS.push(g.log);if(LOGS.length>60)LOGS.splice(0,LOGS.length-60);
+ return g}
+function trainSteps(g,n){ // the listening run that the readout is fitted on
+ const T=g.T,u=g.u;
+ for(let k=0;k<n&&g.t<WASH+NTR;k++){const t=g.t;RR.step(T,u[t]);g.inp[t]=u[t];g.kind[t]=2;
+  if(t>=WASH){g.rows.push(RR.feats(T,u[t]));g.ys.push(u[t+1])}g.t++}
+ if(g.t>=WASH+NTR&&g.phase==='sim'){g.phase='solve';g.gen=RR.ridgeGen(g.rows,g.ys,LAM)}}
+function solveSome(g,ms){const t0=performance.now();let r;
+ while(true){r=g.gen.next();if(r.done)break;g.prog=r.value;if(ms!=null&&performance.now()-t0>ms)return false}
+ g.R=r.value;g.gen=null;g.prog=1;
+ let m=0;for(const y of g.ys)m+=y;m/=g.ys.length;let v=0;for(const y of g.ys)v+=(y-m)*(y-m);g.sd=Math.sqrt(v/g.ys.length);
+ g.log.whash=RR.fnv(g.R.w);g.log.sd=g.sd;
+ g.last=g.rows[g.rows.length-1];g.prev=RR.readout(g.R,g.last);g.red[g.t]=g.prev;g.rows=null;
+ g.phase='run';beginSeg(g,g.thenDream?'dream':'listen');onTrained(g);return true}
+function beginSeg(g,mode){
+ g.mode=mode;g.seg={mode,t0:g.t,n:0,out:[],splashes:[],lost:-1,e84:null};g.log.segs.push(g.seg);
+ if(mode==='dream'){g.dream={start:g.t,n:0,lost:-1,e84:null,sse:0,maxErr:0};g.resync=-1}
+ else{g.resync=-1;g.runOK=0}
+ if(g.seg.mode==='dream')g.seg.dref=g.dream}
+function oneStep(g){
+ if(g.t>=g.N-3)extend(g);
+ const T=g.T,t=g.t,x=g.mode==='listen'?g.u[t]:g.prev;
+ RR.step(T,x);RR.feats(T,x,g.f);const p=RR.readout(g.R,g.f);
+ g.inp[t]=x;g.kind[t]=g.mode==='listen'?0:1;g.red[t+1]=p;
+ const s=g.seg;s.out.push(Number.isFinite(p)?p:p>0?1e300:p<0?-1e300:-7e300);s.n++;
+ if(g.mode==='dream'){const d=g.dream,k=d.n,e=Math.abs(x-g.u[t])/g.sd;
+  if(k===83)d.e84=s.e84=e;
+  if(d.lost<0&&!(e<=0.3))d.lost=s.lost=k;d.n++}
+ else{const e=Math.abs(p-g.u[t+1])/g.sd;
+  if(g.resync<0){if(e<0.01)g.runOK++;else g.runOK=0;if(g.runOK>=20&&s.n>=20&&g.afterDream)g.resync=s.n-20}}
+ g.t++;g.prev=p;if(!isFinite(p)||Math.abs(p)>50){g.prev=clamp(p||0,-50,50)}}
+function extend(g){const n=g.N*2,u=signal(g.c,n);const grow=(a,fill)=>{const b=new a.constructor(n).fill(fill);b.set(a);return b};
+ g.u=u;g.red=grow(g.red,NaN);g.inp=grow(g.inp,NaN);g.kind=grow(g.kind,-1);g.N=n}
+function splashAt(g,x,y,amp=1,rad=2.5){RR.splash(g.T,x,y,amp,rad);const sp={t:g.t,x,y,amp,rad};if(g.seg)g.seg.splashes.push(sp);g.splashes.push(sp)}
+
+/* ---------- caption ---------- */
+let capT=null,capText='';
+function cap(html){const el=$('#caption'),sp=el.firstElementChild;capText=html.replace(/<[^>]+>/g,'');if(capT){clearTimeout(capT);capT=null}
+ if(STATIC||FIXED||!sp.innerHTML){sp.innerHTML=html;el.classList.remove('fade');return}
+ el.classList.add('fade');capT=setTimeout(()=>{sp.innerHTML=html;el.classList.remove('fade')},240)}
+const m=x=>`<span class="m">${x}</span>`;
+const LOST=g=>g&&g.dream?g.dream.lost:-1;
+const CAP={
+ listen:()=>`A ripple tank with sixteen motorised dippers. They dunk in time with a chaotic signal, ${m('Mackey–Glass')}, while 273 floats ride the ripples. Fast-forward: the tank listens for ${m('2,300 steps')}.`,
+ solve:g=>`Now one least-squares solve for ${m(comma(g.NF)+' weights')}, one per float reading. That readout is the only thing trained: the water, the dippers and the floats are never adjusted.`,
+ trained:()=>`Trained. The red pen is the tank's guess of the next step, read off the floats. It sits right on the ink.`,
+ dream:()=>`Now I pull the plug. The dippers follow the tank's own guesses, step after step; the grey line is what the signal really did.`,
+ e84:g=>`Step 84 unplugged, the horizon Jaeger and Haas scored in 2004: off by ${m(fe(g.dream.e84))} of the signal's spread. Nobody is feeding it.`,
+ lost:g=>{const d=g.dream;return d.lost>=0?`In step for ${m(comma(d.lost)+' steps')}, then it slips off the timeline. It keeps drawing Mackey–Glass anyway: same bumps, same range, just not the same future.`:`Still in step after ${m(comma(d.n)+' steps')} unplugged.`},
+ replug:()=>`Plug the signal back in. The tank forgets its own dream the way it forgets everything, ripple by ripple…`,
+ resynced:g=>g.resync>=0?`…and ${m(g.resync+' steps')} later the guess is locked back on the ink. A memory that fades on its own is what makes this a reservoir.`:`…the guess is drifting back toward the ink.`,
+ splash:()=>`Unplugged again, and I splash the water while it dreams.`,
+ splash2:g=>{const d=g.dream,k=g.splashes.length?g.splashes[g.splashes.length-1].t-d.start:0;return d.lost>=0?`The splash lands at step ${m(k)} and the dream leaves the timeline at step ${m(d.lost)}: chaos amplifies a fingertip. The curve it keeps drawing still looks like Mackey–Glass.`:`The splash at step ${m(k)} hasn't knocked it off yet.`},
+ lampsT:g=>`Now the floats lose their lamps and report height only: ${m(comma(g.NF)+' weights')}. Retraining, then straight into the dream…`,
+ lamps:(g,full)=>`Lamps off: in step for ${m(LOST(g)>=0?LOST(g)+' steps':'all '+g.dream.n)}${full>0?` instead of ${m(full)}`:''}. The square at the eye helps, but it isn't the main bend.`,
+ straightT:()=>`Lamps back on, but the dippers go straight: each plunges in proportion to the signal, no tanh. Retraining…`,
+ straight:g=>`Straight dippers: in step for only ${m(LOST(g)>=0?LOST(g)+' steps':g.dream.n+'+')}. Small ripples add up linearly, so what goes in straight comes out a linear filter. The bends are what let it learn chaos.`,
+ restore:()=>`Back to tanh dippers and lamps. The water carries the memory; the two bends, each dipper's tanh and each lamp's square, do the rest.`,
+ you:()=>`Your turn. Splash the water, unplug it, draw a cycle for it to learn, thin the water or turn it to syrup, or take its bends away.`,
+ still:g=>`Reduced motion: the tank has listened, been trained, and dreamed ${m(g.dream?g.dream.n:0)} steps unplugged (in step for ${m(LOST(g)>=0?LOST(g):'all of them')}). The buttons run at once.`,
+ retrain:g=>`Listening to ${TASKNAME[g.c.task]} again${g.c.drain?' with the tank drained':''}: ${m(comma(g.NF)+' weights')} to solve…`,
+ ready:g=>g.c.drain?`Drained: the readout sees only the current value (${m('3 weights')}), so it has no past to go on. Unplugging…`:`Trained on ${TASKNAME[g.c.task]} (${m(comma(g.NF)+' weights')}). Unplugging in a moment…`,
+ userDream:g=>`Unplugged: the dippers follow the tank's own guesses.`,
+ userPlug:()=>`Plugged back in: the tank is listening again and forgetting its dream.`,
+ draw:()=>`Draw one cycle in the box, left to right. The tank listens to it repeated, then hums it back on its own.`
+};
+function liveCap(g){ // when the user is driving: report what happened
+ if(!g||!g.dream||g.mode!=='dream')return;const d=g.dream;
+ if(d.lost>=0&&!g.saidLost){g.saidLost=true;cap(`In step for ${m(comma(d.lost)+' steps')} unplugged${g.c.task==='mg'||g.c.task==='mg30'?', then off the timeline (but look at the shape it keeps drawing)':''}.`)}}
+
+/* ---------- script runner (tour) ---------- */
+let script=null,swait=0,swaitFn=null,tourOn=false,tourDone=false,tourMark='',speed=1,simT=0;
+function run(gen){script=gen;swait=0;swaitFn=null}
+function tickScript(dt){if(!script)return;if(swait>0){swait-=dt;if(swait>0)return}if(swaitFn){if(!swaitFn())return;swaitFn=null}
+ for(let guard=0;guard<50;guard++){const r=script.next();if(r.done){script=null;return}if(typeof r.value==='function'){if(!r.value()){swaitFn=r.value;return}}else{swait=r.value||0;if(swait>0)return}}}
+const done=()=>G&&G.phase==='run';
+function startTrain(opt={}){G=newSession(cfgOf(),opt);
+ if(STATIC){trainSteps(G,1e9);solveSome(G,null)}}
+function* tour(){
+ tourOn=true;tourDone=false;Object.assign(S,DEF,{cycle:DEF_CYCLE.slice()});syncControls();speed=1;
+ startTrain();tourMark='listen';cap(CAP.listen());if(EMBED&&!FIXED){trainSteps(G,1e9);solveSome(G,null)} // in the hall's viewer frames come slowly: train at once
+ yield()=>G.phase!=='sim';tourMark='solve';cap(CAP.solve(G));yield done;yield 1.2;
+ tourMark='trained';cap(CAP.trained());G.stopAt=G.t+72;yield()=>G.t>=G.stopAt;G.stopAt=-1;
+ unplug();tourMark='dream';cap(CAP.dream());yield 3.2;
+ speed=3;yield()=>G.dream.n>=84;speed=1;cap(CAP.e84(G));yield 4.2;
+ speed=6;yield()=>G.dream.lost>=0||G.dream.n>=1500;const full=G.dream.lost;speed=1;tourMark='lost';cap(CAP.lost(G));yield 5.6;
+ plug();tourMark='replug';cap(CAP.replug());speed=4;yield()=>G.resync>=0||G.seg.n>600;speed=1;cap(CAP.resynced(G));yield 4;
+ unplug();tourMark='splash';cap(CAP.splash());G.stopAt=G.t+40;yield()=>G.t>=G.stopAt;G.stopAt=-1;splashAt(G,32,20,1,2.5);yield 1.4;speed=2;yield()=>G.dream.lost>=0||G.dream.n>300;yield 1.2;speed=1;cap(CAP.splash2(G));yield 4.6;
+ S.eye='lin';syncControls();startTrain({thenDream:true});tourMark='lamps';cap(CAP.lampsT(G));yield done;speed=5;yield()=>G.dream.lost>=0||G.dream.n>=1500;speed=1;cap(CAP.lamps(G,full));yield 4.8;
+ S.eye='sq';S.psi='lin';syncControls();startTrain({thenDream:true});tourMark='straight';cap(CAP.straightT());yield done;speed=1;yield()=>G.dream.lost>=0||G.dream.n>=400;yield 1.2;cap(CAP.straight(G));yield 5.2;
+ S.psi='tanh';syncControls();startTrain();tourMark='restore';cap(CAP.restore());yield done;G.stopAt=G.t+48;yield()=>G.t>=G.stopAt;G.stopAt=-1;unplug();yield 4.4;
+ tourMark='you';cap(CAP.you());tourOn=false;tourDone=true;script=null}
+function poke(){if(tourOn){script=null;tourOn=false;tourDone=true;speed=1;if(G)G.stopAt=-1;cap(CAP.you());return true}return false}
+
+/* ---------- user actions ---------- */
+function unplug(){if(!done())return;G.afterDream=false;beginSeg(G,'dream');G.saidLost=false}
+function plug(){if(!done())return;G.afterDream=true;beginSeg(G,'listen')}
+function onTrained(g){panelDirty=true;if(tourOn)return;if(STATIC){g.stopAt=-1;afterTrainStatic(g);return}
+ if(g.autoDream>=0&&!g.thenDream){cap(CAP.ready(g))}}
+function afterTrainStatic(g){if(!g.thenDream){runSync(g,g.autoDream>=0?g.autoDream:72);unplug()}runSync(g,400)}
+function runSync(g,n){for(let i=0;i<n;i++)oneStep(g)}
+function userRetrain(why){poke();S.cycle=S.cycle.slice();G=newSession(cfgOf(),{autoDream:48});speed=1;
+ if(STATIC){trainSteps(G,1e9);solveSome(G,null);cap(G.c.drain?CAP.ready(G).replace(' Unplugging…',''):CAP.still(G));redraw();return}
+ cap(why==='draw'?`Listening to your drawing, repeated: ${m(comma(G.NF)+' weights')} to solve…`:CAP.retrain(G))}
+function userUnplug(){const was=poke();if(!done())return;if(G.mode==='dream'){plug();cap(CAP.userPlug());if(STATIC){runSync(G,240);redraw()}}
+ else{unplug();cap(CAP.userDream(G));if(STATIC){runSync(G,400);liveCap(G);redraw()}}panelDirty=true}
+function userSplash(x,y){poke();if(!done())return;if(x==null){x=10+fx()*44;y=6+fx()*28}splashAt(G,x,y,1,2.5);
+ if(G.mode==='dream'&&G.dream.lost<0)cap(`Splash at ${m('step '+(G.t-G.dream.start))} of the dream…`);else if(G.mode==='listen')cap(`Splash. Listening, the tank washes it out within a couple of hundred steps.`);
+ if(STATIC){runSync(G,160);liveCap(G);redraw()}}
+
+/* ---------- canvas layout ---------- */
+const cv=$('#c'),cx=cv.getContext('2d');
+let W=0,H=0,DPR=1,L=null,LITE=Q.has('lite'),ftAvg=16,ftN=0,lastPanel=-1;
+if(LITE)document.documentElement.classList.add('lite');
+let wc=document.createElement('canvas'),wx=wc.getContext('2d'),wimg=null,RW=0,RH=0,colI,colF,rowI,rowF,floorT=null;
+const glow=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,214,120,1)');gr.addColorStop(.25,'rgba(255,180,70,.55)');gr.addColorStop(1,'rgba(255,150,40,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);return c})();
+function fit(){
+ const mob=innerWidth<=820;DPR=Math.min(devicePixelRatio||1,2);
+ if(mob){const w=document.documentElement.clientWidth||innerWidth,motor=w*.045,ww=w-24-2*motor-10,wh=ww*NY/NX,ch=118;document.documentElement.style.setProperty('--sh',Math.round(wh+ch+44)+'px')}
+ const r=cv.getBoundingClientRect();W=Math.max(200,r.width);H=Math.max(200,r.height);
+ cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+ let x0=14,x1=W-14,y0=12,y1=H-12;
+ if(!mob&&!document.documentElement.classList.contains('og')){const p=$('#panel').getBoundingClientRect(),t=$('#title').getBoundingClientRect(),s=$('#story').getBoundingClientRect();x1=p.left-18;y0=t.bottom+8;y1=s.top-10;x0=18}
+ if(document.documentElement.classList.contains('og')){const t=$('#title').getBoundingClientRect();y0=t.bottom+6;x0=22;x1=W-22;y1=H-16}
+ const avH=y1-y0,avW=x1-x0;
+ if(document.documentElement.classList.contains('og')){const motorK=.06;let ww=avW*.6/(1+2*motorK),wh=ww*NY/NX;if(wh>avH-12){wh=avH-12;ww=wh*NX/NY}
+  const mw=ww*motorK,rim=Math.max(5,ww*.011),totW=ww+2*(mw+rim),top=y0+(avH-wh-2*rim)/2,chX=x0+totW+26,chW=x1-chX,chH=Math.min(wh*.66,300);
+  L={ww,wh,mw,rim,cs:ww/NX,wx:x0+mw+rim,wy:top+rim,chX,chY:top+rim+wh/2-chH/2+20,chW,chH,mob:false,side:true}}
+ else{
+ const chH=mob?118:clamp(avH*.25,112,200),gap=mob?22:30;
+ let wh=avH-chH-gap-14,ww=wh*NX/NY;const motorK=.06;
+ if(ww*(1+2*motorK)+20>avW){ww=(avW-20)/(1+2*motorK);wh=ww*NY/NX}
+ const mw=ww*motorK,rim=Math.max(5,ww*.011);
+ const totW=ww+2*(mw+rim),left=x0+(avW-totW)/2,top=y0+Math.max(0,(avH-(wh+2*rim+gap+chH))/2)*(mob?0:.5);
+ L={ww,wh,mw,rim,cs:ww/NX,wx:left+mw+rim,wy:top+rim,chX:left,chY:top+wh+2*rim+gap,chW:totW,chH,mob};}
+ const want=clamp(Math.round(L.ww*DPR/(LITE?4.6:2.3)),LITE?110:160,420);RW=want;RH=Math.round(RW*NY/NX);
+ wc.width=RW;wc.height=RH;wimg=wx.createImageData(RW,RH);
+ colI=new Int32Array(RW);colF=new Float32Array(RW);rowI=new Int32Array(RH);rowF=new Float32Array(RH);
+ for(let p=0;p<RW;p++){const c=clamp((p+.5)/RW*NX-.5,0,NX-1.001);colI[p]=Math.floor(c);colF[p]=c-colI[p]}
+ for(let p=0;p<RH;p++){const c=clamp((p+.5)/RH*NY-.5,0,NY-1.001);rowI[p]=Math.floor(c);rowF[p]=c-rowI[p]}
+ floorT=new Float32Array(RW*RH*3);const gstep=RW/NX*4,lw=Math.max(.5,RW/600);
+ for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){const u=(x+.5)/RW-.5,v=(y+.5)/RH-.5,vig=1-.55*(u*u*1.2+v*v*1.8);
+  const on=Math.abs(((x+.5)%gstep)-gstep/2)<lw||Math.abs(((y+.5)%gstep)-gstep/2)<lw;const f=vig*(on?.9:1);
+  const k=(y*RW+x)*3;floorT[k]=f;floorT[k+1]=f;floorT[k+2]=f}
+ if(curv){const b=curv.getBoundingClientRect();curv.width=Math.round(b.width*DPR);curv.height=Math.round(b.height*DPR)}
+ if(drawC){const b=drawC.getBoundingClientRect();if(b.width){drawC.width=Math.round(b.width*DPR);drawC.height=Math.round(b.height*DPR)}}
+ dirty=true}
+
+/* ---------- water ---------- */
+// the picture is the real height field through a monotone contrast curve (signed power), so the faint sloshing in the middle shows as well as the blobs at the dippers
+const CA=new Float32Array(NX*NY),CB=new Float32Array(NX*NY),CC=new Float32Array(NX*NY),CGX=new Float32Array(NX*NY),CGY=new Float32Array(NX*NY);
+const spow=(x,p)=>x>=0?Math.pow(x,p):-Math.pow(-x,p);
+function waterImage(){
+ const h=G?G.T.h:null;
+ for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=y*NX+x;if(!h){CA[i]=CB[i]=CC[i]=CGX[i]=CGY[i]=0;continue}
+  const c=h[i],e=x<NX-1?h[i+1]:c,w=x>0?h[i-1]:c,s=y<NY-1?h[i+NX]:c,n=y>0?h[i-NX]:c,gx=(e-w)*.5,gy=(s-n)*.5,lp=e+w+s+n-4*c;
+  CA[i]=Math.tanh(spow(c/.5,.75));CB[i]=Math.tanh(spow(-(gx*.6+gy*.8)/.45,.75));CC[i]=Math.tanh(spow(-lp/.7,.75));CGX[i]=Math.tanh(gx/.5);CGY[i]=Math.tanh(gy/.5)}
+ const d=wimg.data,kr=RW/200,fl=floorT;
+ for(let py=0;py<RH;py++){const r0=rowI[py],fy=rowF[py],o0=r0*NX,o1=o0+NX;
+  for(let px=0;px<RW;px++){const c0=colI[px],fxx=colF[px],a=o0+c0,b=a+1,c=o1+c0,e=c+1,w00=(1-fxx)*(1-fy),w10=fxx*(1-fy),w01=(1-fxx)*fy,w11=fxx*fy;
+   const A=CA[a]*w00+CA[b]*w10+CA[c]*w01+CA[e]*w11,B=CB[a]*w00+CB[b]*w10+CB[c]*w01+CB[e]*w11,C=CC[a]*w00+CC[b]*w10+CC[c]*w01+CC[e]*w11;
+   const ox=(CGX[a]*w00+CGX[b]*w10+CGX[c]*w01+CGX[e]*w11)*4*kr,oy=(CGY[a]*w00+CGY[b]*w10+CGY[c]*w01+CGY[e]*w11)*4*kr;
+   let sx=(px+ox+.5)|0,sy=(py+oy+.5)|0;sx=sx<0?0:sx>=RW?RW-1:sx;sy=sy<0?0:sy>=RH?RH-1:sy;const k=(sy*RW+sx)*3;
+   let Lt=.5+.07*A+.22*B+.33*C;Lt=Lt<0?0:Lt>1?1:Lt;Lt=Lt*Lt*(3-2*Lt);const sp=(B>.45?(B-.45)*(B-.45)*300:0)+(C>.4?(C-.4)*(C-.4)*220:0);
+   const o=(py*RW+px)*4;
+   d[o]=(5+Lt*(160-5))*fl[k]+sp;d[o+1]=(22+Lt*(246-22))*fl[k]+sp;d[o+2]=(30+Lt*(236-30))*fl[k]+sp*.92;d[o+3]=255}}
+ wx.putImageData(wimg,0,0)}
+function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath()}
+const cellX=x=>L.wx+(x+.5)*L.cs,cellY=y=>L.wy+(y+.5)*L.cs;
+function drawTank(){
+ const {wx:X,wy:Y,ww,wh,rim,mw,cs}=L;
+ // shadow + frame
+ cx.save();cx.shadowColor='rgba(0,0,0,.6)';cx.shadowBlur=30;cx.shadowOffsetY=12;rr(X-rim,Y-rim,ww+2*rim,wh+2*rim,rim*1.6);cx.fillStyle='#1c2a2c';cx.fill();cx.restore();
+ waterImage();cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality=LITE?'low':'high';
+ cx.save();rr(X,Y,ww,wh,rim*.8);cx.clip();cx.drawImage(wc,X,Y,ww,wh);
+ const gl=cx.createLinearGradient(X,Y,X+ww*.6,Y+wh);gl.addColorStop(0,'rgba(255,255,255,.10)');gl.addColorStop(.5,'rgba(255,255,255,0)');cx.fillStyle=gl;cx.fillRect(X,Y,ww,wh);cx.restore();
+ const fr=cx.createLinearGradient(0,Y-rim,0,Y+wh+rim);fr.addColorStop(0,'#c9d6d2');fr.addColorStop(.5,'#6d7f80');fr.addColorStop(1,'#a8b6b3');
+ cx.lineWidth=rim;cx.strokeStyle=fr;rr(X-rim/2,Y-rim/2,ww+rim,wh+rim,rim*1.2);cx.stroke();
+ cx.lineWidth=1;cx.strokeStyle='rgba(255,255,255,.35)';rr(X-rim,Y-rim,ww+2*rim,wh+2*rim,rim*1.6);cx.stroke();
+ if(!G)return;
+ const T=G.T,h=T.h;
+ // floats: glow (h squared) then corks
+ const rf=Math.max(1.3,cs*.24);
+ if(T.c.eye==='sq'&&!T.c.drain&&!LITE){cx.save();cx.globalCompositeOperation='lighter';
+  for(let p=0;p<T.NP;p++){const hv=h[T.P[p]],q=hv*hv,a=clamp((Math.log10(q+1e-12)+2.6)/2.2,0,1);if(a<.05)continue;const i=T.P[p],x=i%NX,y=(i/NX)|0,s=rf*(3+4*a);
+   cx.globalAlpha=a*a*.85;cx.drawImage(glow,cellX(x)-s,cellY(y)-s,2*s,2*s)}cx.restore()}
+ cx.beginPath();for(let p=0;p<T.NP;p++){const i=T.P[p],x=i%NX,y=(i/NX)|0,px=cellX(x),py=cellY(y);cx.moveTo(px+rf,py);cx.arc(px,py,rf,0,6.2832)}
+ cx.fillStyle=T.c.drain?'rgba(240,235,220,.25)':'rgba(244,238,222,.92)';cx.fill();cx.lineWidth=Math.max(.6,rf*.4);cx.strokeStyle='rgba(10,30,34,.6)';cx.stroke();
+ if(T.c.eye==='sq'&&!T.c.drain){cx.beginPath();for(let p=0;p<T.NP;p++){const hv=h[T.P[p]],a=clamp((Math.log10(hv*hv+1e-12)+2.6)/2.2,0,1);if(a<.55)continue;const i=T.P[p],px=cellX(i%NX),py=cellY((i/NX)|0);cx.moveTo(px+rf*.6,py);cx.arc(px,py,rf*.6,0,6.2832)}cx.fillStyle='#ffb43c';cx.fill()}
+ // dippers + motors + bus
+ const dream=G.mode==='dream',busCol=G.phase!=='run'?'#f0b54a':dream?'#ff5f4a':'#f0b54a';
+ for(let side=0;side<2;side++){const xm=side?X+ww+rim:X-rim-mw;
+  cx.fillStyle='#0f1a1c';rr(xm+mw*.12,Y+cs*.2,mw*.76,wh-cs*.4,mw*.2);cx.fill();
+  cx.strokeStyle=busCol;cx.globalAlpha=.55;cx.lineWidth=Math.max(1.2,mw*.06);cx.beginPath();const bx=side?xm+mw*.82:xm+mw*.18;cx.moveTo(bx,Y+cs*1.2);cx.lineTo(bx,Y+wh+rim+2);cx.stroke();cx.globalAlpha=1}
+ for(let k=0;k<T.c.nd;k++){const [x0,y0]=T.pos[k],px=cellX(x0),py=cellY(y0-.5)+cs*.5,left=x0<NX/2,d=T.drv[k],xm=left?X-rim-mw:X+ww+rim;
+  // motor housing with a cam that turns with the stroke
+  const mx=xm+mw/2,my=py,mr=Math.min(mw*.34,cs*1.9);
+  cx.fillStyle='#2f3d3f';cx.beginPath();cx.arc(mx,my,mr,0,6.2832);cx.fill();cx.strokeStyle='#9fb2ae';cx.lineWidth=1;cx.stroke();
+  const ang=(left?-1:1)*clamp(d,-2,2)*.9;cx.strokeStyle=T.a[k]>0?'#f0b54a':'#7fe3e0';cx.lineWidth=Math.max(1.4,mr*.28);cx.beginPath();cx.moveTo(mx,my);cx.lineTo(mx+Math.cos(ang+(left?0:Math.PI))*mr*.85,my+Math.sin(ang+(left?0:Math.PI))*mr*.85);cx.stroke();
+  // arm over the rim to the dipper
+  cx.strokeStyle='rgba(200,215,210,.8)';cx.lineWidth=Math.max(1,cs*.22);cx.beginPath();cx.moveTo(left?mx+mr:mx-mr,my);cx.lineTo(px,py);cx.stroke();
+  const dr=cs*(1.05+.28*clamp(d,-2,2));let gd;if(LITE)gd=d>0?'#d39a3a':'#8a6a33';else{gd=cx.createRadialGradient(px-dr*.3,py-dr*.3,dr*.1,px,py,dr);gd.addColorStop(0,'#fff1c9');gd.addColorStop(.6,d>0?'#c98e2c':'#8a6a33');gd.addColorStop(1,'#3e2c10')}
+  cx.fillStyle=gd;cx.beginPath();cx.arc(px,py,Math.max(1.5,dr),0,6.2832);cx.fill()}}
+
+/* ---------- chart recorder ---------- */
+const VMIN=-0.62,VMAX=0.5;
+let paperOff=0;
+function drawChart(){
+ const {chX:X,chY:Y,chW:Wc,chH:Hc}=L;
+ cx.save();cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=18;cx.shadowOffsetY=6;rr(X,Y,Wc,Hc,9);cx.fillStyle='#efe9d8';cx.fill();cx.restore();
+ cx.save();rr(X,Y,Wc,Hc,9);cx.clip();
+ const top=Y+20,bot=Y+Hc-8,yv=v=>bot-(clamp(v,VMIN-.2,VMAX+.2)-VMIN)/(VMAX-VMIN)*(bot-top);
+ const nowX=X+Wc*.84,span=Math.round(clamp(Wc/2.6,150,420)),px=(nowX-X-8)/span;
+ if(!G){cx.restore();return}
+ const t=G.t,frac=G.phase==='run'?clamp(stepAcc,0,1):0;
+ const xs=i=>nowX-(t-i+frac)*px;
+ // dream bands
+ const i0=Math.max(0,t-span-2);
+ for(let i=i0;i<t;){if(G.kind[i]===1){let j=i;while(j<t&&G.kind[j]===1)j++;cx.fillStyle='rgba(255,95,74,.10)';cx.fillRect(xs(i),Y,(j-i)*px,Hc);i=j}else i++}
+ if(G.mode==='dream'&&G.phase==='run'){cx.fillStyle='rgba(255,95,74,.10)';cx.fillRect(xs(t),Y,nowX-xs(t)+1,Hc)}
+ // grid
+ cx.strokeStyle='rgba(60,90,96,.16)';cx.lineWidth=1;cx.beginPath();const g0=Math.floor(i0/25)*25;
+ for(let i=g0;i<=t+30;i+=25){const x=xs(i);if(x<X||x>X+Wc)continue;cx.moveTo(x,top-6);cx.lineTo(x,bot)}
+ for(let v=-0.6;v<=0.41;v+=0.2){const y=yv(v);cx.moveTo(X,y);cx.lineTo(X+Wc,y)}cx.stroke();
+ // the truth: ink where it was fed in, pale where it wasn't
+ const line=(get,from,to,col,lw,dash)=>{cx.strokeStyle=col;cx.lineWidth=lw;cx.setLineDash(dash||[]);cx.beginPath();let pen=false;for(let i=from;i<=to;i++){const v=get(i);if(!isFinite(v)){pen=false;continue}const x=xs(i),y=yv(v);if(pen)cx.lineTo(x,y);else{cx.moveTo(x,y);pen=true}}cx.stroke();cx.setLineDash([])};
+ line(i=>G.red[i],i0,G.phase==='run'?t:t-1,'rgba(226,64,45,.95)',2.6);
+ line(i=>G.kind[i]===1?G.u[i]:NaN,i0,t-1,'rgba(23,48,59,.75)',1.2,[3,3]);
+ line(i=>G.kind[i]===0||G.kind[i]===2?G.u[i]:NaN,i0,t-1,'#17303b',1.5);
+ // splashes, lost flag, 84 tick
+ cx.font=`500 ${Math.round(clamp(Hc*.075,9,11.5))}px "DM Mono",monospace`;cx.textBaseline='alphabetic';
+ for(const s of G.splashes){const x=xs(s.t);if(x<X||x>nowX)continue;cx.fillStyle='#2a8fb0';cx.beginPath();cx.moveTo(x,top-12);cx.quadraticCurveTo(x+5,top-4,x,top-1);cx.quadraticCurveTo(x-5,top-4,x,top-12);cx.fill()}
+ for(const sg of G.log.segs){const d=sg.dref;if(!d)continue;
+  if(d.n>=84){const x=xs(d.start+84);if(x>X&&x<nowX){cx.strokeStyle='rgba(23,48,59,.55)';cx.beginPath();cx.moveTo(x,bot);cx.lineTo(x,bot-7);cx.stroke();cx.fillStyle='rgba(23,48,59,.7)';cx.fillText('84',x+2,bot-1)}}
+  if(d.lost>=0){const x=xs(d.start+d.lost);if(x>X-40&&x<nowX){cx.strokeStyle='#e2402d';cx.lineWidth=1.3;cx.beginPath();cx.moveTo(x,bot);cx.lineTo(x,top-3);cx.stroke();cx.fillStyle='#e2402d';cx.beginPath();cx.moveTo(x,top+6);cx.lineTo(x+9,top+9);cx.lineTo(x,top+12);cx.fill();cx.fillText('off the timeline · '+d.lost,x+11,top+13)}}}
+ // now line + pen
+ cx.strokeStyle='rgba(23,48,59,.35)';cx.lineWidth=1;cx.beginPath();cx.moveTo(nowX,Y+4);cx.lineTo(nowX,Y+Hc-4);cx.stroke();
+ if(G.phase==='run'){const v=G.red[t];if(isFinite(v)){const y=yv(v);cx.fillStyle='#e2402d';cx.beginPath();cx.arc(nowX,y,3.4,0,6.2832);cx.fill();cx.strokeStyle='rgba(120,20,10,.6)';cx.lineWidth=2;cx.beginPath();cx.moveTo(nowX,y);cx.lineTo(nowX+22,y-14);cx.stroke()}}
+ // labels
+ cx.fillStyle='rgba(23,48,59,.86)';cx.textAlign='left';
+ const dd=G.dream,mode=G.phase==='sim'?'LISTENING · fast-forward':G.phase==='solve'?'SOLVING FOR THE READOUT':G.mode==='dream'?(dd&&dd.lost>=0?`UNPLUGGED · was in step for ${comma(dd.lost)} steps`:`UNPLUGGED · in step for ${comma(dd?dd.n:0)} steps`):'LISTENING · plugged in';
+ cx.fillText(mode,X+10,Y+14);
+ cx.textAlign='right';cx.fillStyle='rgba(23,48,59,.62)';cx.fillText(Wc>520?'ink: the signal  ·  red: the tank\'s guess':'ink: signal · red: guess',Wc>520?X+Wc-10:nowX-8,Wc>520?Y+14:bot-3);cx.textAlign='left';
+ cx.restore();
+ // the bus that drives the dippers: from the signal (listening) or from the red pen (unplugged)
+ if(G.phase==='run'||G.phase==='sim'){const dream=G.mode==='dream'&&G.phase==='run',col=dream?'#ff5f4a':'#f0b54a';
+  const xa=L.wx-L.rim-L.mw*.82,xr=L.wx+L.ww+L.rim+L.mw*.82,yb=L.wy+L.wh+L.rim+(L.side?9:Math.min(9,(L.chY-(L.wy+L.wh+L.rim))*.4)),xt=dream?nowX:X+26;
+  cx.strokeStyle=col;cx.lineWidth=2;cx.globalAlpha=.9;cx.beginPath();cx.moveTo(xa,L.wy+L.wh);cx.lineTo(xa,yb);cx.lineTo(xr,yb);cx.lineTo(xr,L.wy+L.wh);if(L.side){cx.moveTo(xr,yb);cx.lineTo(X+14,yb);cx.lineTo(X+14,Y+Hc)}else{cx.moveTo(xt,yb);cx.lineTo(xt,Y)}cx.stroke();
+  if(!L.side){cx.fillStyle=col;cx.beginPath();cx.arc(xt,yb,3,0,6.2832);cx.fill()}cx.globalAlpha=1;if(L.side)return;
+  cx.font=`500 ${L.mob?9:10.5}px "DM Mono",monospace`;cx.textAlign=dream?'right':'left';cx.textBaseline='top';cx.fillText(dream?'dippers ← its own guess':'dippers ← the signal',dream?xt-7:xt+7,yb+4);cx.textAlign='left';cx.textBaseline='alphabetic'}}
+
+/* ---------- panel ---------- */
+const curv=$('#curves'),drawC=$('#draw');
+function drawCurves(){if(!curv||!G)return;const c=curv.getContext('2d'),w=curv.width,h=curv.height,T=G.T;c.clearRect(0,0,w,h);
+ const xv=u=>(u-VMIN)/(VMAX-VMIN)*w,yv=d=>h/2-d/2.4*(h/2-4);
+ c.strokeStyle='rgba(255,255,255,.12)';c.lineWidth=1;c.beginPath();c.moveTo(0,h/2);c.lineTo(w,h/2);c.moveTo(xv(0),0);c.lineTo(xv(0),h);c.stroke();
+ const u=isFinite(T.u)?T.u:0;
+ for(let k=0;k<T.c.nd;k++){c.strokeStyle=T.a[k]>0?'rgba(240,181,74,.75)':'rgba(127,227,224,.75)';c.lineWidth=1.2*DPR;c.beginPath();
+  for(let i=0;i<=60;i++){const uu=VMIN+(VMAX-VMIN)*i/60,d=T.c.psi==='tanh'?RR.xtanh(T.a[k]*uu+T.b[k])-T.tb[k]:T.a[k]*uu;i?c.lineTo(xv(uu),yv(d)):c.moveTo(xv(uu),yv(d))}c.stroke()}
+ c.fillStyle='#fff';for(let k=0;k<T.c.nd;k++){c.beginPath();c.arc(xv(u),yv(T.drv[k]),2.2*DPR,0,6.2832);c.fill()}
+ c.fillStyle='rgba(230,245,240,.55)';c.font=`${10*DPR}px "DM Mono",monospace`;c.fillText('signal →',w-58*DPR,h-5*DPR);c.fillText('plunge',4*DPR,11*DPR)}
+function drawCycle(){if(!drawC||S.task!=='draw')return;const c=drawC.getContext('2d'),w=drawC.width,h=drawC.height;c.clearRect(0,0,w,h);
+ c.strokeStyle='rgba(255,255,255,.1)';c.beginPath();c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();
+ const n=S.cycle.length;c.strokeStyle='#ffd27a';c.lineWidth=2*DPR;c.beginPath();for(let i=0;i<n;i++){const x=(i+.5)/n*w,y=h/2-S.cycle[i]/.55*(h/2-4);i?c.lineTo(x,y):c.moveTo(x,y)}c.stroke();
+ c.fillStyle='rgba(230,245,240,.5)';c.font=`${10*DPR}px "DM Mono",monospace`;c.fillText('one cycle, 48 steps: draw over it',6*DPR,13*DPR)}
+let panelDirty=true;
+function panel(){if(!G)return;const d=G.dream;
+ $('#modev').textContent=G.phase==='sim'?'listening (fast)':G.phase==='solve'?'solving '+Math.round(G.prog*100)+'%':G.mode==='dream'?'unplugged':'listening';
+ if(d){$('#rstep').textContent=d.lost>=0?comma(d.lost):comma(d.n)+(G.mode==='dream'?'+':'');$('#rstep2').textContent=d.lost>=0?'steps, then off':'steps unplugged';$('#r84').textContent=d.e84==null?'–':fe(d.e84)}
+ else{$('#rstep').textContent='–';$('#rstep2').textContent='steps unplugged';$('#r84').textContent='–'}
+ $('#rw').textContent=G.phase==='run'?comma(G.NF):'…';$('#rw2').textContent=G.phase==='run'?'weights, one solve':'weights';
+ const pb=$('#plug');pb.textContent=G.mode==='dream'?'Plug the signal back in':'Unplug · let it dream';pb.classList.toggle('red',G.mode==='dream');pb.classList.toggle('go',G.mode!=='dream');pb.disabled=G.phase!=='run';$('#splash').disabled=G.phase!=='run';
+ $('#sigv').textContent=TASKNAME[S.task];$('#viscv').textContent=(VISC[S.vi]*100).toFixed(1).replace(/\.0$/,'')+'% per tick';$('#seedv').textContent='seed '+S.seed}
+function syncControls(){const seg=(id,v)=>$$(id+' button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===String(v)));
+ seg('#task',S.task);seg('#psi',S.psi);seg('#eye',S.eye);seg('#water',S.drain?'out':'in');$('#visc').value=S.vi;
+ document.documentElement.classList.toggle('drawing',S.task==='draw');if(S.task==='draw'){fit()}panelDirty=true}
+
+/* ---------- frame ---------- */
+let dirty=true,stepAcc=0,ready=false;
+function update(dt,rawMs){
+ simT+=dt;
+ if(G&&G.phase==='sim'){const rate=(WASH+NTR)/(tourOn?2.6:1.7);trainSteps(G,Math.max(1,Math.round(rate*dt)));dirty=true;panelDirty=true}
+ else if(G&&G.phase==='solve'){if(FIXED||STATIC)solveSome(G,null);else solveSome(G,clamp((rawMs||16)*.6,6,40));panelDirty=true}
+ else if(G&&G.phase==='run'){stepAcc+=dt*PACE*speed;let n=0;
+  while(stepAcc>=1&&n<200){if(G.stopAt>=0&&G.t>=G.stopAt){stepAcc=0;break}oneStep(G);stepAcc-=1;n++;
+   if(!tourOn&&G.autoDream>=0&&G.mode==='listen'&&G.seg.n>=G.autoDream&&!G.afterDream){G.autoDream=-1;unplug();cap(CAP.userDream(G))}}
+  if(n)panelDirty=true;if(!tourOn)liveCap(G)}
+ tickScript(dt)}
+function render(){if(!L)return;cx.setTransform(DPR,0,0,DPR,0,0);cx.clearRect(0,0,W,H);drawTank();drawChart();
+ if(panelDirty&&(FIXED||STATIC||simT-lastPanel>.12||simT<lastPanel)){lastPanel=simT;panelDirty=false;panel();drawCurves()}}
+function redraw(){panelDirty=true;lastPanel=-9;render();drawCycle()}
+let last=0;window.__frame=0;
+function frame(ts,skipDraw){
+ if(!FIXED&&!STATIC)requestAnimationFrame(frame); // first, so one bad frame can't stop the show
+ const now=FIXED?last+1000/60:(ts||performance.now()),raw=now-last,dt=FIXED?1/60:clamp(raw/1000,0,.1);last=now;window.__frame++;
+ if(!STATIC)update(dt,raw);if(!skipDraw)render();
+ if(!FIXED&&!STATIC&&!LITE&&raw>0&&raw<1000){ftN++;if(ftN>20){ftAvg+=(raw-ftAvg)*.08;if(ftN>60&&ftAvg>45){LITE=true;document.documentElement.classList.add('lite');fit()}}}
+ window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tourOn,mark:tourMark,phase:G?G.phase:'',mode:G?G.mode:'',step:G?G.t:0,dream:G&&G.dream?G.dream.n:0}}
+
+/* ---------- input ---------- */
+function cellAt(e){const b=cv.getBoundingClientRect(),x=(e.clientX-b.left-L.wx)/L.cs-.5,y=(e.clientY-b.top-L.wy)/L.cs-.5;return x>=-.5&&y>=-.5&&x<NX-.5&&y<NY-.5?[x,y]:null}
+function hook(){
+ cv.addEventListener('pointerdown',e=>{if(!L)return;const c=cellAt(e);if(!c){poke();return}userSplash(+c[0].toFixed(2),+c[1].toFixed(2))});
+ cv.addEventListener('pointermove',e=>{if(!L)return;cv.classList.toggle('wet',!!cellAt(e))});
+ $('#plug').addEventListener('click',userUnplug);
+ $('#splash').addEventListener('click',()=>userSplash());
+ const segH=(id,fn)=>$$(id+' button').forEach(b=>b.addEventListener('click',()=>{fn(b.dataset.v);syncControls();userRetrain(id)}));
+ segH('#task',v=>{S.task=v});segH('#psi',v=>{S.psi=v});segH('#eye',v=>{S.eye=v});segH('#water',v=>{S.drain=v==='out'});
+ $('#visc').addEventListener('input',e=>{S.vi=+e.target.value;panelDirty=true;poke()});
+ $('#visc').addEventListener('change',e=>{S.vi=+e.target.value;userRetrain('visc')});
+ $('#newt').addEventListener('click',()=>{S.seed++;userRetrain('seed')});
+ $('#retrain').addEventListener('click',()=>userRetrain('again'));
+ const rep=()=>{if(STATIC){Object.assign(S,DEF,{cycle:DEF_CYCLE.slice()});syncControls();userRetrain('tour');return}poke();run(tour())};
+ $('#tourb').addEventListener('click',rep);$('#tourb2').addEventListener('click',rep);
+ // drawing a cycle
+ let drawing=false,lastI=-1,lastV=0;
+ const at=e=>{const b=drawC.getBoundingClientRect(),n=S.cycle.length,i=clamp(Math.floor((e.clientX-b.left)/b.width*n),0,n-1),v=clamp((b.height/2-(e.clientY-b.top))/(b.height/2-4)*.55,-.55,.55);return[i,v]};
+ drawC.addEventListener('pointerdown',e=>{poke();drawing=true;try{drawC.setPointerCapture(e.pointerId)}catch(_){}const[i,v]=at(e);S.cycle[i]=+v.toFixed(3);lastI=i;lastV=v;drawCycle()});
+ drawC.addEventListener('pointermove',e=>{if(!drawing)return;const[i,v]=at(e);const a=Math.min(i,lastI),b=Math.max(i,lastI);for(let k=a;k<=b;k++){const f=b===a?1:(k-lastI)/(i-lastI);S.cycle[k]=+lerp(lastV,v,clamp(f,0,1)).toFixed(3)}lastI=i;lastV=v;drawCycle()});
+ const up=()=>{if(!drawing)return;drawing=false;userRetrain('draw')};drawC.addEventListener('pointerup',up);drawC.addEventListener('pointercancel',up);
+ addEventListener('resize',()=>{fit();redraw()})}
+
+/* ---------- start ---------- */
+async function start(){
+ try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,EMBED?0:400))])}catch(e){}
+ hook();fit();
+ const qs=Q.get('seed'),qt=Q.get('task'),qv=Q.get('visc');
+ if(qs&&isFinite(+qs))S.seed=Math.round(+qs);if(qt&&TASKNAME[qt]&&qt!=='draw')S.task=qt;if(qv&&isFinite(+qv))S.vi=clamp(Math.round(+qv),0,8);
+ if(Q.has('lin'))S.psi='lin';if(Q.has('hon'))S.eye='lin';
+ syncControls();
+ const custom=qs||qt||qv||Q.has('lin')||Q.has('hon');
+ if(STATIC){G=newSession(cfgOf(),{});trainSteps(G,1e9);solveSome(G,null);tourDone=true;cap(CAP.still(G))}
+ else if(custom){G=newSession(cfgOf(),{autoDream:48});tourDone=true;cap(CAP.retrain(G));if(FIXED){let g=0;while(g++<20000&&!(G.phase==='run'&&G.dream&&G.dream.n>=200))update(1/60)}}
+ else{run(tour());if(FIXED){const og=Q.has('og');let g=0;while(g++<40000&&!(tourMark==='dream'&&G.dream&&G.dream.n>=(og?150:120)))update(1/60)}}
+ ready=true;redraw()}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+(async()=>{await start();if(FIXED||STATIC)frame();else{last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view
+window.ripples={
+ state:()=>{if(!ready||!G)return{ready:false};const d=G.dream;
+  return{ready:true,exno:($('.kick').textContent.match(/No\. (\d+)/)||[])[1],want:{...S,cycle:S.cycle.slice()},cfg:{...G.c},phase:G.phase,mode:G.mode,t:G.t,NF:G.NF,sd:G.sd,whash:G.log.whash,prog:G.prog,
+   dream:d?{start:d.start,n:d.n,lost:d.lost,e84:d.e84}:null,resync:G.resync,splashes:G.splashes.length,tourOn,tourDone,mark:tourMark,speed,caption:capText,simT:+simT.toFixed(3),
+   logs:LOGS.map(l=>({id:l.id,cfg:l.cfg,NF:l.NF,n:l.n,wash:l.wash,lam:l.lam,whash:l.whash,sd:l.sd,segs:l.segs.map(s=>({mode:s.mode,t0:s.t0,n:s.n,hash:s.out.length?RR.fnv(Float64Array.from(s.out)):null,lost:s.lost,e84:s.e84,splashes:s.splashes.map(x=>({...x}))}))})),
+   layout:L?{ww:L.ww,wh:L.wh,RW,RH,chW:L.chW,chH:L.chH}:null}},
+ recent:(n=300)=>{if(!G)return null;const a=Math.max(0,G.t-n);const r=[];for(let i=a;i<G.t;i++)r.push([i,G.kind[i],G.u[i],G.red[i]]);return r}
+};
+</script>
+</body>
+</html>
