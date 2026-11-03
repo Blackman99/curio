@@ -1,15 +1,15 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <script>/* loaded inside the hall's own exhibit viewer: close the viewer instead of nesting a second hall in it */
 (function(){try{var P=parent,h=function(p){return p.replace(/index\.html$/,'')};if(P!==self&&P.__viewer&&P.__viewer.open>=0&&h(P.location.pathname)===h(location.pathname)){document.documentElement.style.background='#0b0806';stop();P.__viewer.bounce()}}catch(e){}})()</script>
-<title>Curio · A cabinet of AI curiosities</title>
-<meta name="description" content="A growing cabinet of small, hands-on AI experiments that run in your browser. Walk the archive and open a case.">
+<title>Curio · A cabinet of curiosities</title>
+<meta name="description" content="A growing cabinet of small, hands-on experiments that run in your browser: ideas from AI, finely made machines, physics and mathematics, and tricks of the web itself. Walk the archive and open a case.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<meta property="og:type" content="website"><meta property="og:title" content="Curio · A cabinet of AI curiosities">
-<meta property="og:description" content="Small, hands-on AI experiments that run in your browser. Walk the archive and open a case.">
+<meta property="og:type" content="website"><meta property="og:title" content="Curio · A cabinet of curiosities">
+<meta property="og:description" content="Small, hands-on experiments that run in your browser: AI, machines, physics and the web itself. Walk the archive and open a case.">
 <meta property="og:url" content="https://blackman99.github.io/curio/">
 <meta property="og:image" content="https://blackman99.github.io/curio/assets/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Curio · A cabinet of AI curiosities">
-<meta name="twitter:description" content="Small, hands-on AI experiments that run in your browser. Walk the archive and open a case."><meta name="twitter:image" content="https://blackman99.github.io/curio/assets/og.png">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Curio · A cabinet of curiosities">
+<meta name="twitter:description" content="Small, hands-on experiments that run in your browser: AI, machines, physics and the web itself. Walk the archive and open a case."><meta name="twitter:image" content="https://blackman99.github.io/curio/assets/og.png">
 <style>
 :root{--paper:#efe4cc;--ink:#1d1a16;--red:#c8321e;--brass:#d9a74a}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:#0b0806;color:var(--paper);font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;overflow:hidden}
@@ -74,13 +74,13 @@ body.flat{overflow:auto}body.flat #list{display:block}body.flat .hud,body.flat c
 </style></head><body>
 <canvas id="c" aria-hidden="true"></canvas>
 <div id="veil"><b>Opening the archive…</b></div>
-<div class="hud" id="brand"><img src="assets/logo.svg" alt="Curio logo"><div><div class="kicker">The Archive · Est. 2026</div><h1>Curio <em>A cabinet of AI&nbsp;curiosities</em></h1></div></div>
+<div class="hud" id="brand"><img src="assets/logo.svg" alt="Curio logo"><div><div class="kicker">The Archive · Est. 2026</div><h1>Curio <em>A cabinet of&nbsp;curiosities</em></h1></div></div>
 <nav class="hud" id="plan" aria-label="Floor plan and directory"><header><span>Floor plan</span><button id="plantoggle" type="button" aria-controls="dirlist">Directory</button></header><canvas id="map" aria-label="Floor plan: click a case to walk to it"></canvas><ul id="dirlist"></ul></nav>
 <div class="hud" id="toast" aria-live="polite"></div><div id="joy" aria-hidden="true"><i></i></div>
 <div class="hud" id="card" role="status" aria-live="polite"></div>
 <div class="hud" id="hint">Walk with W A S D · drag to look · click a case to open</div>
 <div class="hud" id="src"><a href="https://github.com/Blackman99/curio">Source</a> · <a href="?list">List view</a></div>
-<main id="list"><header><img src="assets/logo.svg" alt="Curio logo"><div><div class="kicker" style="color:var(--red)">Specimens of machine thought</div><h1>Curio <em>A cabinet of AI&nbsp;curiosities</em></h1><p>Small, hands-on experiments that run entirely in your browser.</p></div></header>
+<main id="list"><header><img src="assets/logo.svg" alt="Curio logo"><div><div class="kicker" style="color:var(--red)">Specimens of ingenuity</div><h1>Curio <em>A cabinet of&nbsp;curiosities</em></h1><p>Small, hands-on experiments that run entirely in your browser.</p></div></header>
 <ul id="ul"></ul><p class="note">Built by <a href="https://github.com/Blackman99">Blackman99</a> · Source on <a href="https://github.com/Blackman99/curio">GitHub</a> · Toys, not benchmarks: each demo explains its simplifications. · <a href="./">3D archive</a></p></main>
 <div id="flood"></div>
 <div id="viewer" role="dialog" aria-modal="true" aria-label="Exhibit viewer"><div class="vlabel">Now viewing</div><button id="vclose" aria-label="Close exhibit">×</button>
@@ -111,7 +111,7 @@ function wireFrame(f){let w,d;try{w=f.contentWindow;d=f.contentDocument}catch(_)
   else if(u.origin!==location.origin&&/^https?:$/.test(u.protocol)){a.target='_blank';a.rel='noopener'}})} // papers and GitHub refuse to be framed
 // The frame reached the hall some other way (see <head>): rewind past its own history entries too, as a normal close would.
 V.bounce=()=>{if(V.open<0)return;const n=history.length-V.len;if(V.pushed&&n>0&&history.state&&history.state.exhibit)history.go(-n-1);else{history.replaceState(null,'',baseURL());doClose()}};
-function hideViewer(cb){if(V.open<0){cb&&cb();return}const i=V.open;V.open=-1;V.el.classList.remove('show');document.title='Curio · A cabinet of AI curiosities';
+function hideViewer(cb){if(V.open<0){cb&&cb();return}const i=V.open;V.open=-1;V.el.classList.remove('show');document.title='Curio · A cabinet of curiosities';
  setTimeout(()=>{V.el.classList.remove('on');document.getElementById('vslot').replaceChildren();V.if=null;cb&&cb(i)},450)}
 function openExhibit(i,{push=true,instant=false}={}){if(i<0||!list[i]||V.open>=0||V.busy)return;
  if(push){history.pushState({exhibit:list[i].slug},'',(()=>{const u=new URL(location.href);u.searchParams.set('exhibit',list[i].slug);return u.pathname+u.search})());V.pushed=true}

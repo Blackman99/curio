@@ -437,7 +437,7 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
   // entablature, frieze inscription, dome, ribs, oculus
   const oct=[];for(let k=0;k<8;k++){const an=(k+.5)*Math.PI/4;oct.push([Math.cos(an)*Rc,Math.sin(an)*Rc])}
   add('marbleW',G.sweep(oct,[[0,7.24],[.3,7.24],[.3,7.4],[.32,7.42],[.32,7.52],[.3,7.54],[.3,7.86],[.34,7.88],[.4,7.94],[.46,7.98],[.62,8.04],[.66,8.1],[.66,8.17],[0,8.17]],true));
-  const words={0:'SPECIMENS OF MACHINE THOUGHT',2:'A CABINET OF AI CURIOSITIES',4:'OPEN EVERY CASE',6:'CURIO · EST. MMXXVI'};
+  const words={0:'SPECIMENS OF INGENUITY',2:'A CABINET OF CURIOSITIES',4:'OPEN EVERY CASE',6:'CURIO · EST. MMXXVI'};
   for(const f of F)if(words[f.k]){const c=tex(giltText([{t:words[f.k],y:.55,size:150,weight:'600',track:30}],2048,192),false);add('_decal',{g:new T.PlaneGeometry(5.6,.525).translate(0,7.7,.305),m:f.m,mat:decal(c)})}
   const vg=G.vault(IN,6,1.35,12,24).translate(0,8.17,0);add('dome',vg);
   for(let k=0;k<8;k++){const an=(k+.5)*Math.PI/4,pts=[],pm=Math.acos(1.35/IN);for(let j=0;j<=20;j++){const ph=j/20*pm;const rr=Rc*Math.cos(ph)-.1;pts.push(new V3(Math.cos(an)*rr,8.17+6*Math.sin(ph),Math.sin(an)*rr))}

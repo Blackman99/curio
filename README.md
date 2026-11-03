@@ -2,9 +2,9 @@
 
 # Curio
 
-*A cabinet of AI curiosities.*
+*A cabinet of curiosities.*
 
-A growing collection of small, interactive web experiments that make ideas from AI and machine learning visible and playable. Each piece is a self-contained page that runs entirely in your browser, with no backend and no tracking. Some are explanatory toys, others are generative art; all of them are honest about what is simulated.
+A growing collection of small, interactive web experiments: ideas from AI and machine learning made visible and playable, finely made machines you can take apart, physics and mathematics you can poke at, and effects that show off what the browser itself can do. Each piece is a self-contained page that runs entirely in your browser, with no backend and no tracking. Some are explanatory toys, others are generative art; all of them are honest about what is simulated.
 
 **Walk the archive:** https://blackman99.github.io/curio/
 
