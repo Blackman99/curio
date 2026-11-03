@@ -117,7 +117,7 @@ export function buildHall(T,{G,X,BGU,list,EXHIBITS,tier,aniso}){
   g.fillStyle='#b62d1b';g.font=`700 26px ${MONO}`;g.fillText('RESERVED',52,84);g.fillStyle='#1d1a16';g.font=`900 64px ${SERIF}`;g.fillText('In preparation',52,170);
   g.fillStyle='#6b3f22';g.font=`italic 30px ${SERIF}`;g.fillText('A new exhibit is added to the cabinet each day.',52,226);g.fillText('This case is kept for one of them.',52,268);return c}
  function giltText(lines,W,H){const c=canvas(W,H),g=c.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,W,H);g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';
-  for(const l of lines){const s=fit(g,l.t,W*.94,l.size,l.weight||'700',l.fam||SERIF);if(l.track){g.letterSpacing=l.track+'px'}g.fillText(l.t,W/2,l.y*H);g.letterSpacing='0px'}return c}
+  for(const l of lines){if(l.track){g.letterSpacing=l.track+'px'}const s=fit(g,l.t,W*.94,l.size,l.weight||'700',l.fam||SERIF);g.fillText(l.t,W/2+(l.track||0)/2,l.y*H);g.letterSpacing='0px'}return c}
  function directoryCanvas(room){const W=1024,H=1024,c=canvas(W,H),g=c.getContext('2d');g.fillStyle='#f2e9d6';g.fillRect(0,0,W,H);g.strokeStyle='#1d1a16';g.lineWidth=4;g.strokeRect(24,24,W-48,H-48);
   g.fillStyle='#b62d1b';g.font=`700 30px ${MONO}`;g.fillText(room.name.toUpperCase()+'  ·  CONTENTS',70,110);g.fillStyle='#1d1a16';g.fillRect(70,134,180,5);
   let y=210;for(let q=0;q<8;q++){const e=room.ex[q];g.font=`700 28px ${MONO}`;g.fillStyle='#b62d1b';g.fillText(e?'No. '+e.d.no:'—',70,y);
