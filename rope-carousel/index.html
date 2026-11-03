@@ -21,6 +21,7 @@ body.narrow{overflow:auto}
 body.narrow #wrap{height:auto;min-height:100%;padding-bottom:12px;justify-content:flex-start}
 body.narrow #note{position:static;height:auto;padding:10px 14px;background:#0e0a0c}
 body.narrow #stage{grid-template-columns:1fr;gap:10px}
+body.narrow #fair{min-height:370px}body.narrow #scene{top:60px}
 body.narrow #panel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 body.narrow #panel h3,#readout,#phasorwrap{grid-column:1/-1}
 body.rm .horse-bob,body.rm .light,body.rm #platform{animation:none!important;transition:none!important}
@@ -95,12 +96,12 @@ body.rm .horse-bob,body.rm .light,body.rm #platform{animation:none!important;tra
 .horse .bob{position:absolute;left:50%;bottom:28px;width:48px;height:42px;margin-left:-24px;
  transform-origin:50% 80%;will-change:transform}
 .horse .bob svg{width:100%;height:100%;display:block;filter:drop-shadow(0 3px 2px #0008)}
-.horse .tag{position:absolute;left:50%;top:-2px;transform:translateX(-50%);font:700 8px/1 'Special Elite',monospace;
+.horse .tag{position:absolute;left:50%;top:-2px;transform:translateX(-50%) translateZ(2px);font:700 8px/1 'Special Elite',monospace;
  color:var(--gilt);background:#1a1218cc;border:1px solid var(--brass);padding:2px 4px;border-radius:2px;
  white-space:nowrap;letter-spacing:.04em;opacity:.9;pointer-events:none}
 .horse.sel .tag{color:var(--cream);background:var(--crimson);border-color:var(--cream);box-shadow:0 0 10px #c41e3a88}
 .horse.sel .pole{box-shadow:0 0 14px #c41e3a99,0 0 4px #e8d090}
-#lights{position:absolute;left:50%;top:55%;width:76%;aspect-ratio:1;transform:translate(-50%,-50%) translateZ(52px) rotateX(-58deg);
+#lights{position:absolute;left:50%;top:55%;width:76%;aspect-ratio:1;transform:translate(-50%,-50%) translateZ(12px);
  pointer-events:none;z-index:3}
 .light{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gilt);
  box-shadow:0 0 8px #e8d090,0 0 16px #c41e3a88;left:50%;top:50%;margin:-3.5px}
@@ -218,20 +219,22 @@ const BASE=10000;
 let nPairs=16, m=0, mTarget=0, sel=0, auto=true, soundOn=true;
 let baseAngles=[], accents=[], morphT=1, morphFrom=[], morphTo=[];
 let simT=0, phT=0, userUntil=-1, platformAngle=0;
-let lightPhase=0;
+let lightPhase=0, ringOff=0;
 
 function theta(i,d){return Math.pow(BASE,-2*i/d)}
 function thetas(){const t=[];for(let i=0;i<nPairs;i++)t.push(theta(i,nPairs*2));return t}
 function reseed(hard){
- morphFrom=baseAngles.slice();
- accents=Array.from({length:nPairs},()=>rand());
- morphTo=Array.from({length:nPairs},(_,i)=>rand()*Math.PI*2+(i*0.37));
- if(hard||!morphFrom.length){baseAngles=morphTo.slice();morphT=1}
+ const mid=morphT<1&&morphFrom.length===baseAngles.length&&morphTo.length===baseAngles.length,k=eio(morphT);
+ morphFrom=baseAngles.map((b,i)=>mid?lerp(morphFrom[i],morphTo[i],k):b); // a spin mid-turn carries on from where the ring is
+ if(hard||accents.length!==nPairs)accents=Array.from({length:nPairs},()=>rand()); // keep each horse's bob through a spin
+ ringOff+=(0.6+rand()*1.2)*Math.PI; // the ring turns forward 0.3–0.9 of a revolution
+ morphTo=Array.from({length:nPairs},(_,i)=>ringOff+i/nPairs*Math.PI*2); // evenly spaced slots
+ if(hard||morphFrom.length!==nPairs){baseAngles=morphTo.slice();morphFrom=morphTo.slice();morphT=1}
  else morphT=0;
  chime();
 }
 function ensureAngles(){
- while(baseAngles.length<nPairs)baseAngles.push(rand()*Math.PI*2);
+ while(baseAngles.length<nPairs)baseAngles.push(ringOff+baseAngles.length/nPairs*Math.PI*2);
  baseAngles.length=nPairs;
  while(accents.length<nPairs)accents.push(rand());
  accents.length=nPairs;
@@ -274,7 +277,7 @@ function buildHorses(){
  for(let i=0;i<nL;i++){
   const L=document.createElement('div');L.className='light';
   const a=i/nL*Math.PI*2,r=48;
-  L.style.transform=`translate(${Math.cos(a)*r}%,${Math.sin(a)*r}%)`;
+  L.style.left=`${50+Math.cos(a)*r}%`;L.style.top=`${50+Math.sin(a)*r}%`;
   lightsEl.appendChild(L);
  }
  $$('#dimrow button').forEach(b=>b.classList.toggle('on',+b.dataset.d===nPairs));
@@ -296,6 +299,9 @@ function layoutHorses(mNow,t){
  const kids=[...horsesEl.children];
  const morph=eio(morphT);
  const N=kids.length||1;
+ const ringW=horsesEl.offsetWidth||1; // layout width, unaffected by transforms
+ const tilt=innerWidth<=760?62:58; // matches #carousel rotateX
+ const hs=clamp(ringW/300,.6,1.3)*Math.min(1,Math.sqrt(16/N)); // horse size: grow with the ring, shrink when 32 share it
  // platform rotates with m (slow visual)
  platformAngle=mNow*th[0]*0.35;
  platform.style.transform=`translate(-50%,-50%) translateZ(8px) rotateZ(${platformAngle}rad)`;
@@ -305,16 +311,16 @@ function layoutHorses(mNow,t){
   if(morphT>=1)baseAngles[i]=base;
   const place=base; // physical slot on ring
   const phase=mNow*th[i]; // RoPE phase
-  const R=42; // % of container
+  const R=0.42*ringW; // px: 42% of the ring container (translate % would be % of the horse itself)
   const x=Math.cos(place)*R, y=Math.sin(place)*R;
   // bob up/down with phase; also subtle facing from phase
   const bob=Math.sin(phase+t*1.2+accents[i]*6.28)*10;
   const face=phase*57.3*0.15;
-  el.style.transform=`translate(${x}%,${y}%) rotateZ(${-platformAngle}rad) translateZ(${8+bob*0.3}px)`;
+  el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotateZ(${-platformAngle}rad) translateZ(${8+bob*0.3}px) rotateX(${-tilt}deg) scale(${hs.toFixed(3)})`;
   const bobEl=el.querySelector('.bob');
   if(bobEl) bobEl.style.transform=`translateY(${-bob}px) rotateZ(${face}deg)`;
   // depth sort
-  el.style.zIndex=String(100+Math.round(y));
+  el.style.zIndex=String(1000+Math.round(y));
  });
  // canopy lights blink
  const lights=[...lightsEl.children];
@@ -488,7 +494,7 @@ function layoutNarrow(){
  const narrow=innerWidth<640;document.body.classList.toggle('narrow',narrow);
 }
 layoutNarrow();
-addEventListener('resize',layoutNarrow);
+addEventListener('resize',()=>{layoutNarrow();if(baseAngles.length)layoutHorses(m,simT)});
 
 let last=0;window.__frame=0;
 function frame(ts){
