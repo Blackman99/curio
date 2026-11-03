@@ -1,0 +1,11 @@
+{
+ "slug": "byte-pair-forge",
+ "title": "Byte Pair Forge",
+ "no": "009",
+ "date": "2026-10-13",
+ "kind": "Tokenization · Canvas forge",
+ "blurb": "A blacksmith forge for Byte-Pair Encoding: hammer the hottest letter pairs until words become tokens.",
+ "color": "#e8843a",
+ "exhibit": "forge",
+ "lane": "ml"
+}

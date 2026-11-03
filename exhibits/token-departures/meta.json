@@ -1,0 +1,11 @@
+{
+ "slug": "token-departures",
+ "title": "Token Departures",
+ "no": "007",
+ "date": "2026-10-13",
+ "kind": "Sampling · Split-flap DOM",
+ "blurb": "A split-flap departures board of next-token odds. Pull the temperature and top-p levers, watch the odds re-flap, dispatch a word.",
+ "color": "#f5c518",
+ "exhibit": "flap",
+ "lane": "ml"
+}

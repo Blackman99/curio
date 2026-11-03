@@ -1,0 +1,11 @@
+{
+ "slug": "neural-storm",
+ "title": "Neural Storm",
+ "no": "002",
+ "date": "2026-10-12",
+ "kind": "Neural nets · WebGL",
+ "blurb": "262,144 GPU particles ride the vector field of a live neural network. Move to bend its inputs, click to mutate its weights.",
+ "color": "#00b8d4",
+ "exhibit": "mlp",
+ "lane": "ml"
+}

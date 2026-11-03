@@ -1,0 +1,11 @@
+{
+ "slug": "rope-carousel",
+ "title": "RoPE Carousel",
+ "no": "010",
+ "date": "2026-10-13",
+ "kind": "Positional encoding · CSS 3D carousel",
+ "blurb": "A Victorian carousel for Rotary Position Embeddings: each horse is a frequency pair; drag to advance position and watch phases spin.",
+ "color": "#c41e3a",
+ "exhibit": "carousel",
+ "lane": "ml"
+}

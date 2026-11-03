@@ -1,0 +1,11 @@
+{
+ "slug": "injection-heist",
+ "title": "Injection Heist",
+ "no": "011",
+ "date": "2026-10-14",
+ "kind": "Prompt injection · Terminal game",
+ "blurb": "You are a coding agent reading a fake repo. Flag the hidden prompt injection before tools arm. CRT terminal heist — toy game, not a scanner.",
+ "color": "#39ff14",
+ "exhibit": "heist",
+ "lane": "ml"
+}

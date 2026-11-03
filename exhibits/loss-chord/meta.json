@@ -1,0 +1,11 @@
+{
+ "slug": "loss-chord",
+ "title": "Loss Chord",
+ "no": "012",
+ "date": "2026-10-14",
+ "kind": "Optimization · Web Audio",
+ "blurb": "A toy optimizer descends a loss surface you primarily hear: pitch and chord tension track loss, rhythm tracks step size. Drag the learning rate — sweet spot resolves the chord; too high and it screams.",
+ "color": "#5eead4",
+ "exhibit": "chord",
+ "lane": "ml"
+}

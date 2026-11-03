@@ -1,0 +1,11 @@
+{
+ "slug": "compaction-shredder",
+ "title": "Compaction Shredder",
+ "no": "016",
+ "date": "2026-10-16",
+ "kind": "Context compaction · SVG shredder",
+ "blurb": "Feed a long agent transcript into a graphite industrial shredder. Boilerplate becomes flying confetti; why / paths / TODOs eject as labeled KEEP strips — a toy metaphor for LLM context compaction.",
+ "color": "#f5c518",
+ "exhibit": "shredder",
+ "lane": "ml"
+}

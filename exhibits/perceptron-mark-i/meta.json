@@ -1,0 +1,11 @@
+{
+ "slug": "perceptron-mark-i",
+ "title": "Mark I Perceptron",
+ "no": "033",
+ "date": "2026-11-01",
+ "kind": "Perceptrons · SVG hardware replica",
+ "blurb": "A working replica of the 1959 learning machine, specified from its operators' manual: 400 photocells, a plugboard wired at random and 512 knobs on motors, running the real error-correction rule. Watch it learn left from right, pull out half its wires, see why XOR is easy for it, and find the test it can only guess at.",
+ "color": "#484800",
+ "exhibit": "markone",
+ "lane": "ml"
+}

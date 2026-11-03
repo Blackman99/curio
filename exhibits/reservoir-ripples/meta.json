@@ -1,0 +1,11 @@
+{
+ "slug": "reservoir-ripples",
+ "title": "Reservoir Ripples",
+ "no": "035",
+ "date": "2026-11-03",
+ "kind": "Reservoir computing · Canvas tank",
+ "blurb": "A ripple tank as a recurrent network. Sixteen dippers dunk to a chaotic signal, 273 floats ride the ripples, and one least-squares solve trains the only layer that learns. Unplug the signal and the water keeps drawing Mackey-Glass on its own for about a thousand steps. Splash it, thin it, or take away its bends.",
+ "color": "#002008",
+ "exhibit": "ripples",
+ "lane": "ml"
+}

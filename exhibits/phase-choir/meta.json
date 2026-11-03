@@ -1,0 +1,11 @@
+{
+ "slug": "phase-choir",
+ "title": "Phase Choir",
+ "no": "005",
+ "date": "2026-10-12",
+ "kind": "Sync · WebGL",
+ "blurb": "Kuramoto lattice whose coupling is a tiny random neural map. Move to entrain; click to re-roll the score.",
+ "color": "#c9a0ff",
+ "exhibit": "choir",
+ "lane": "ml"
+}

@@ -1,0 +1,11 @@
+{
+ "slug": "lumen-landing",
+ "title": "Lumen Landing",
+ "no": "014",
+ "date": "2026-10-15",
+ "kind": "Agent-built · WebGL landing page",
+ "blurb": "One prompt — “make the flashiest landing page you can” — and an AI coding agent shipped this single HTML file: a raymarched liquid-metal hero, 24,000 GPU particles morphing word → sphere → knot → galaxy, live spring physics, zero dependencies. Lumen is fictional; the page is the demo.",
+ "color": "#5b6cff",
+ "exhibit": "lumen",
+ "lane": "ml"
+}

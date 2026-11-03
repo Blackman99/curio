@@ -1,0 +1,11 @@
+{
+ "slug": "hook-bouncer",
+ "title": "Hook Bouncer",
+ "no": "018",
+ "date": "2026-10-18",
+ "kind": "Agent hooks · Canvas physics",
+ "blurb": "Shell commands roll toward a door guarded by a pattern-matching pre-tool hook. Obvious spellings bounce with a BLOCKED stamp; equivalent-effect variants slip through to the damage floor. Toy simulation — real regex on real strings, no commands execute.",
+ "color": "#e0183a",
+ "exhibit": "bouncer",
+ "lane": "ml"
+}
