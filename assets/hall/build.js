@@ -299,7 +299,7 @@ export function buildHall(T,{G,X,BGU,list,tier,aniso}){
   const counts={lane:{},year:{}};for(const e of room.all){const l=laneOf(e.d),y=String(e.d.date).slice(0,4);counts.lane[l]=(counts.lane[l]||0)+1;counts.year[y]=(counts.year[y]||0)+1}
   let anim=0,openK=-1;
   const setFilter=(lane=F.lane,year=F.year)=>{F.lane=lane;F.year=year;const on=lane!=='all'||year!=='all';let hits=0;
-   for(let k=0;k<N;k++){const ok=match(k);if(ok&&k<n)hits++;want[k]=on&&ok?.045:0;const v=ok?1:.3;fronts.setColorAt(k,c1.setRGB(v,v*.97,v*.94));cards.setColorAt(k,c2.setRGB(ok?1:.42,ok?1:.4,ok?1:.38))}
+   for(let k=0;k<N;k++){const ok=match(k);if(ok&&k<n)hits++;want[k]=on&&ok?.045:0;const v=ok?1:.14;fronts.setColorAt(k,c1.setRGB(v,v*.97,v*.94));cards.setColorAt(k,c2.setRGB(ok?1:.16,ok?1:.15,ok?1:.14))}
    fronts.instanceColor.needsUpdate=cards.instanceColor.needsUpdate=true;anim=1;return hits};
   const tick=(dt,focus)=>{let dirty=false;const k8=Math.min(1,dt*8),k6=Math.min(1,dt*6);
    for(const s of slots){const f=s===focus?1:0;if(f||s.h>.001){s.h+=(f-s.h)*k6;if(s.h<.001)s.h=0;anim=Math.max(anim,.05)}}
