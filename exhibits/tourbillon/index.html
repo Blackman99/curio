@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tourbillon — a one-minute tourbillon you can take apart</title>
+<meta name="description" content="A 28,800-beat tourbillon watch movement built part by part in your browser: every wheel turns by its tooth count, the balance beats four times a second and the whole escapement rides a cage that turns once a minute. Explode it, X-ray the train, wind it, stand it on edge with a heavy spot on the balance and watch the cage average the error away.">
+<meta property="og:title" content="Tourbillon">
+<meta property="og:description" content="Breguet's 1801 regulator, rebuilt part by part: explode a one-minute tourbillon, X-ray its gear train, and watch the turning cage cancel a balance's poise error on a timegrapher.">
+<meta property="og:image" content="https://blackman99.github.io/curio/tourbillon/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tourbillon">
+<meta name="twitter:description" content="A one-minute tourbillon built in three.js: explode it, X-ray the train, and watch the turning cage average a heavy spot's error away.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/tourbillon/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0b0a09;--paper:#f1ece2;--paper2:#b3aa9a;--gold:#e2b866;--blue:#7fa7ff;--red:#ff7b62;--line:rgba(240,225,200,.14);--panel:rgba(14,12,10,.9)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:#0d0c0b}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 72% 78% at 40% 46%,transparent 55%,rgba(0,0,0,.55) 100%)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,8,.5)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--gold);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(12,10,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--gold);color:#1a1205;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-shadow:0 1px 4px #000}
+h1{margin:8px 0 0;font:500 clamp(36px,3.5vw,54px)/1 'Cormorant Garamond',Georgia,serif;letter-spacing:.02em;color:#fbf3e2;text-shadow:0 2px 0 #3d2c10,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:860px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,8,.66)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#f6f1e6;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--gold)}
+#caption .r{color:#ff9a84;font-weight:600}
+#caption .g{color:#9fe0a6;font-weight:600}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+.read{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 19px/1 'DM Mono',monospace;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{font-size:25px;color:#ffd98a}
+.rd small{font:400 10.5px/1.15 'DM Mono',monospace;color:var(--paper2)}
+#tg{display:block;width:100%;height:92px;border-radius:9px;background:#f3eddf;border:1px solid rgba(255,255,255,.07)}
+.tgk{display:flex;justify-content:space-between;font:400 10px/1.2 'DM Mono',monospace;color:var(--paper2);margin-top:4px}
+.btn{border:1px solid var(--line);background:rgba(226,184,102,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(226,184,102,.18);border-color:var(--gold);outline:none}
+.btn.go{background:var(--gold);border-color:var(--gold);color:#1b1305;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd98a}
+.btn[aria-pressed=true]{background:rgba(127,167,255,.22);border-color:var(--blue)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg.r2{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}
+.seg button{border:0;background:transparent;padding:6px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg.r2 button{border-top:1px solid var(--line)}
+.seg.r2 button:nth-child(-n+3){border-top:0}
+.seg.r2 button:nth-child(3n+1){border-left:0}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(226,184,102,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--gold);color:#1b1305;font-weight:500}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:9px 10px}
+.ctl .lab{margin-bottom:5px;letter-spacing:.11em;font-size:9.5px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#3a2c14,#e2b866);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#3a2c14,#e2b866)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#5d3f06 120%);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#5d3f06 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--gold);outline-offset:3px}
+.ends{display:flex;justify-content:space-between;font:400 10px/1 'DM Mono',monospace;color:var(--paper2);margin-top:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+table.pos{width:100%;border-collapse:collapse;font:400 11px/1.25 'DM Mono',monospace;color:var(--paper2);font-variant-numeric:tabular-nums}
+table.pos th{font:500 9px/1.1 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2);text-align:right;padding:2px 3px;font-weight:500}
+table.pos th:first-child,table.pos td:first-child{text-align:left}
+table.pos td{text-align:right;padding:2px 3px;border-top:1px solid rgba(240,225,200,.07)}
+table.pos tr.on td{color:var(--paper);background:rgba(226,184,102,.08)}
+table.pos td.hl{color:#ffd98a}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--gold)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(240,230,215,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--gold);text-decoration:underline;font:inherit}
+#gl{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:30px;font:400 16px/1.5 'Newsreader',serif;color:var(--paper2)}
+.nogl #gl{display:flex}
+@media (min-height:860px) and (min-width:821px){#tg{height:104px}}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(32px,3vw,44px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:17px}.rd.big b{font-size:22px}#tg{height:76px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:40px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:6.9em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,400px);margin-top:4px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(16,13,11,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+.og #title{background:none}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 036 · Watch movement</span>
+  <h1>Tourbillon</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A watch movement seen from the back under a loupe: rhodium bridges with Geneva stripes, gold wheels, blued screws and ruby jewels. Near six o'clock a polished steel cage turns once a minute; inside it a balance with gold screws swings four times a second, driving a lever and a fifteen-tooth escape wheel."></canvas>
+  <div id="vig"></div>
+  <div id="gl">This exhibit needs WebGL, which this browser has switched off. The timegrapher and the numbers on the right still run.</div>
+</div>
+<aside id="panel" aria-label="Timegrapher and controls">
+  <div class="sec">
+    <div class="lab"><span>Timegrapher</span><b id="posv">crown up · cage turning</b></div>
+    <div class="read">
+      <div class="rd big"><span>This minute</span><b id="rmin">–</b><small>s / day</small></div>
+      <div class="rd"><span>Right now</span><b id="rnow">–</b><small>s / day</small></div>
+      <div class="rd"><span>Amplitude</span><b id="ramp">–</b><small id="rres">54 h left</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <canvas id="tg" aria-label="Timegrapher trace: each dot is one beat, drawn higher the further it runs ahead of a perfect watch. A straight slope is a steady rate; a wave is the cage turning."></canvas>
+    <div class="tgk"><span id="tgl">last 90 s of beats · up = ahead</span><span id="tgs">±1 ms</span></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Watch position</span><b id="gdir">gravity → 9 o'clock</b></div>
+    <div class="seg r2" id="pos"><button data-v="dd" aria-pressed="false">Dial down</button><button data-v="du" aria-pressed="false">Dial up</button><button data-v="cu" aria-pressed="true">Crown up</button><button data-v="cd" aria-pressed="false">Crown down</button><button data-v="t12" aria-pressed="false">12 up</button><button data-v="t6" aria-pressed="false">6 up</button></div>
+  </div>
+  <div class="sec ctl">
+    <div><div class="lab"><span>The cage</span></div>
+      <div class="seg" id="cage"><button data-v="on" aria-pressed="true" title="The escapement turns once a minute (a tourbillon)">turning</button><button data-v="off" aria-pressed="false" title="Freeze the cage where it is, as the escapement of an ordinary watch is fixed to its plate">held</button></div></div>
+    <div><div class="lab"><span>Heavy spot</span><b id="uv">5 µg·cm</b></div>
+      <div class="seg" id="heavy"><button data-v="0" aria-pressed="false">0</button><button data-v="2" aria-pressed="false">2</button><button data-v="5" aria-pressed="true">5</button><button data-v="10" aria-pressed="false">10</button></div></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Mainspring</span><b id="spv">54.5 h left · 6.8 turns</b></div>
+    <input id="spring" type="range" min="0" max="1000" value="1000" step="1" aria-label="How much power is left in the mainspring">
+    <div class="ends"><span>run down</span><span>fully wound</span></div>
+    <div class="row2" style="margin-top:6px"><button class="btn" id="wind" title="Turn the crown six times: the ratchet takes a turn and a half, 12 hours of power">Wind the crown ×6</button><button class="btn" id="flip" title="Look at the dial side">Show the dial</button></div>
+  </div>
+  <div class="sec ctl">
+    <div><div class="lab"><span>Regulator</span><b id="idxv">0 s/d</b></div>
+      <input id="idx" type="range" min="-200" max="200" value="0" step="1" aria-label="Regulator index: lengthen or shorten the hairspring">
+      <div class="ends"><span>slow</span><span>fast</span></div></div>
+    <div><div class="lab"><span>Take it apart</span><b id="exv">0%</b></div>
+      <input id="ex" type="range" min="0" max="1000" value="0" step="1" aria-label="Explode the movement along its axis">
+      <div class="ends"><span>assembled</span><span>exploded</span></div></div>
+  </div>
+  <div class="sec row3">
+    <button class="btn" id="xray" aria-pressed="false" title="See through the plates and bridges and colour the going train">X-ray</button>
+    <div class="seg" id="speed" style="grid-column:span 2"><button data-v="0.0625" aria-pressed="false" title="Sixteen times slower">1/16×</button><button data-v="1" aria-pressed="true">1×</button><button data-v="6" aria-pressed="false" title="Six times faster">6×</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Six positions</span><b>s / day</b></div>
+    <table class="pos" id="ptab"><thead><tr><th>Position</th><th>Amp.</th><th>Cage held</th><th>Turning</th></tr></thead><tbody></tbody></table>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p><b>The idea.</b> A balance wheel is never perfectly poised: one side is a little heavier. Lying flat that does nothing, but stood on edge, gravity pulls the heavy spot and the watch gains or loses depending on where the spot happens to sit. Abraham-Louis Breguet’s answer, patented on 26 June 1801 (7 Messidor, year IX), was to put the whole escapement in a cage that turns once a minute, so the spot points every way in turn and the error averages out (<a href="https://breguet.com/en/breguet-house/1801-1823/patent-granted-completely-new-type-regulator-called-tourbillon" target="_blank" rel="noopener">Breguet</a>). He built it for pocket watches, which spend the day upright.</p>
+    <p><b>What is computed.</b> Every part is generated in this page: 116 of them (wheels with cycloidal-style teeth, Geneva-striped bridges traced from distance fields, jewels, blued screws, a balance with 16 gold timing screws, a hairspring that coils and uncoils with the swing). Every wheel turns by its tooth count: barrel 96 → centre pinion 12, centre wheel 80 → third pinion 10, third wheel 75 → cage pinion 10, so the cage turns 60 times an hour and is the seconds hand; the escape pinion (7) rolls round a fixed wheel (112), giving 16 escape-wheel turns per cage turn, 28,800 beats an hour. Centre distances are module × (z<sub>1</sub> + z<sub>2</sub>)/2 and every pair starts in mesh. The mainspring is sized by the old rule (arbor a third of the barrel, spring filling half the free space): 6.81 turns, <b>54.5 hours</b>.</p>
+    <p><b>The heavy spot.</b> The balance’s inertia, 4.55 mg·cm², comes from the modelled rim, arm and screws. A heavy spot U stood on edge adds a torque −U g sin(θ + φ); averaging over one swing of amplitude A gives a rate of 86 400 · U g/(I ω<sub>0</sub><sup>2</sup>) · cos φ · J<sub>1</sub>(A)/A seconds a day. J<sub>1</sub> crosses zero at <b>219.5°</b>: above it a spot at the bottom loses, below it the same spot gains, which is why watchmakers say poise errors vanish near 220°. I checked the formula against a direct Runge–Kutta integration of the balance: at 5 µg·cm it agrees to within 0.006 s/day from 150° to 305°. The page runs beat by beat: each beat lasts 1/8 s ÷ (1 + rate/86 400), with the rate taken where the cage stands at that beat.</p>
+    <p><b>What the tourbillon does.</b> Crown up, 5 µg·cm, full wind (281° upright): held still with the spot at the bottom the watch runs −9.46 s/day; turning, the 480 beats of one cage turn average <b>−0.0005 s/day</b> (the direct integration over two whole turns gives +0.01 s/day). Let the spring run down and the upright amplitude passes 219.5° with 16 hours left; below that the held error flips sign. Dial up or down, gravity runs along the staff and there is nothing to cancel.</p>
+    <p><b>What is simplified.</b> The tooth counts are my own design for a 28,800-beat, one-minute tourbillon, not copied from a real calibre. Within a beat, the lever, escape wheel and cage move along a drawn path (unlock, impulse, drop); the beat times are what is computed. Amplitude is a simple model: torque falls to 45% as the spring runs down, amplitude goes with its square root, and upright positions lose 8%. Isochronism and escapement errors are left out. “Held” is a thought experiment: in a real tourbillon, stopping the cage stops the watch. The regulator moves curb pins along the outer coil; rate follows f ∝ L<sup>−½</sup> (16 s/day per degree).</p>
+  </details>
+  <div class="foot">Drag to turn the bench · scroll or pinch to zoom · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script type="module">
+/* ================= engine: a 28,800 vph one-minute tourbillon, beat by beat ================= */
+const TB=(()=>{
+const TAU=6.283185307179586,PI=3.141592653589793,D2R=PI/180;
+// own cos and Bessel J1 (fixed-order series), so the page and the Python reference agree to the last bit
+function cosS(x){x=x-TAU*Math.floor(x/TAU+.5);const x2=x*x;let s=1,t=1;for(let i=1;i<=22;i++){t=-t*x2/((2*i-1)*(2*i));s+=t}return s}
+function J1(x){const h=x/2,h2=h*h;let t=h,s=h;for(let k=1;k<=30;k++){t=-t*h2/(k*(k+1));s+=t}return s}
+
+/* ---- the gear train (tooth counts) ---- */
+const Z={barrel:96,centerPinion:12,center:80,thirdPinion:10,third:75,carriagePinion:10,fixed:112,escapePinion:7,escape:15,
+  cannon:12,minuteWheel:36,minutePinion:10,hour:40,ratchet:56,crownWheel:28,windingPinion:14};
+const F0=4;                                             // balance frequency, Hz (two beats per swing)
+const escPerCage=Z.fixed/Z.escapePinion;                // escape-wheel turns per cage turn, relative to the cage: 16
+const beatsPerCage=escPerCage*Z.escape*2;               // 480
+const cagePerHour=(Z.center/Z.thirdPinion)*(Z.third/Z.carriagePinion); // 60: the cage is the seconds hand
+const BPH=beatsPerCage*cagePerHour;                     // 28,800
+const hoursPerBarrel=Z.barrel/Z.centerPinion;           // 8
+const hourRatio=(Z.cannon/Z.minuteWheel)*(Z.minutePinion/Z.hour); // 1/12
+const crownPerArbor=(Z.crownWheel/Z.windingPinion)*(Z.ratchet/Z.crownWheel); // 4 crown turns per barrel-arbor turn
+
+/* ---- mainspring: barrel inner radius R, arbor radius r = R/3, blade thickness e; a spring that fills half the free space
+   develops N = (sqrt(2(R^2+r^2)) - R - r)/e turns between let-down (against the wall) and fully wound (round the arbor) ---- */
+const SPR={R:4.6,r:1.55,e:.105};
+SPR.Lxe=PI*(SPR.R*SPR.R-SPR.r*SPR.r)/2;SPR.L=SPR.Lxe/SPR.e;
+SPR.rw=Math.sqrt(SPR.r*SPR.r+SPR.Lxe/PI);SPR.ru=Math.sqrt(SPR.R*SPR.R-SPR.Lxe/PI);
+SPR.nw=(SPR.rw-SPR.r)/SPR.e;SPR.nu=(SPR.R-SPR.ru)/SPR.e;SPR.N=SPR.nw-SPR.nu;
+const RESERVE=SPR.N*hoursPerBarrel;                     // hours on a full wind
+const turnsPerBeat=1/(hoursPerBarrel*3600*2*F0);        // barrel turns used per beat
+
+/* ---- balance: inertia from the modelled parts (glucydur rim and arm, 16 gold timing screws) ---- */
+const BAL={ri:3.62,ro:3.92,h:.32,rho:8.3,armW:.36,armT:.2,nScrew:16,screwR:.17,screwL:.4,screwAt:4.12,rhoAu:17};
+BAL.mRim=BAL.rho*PI*(BAL.ro*BAL.ro-BAL.ri*BAL.ri)*BAL.h;BAL.IRim=BAL.mRim*(BAL.ro*BAL.ro+BAL.ri*BAL.ri)/2;
+BAL.mArm=BAL.rho*2*BAL.ri*BAL.armW*BAL.armT;BAL.IArm=BAL.mArm*(2*BAL.ri)*(2*BAL.ri)/12;
+BAL.mScrew=BAL.rhoAu*PI*BAL.screwR*BAL.screwR*BAL.screwL;BAL.IScrew=BAL.nScrew*BAL.mScrew*BAL.screwAt*BAL.screwAt;
+BAL.I=(BAL.IRim+BAL.IArm+BAL.IScrew)/100;             // mg mm^2 -> mg cm^2
+const W0=TAU*F0;
+BAL.k=BAL.I*1e-10*W0*W0;                                // hairspring stiffness, N m / rad
+// heavy spot U (ug cm) in a vertical position: first-order averaging of I th'' + k th = -U g sin(th+phi) gives
+//   rate = 86400 * U g / (I w0^2) * cos(phi) * J1(A)/A   s/day   (phi = heavy spot from straight down at rest)
+const G=9.80665,KP=86400*G*1e-11/(BAL.I*1e-10*W0*W0);
+// hairspring (Breguet overcoil) and index: f ~ L^-1/2, curb pins at rc move along the outer coil
+const HS={rin:.45,rout:2.55,turns:13,rc:2.6};HS.L=PI*HS.turns*(HS.rin+HS.rout);
+const idxRate=deg=>.5*HS.rc*deg*D2R/HS.L*86400;        // s/day for an index turned by deg
+const LIFT=52*D2R;                                      // balance lift angle
+// amplitude: energy per impulse ~ mainspring torque, losses ~ amplitude^2; torque falls to 45% at let-down (model)
+const AFULL=305*D2R,VLOSS=.92;
+const torque=W=>.45+.55*Math.max(0,Math.min(1,W/SPR.N));
+const POS={du:{name:'Dial up',g:null},dd:{name:'Dial down',g:null},cu:{name:'Crown up',g:0},cd:{name:'Crown down',g:PI},
+  t12:{name:'12 up',g:-PI/2},t6:{name:'6 up',g:PI/2}}; // g: direction of "down" in the movement plane (seen from the back: y to 12, -x to the crown at 3, +x to 9)
+const amp=(W,pos)=>W<=0?0:AFULL*Math.sqrt(torque(W))*(POS[pos].g===null?1:VLOSS);
+const ampDeg=(W,pos)=>amp(W,pos)/D2R;
+function poiseRate(U,A,phi){if(!(A>0)||U===0)return 0;return KP*U*cosS(phi)*(J1(A)/A)}
+
+/* ---- layout (movement frame, mm): every centre distance is module x (z1+z2)/2 ---- */
+const M={barrel:.11,center:.0875,third:.15,fixed:.06,ratchet:.12,cannon:.1,hour:.096};
+const L={O:[0,0],C:[0,-9.3]};
+{const d=M.barrel*(Z.barrel+Z.centerPinion)/2,a=110*D2R;L.barrel=[d*Math.cos(a),d*Math.sin(a)];
+ const r1=M.center*(Z.center+Z.thirdPinion)/2,r2=M.third*(Z.third+Z.carriagePinion)/2,cx=L.C[0],cy=L.C[1],dd=Math.hypot(cx,cy);
+ const a1=(r1*r1-r2*r2+dd*dd)/(2*dd),h=Math.sqrt(r1*r1-a1*a1),ux=cx/dd,uy=cy/dd;L.third=[a1*ux-h*uy,a1*uy+h*ux];if(L.third[0]<0)L.third=[a1*ux+h*uy,a1*uy-h*ux];
+ const dc=M.ratchet*(Z.ratchet+Z.crownWheel)/2,ac=-12*D2R;L.crownWheel=[L.barrel[0]+dc*Math.cos(ac),L.barrel[1]+dc*Math.sin(ac)];
+ const dm=M.cannon*(Z.cannon+Z.minuteWheel)/2,am=200*D2R;L.minuteWheel=[dm*Math.cos(am),dm*Math.sin(am)];}
+L.escR=M.fixed*(Z.fixed+Z.escapePinion)/2;              // escape arbor from the cage axis
+L.escA=30*D2R;L.escWheelR=1.25;L.palletFromEsc=1.45;L.rollerR=.42;
+L.palletR=L.escR-L.palletFromEsc;                       // pallet arbor from the cage axis
+L.forkHalf=Math.atan(L.rollerR*Math.sin(LIFT/2)/(L.palletR-L.rollerR*Math.cos(LIFT/2))); // fork swing either side
+const R=(Zn,m)=>m*Zn/2;
+const meshes=[ // [driver, z1, module, centre1, driven, z2, centre2]
+  ['barrel',Z.barrel,M.barrel,L.barrel,'centerPinion',Z.centerPinion,L.O],
+  ['center',Z.center,M.center,L.O,'thirdPinion',Z.thirdPinion,L.third],
+  ['third',Z.third,M.third,L.third,'carriagePinion',Z.carriagePinion,L.C],
+  ['ratchet',Z.ratchet,M.ratchet,L.barrel,'crownWheel',Z.crownWheel,L.crownWheel],
+  ['cannon',Z.cannon,M.cannon,L.O,'minuteWheel',Z.minuteWheel,L.minuteWheel],
+  ['minutePinion',Z.minutePinion,M.hour,L.minuteWheel,'hour',Z.hour,L.O]];
+// mesh phase: when tooth 0 of gear 1 points along the line of centres, gear 2 must show a gap there
+const phaseC=(z1,c1,z2,c2)=>{const b=Math.atan2(c2[1]-c1[1],c2[0]-c1[0]);return b+PI+PI/z2+(z1/z2)*b};
+const PH={};
+PH.third=phaseC(Z.carriagePinion,L.C,Z.third,L.third);           // third = -(10/75) carriagePinion + c
+PH.center=phaseC(Z.thirdPinion,L.third,Z.center,L.O);            // centre = -(10/80) third + c
+PH.barrel=phaseC(Z.centerPinion,L.O,Z.barrel,L.barrel);          // barrel = -(12/96) centre + c
+PH.minuteWheel=phaseC(Z.cannon,L.O,Z.minuteWheel,L.minuteWheel);
+PH.hour=phaseC(Z.minutePinion,L.minuteWheel,Z.hour,L.O);
+PH.crownWheel=phaseC(Z.ratchet,L.barrel,Z.crownWheel,L.crownWheel);
+PH.esc=phaseC(Z.fixed,[0,0],Z.escapePinion,[L.escR*Math.cos(L.escA),L.escR*Math.sin(L.escA)]); // in the cage frame
+
+/* ---- the running watch: one beat at a time ---- */
+function make(o={}){
+  const S={k:0,t:0,W:o.W!=null?o.W:SPR.N,cfg:Object.assign({pos:'cu',on:true,U:5,idx:0,beta:0},o.cfg||{}),
+    psi0:0,Foff:0,Khold:0,log:[],seg:null,ring:new Float64Array(4096),stopped:false};
+  S.ring[0]=0;
+  const cageAt=(k)=>{const pr=S.psi0+k*TAU/beatsPerCage;return S.cfg.on?pr+S.Foff:S.Khold};
+  // rate for the beat that starts at beat k
+  function rateAt(k,W){const c=S.cfg,p=POS[c.pos],A=amp(W,c.pos);
+    let r=idxRate(c.idx);if(p.g!==null&&A>0)r+=poiseRate(c.U,A,c.beta*D2R+cageAt(k)-p.g);return{r,A}}
+  function fnv(h,x){const b=new DataView(new ArrayBuffer(8));b.setFloat64(0,x);for(let i=0;i<8;i++){h^=b.getUint8(i);h=Math.imul(h,16777619)>>>0}return h}
+  function newSeg(why){S.seg={id:S.log.length+1,why,k0:S.k,t0:S.t,W0:S.W,cfg:Object.assign({},S.cfg),psi0:S.psi0,Foff:S.Foff,Khold:S.Khold,n:0,hash:2166136261,tEnd:S.t,WEnd:S.W};S.log.push(S.seg);if(S.log.length>400)S.log.splice(0,S.log.length-400)}
+  function beat(){if(S.W<=0){S.stopped=true;return false}
+    const {r,A}=rateAt(S.k,S.W);const dt=.125/(1+r/86400);
+    S.t=S.t+dt;S.k++;S.W=S.W-turnsPerBeat;S.ring[S.k&4095]=S.t;S.lastR=r;S.lastA=A;
+    const g=S.seg;g.n++;g.hash=fnv(g.hash,S.t);g.tEnd=S.t;g.WEnd=S.W;return true}
+  function set(ch,why){ // settings change at a beat boundary
+    if('on' in ch&&ch.on!==S.cfg.on){const pr=S.psi0+S.k*TAU/beatsPerCage;
+      if(!ch.on)S.Khold=pr+S.Foff;               // freeze the cage where it is
+      else S.Foff=S.Khold-pr}                     // let it go from where it stopped
+    if('W' in ch){S.W=Math.max(0,Math.min(SPR.N,ch.W));S.stopped=S.W<=0;delete ch.W}
+    Object.assign(S.cfg,ch);newSeg(why||'user')}
+  newSeg('init');
+  // advance to true time t (beats whose start time is before t)
+  function runTo(t,maxBeats=100000){let n=0;while(n<maxBeats){const {r}=rateAt(S.k,S.W);if(S.W<=0){S.stopped=true;break}
+      const dt=.125/(1+r/86400);if(S.t+dt>t)break;beat();n++}return n}
+  // where the escapement is at true time t (t inside the current beat): returns tau (watch time) and the balance angle
+  function pose(t){const {r,A}=rateAt(S.k,S.W);const dt=.125/(1+r/86400);let f=S.stopped?0:Math.max(0,Math.min(1,(t-S.t)/dt));
+    const tau=(S.k+f)/8;return{tau,A,f,k:S.k}}
+  // rate measured over the last full cage turn (480 beats = 60 s of watch time)
+  function minuteRate(){if(S.k<beatsPerCage)return null;const a=S.ring[(S.k-beatsPerCage)&4095],b=S.ring[S.k&4095];return(60/(b-a)-1)*86400}
+  // six-position table: daily rate with the cage turning (mean over one turn) and held where it is now
+  function table(){const out={},c=S.cfg;for(const pos in POS){const p=POS[pos],A=amp(S.W,pos);
+      let sumT=0,held=idxRate(c.idx);
+      for(let j=0;j<beatsPerCage;j++){let r=idxRate(c.idx);if(p.g!==null&&A>0)r+=poiseRate(c.U,A,c.beta*D2R+S.psi0+(S.k+j)*TAU/beatsPerCage+S.Foff-p.g);sumT+=.125/(1+r/86400)}
+      const Kh=c.on?S.psi0+S.k*TAU/beatsPerCage+S.Foff:S.Khold;
+      if(p.g!==null&&A>0)held+=poiseRate(c.U,A,c.beta*D2R+Kh-p.g);
+      out[pos]={A:A/D2R,turning:(60/sumT-1)*86400,held}}
+    return out}
+  return{S,beat,set,runTo,pose,minuteRate,table,rateAt,cageAt};
+}
+
+/* ---- the escapement within one beat (kinematics for drawing; the beat times above are what is computed) ---- */
+const ss=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+function escapement(tau,A){ // balance angle, escape-wheel steps done (fractional), fork angle; all relative to the cage
+  if(!(A>0))return{th:0,steps:Math.round(tau*8),fork:L.forkHalf};
+  const ph=TAU*F0*tau,th=A*Math.sin(ph),k=Math.round(tau*8),dir=(k&1)?-1:1,half=LIFT/2,d=th*dir;
+  let steps=k,fork;
+  if(d>=half){steps=k+1;fork=-dir*L.forkHalf}
+  else if(d<=-half){fork=dir*L.forkHalf;const kk=(tau*8<k)?k:k;steps=kk}
+  else{const u=(d+half)/LIFT;const p=u<.18?-.015*Math.sin(PI*u/.18):u<.9?.9*ss((u-.18)/.72):.9+.1*ss((u-.9)/.1);steps=k+p;fork=dir*L.forkHalf*(1-2*ss(u))}
+  return{th,steps,fork}}
+// every arbor's angle from the escapement (radians, movement frame unless noted)
+function angles(st,esc,winding){
+  const E=PH.esc+esc.steps*TAU/(Z.escape*2);              // escape wheel, cage frame
+  const psiRel=st.psi0+esc.steps*TAU/beatsPerCage;          // cage relative to the fixed wheel
+  const cage=st.cfg.on?psiRel+st.Foff:st.Khold;
+  const fixed=cage-psiRel;                                  // stays put while the tourbillon turns
+  const pinion=psiRel;                                      // carriage pinion and small seconds
+  const third=-(Z.carriagePinion/Z.third)*pinion+PH.third;
+  const center=-(Z.thirdPinion/Z.center)*third+PH.center;
+  const barrel=-(Z.centerPinion/Z.barrel)*center+PH.barrel;
+  const minuteWheel=-(Z.cannon/Z.minuteWheel)*center+PH.minuteWheel;
+  const hour=-(Z.minutePinion/Z.hour)*minuteWheel+PH.hour;
+  const ratchet=winding||0,crownWheel=-(Z.ratchet/Z.crownWheel)*ratchet+PH.crownWheel;
+  return{E,cage,fixed,pinion,third,center,barrel,minuteWheel,hour,ratchet,crownWheel,balance:esc.th,fork:esc.fork}}
+
+const facts={BPH,beatsPerCage,cagePerHour,escPerCage,hoursPerBarrel,hourRatio,crownPerArbor,turnsPerBarrel:SPR.N,reserve:RESERVE,
+  I:BAL.I,k:BAL.k,KP,hsL:HS.L,idxPerDeg:idxRate(1),forkHalfDeg:L.forkHalf/D2R,liftDeg:52,
+  ampFull:ampDeg(SPR.N,'du'),ampFullV:ampDeg(SPR.N,'cu'),ampEmptyV:AFULL*Math.sqrt(.45)*VLOSS/D2R,
+  j1zeroDeg:null};
+{let a=3.5,b=4.2;for(let i=0;i<80;i++){const m=(a+b)/2;if(J1(a)*J1(m)<=0)b=m;else a=m}facts.j1zeroDeg=(a+b)/2/D2R}
+// hours left when the vertical amplitude crosses the J1 zero (poise error changes sign)
+{const Aj=facts.j1zeroDeg*D2R,q=(Aj/(AFULL*VLOSS))**2;facts.flipHours=(q-.45)/.55*SPR.N*hoursPerBarrel}
+return{Z,F0,M,L,SPR,BAL,HS,POS,PH,R,meshes,cosS,J1,make,escapement,angles,amp,ampDeg,poiseRate,idxRate,torque,turnsPerBeat,facts,TAU,PI,D2R,LIFT};
+})();
+/* ================= page ================= */
+import * as THREE from '../assets/vendor/three.module.min.js';
+import {mergeGeometries} from '../assets/vendor/three-addons.js';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches,STILL=Q.has('still'),STATIC=RM||STILL,OGQ=Q.get('og'),IFR=window.self!==window.top;
+if(FIXED||STATIC)document.documentElement.classList.add('still');
+if(OGQ)document.documentElement.classList.add('og');
+const {TAU,PI,D2R,Z,L,M}=TB;
+const clamp=(x,a,b)=>x<a?a:x>b?b:x,lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const MOB=()=>innerWidth<=820;
+const C=L.C,N=TB.SPR.N;
+
+/* ================= the running watch ================= */
+const DEF={pos:'dd',on:true,U:5,idx:0,beta:0};
+let W=TB.make({cfg:Object.assign({},DEF)});
+const S={T:0,speed:1,ex:0,exT:0,xray:false,wind:null,ratchet:0,flip:false,rot:null,q:null,lastTab:-1};
+
+/* ================= textures (UV = millimetres) ================= */
+function finishTex(Npx,span,fn){
+  const mk=()=>{const c=document.createElement('canvas');c.width=c.height=Npx;return c};
+  const cn=mk(),cr=mk(),gn=cn.getContext('2d'),gr=cr.getContext('2d'),dn=gn.createImageData(Npx,Npx),dr=gr.createImageData(Npx,Npx);
+  for(let j=0;j<Npx;j++){const y=span/2-span*(j+.5)/Npx;for(let i=0;i<Npx;i++){const x=-span/2+span*(i+.5)/Npx,o=fn(x,y),l=Math.hypot(o[0],o[1],1),p=(j*Npx+i)*4;
+    dn.data[p]=(o[0]/l*.5+.5)*255;dn.data[p+1]=(o[1]/l*.5+.5)*255;dn.data[p+2]=(1/l*.5+.5)*255;dn.data[p+3]=255;
+    const r=clamp(o[2],0,1)*255;dr.data[p]=dr.data[p+1]=dr.data[p+2]=r;dr.data[p+3]=255}}
+  gn.putImageData(dn,0,0);gr.putImageData(dr,0,0);
+  const tx=c=>{const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.NoColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1/span,1/span);t.offset.set(.5,.5);t.anisotropy=8;return t};
+  return{normal:tx(cn),rough:tx(cr)}}
+// Geneva stripes: parallel bands, each a shallow cylinder brushed in arcs
+const cotes=(x,y)=>{const a=1.16,ux=Math.cos(a),uy=Math.sin(a),w=2.3,s=(x*ux+y*uy)/w,c=Math.floor(s),t=(s-c-.5)*2,al=-x*uy+y*ux+c*.41;
+  const q=((al%.9)+.9)%.9-.45,arc=Math.sin(Math.hypot(t*w*.55+.9,q)*44)*.5;return[(t*.36+arc*.04)*ux,(t*.36+arc*.04)*uy,.17+.15*t*t+.03*arc]};
+// perlage: overlapping swirled circles, later rows on top
+const perl=(x,y)=>{const sp=.56,r=.5,rh=sp*.866;let best=-1e9,bx=0,by=0;const j0=Math.round(y/rh);
+  for(let j=j0-1;j<=j0+1;j++){const off=(j&1)*sp*.5,i0=Math.round((x-off)/sp);for(let i=i0-1;i<=i0+1;i++){const cx=i*sp+off,cy=j*rh,dx=x-cx,dy=y-cy;if(dx*dx+dy*dy<r*r){const o=j*1e4+i;if(o>best){best=o;bx=dx;by=dy}}}}
+  const d=Math.hypot(bx,by)/r+1e-6,a=Math.atan2(by,bx),sw=Math.sin(a*5+d*26),tl=.2*d;
+  return[bx/(d*r)*tl+.07*sw*-Math.sin(a),by/(d*r)*tl+.07*sw*Math.cos(a),.24+.1*d+.06*sw]};
+// circular graining for wheels (centred on each arbor)
+const circ=(x,y)=>{const r=Math.hypot(x,y)+1e-6,s=Math.sin(r*52)*.5+Math.sin(r*131)*.25;return[x/r*s*.06,y/r*s*.06,.2+.04*s]};
+// sunburst for the ratchet and crown wheel
+const sun=(x,y)=>{const r=Math.hypot(x,y)+1e-6,a=Math.atan2(y,x),s=Math.sin(a*260)*.6+Math.sin(a*97+r)*.4;return[-y/r*s*.07,x/r*s*.07,.16+.05*s]};
+
+function dialTex(){const c=document.createElement('canvas'),n=1600;c.width=c.height=n;const g=c.getContext('2d'),k=n/36,X=v=>n/2+v*k,Y=v=>n/2-v*k;
+  // drawn as seen from the front (3 o'clock on the right); the texture's u is flipped below because the movement's +x is 9 o'clock
+  const gr=g.createRadialGradient(n/2,n/2,0,n/2,n/2,n/2);gr.addColorStop(0,'#fbf8f1');gr.addColorStop(.85,'#f1ece0');gr.addColorStop(1,'#ddd5c4');g.fillStyle=gr;g.fillRect(0,0,n,n);
+  g.strokeStyle='#1e2440';g.fillStyle='#1e2440';
+  g.lineWidth=k*.05;for(const rr of[14.6,13.9]){g.beginPath();g.arc(X(0),Y(0),rr*k,0,TAU);g.stroke()}
+  for(let i=0;i<60;i++){const a=PI/2-i*TAU/60,c1=Math.cos(a),s1=Math.sin(a);g.lineWidth=k*(i%5?.05:.11);g.beginPath();g.moveTo(X(c1*13.9),Y(s1*13.9));g.lineTo(X(c1*14.6),Y(s1*14.6));g.stroke();
+    if(i%5===0){g.beginPath();g.arc(X(c1*15.05),Y(s1*15.05),k*.14,0,TAU);g.fill()}}
+  g.textAlign='center';g.textBaseline='middle';g.font=`italic 500 ${k*2.15}px "Cormorant Garamond",serif`;
+  for(let h=1;h<=12;h++){if(h===6)continue;const a=PI/2-h*TAU/12;g.fillText(String(h),X(Math.cos(a)*12.1),Y(Math.sin(a)*12.1))}
+  g.font=`500 ${k*.62}px "Cormorant Garamond",serif`;g.fillText('C U R I O',n/2,Y(5.2));g.font=`italic 500 ${k*.72}px "Cormorant Garamond",serif`;g.fillText('Tourbillon',n/2,Y(4.1));
+  g.font=`400 ${k*.36}px "DM Mono",monospace`;g.fillText('28 800 A/h',n/2,Y(3.2));
+  const cx=X(-C[0]),cy=Y(C[1]);g.lineWidth=k*.04;g.beginPath();g.arc(cx,cy,4.4*k,0,TAU);g.stroke();
+  for(let i=0;i<60;i++){const a=-PI/2+i*TAU/60;g.lineWidth=k*(i%5?.035:.08);const r0=i%5?4.0:3.8;g.beginPath();g.moveTo(cx+Math.cos(a)*r0*k,cy+Math.sin(a)*r0*k);g.lineTo(cx+Math.cos(a)*4.4*k,cy+Math.sin(a)*4.4*k);g.stroke()}
+  g.font=`500 ${k*.62}px "Cormorant Garamond",serif`;for(const s of[10,20,30,40,50,60]){const a=-PI/2+s*TAU/60;g.fillText(String(s),cx+Math.cos(a)*3.15*k,cy+Math.sin(a)*3.15*k)}
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(-1/36,1/36);t.offset.set(.5,.5);t.anisotropy=8;return t}
+
+/* ================= geometry helpers ================= */
+const pol=(r,a)=>[r*Math.cos(a),r*Math.sin(a)];
+function gearPts(Zn,m,o={}){const rp=m*Zn/2,ha=(o.ha??1.3)*m,hf=(o.hf??1.6)*m,P=TAU/Zn,t=(o.tw??.48)*P/2,n=o.n??4,pts=[],rr=rp-hf;
+  for(let k=0;k<Zn;k++){const a=k*P;pts.push(pol(rr,a-P/2));
+    pts.push(pol(rr,a-t));pts.push(pol(rp,a-t));for(let i=1;i<n;i++){const s=i/n*PI/2;pts.push(pol(rp+ha*Math.sin(s),a-t*Math.cos(s)))}
+    pts.push(pol(rp+ha,a));for(let i=n-1;i>=1;i--){const s=i/n*PI/2;pts.push(pol(rp+ha*Math.sin(s),a+t*Math.cos(s)))}pts.push(pol(rp,a+t));pts.push(pol(rr,a+t))}
+  return pts}
+function escPts(R,n=15){const P=TAU/n,pts=[],rr=R*.7;for(let k=0;k<n;k++){const a=k*P;
+  pts.push(pol(rr,a));pts.push(pol(R*.86,a+P*.18));pts.push(pol(R,a+P*.36));pts.push(pol(R*.985,a+P*.47));pts.push(pol(R*.9,a+P*.5));pts.push(pol(rr*1.02,a+P*.62))}return pts}
+function ratchetPts(Zn,R){const P=TAU/Zn,pts=[],rr=R-.24;for(let k=0;k<Zn;k++){const a=k*P;pts.push(pol(rr,a));pts.push(pol(R,a+P*.82));pts.push(pol(R-.03,a+P*.9))}return pts}
+function shapeOf(pts,o={}){const sh=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],p[1])));
+  if(o.spokes){const rim=o.rim,hub=o.hub,w=o.sw;for(let s=0;s<o.spokes;s++){const a0=s*TAU/o.spokes+(o.sa||0),a1=a0+TAU/o.spokes,dO=Math.asin(w/rim),dI=Math.asin(Math.min(.9,w/hub));
+      const h=new THREE.Path();h.absarc(0,0,rim,a0+dO,a1-dO,false);h.absarc(0,0,hub,a1-dI,a0+dI,true);h.closePath();sh.holes.push(h)}}
+  if(o.hole){const h=new THREE.Path();h.absarc(0,0,o.hole,0,TAU,true);sh.holes.push(h)}
+  for(const c of(o.holes||[])){const h=new THREE.Path();h.absarc(c[0],c[1],c[2],0,TAU,true);sh.holes.push(h)}
+  return sh}
+function ext(shape,depth,b=0,seg=10){const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:b>0,bevelThickness:b,bevelSize:b*.8,bevelOffset:-b*.8,bevelSegments:b>0?2:0,curveSegments:seg});g.translate(0,0,b);g.computeBoundingSphere();return g}
+function wheel(Zn,m,depth,o={}){const rp=m*Zn/2;const sp=o.spokes?{spokes:o.spokes,rim:rp-1.6*m-Math.max(.16,rp*.12),hub:Math.max(.32,rp*.17),sw:Math.max(.07,rp*.04),sa:o.sa}:{};
+  return ext(shapeOf(gearPts(Zn,m,o),Object.assign(sp,{hole:o.hole})),depth,o.b??0,6)}
+function lathe(prof,seg=28){const g=new THREE.LatheGeometry(prof.map(p=>new THREE.Vector2(p[0],p[1])),seg);g.rotateX(PI/2);return g}
+function circleShape(r,cx=0,cy=0,holes=[]){const s=new THREE.Shape();s.absarc(cx,cy,r,0,TAU,false);for(const h of holes){const p=new THREE.Path();p.absarc(h[0],h[1],h[2],0,TAU,true);s.holes.push(p)}return s}
+// signed-distance outlines (bridges and cage frames), traced with marching squares
+const sdC=(cx,cy,r)=>(x,y)=>Math.hypot(x-cx,y-cy)-r;
+const sdS=(ax,ay,bx,by,r)=>(x,y)=>{const px=x-ax,py=y-ay,dx=bx-ax,dy=by-ay,t=clamp((px*dx+py*dy)/(dx*dx+dy*dy),0,1);return Math.hypot(px-dx*t,py-dy*t)-r};
+const smin=(a,b,k)=>{const h=clamp(.5+.5*(b-a)/k,0,1);return b+(a-b)*h-k*h*(1-h)};
+const U_=(k,...f)=>(x,y)=>{let d=f[0](x,y);for(let i=1;i<f.length;i++)d=smin(d,f[i](x,y),k);return d};
+function sdfShape(fn,x0,x1,y0,y1,h=.05){const nx=Math.ceil((x1-x0)/h)+1,ny=Math.ceil((y1-y0)/h)+1,F=new Float32Array(nx*ny);
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)F[j*nx+i]=fn(x0+i*h,y0+j*h);
+  const segs=new Map(),key=(x,y)=>Math.round(x*1e4)+','+Math.round(y*1e4),edges=[];
+  const ip=(i0,j0,i1,j1)=>{const a=F[j0*nx+i0],b=F[j1*nx+i1],t=a/(a-b);return[x0+(i0+(i1-i0)*t)*h,y0+(j0+(j1-j0)*t)*h]};
+  for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){const v=[F[j*nx+i]<0,F[j*nx+i+1]<0,F[(j+1)*nx+i+1]<0,F[(j+1)*nx+i]<0],c=v[0]|v[1]<<1|v[2]<<2|v[3]<<3;if(c===0||c===15)continue;
+    const E=[()=>ip(i,j,i+1,j),()=>ip(i+1,j,i+1,j+1),()=>ip(i,j+1,i+1,j+1),()=>ip(i,j,i,j+1)];
+    const T={1:[[3,0]],2:[[0,1]],3:[[3,1]],4:[[1,2]],5:[[3,0],[1,2]],6:[[0,2]],7:[[3,2]],8:[[2,3]],9:[[2,0]],10:[[0,1],[2,3]],11:[[2,1]],12:[[1,3]],13:[[1,0]],14:[[0,3]]}[c];
+    for(const [a,b] of T)edges.push([E[a](),E[b]()])}
+  for(const e of edges)for(const q of e){const k=key(...q);if(!segs.has(k))segs.set(k,[]);segs.get(k).push(e)}
+  const used=new Set(),loops=[];
+  for(const e of edges){if(used.has(e))continue;used.add(e);const loop=[e[0],e[1]];let end=e[1],guard=0;
+    while(guard++<200000){const k=key(...end),nx_=(segs.get(k)||[]).find(s=>!used.has(s));if(!nx_)break;used.add(nx_);end=key(...nx_[0])===k?nx_[1]:nx_[0];loop.push(end)}
+    if(loop.length>8)loops.push(loop)}
+  const area=l=>{let a=0;for(let i=0;i<l.length;i++){const p=l[i],q=l[(i+1)%l.length];a+=p[0]*q[1]-q[0]*p[1]}return a/2};
+  loops.sort((a,b)=>Math.abs(area(b))-Math.abs(area(a)));
+  const thin=l=>l.filter((_,i)=>i%2===0);
+  const sh=new THREE.Shape(thin(loops[0]).map(p=>new THREE.Vector2(p[0],p[1])));
+  for(const l of loops.slice(1)){if(Math.abs(area(l))<.02)continue;sh.holes.push(new THREE.Path(thin(l).map(p=>new THREE.Vector2(p[0],p[1]))))}
+  return sh}
+
+/* ================= scene ================= */
+let R3=null,renderer,scene,camera,envTex,PARTS=0,MESHES=[],lite=false,mats={};
+const G={};// moving groups
+const EX=[];// exploding objects
+function makeScene(){
+  const cv=$('#c');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance',preserveDrawingBuffer:FIXED});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x0e0d0c);scene.fog=new THREE.Fog(0x0e0d0c,110,330);
+  camera=new THREE.PerspectiveCamera(30,1,.5,3000);
+  // environment: a dim workshop with a lamp, a window and a strip light, for the metal to reflect
+  {const pm=new THREE.PMREMGenerator(renderer),es=new THREE.Scene();es.background=new THREE.Color(0x26221d);
+   const box=(w,h,x,y,z,c,i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(c).multiplyScalar(i),side:THREE.DoubleSide,toneMapped:false}));m.position.set(x,y,z);m.lookAt(0,0,0);es.add(m)};
+   box(12,6,-2,10,3,0xfff0d8,6);box(14,6,-11,4,5,0xe8f0ff,3.2);box(9,10,10,4,-7,0xcfe0ff,2.2);box(30,2,0,-1,-11,0xffe0b0,2.2);box(6,6,6,9,7,0xffffff,3.5);box(30,3,0,2,12,0xfff4e8,1.6);box(3,18,-12,3,-6,0xffffff,2.4);
+   const fl=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshBasicMaterial({color:new THREE.Color(0x2a2016).multiplyScalar(.9),side:THREE.DoubleSide}));fl.rotation.x=-PI/2;fl.position.y=-6;es.add(fl);
+   envTex=pm.fromScene(es,.02).texture;pm.dispose();scene.environment=envTex}
+  scene.add(new THREE.HemisphereLight(0xfff4e6,0x1a140f,.35));
+  const key=new THREE.DirectionalLight(0xfff0dc,2.6);key.position.set(-26,70,34);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+  Object.assign(key.shadow.camera,{left:-34,right:34,top:34,bottom:-34,near:10,far:200});key.shadow.bias=-.0003;key.shadow.normalBias=.03;scene.add(key);
+  const rim=new THREE.DirectionalLight(0xc8dcff,.7);rim.position.set(40,25,-40);scene.add(rim);
+  // the bench
+  const bench=new THREE.Mesh(new THREE.CircleGeometry(400,64),new THREE.MeshStandardMaterial({color:0x14211b,roughness:.92,metalness:0}));bench.rotation.x=-PI/2;bench.position.y=-7.1;bench.receiveShadow=true;scene.add(bench);
+  const holder=new THREE.Mesh(new THREE.LatheGeometry([[15.1,-7.1],[18,-7.1],[18,-1.6],[17.7,-.9],[15.2,-.9],[15.1,-1.6]].map(q=>new THREE.Vector2(q[0],q[1])),96),new THREE.MeshStandardMaterial({color:0x1b1a19,roughness:.5,metalness:.1}));
+  holder.castShadow=holder.receiveShadow=true;
+  const root=new THREE.Group();scene.add(root);
+  scene.add(holder);
+  const pose=new THREE.Group();root.add(pose);
+  const mv=new THREE.Group();pose.add(mv);
+  buildMovement(mv);
+  S.root=root;S.pose=pose;S.mv=mv;S.key=key;
+  return true}
+
+function buildMovement(mv){
+  const tPlate=finishTex(1024,36,perl),tCotes=finishTex(1024,36,cotes),tCirc=finishTex(512,12,circ),tSun=finishTex(512,9,sun);
+  const std=(o)=>new THREE.MeshStandardMaterial(Object.assign({metalness:1,roughness:.25},o));
+  mats.plate=std({color:0xdadcdb,roughness:1,roughnessMap:tPlate.rough,normalMap:tPlate.normal,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:1.3});
+  mats.bridgeTop=std({color:0xe6e8e8,roughness:1,roughnessMap:tCotes.rough,normalMap:tCotes.normal,normalScale:new THREE.Vector2(.9,.9),envMapIntensity:1.5});
+  mats.polish=std({color:0xeef0f2,roughness:.07,envMapIntensity:1.5});
+  mats.gold=std({color:0xf3c977,roughness:.8,roughnessMap:tCirc.rough,normalMap:tCirc.normal,normalScale:new THREE.Vector2(.45,.45),envMapIntensity:1.6});
+  mats.goldEdge=std({color:0xf2c878,roughness:.16,envMapIntensity:1.5});
+  mats.sun=std({color:0xd9dcdd,roughness:1,roughnessMap:tSun.rough,normalMap:tSun.normal});
+  mats.steel=std({color:0xe2e5e9,roughness:.14,envMapIntensity:1.5});
+  mats.black=std({color:0xdfe3e8,roughness:.09,envMapIntensity:1.7});
+  mats.blued=new THREE.MeshPhysicalMaterial({color:0x1e3590,metalness:1,roughness:.2,iridescence:.55,iridescenceIOR:1.5,iridescenceThicknessRange:[240,360],emissive:0x0a1440,emissiveIntensity:.35});
+  mats.ruby=new THREE.MeshPhysicalMaterial({color:0xa1102e,metalness:0,roughness:.05,clearcoat:1,clearcoatRoughness:.03,ior:1.77,emissive:0x45060f,emissiveIntensity:.8});
+  mats.glucy=std({color:0xdcb984,roughness:.16});
+  mats.screwGold=std({color:0xf0c56c,roughness:.14});
+  mats.heavy=std({color:0xff6a4a,roughness:.25,emissive:0x601408,emissiveIntensity:.8});
+  mats.hair=new THREE.MeshStandardMaterial({color:0x8ea6ff,metalness:.9,roughness:.25,side:THREE.DoubleSide,emissive:0x1c2c78,emissiveIntensity:.5});
+  mats.spring=new THREE.MeshStandardMaterial({color:0xc9ccd0,metalness:1,roughness:.3,side:THREE.DoubleSide});
+  mats.dial=new THREE.MeshPhysicalMaterial({map:dialTex(),roughness:.3,metalness:0,clearcoat:1,clearcoatRoughness:.04});
+  mats.ghost=new THREE.MeshStandardMaterial({color:0x9cc2ff,metalness:0,roughness:.6,transparent:true,opacity:.07,depthWrite:false,emissive:0x2a4a80,emissiveIntensity:.25});
+  mats.edge=new THREE.LineBasicMaterial({color:0x8fb4ff,transparent:true,opacity:.55});
+  const TRAIN={barrel:0xffb347,center:0xff5a4a,third:0x5fd47e,cage:0x58a8ff,fixed:0xf2f2f2,escape:0xc77dff,motion:0xa0a0a0,keyless:0xffd46a};
+  const xm={};for(const k in TRAIN)xm[k]=new THREE.MeshStandardMaterial({color:TRAIN[k],metalness:.3,roughness:.4,emissive:TRAIN[k],emissiveIntensity:.55});
+  mats.xm=xm;
+
+  const add=(parent,geo,mat,o={})=>{const m=new THREE.Mesh(geo,mat);m.position.set(o.x||0,o.y||0,o.z||0);if(o.rz)m.rotation.z=o.rz;m.castShadow=o.cast!==false;m.receiveShadow=true;
+    m.userData={z0:o.z||0,ex:o.ex||0,xr:o.xr||null,mat};parent.add(m);MESHES.push(m);if(o.ex)EX.push(m);if(o.part!==false)PARTS++;
+    if(o.xr==='ghost'&&o.edges!==false){const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo,35),mats.edge);e.visible=false;e.userData.edge=true;m.add(e)}return m};
+  const grp=(parent,o={})=>{const g=new THREE.Group();g.position.set(o.x||0,o.y||0,o.z||0);g.userData={z0:o.z||0,ex:o.ex||0};parent.add(g);if(o.ex)EX.push(g);return g};
+  // shared small parts
+  const screwGeo=(()=>{const r=.3,gap=.04,y0=Math.sqrt(r*r-gap*gap),a0=Math.atan2(y0,gap),half=s=>{const sh=new THREE.Shape();sh.moveTo(s*gap,-s*y0);sh.absarc(0,0,r,s>0?-a0:PI-a0,s>0?a0:PI+a0,false);sh.lineTo(s*gap,-s*y0);return sh};
+    const a=ext(half(1),.1,.035,10),b=ext(half(-1),.1,.035,10);a.translate(0,0,.05);b.translate(0,0,.05);const base=ext(circleShape(.27),.06,0,16);return mergeGeometries([a,b,base])})();
+  const jewelGeo=lathe([[0,.02],[.07,.02],[.09,.07],[.2,.12],[.33,.1],[.36,.05],[.36,0],[0,0]],24);
+  const chatonGeo=ext(circleShape(.62,0,0,[[0,0,.36]]),.08,.025,24);
+  const screw=(p,x,y,z,s=1,o={})=>{const m=add(p,screwGeo,mats.blued,Object.assign({x,y,z,rz:o.rz??Math.atan2(y,x)+PI/2},o));m.scale.setScalar(s);return m};
+  const jewel=(p,x,y,z,s=1,o={})=>{const m=add(p,jewelGeo,mats.ruby,Object.assign({x,y,z},o));m.scale.set(s,s,s);return m};
+  const chaton=(p,x,y,z,o={})=>{add(p,chatonGeo,mats.goldEdge,Object.assign({x,y,z},o));jewel(p,x,y,z+.07,1,{part:false,ex:o.ex});const a=Math.atan2(y,x)+.6;
+    screw(p,x+Math.cos(a)*.86,y+Math.sin(a)*.86,z,.55,{ex:o.ex});screw(p,x-Math.cos(a)*.86,y-Math.sin(a)*.86,z,.55,{ex:o.ex})};
+  const arbor=(p,z0,z1,r=.11,o={})=>add(p,lathe([[0,z0-.05],[r*.55,z0-.05],[r*.6,z0+.1],[r,z0+.18],[r,z1-.18],[r*.6,z1-.1],[r*.55,z1+.05],[0,z1+.05]],16),mats.steel,Object.assign({cast:false},o));
+  const pinion=(p,Zn,m,z0,len,o={})=>add(p,ext(shapeOf(gearPts(Zn,m,{ha:.85,hf:1.75,tw:.44,n:3})),len,0,4),mats.steel,o);
+
+  // ---- main plate with the sink for the cage, and its floor ----
+  add(mv,ext(circleShape(16,0,0,[[C[0],C[1],5.6],[0,0,.32],[L.third[0],L.third[1],.3]]),.92,.02,96),mats.plate,{z:0,ex:0,xr:'ghost'});
+  add(mv,ext(circleShape(5.62,C[0],C[1],[[C[0],C[1],.95]]),.4,0,64),mats.plate,{z:0,ex:0,xr:'ghost'});
+  // ---- dial side: lower cage bridge, third wheel, motion works, dial, hands ----
+  const lowBr=sdfShape(U_(.6,sdS(C[0],C[1],-5.2,-13.4,.9),sdS(C[0],C[1],5.2,-13.4,.9),sdC(C[0],C[1],1.25),sdC(-5.2,-13.4,1.05),sdC(5.2,-13.4,1.05)),-7,7,-15.5,-7);
+  add(mv,ext(lowBr,.14,.02,8),mats.steel,{z:-.82,ex:-6,xr:'ghost'});
+  G.third=grp(mv,{x:L.third[0],y:L.third[1],z:0,ex:-3.6});
+  add(G.third,wheel(Z.third,M.third,.16,{spokes:5,hole:.12,b:.012}),mats.gold,{z:-.38,xr:'third'});
+  pinion(G.third,Z.thirdPinion,M.center,0,.32,{z:1.08,xr:'third'});arbor(G.third,-.5,4.3,.13,{xr:'third'});
+  G.cpin=grp(mv,{x:C[0],y:C[1],z:0,ex:-3.6});
+  pinion(G.cpin,Z.carriagePinion,M.third,0,.32,{z:-.42,xr:'cage'});arbor(G.cpin,-1.3,1.45,.15,{xr:'cage'});
+  G.minuteWheel=grp(mv,{x:L.minuteWheel[0],y:L.minuteWheel[1],z:0,ex:-9});
+  add(G.minuteWheel,wheel(Z.minuteWheel,M.cannon,.1,{spokes:4,hole:.1}),mats.gold,{z:-.78,xr:'motion'});
+  pinion(G.minuteWheel,Z.minutePinion,M.hour,0,.14,{z:-.66,xr:'motion'});arbor(G.minuteWheel,-.82,-.45,.09,{xr:'motion'});
+  G.hour=grp(mv,{z:0,ex:-10.5});
+  add(G.hour,wheel(Z.hour,M.hour,.1,{spokes:4,hole:.38}),mats.gold,{z:-.64,xr:'motion'});
+  add(G.hour,lathe([[.36,-1.18],[.46,-1.18],[.46,-.55],[.36,-.55]],24),mats.goldEdge,{cast:false,xr:'motion'});
+  const dialSh=circleShape(15.8,0,0,[[0,0,.55],[C[0],C[1],.3]]);
+  add(mv,ext(dialSh,.16,.03,96),mats.dial,{z:-1.12,ex:-15,xr:'ghost',edges:false});
+  // hands (Breguet "pomme" hands in blued steel)
+  const handShape=(len,w,moon,ring)=>{const f=U_(.04,sdS(0,0,0,len,w*.5),sdC(0,0,.42),sdS(0,-.2,0,-len*.22,w*.45),(x,y)=>Math.abs(Math.hypot(x,y-moon)-ring)-w*.55,sdS(0,moon+ring,0,len+.1,w*.25));
+    return sdfShape((x,y)=>Math.max(f(x,y),-sdC(0,0,.2)(x,y)),-2,2,-len*.3-.5,len+.6,.03)};
+  const hHour=ext(handShape(8.2,.42,6.0,.82),.05,0),hMin=ext(handShape(12.6,.34,10.6,.66),.05,0);
+  const hSec=ext(sdfShape(U_(.04,sdS(0,-1.0,0,3.6,.07),sdC(0,0,.32),sdC(0,-1.0,.22)),-1,1,-1.6,4.1,.02),.04,0);
+  G.hHour=add(G.hour,hHour,mats.blued,{z:-1.28,ex:0,xr:'motion'});
+  G.center=grp(mv,{z:0,ex:4.5});
+  G.hMin=add(G.center,hMin,mats.blued,{z:-1.4,ex:-18,xr:'motion'});
+  G.hSec=add(G.cpin,hSec,mats.blued,{z:-1.3,ex:-15,xr:'cage'});
+  // ---- going train on the back ----
+  add(G.center,wheel(Z.center,M.center,.15,{spokes:5,hole:.12,b:.012,sa:.3}),mats.gold,{z:1.13,xr:'center'});
+  pinion(G.center,Z.centerPinion,M.barrel,0,1.0,{z:2.5,xr:'center'});
+  add(G.center,wheel(Z.cannon,M.cannon,.13,{ha:.9,hf:1.7,tw:.44,hole:.1}),mats.steel,{z:-.8,xr:'motion'});
+  arbor(G.center,-1.45,4.35,.14,{xr:'center'});
+  G.barrel=grp(mv,{x:L.barrel[0],y:L.barrel[1],z:0,ex:7.5});
+  add(G.barrel,lathe([[4.7,1.95],[5.02,1.95],[5.08,2.05],[5.08,3.5],[5.02,3.58],[4.7,3.58]],120),mats.goldEdge,{xr:'barrel'});
+  add(G.barrel,ext(circleShape(4.8,0,0,[[0,0,1.62]]),.12,.02,64),mats.gold,{z:1.95,xr:'barrel'});
+  add(G.barrel,wheel(Z.barrel,M.barrel,.68,{hole:4.95}),mats.gold,{z:2.62,xr:'barrel',part:false});
+  add(G.barrel,ext(circleShape(4.96,0,0,[[0,0,1.0]]),.1,.025,64),mats.gold,{z:3.48,ex:3.75,xr:'barrel'});
+  G.spring=new THREE.Mesh(new THREE.BufferGeometry(),mats.spring);G.spring.position.z=2.15;G.barrel.add(G.spring);G.spring.userData={z0:2.15,ex:1.8};EX.push(G.spring);PARTS++;G.spring.visible=false;
+  G.arbor=grp(mv,{x:L.barrel[0],y:L.barrel[1],z:0,ex:8.7});
+  add(G.arbor,lathe([[0,1.8],[.45,1.8],[.45,2.02],[1.55,2.05],[1.55,3.45],[.62,3.5],[.62,4.55],[.0,4.55]],40),mats.steel,{cast:false,xr:'barrel'});
+  // ---- bridges: Geneva stripes on top, polished bevels ----
+  const brMats=[mats.bridgeTop,mats.polish];
+  const bridge=(sh,z,h,o)=>{const m=add(mv,ext(sh,h,.05,8),brMats,Object.assign({z,xr:'ghost'},o));return m};
+  const bc=L.barrel,cw=L.crownWheel;
+  const ftB1=[-12.6,6.2],ftB2=[5.2,11.6],ftT1=[7.6,2.1],ftT2=[8.6,-3.6];
+  const disc=(x,y)=>Math.hypot(x,y)-15.35;
+  const barrelBr=sdfShape((x,y)=>Math.max(U_(.9,sdC(bc[0],bc[1],4.55),sdC(cw[0],cw[1],2.15),sdS(bc[0],bc[1],ftB1[0],ftB1[1],1.6),sdS(bc[0],bc[1],ftB2[0],ftB2[1],1.45),sdC(ftB1[0],ftB1[1],1.75),sdC(ftB2[0],ftB2[1],1.6))(x,y),disc(x,y)),-16,8,-2,16);
+  bridge(barrelBr,3.68,.68,{ex:16.5});
+  const trainBr=sdfShape(U_(.7,sdS(0,0,L.third[0],L.third[1],1.0),sdS(0,0,ftT1[0],ftT1[1],1.2),sdS(L.third[0],L.third[1],ftT2[0],ftT2[1],1.05),sdC(ftT1[0],ftT1[1],1.55),sdC(ftT2[0],ftT2[1],1.45),sdC(0,0,1.15),sdC(L.third[0],L.third[1],1.1)),-2,11,-6,5);
+  bridge(trainBr,3.68,.68,{ex:15});
+  for(const f of[ftB1,ftB2])screw(mv,f[0],f[1],4.46,1.15,{ex:19.5});
+  for(const f of[ftT1,ftT2])screw(mv,f[0],f[1],4.46,1.1,{ex:18});
+  chaton(mv,0,0,4.46,{ex:18.75});chaton(mv,L.third[0],L.third[1],4.46,{ex:18.75});
+  // tourbillon bridge: a polished lyre over the cage, on two posts
+  const fA=[C[0]+7.4*Math.cos(200*D2R),C[1]+7.4*Math.sin(200*D2R)],fB=[C[0]+7.4*Math.cos(-20*D2R),C[1]+7.4*Math.sin(-20*D2R)];
+  const curve=(a,b,bend,r)=>{const fs=[];for(let i=0;i<12;i++){const t0=i/12,t1=(i+1)/12,p=t=>{const mx=(a[0]+b[0])/2+bend[0],my=(a[1]+b[1])/2+bend[1];return[(1-t)*(1-t)*a[0]+2*t*(1-t)*mx+t*t*b[0],(1-t)*(1-t)*a[1]+2*t*(1-t)*my+t*t*b[1]]},q0=p(t0),q1=p(t1);fs.push(sdS(q0[0],q0[1],q1[0],q1[1],r))}return fs};
+  const tbBr=sdfShape(U_(.3,...curve(fA,C,[1.0,2.2],.3),...curve(C,fB,[-1.0,2.2],.3),sdC(C[0],C[1],.9),sdC(fA[0],fA[1],.8),sdC(fB[0],fB[1],.8)),-10,10,-16,-4,.035);
+  add(mv,ext(tbBr,.34,.06,8),[mats.black,mats.black],{z:5.06,ex:31.5,xr:'ghost'});
+  for(const f of[fA,fB]){add(mv,lathe([[0,.92],[.55,.92],[.55,1.1],[.42,1.25],[.42,4.85],[.55,5.0],[0,5.0]],32),mats.black,{x:f[0],y:f[1],ex:0,xr:'ghost',edges:false});screw(mv,f[0],f[1],5.5,.85,{ex:34.5})}
+  chaton(mv,C[0],C[1],5.55,{ex:33});
+  // ---- keyless works: ratchet, click, crown wheel, stem and crown ----
+  G.ratchet=grp(G.arbor,{z:0});
+  add(G.ratchet,ext(shapeOf(ratchetPts(Z.ratchet,M.ratchet*Z.ratchet/2+.1),{hole:.2}),.3,.03,6),[mats.sun,mats.polish],{z:4.47,ex:5.25,xr:'keyless'});
+  for(let i=0;i<3;i++){const a=i*TAU/3+.3;screw(G.ratchet,Math.cos(a)*.9,Math.sin(a)*.9,4.83,.75,{ex:7.5})}
+  screw(G.ratchet,0,0,4.83,1.25,{ex:8.1});
+  G.crownWheel=grp(mv,{x:cw[0],y:cw[1],z:0,ex:23.25});
+  add(G.crownWheel,wheel(Z.crownWheel,M.ratchet,.28,{hole:.2,b:.02}),[mats.sun,mats.polish],{z:4.47,xr:'keyless'});
+  screw(G.crownWheel,0,0,4.81,.95,{ex:2.25});
+  const clickP=[bc[0]+4.25*Math.cos(-38*D2R),bc[1]+4.25*Math.sin(-38*D2R)];
+  G.click=grp(mv,{x:clickP[0],y:clickP[1],z:0,ex:22.5});
+  const tipA=Math.atan2(bc[1]-clickP[1],bc[0]-clickP[0])+.55;
+  add(G.click,ext(sdfShape(U_(.15,sdS(0,0,Math.cos(tipA)*1.05,Math.sin(tipA)*1.05,.2),sdC(0,0,.42)),-2,2,-2,2,.025),.22,.02),[mats.polish,mats.polish],{z:4.47});
+  screw(G.click,0,0,4.75,.7,{ex:.6});
+  add(mv,ext(sdfShape((x,y)=>Math.abs(Math.hypot(x-clickP[0]-.3,y-clickP[1]+1.4)-1.4)-.07,clickP[0]-2,clickP[0]+2.5,clickP[1]-3.4,clickP[1]+.4,.02),.18,0),mats.steel,{z:4.38,ex:22.5});
+  G.crown=grp(mv,{x:-16.3,y:.4,z:.48,ex:0});
+  const crownG=ext(shapeOf(gearPts(30,.17,{ha:.6,hf:.6,tw:.55,n:2})),1.9,.06,4);crownG.rotateY(-PI/2);
+  add(G.crown,crownG,mats.steel,{x:0,xr:'keyless'});
+  const cap=lathe([[0,0],[2.45,0],[2.1,.4],[0,.5]],40);cap.rotateY(-PI/2);add(G.crown,cap,mats.polish,{x:-2.05});
+  const stem=lathe([[.3,0],[.3,10.2]],12);stem.rotateY(PI/2);add(mv,stem,mats.steel,{x:-16.4,y:.4,z:.48,xr:'keyless',cast:false});
+  // ---- the fixed (fourth) wheel, screwed to the floor of the sink ----
+  G.fixed=grp(mv,{x:C[0],y:C[1],z:0,ex:3.3});
+  add(G.fixed,lathe([[.25,.4],[1.05,.4],[1.05,.74],[.25,.74]],40),mats.goldEdge,{xr:'fixed'});
+  add(G.fixed,wheel(Z.fixed,M.fixed,.14,{spokes:6,hole:.25}),mats.gold,{z:.74,xr:'fixed'});
+  for(let i=0;i<3;i++){const a=i*TAU/3+.5;screw(G.fixed,Math.cos(a)*.72,Math.sin(a)*.72,.9,.55,{ex:.8})}
+  // ---- the cage ----
+  G.cage=grp(mv,{x:C[0],y:C[1],z:0,ex:9.75});
+  const ePos=pol(L.escR,L.escA),pPos=pol(L.palletR,L.escA),pil=[90,210,330].map(a=>pol(4.75,a*D2R));
+  const lowF=sdfShape(U_(.45,(x,y)=>Math.abs(Math.hypot(x,y)-4.78)-.2,...pil.map(p=>sdS(0,0,p[0],p[1],.24)),sdC(0,0,1.0),sdS(0,0,ePos[0],ePos[1],.42),sdC(ePos[0],ePos[1],.55),...pil.map(p=>sdC(p[0],p[1],.42))),-5.4,5.4,-5.4,5.4,.035);
+  add(G.cage,ext(lowF,.14,.025,8),[mats.black,mats.polish],{z:1.36,xr:'cage'});
+  for(const p of pil){add(G.cage,lathe([[0,1.5],[.25,1.5],[.25,1.7],[.19,1.85],[.19,4.0],[.25,4.12],[.25,4.28],[0,4.28]],18),mats.black,{x:p[0],y:p[1],xr:'cage'});screw(G.cage,p[0],p[1],4.44,.62,{ex:2.4})}
+  const arm=(p,bend)=>{const fs=[];const mx=p[0]*.5-p[1]*bend,my=p[1]*.5+p[0]*bend;for(let i=0;i<10;i++){const t0=i/10,t1=(i+1)/10,q=t=>[2*t*(1-t)*mx+t*t*p[0],2*t*(1-t)*my+t*t*p[1]];const a=q(t0),b=q(t1);fs.push(sdS(a[0],a[1],b[0],b[1],.2+.08*(1-t0)))}return fs};
+  const upF=sdfShape(U_(.3,sdC(0,0,1.15),...pil.flatMap(p=>arm(p,.32)),...pil.map(p=>sdC(p[0],p[1],.42)),(x,y)=>Math.abs(Math.hypot(x,y)-.72)-.06),-5.4,5.4,-5.4,5.4,.03);
+  add(G.cage,ext(upF,.14,.025,8),[mats.black,mats.polish],{z:4.28,ex:6.3,xr:'cage'});
+  jewel(G.cage,0,0,4.46,.85,{ex:6.3});
+  add(G.cage,lathe([[0,4.4],[.32,4.4],[.32,4.62],[.14,4.75],[.12,5.08],[0,5.08]],18),mats.steel,{ex:6.3,cast:false,xr:'cage'});
+  // seconds pointer on one arm of the upper frame
+  add(G.cage,ext(sdfShape(U_(.05,sdS(.6,0,3.0,0,.06),(x,y)=>Math.max(Math.abs(y)-(3.65-x)*.4,x-3.65,2.95-x)),0,4,-.5,.5,.015),.05,0),mats.blued,{z:4.45,ex:6.45,rz:pil[0]?Math.atan2(pil[0][1],pil[0][0])+.62:0});
+  const escBr=sdfShape(U_(.35,sdS(pil[0][0],pil[0][1],ePos[0],ePos[1],.32),sdS(ePos[0],ePos[1],pPos[0],pPos[1],.3),sdC(pil[0][0],pil[0][1],.42),sdC(ePos[0],ePos[1],.48),sdC(pPos[0],pPos[1],.42)),-1,5,-1,5.5,.03);
+  add(G.cage,ext(escBr,.1,.02,8),[mats.black,mats.polish],{z:2.52,ex:3.9,xr:'cage'});
+  for(const p of[ePos,pPos]){jewel(G.cage,p[0],p[1],1.5,.55,{part:false});jewel(G.cage,p[0],p[1],2.66,.6,{ex:3.9})}
+  jewel(G.cage,0,0,1.5,.6);
+  // escape wheel and pinion (one arbor)
+  G.esc=grp(G.cage,{x:ePos[0],y:ePos[1],z:0,ex:2.1});
+  // tooth phase: after an even beat a tooth tip rests on the entry stone (210° − 30° in the cage frame), after an odd beat on the exit stone
+  {const P=TAU/Z.escape,want=L.escA+PI-30*D2R-.36*P-TB.PH.esc;add(G.esc,ext(shapeOf(escPts(L.escWheelR),{spokes:4,rim:.72,hub:.24,sw:.06}),.1,0,6),mats.steel,{z:1.84,xr:'escape',rz:((want%P)+P)%P||1e-6})}
+  pinion(G.esc,Z.escapePinion,M.fixed,0,.32,{z:.68,xr:'escape'});arbor(G.esc,.62,2.62,.07,{xr:'escape'});
+  // pallet fork with two ruby pallet stones; stones sit where the escape teeth lock, 2.5 tooth pitches apart
+  G.pallet=grp(G.cage,{x:pPos[0],y:pPos[1],z:0,ex:2.85});
+  {const toE=Math.atan2(ePos[1]-pPos[1],ePos[0]-pPos[0]),tip=s=>{const a=toE+PI+s*30*D2R;return[ePos[0]+L.escWheelR*Math.cos(a)-pPos[0],ePos[1]+L.escWheelR*Math.sin(a)-pPos[1],a]};
+   const st=[tip(-1),tip(1)],toB=Math.atan2(-pPos[1],-pPos[0]),fl=L.palletR-L.rollerR-.12,fx=Math.cos(toB)*fl,fy=Math.sin(toB)*fl,nx=-Math.sin(toB),ny=Math.cos(toB);
+   const body=sdfShape(U_(.1,sdC(0,0,.28),...st.map(s=>sdS(0,0,s[0]*.82,s[1]*.82,.13)),sdS(0,0,fx,fy,.09),sdS(fx,fy,fx+Math.cos(toB)*.22+nx*.16,fy+Math.sin(toB)*.22+ny*.16,.055),sdS(fx,fy,fx+Math.cos(toB)*.22-nx*.16,fy+Math.sin(toB)*.22-ny*.16,.055)),-3,3,-3,3,.015);
+   add(G.pallet,ext(body,.1,0),mats.steel,{z:1.87,xr:'escape'});
+   for(const s of st){const g=new THREE.BoxGeometry(.11,.34,.16);const m=add(G.pallet,g,mats.ruby,{x:s[0]*.9,y:s[1]*.9,z:1.92,rz:s[2]+PI/2});}
+   add(G.pallet,lathe([[0,1.98],[.03,1.98],[.03,2.14],[0,2.14]],8),mats.steel,{x:fx*.86,y:fy*.86,part:true,cast:false});
+   arbor(G.pallet,1.48,2.62,.06,{xr:'escape'})}
+  // balance: glucydur rim and arm, 16 gold timing screws, roller with its ruby impulse pin
+  G.bal=grp(G.cage,{z:0,ex:5.1});
+  const B=TB.BAL;
+  add(G.bal,lathe([[B.ri,3.0],[B.ro,3.0],[B.ro,3.0+B.h],[B.ri,3.0+B.h]],120),mats.glucy,{xr:'escape'});
+  add(G.bal,new THREE.BoxGeometry(B.ri*2,B.armW,B.armT).translate(0,0,3.06+B.armT/2),mats.glucy,{xr:'escape'});
+  add(G.bal,lathe([[0,3.04],[.55,3.04],[.55,3.28],[0,3.28]],24),mats.glucy,{xr:'escape'});
+  G.screws=[];
+  for(let i=0;i<B.nScrew;i++){const a=(i+.5)*TAU/B.nScrew,gs=new THREE.Group();gs.rotation.z=a;G.bal.add(gs);
+    const m=add(gs,screwGeo,mats.screwGold,{x:B.ro-.02,y:0,z:3.0+B.h/2,rz:0});m.rotation.set(0,PI/2,0);m.scale.set(.6,.6,.8);m.userData.ang=a;G.screws.push(m)}
+  add(G.bal,lathe([[0,1.98],[.55,1.98],[.55,2.08],[.2,2.1],[.2,2.18],[0,2.18]],24),mats.steel,{xr:'escape'});
+  add(G.bal,new THREE.CylinderGeometry(.045,.045,.22,10).rotateX(PI/2),mats.ruby,{x:L.rollerR,y:0,z:1.98});
+  add(G.bal,lathe([[0,1.42],[.09,1.42],[.12,1.6],[.16,2.0],[.16,3.5],[.12,4.3],[.08,4.48],[0,4.48]],16),mats.steel,{cast:false,xr:'escape'});
+  add(G.bal,lathe([[.18,3.5],[.45,3.5],[.45,3.66],[.18,3.66]],20),mats.steel,{cast:false});
+  // hairspring: a flat spiral whose inner end turns with the balance and whose outer end is pinned in the stud
+  {const HS=TB.HS,n=HS.turns*96,pos=new Float32Array((n+1)*6),nor=new Float32Array((n+1)*6),idx=[];for(let i=0;i<n;i++){const a=i*2,b=a+1,c=a+2,d=a+3;idx.push(a,c,b,b,c,d)}
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setIndex(idx);
+   G.hair=add(G.cage,g,mats.hair,{z:0,ex:6,cast:false,xr:'escape'});G.hair.frustumCulled=false;G.hairN=n}
+  add(G.cage,ext(sdfShape(U_(.1,sdS(0,0,2.75,0,.16),sdC(2.75,0,.26)),-.5,3.3,-.5,.5,.02),.12,0),mats.black,{z:4.16,rz:150*D2R,ex:6.3,xr:'cage'});
+  add(G.cage,lathe([[0,3.52],[.14,3.52],[.14,4.18],[0,4.18]],12),mats.black,{x:2.75*Math.cos(150*D2R),y:2.75*Math.sin(150*D2R),ex:6.3,xr:'cage'});
+  // regulator index with its curb pins (turns by the index setting)
+  G.idx=grp(G.cage,{z:0,ex:6.38});
+  add(G.idx,ext(sdfShape(U_(.12,(x,y)=>Math.abs(Math.hypot(x,y)-.88)-.12,sdS(0,0,-2.62,0,.11),sdS(.8,0,1.8,0,.08)),-3,2.2,-1,1,.02),.08,0),mats.blued,{z:4.18,rz:0,xr:'cage'});
+  for(const dy of[-.08,.08])add(G.idx,lathe([[0,3.5],[.035,3.5],[.035,4.2],[0,4.2]],8),mats.steel,{x:-2.6,y:dy,cast:false});
+  G.idxBase=-55*D2R;G.idx.rotation.z=G.idxBase;
+  scene.updateMatrixWorld(true)}
+
+/* ---------- per-frame pose of every part ---------- */
+let springW=-1;
+function buildSpring(Wt){const f=clamp(Wt/N,0,1),sp=TB.SPR,na=f*sp.nw,nb=(1-f)*sp.nu,hgt=1.0,pts=[];
+  for(let i=0;i<=Math.ceil(na*48);i++){const t=i/48;pts.push([sp.r+t*sp.e,t*TAU])}
+  const aStart=pts.length?pts[pts.length-1][1]:0,rA=pts.length?pts[pts.length-1][0]:sp.r,rB=sp.R-nb*sp.e;
+  for(let i=1;i<=40;i++){const t=i/40;pts.push([lerp(rA,rB,t),aStart+t*TAU*1.0])}
+  const a2=pts[pts.length-1][1];for(let i=1;i<=Math.ceil(nb*48);i++){const t=i/48;pts.push([rB+t*sp.e,a2+t*TAU])}
+  const pos=new Float32Array(pts.length*6),nor=new Float32Array(pts.length*6),idx=[];
+  pts.forEach((p,i)=>{const c=Math.cos(p[1]),s=Math.sin(p[1]);pos.set([p[0]*c,p[0]*s,0,p[0]*c,p[0]*s,hgt],i*6);nor.set([c,s,0,c,s,0],i*6);if(i<pts.length-1){const a=i*2;idx.push(a,a+2,a+1,a+1,a+2,a+3)}});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setIndex(idx);
+  G.spring.geometry.dispose();G.spring.geometry=g;springW=Wt}
+function poseHair(th){const HS=TB.HS,n=G.hairN,g=G.hair.geometry,p=g.attributes.position.array,nr=g.attributes.normal.array,a0=150*D2R;
+  for(let i=0;i<=n;i++){const s=i/n,r=HS.rin+(HS.rout-HS.rin)*s,a=a0-TAU*HS.turns*(1-s)+th*(1-s)*(1-s*.15),c=Math.cos(a),sn=Math.sin(a),o=i*6;
+    p[o]=r*c;p[o+1]=r*sn;p[o+2]=3.56;p[o+3]=r*c;p[o+4]=r*sn;p[o+5]=3.66;nr[o]=nr[o+3]=c;nr[o+1]=nr[o+4]=sn;nr[o+2]=nr[o+5]=0}
+  g.attributes.position.needsUpdate=true;g.attributes.normal.needsUpdate=true}
+let ANG=null,HAND0=null;
+function poseParts(){
+  const st=W.S,p=W.pose(S.T),esc=TB.escapement(p.tau,p.A),a=TB.angles(st,esc,S.ratchet);ANG=a;
+  if(!G.cage)return;
+  if(!HAND0){const d=new Date(),secs=FIXED||STATIC?10*3600+8*60+37:d.getHours()*3600+d.getMinutes()*60+d.getSeconds();
+    HAND0={m:TAU*(secs%3600)/3600-a.center,h:TAU*(secs%43200)/43200-a.hour,s:TAU*(secs%60)/60-a.pinion}}// the hands are drawn pointing at 12
+  G.third.rotation.z=a.third;G.center.rotation.z=a.center;G.barrel.rotation.z=a.barrel;G.cpin.rotation.z=a.pinion;
+  G.minuteWheel.rotation.z=a.minuteWheel;G.hour.rotation.z=a.hour;G.fixed.rotation.z=a.fixed;G.cage.rotation.z=a.cage;
+  G.esc.rotation.z=a.E;G.pallet.rotation.z=a.fork;G.bal.rotation.z=L.escA+a.balance;
+  G.hMin.rotation.z=HAND0.m;G.hHour.rotation.z=HAND0.h;G.hSec.rotation.z=HAND0.s;
+  G.arbor.rotation.z=-a.ratchet;G.crownWheel.rotation.z=a.crownWheel;G.crown.rotation.x=a.ratchet*TB.facts.crownPerArbor;
+  const tp=TAU/Z.ratchet,ph=((a.ratchet%tp)+tp)%tp/tp;G.click.rotation.z=-.05+.09*Math.min(ph*5,1)*(1-ph);
+  G.idx.rotation.z=G.idxBase+st.cfg.idx*D2R;
+  poseHair(a.balance);
+  if(G.spring.visible&&Math.abs(springW-st.W)>.02)buildSpring(st.W);
+  const hb=st.cfg.beta*D2R-L.escA;for(const m of G.screws){const d=Math.abs(((m.userData.ang-hb)%TAU+TAU+PI)%TAU-PI);m.material=st.cfg.U>0&&d<PI/16?mats.heavy:(S.xray?mats.xm.escape:mats.screwGold)}}
+function applyExplode(){const e=ease(S.ex);for(const o of EX)o.position.z=o.userData.z0+o.userData.ex*e}
+function applyXray(){const on=S.xray;for(const m of MESHES){const x=m.userData.xr;if(!x)continue;
+    if(x==='ghost'){m.material=on?mats.ghost:m.userData.mat;m.castShadow=!on;for(const c of m.children)if(c.userData.edge)c.visible=on}
+    else m.material=on?mats.xm[x]:m.userData.mat}
+  G.spring.visible=on;if(on)buildSpring(W.S.W);
+  $('#xray').setAttribute('aria-pressed',on)}
+
+/* ---------- camera: orbit about a target, eased to presets ---------- */
+const CAM={yaw:0,pitch:.98,dist:44,tx:0,ty:1.5,tz:4.5},CAM_T=Object.assign({},CAM);let camDrag=null,userCam=false;
+const QPOSE={dd:new THREE.Quaternion().setFromEuler(new THREE.Euler(-PI/2,0,0)),du:new THREE.Quaternion().setFromEuler(new THREE.Euler(PI/2,0,PI)),
+  cu:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,-PI/2)),cd:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,PI/2)),
+  t12:new THREE.Quaternion(),t6:new THREE.Quaternion().setFromEuler(new THREE.Euler(0,0,PI))};
+const HORIZ=p=>p==='dd'||p==='du';
+function poseY(pos,e){return HORIZ(pos)?ease(e)*19:17}
+function camPreset(kind){const pos=W.S.cfg.pos,v=!HORIZ(pos),e=ease(S.exT),mob=MOB(),y0=poseY(pos,S.exT);
+  if(kind==='cage'){const c=new THREE.Vector3(C[0],C[1],3).applyQuaternion(QPOSE[pos]);c.y+=y0;
+    Object.assign(CAM_T,v?{yaw:-.12-e*.8,pitch:.16,dist:(mob?46:38)+e*30,tx:c.x,ty:c.y,tz:c.z+e*8}:{yaw:-.22,pitch:.82,dist:(mob?46:38)+e*30,tx:c.x,ty:c.y+e*8,tz:c.z-1.5})}
+  else Object.assign(CAM_T,v?{yaw:-.2-e*.95,pitch:.12+e*.12,dist:(mob?88:80)+e*50,tx:0,ty:y0+.8,tz:2+e*13}:{yaw:-.16,pitch:.86,dist:(mob?72:54)+e*58,tx:0,ty:1.5+y0*1.05,tz:3.5});
+  if(S.flip)CAM_T.yaw+=PI}
+function placeCam(){const{yaw,pitch,dist,tx,ty,tz}=CAM;const cp=Math.cos(pitch);camera.position.set(tx+dist*cp*Math.sin(yaw),ty+dist*Math.sin(pitch),tz+dist*cp*Math.cos(yaw));camera.lookAt(tx,ty,tz);camera.updateMatrixWorld()}
+function fit(){if(!renderer)return;const st=$('#stage');let w=innerWidth,h=innerHeight;
+  if(MOB()){h=Math.round(clamp(innerWidth*1.02,340,520));st.style.setProperty('--sh',h+'px');w=st.clientWidth||innerWidth}
+  renderer.setSize(w,h,false);camera.aspect=w/h;
+  // keep the movement in the clear space left of the panel on desktop
+  if(!MOB()&&!OGQ){const pw=$('#panel').offsetWidth+30;camera.setViewOffset(w,h,pw*.5,0,w,h)}else camera.clearViewOffset();
+  camera.updateProjectionMatrix()}
+
+/* ================= timegrapher, readouts, table ================= */
+const fmtR=(r,d=2)=>r==null||!isFinite(r)?'–':(Math.abs(r)<.5*Math.pow(10,-d)?'±':r>0?'+':'−')+Math.abs(r).toFixed(d);
+let tgDirty=true;
+function drawTG(){const cv=$('#tg'),dpr=Math.min(devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;if(!w)return;
+  if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  g.fillStyle='#f3eddf';g.fillRect(0,0,w,h);const st=W.S,span=90,k1=st.k,k0=Math.max(0,k1-span*8,k1-4000);
+  g.strokeStyle='rgba(60,50,30,.12)';g.lineWidth=1;for(let i=1;i<9;i++){const x=Math.round(w*i/9)+.5;g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke()}
+  if(k1-k0<4){g.fillStyle='rgba(60,50,30,.5)';g.font='11px "DM Mono",monospace';g.fillText('listening…',8,h/2);return}
+  const tk=k=>st.ring[k&4095],ys=[];let lo=1e9,hi=-1e9;
+  for(let k=k0;k<=k1;k++){const dev=-((tk(k)-tk(k0))-(k-k0)/8)*1000;ys.push(dev);if(dev<lo)lo=dev;if(dev>hi)hi=dev}
+  const mid=(lo+hi)/2,half=Math.max(1,(hi-lo)/2*1.15);
+  g.strokeStyle='rgba(60,50,30,.25)';g.beginPath();g.moveTo(0,h/2+.5);g.lineTo(w,h/2+.5);g.stroke();
+  g.fillStyle='#24305e';const tSpan=tk(k1)-tk(k0)||1,x0=w-(tSpan/span)*w;
+  for(let i=0;i<ys.length;i++){const x=x0+(tk(k0+i)-tk(k0))/span*w,y=h/2-(ys[i]-mid)/half*(h/2-6);g.fillRect(x-.8,y-.8,1.7,1.7)}
+  $('#tgs').textContent='±'+(half<10?half.toFixed(1):half.toFixed(0))+' ms'}
+function tableHTML(){const t=W.table(),cur=W.S.cfg.pos;let s='';
+  for(const p of['dd','du','cu','cd','t12','t6']){const r=t[p];s+=`<tr class="${p===cur?'on':''}"><td>${TB.POS[p].name}</td><td>${r.A>0?r.A.toFixed(0)+'°':'stop'}</td><td class="${!W.S.cfg.on&&p===cur?'hl':''}">${fmtR(r.held)}</td><td class="${W.S.cfg.on&&p===cur?'hl':''}">${fmtR(r.turning,Math.abs(r.turning)<.01&&r.turning!==0?4:2)}</td></tr>`}
+  $('#ptab tbody').innerHTML=s;S.tab=t}
+const GDIR={dd:'gravity → through the dial',du:'gravity → through the back',cu:"gravity → 9 o'clock",cd:"gravity → 3 o'clock",t12:"gravity → 6 o'clock",t6:"gravity → 12 o'clock"};
+let lastRead=0;
+function readouts(force){const now=performance.now();if(!force&&!FIXED&&now-lastRead<120)return;lastRead=now;const st=W.S,c=st.cfg,mr=W.minuteRate();
+  const rn=W.rateAt(st.k,st.W).r,A=TB.ampDeg(st.W,c.pos);
+  $('#rmin').textContent=st.stopped?'stopped':fmtR(mr);$('#rnow').textContent=st.stopped?'–':fmtR(rn);$('#ramp').textContent=st.stopped?'0°':A.toFixed(0)+'°';
+  const hl=Math.max(0,st.W)*TB.facts.hoursPerBarrel;$('#rres').textContent=hl.toFixed(1)+' h left';
+  $('#posv').textContent=`${TB.POS[c.pos].name.toLowerCase()} · cage ${c.on?'turning':'held'}`;$('#gdir').textContent=GDIR[c.pos];
+  $('#uv').textContent=c.U+' µg·cm';$('#spv').textContent=`${hl.toFixed(1)} h left · ${Math.max(0,st.W).toFixed(2)} turns`;
+  $('#idxv').textContent=fmtR(TB.idxRate(c.idx),1)+' s/d';$('#exv').textContent=Math.round(S.exT*100)+'%';
+  const sv=Math.round(st.W/N*1000);if(document.activeElement!==$('#spring')&&+$('#spring').value!==sv)$('#spring').value=sv;
+  if(Math.floor(st.k/240)!==S.lastTab){S.lastTab=Math.floor(st.k/240);tableHTML()}
+  drawTG()}
+function segSet(id,v){for(const b of $$(`#${id} button`))b.setAttribute('aria-pressed',String(b.dataset.v===String(v)))}
+function syncControls(){const c=W.S.cfg;segSet('pos',c.pos);segSet('cage',c.on?'on':'off');segSet('heavy',c.U);segSet('speed',S.speed);
+  $('#idx').value=Math.round(c.idx*100);$('#ex').value=Math.round(S.exT*1000);$('#xray').setAttribute('aria-pressed',S.xray);$('#flip').textContent=S.flip?'Show the back':'Show the dial'}
+
+/* ================= settings ================= */
+function setCfg(ch,why){const posChanged='pos' in ch&&ch.pos!==W.S.cfg.pos;W.set(Object.assign({},ch),why);S.lastTab=-1;
+  if(posChanged){S.rot={from:S.pose.quaternion.clone(),to:QPOSE[ch.pos],t:0};if(!userCam)camPreset(S.camKind||'wide')}
+  syncControls();readouts(true)}
+function setExplode(v){S.exT=clamp(v,0,1);if(!userCam)camPreset(S.camKind||'wide');syncControls()}
+function setXray(v){S.xray=v;if(R3)applyXray()}
+function windCrown(){if(S.wind)return;const room=N-W.S.W;if(room<=1e-6){cap(CAP.full());return}S.wind={t:0,dur:STATIC||FIXED?0:2.2,turns:Math.min(1.5,room),r0:S.ratchet};
+  if(!S.wind.dur)finishWind()}
+function finishWind(){const w=S.wind;S.ratchet=w.r0+w.turns*TAU;setCfg({W:W.S.W+w.turns},'wind');S.wind=null}
+
+/* ================= captions and the tour ================= */
+let shownCap='',capTimer=0;
+function cap(html){if(html===shownCap)return;const el=$('#caption');shownCap=html;
+  if(STATIC||FIXED){el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{el.innerHTML='<span>'+shownCap+'</span>';el.classList.remove('fade')},330)}
+const F=TB.facts,T0={};
+const CAP={
+  open:()=>`<b>A one-minute tourbillon.</b> The balance swings four times a second (28,800 beats an hour), and the whole escapement — balance, lever and escape wheel — rides in a steel cage that turns once a minute.`,
+  slow:()=>`<b>Sixteen times slower.</b> Each beat the balance’s ruby pin flicks the lever, the escape wheel slips half a tooth, and its 7-leaf pinion, rolling round a fixed wheel of 112, walks the whole cage on by 0.75°.`,
+  apart:()=>`<b>${PARTS} parts</b>, every one generated in this page. Each wheel turns by its tooth count: barrel 96 → 12, centre 80 → 10, third 75 → 10 turns the cage <span class="m">60×</span> an hour; the fixed wheel’s 112 over the escape pinion’s 7 gives 16 escape turns a minute.`,
+  xray:()=>`<b>X-ray.</b> The third wheel (green) runs under the plate to reach the cage’s pinion (blue). Every centre distance is module × (z<sub>1</sub> + z<sub>2</sub>)/2, so the teeth mesh as they turn. The barrel’s spring has <span class="m">${F.turnsPerBarrel.toFixed(2)}</span> turns: <b>${F.reserve.toFixed(1)} hours</b>.`,
+  held:()=>`<b>Why turn the cage?</b> Breguet’s watches hung upright in a pocket. Stand this one crown up, put a heavy spot of <b>5 µg·cm</b> on the balance and freeze the cage: it runs a steady <b class="r">${fmtR(T0.held)} s/day</b>, a straight slope on the timegrapher.`,
+  turn:()=>`<b>Now let the cage turn</b> (six times faster). Once a minute the heavy spot swings below the balance and back above, the rate swings ±${Math.abs(T0.held).toFixed(2)} s/day and the trace becomes a wave. Over each whole turn it cancels: <b class="g">${fmtR(T0.turn,4)} s/day</b>.`,
+  flip:()=>`<b>Let the spring run down to ${T0.hLeft} hours, cage held.</b> The swing shrinks to <span class="m">${T0.amp.toFixed(0)}°</span>, below <b>${F.j1zeroDeg.toFixed(1)}°</b> where the Bessel function J<sub>1</sub> crosses zero, and the same heavy spot now <b class="r">${T0.flipped<0?'loses':'gains'} ${Math.abs(T0.flipped).toFixed(2)} s/day</b>. Turning, it still cancels.`,
+  you:()=>`<b>Your turn.</b> Stand the watch in any position, change the heavy spot, hold or free the cage, wind it, turn the regulator, or take it apart. Drag to look around.`,
+  full:()=>`<b>Fully wound.</b> The spring has ${F.turnsPerBarrel.toFixed(2)} turns, ${F.reserve.toFixed(1)} hours; the crown turns no further.`,
+  still:()=>`<b>A one-minute tourbillon</b>, stood crown up with a heavy spot of 5 µg·cm on its balance. Held still with the spot at the bottom, the watch would run ${fmtR(T0.held)} s/day; turning once a minute it averages ${fmtR(T0.turn,4)} s/day. (Paused for reduced motion: press 1× to let it run.)`,
+  result:()=>{const c=W.S.cfg,t=S.tab?S.tab[c.pos]:null;if(!t)return CAP.you();const v=!HORIZ(c.pos);
+    return v?`<b>${TB.POS[c.pos].name}, heavy spot ${c.U} µg·cm, amplitude ${t.A.toFixed(0)}°.</b> Cage held here: <b>${fmtR(t.held)} s/day</b>. Turning once a minute: <b>${fmtR(t.turning,Math.abs(t.turning)<.01&&t.turning!==0?4:2)} s/day</b>.`:
+      `<b>${TB.POS[c.pos].name}:</b> gravity runs along the balance staff, so a heavy spot does nothing and the cage has nothing to cancel: <b>${fmtR(t.held)} s/day</b> either way.`}
+};
+let tour=null,tourDone=false;
+// the balance's heavy spot straight down (at rest) for the cage where it is now
+const heavyDown=pos=>{const K=W.cageAt(W.S.k),g=TB.POS[pos].g,b=(g-K)/D2R;return((b%360)+360)%360};
+const TOUR=[
+  {gap:0,go:()=>{tourReset();cap(CAP.open())}},
+  {gap:5.2,go:()=>{S.speed=.0625;syncControls();cap(CAP.slow())}},
+  {gap:.55,go:()=>{S.speed=1;syncControls();setExplode(1);cap(CAP.apart())},real:true},
+  {gap:4.4,go:()=>{setExplode(0);setXray(true);cap(CAP.xray())}},
+  {gap:6.2,go:()=>{setXray(false);S.camKind='wide';setCfg({pos:'cu',on:false,beta:heavyDown('cu')},'tour');S.speed=6;syncControls();T0.held=W.table().cu.held;cap(CAP.held())}},
+  {gap:7.5*6,go:()=>{setCfg({on:true},'tour');T0.turn=W.table().cu.turning;cap(CAP.turn())}},
+  {gap:20*6,go:()=>{T0.hLeft=10;setCfg({W:10/F.hoursPerBarrel,on:false,beta:heavyDown('cu')},'tour');const t=W.table().cu;T0.amp=t.A;T0.flipped=t.held;cap(CAP.flip())}},
+  {gap:8*6,go:()=>{setCfg({on:true},'tour');S.speed=1;syncControls()}},
+  {gap:4,go:()=>{cap(CAP.you());tour=null;tourDone=true;S.camKind='wide';if(!userCam)camPreset('wide')}},
+];
+function tourReset(){const keepT=W.S.t;W=TB.make({cfg:Object.assign({},DEF)});S.T=0;S.speed=1;S.exT=0;S.ex=0;S.xray=false;if(R3){applyXray();applyExplode()}
+  S.flip=false;S.camKind='cage';S.rot={from:S.pose?S.pose.quaternion.clone():null,to:QPOSE.dd,t:0};userCam=false;if(R3)camPreset('cage');syncControls();S.lastTab=-1;readouts(true)}
+function startTour(){tour={k:0,t:-1e9};tourDone=false}
+function poke(){if(tour){tour=null;tourDone=true;S.speed=1;syncControls();cap(CAP.you())}}
+function tourTick(){while(tour&&tour.k<TOUR.length){const b=TOUR[tour.k];if(S.T-tour.t<b.gap)break;tour.k++;tour.t=S.T;b.go()}}
+let lastSeg=0;
+function afterChange(){if(tour||!ready)return;const L_=W.S.log,e=L_[L_.length-1];if(e&&e.id!==lastSeg){lastSeg=e.id;if(e.why!=='tour'&&e.why!=='init')cap(CAP.result())}}
+
+/* ================= loop ================= */
+let ready=false,last=0,frameMs=16,slowFrames=0;window.__frame=0;
+function update(dt){
+  const sdt=dt*S.speed;S.T+=sdt;
+  if(S.wind){S.wind.t+=dt;const f=ease(S.wind.t/S.wind.dur);S.ratchet=S.wind.r0+S.wind.turns*TAU*f;if(S.wind.t>=S.wind.dur)finishWind()}
+  W.runTo(S.T);if(W.S.stopped&&S.T>W.S.t+.2)S.T=W.S.t+.2;
+  tourTick();afterChange();
+  if(S.ex!==S.exT){const d=STATIC?1:dt/1.6;S.ex=S.ex<S.exT?Math.min(S.exT,S.ex+d):Math.max(S.exT,S.ex-d);if(R3)applyExplode()}
+  if(S.rot&&R3){S.rot.t=STATIC?1:Math.min(1,S.rot.t+dt/1.4);if(S.rot.from)S.pose.quaternion.slerpQuaternions(S.rot.from,S.rot.to,ease(S.rot.t));else S.pose.quaternion.copy(S.rot.to);if(S.rot.t>=1)S.rot=null}
+  if(R3){const yt=poseY(W.S.cfg.pos,S.ex);S.root.position.y=STATIC?yt:lerp(S.root.position.y,yt,Math.min(1,dt*3.2))}
+  if(R3){const k=STATIC||FIXED&&!tour?1:1-Math.exp(-dt*2.2);for(const p in CAM)CAM[p]=lerp(CAM[p],CAM_T[p],k);
+    if(!userCam&&!FIXED&&!STATIC)CAM.yaw+=Math.sin(S.T*.0+performance.now()/9000)*.0004;
+    poseParts();placeCam()}
+  if(!FIXED)readouts()}
+function render(){if(R3)renderer.render(scene,camera)}
+function frame(ts,skip){
+  if(!FIXED)requestAnimationFrame(frame);
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.1);
+  if(!FIXED&&last){frameMs=frameMs*.95+(now-last)*.05;if(frameMs>45&&!lite&&++slowFrames>30)goLite()}
+  last=now;window.__frame++;
+  update(dt);if(!skip){if(FIXED)readouts(true);render()}
+  window.__state={t:+S.T.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,k:W.S.k,ex:S.ex,pos:W.S.cfg.pos}}
+function goLite(){lite=true;if(renderer){renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;S.key.castShadow=false;for(const m of MESHES)m.castShadow=false;fit()}}
+
+/* ================= input ================= */
+function hook(){
+  const cv=$('#c');
+  cv.addEventListener('pointerdown',e=>{camDrag={x:e.clientX,y:e.clientY,yaw:CAM_T.yaw,pitch:CAM_T.pitch,touch:e.pointerType==='touch'};cv.classList.add('drag');if(!camDrag.touch)cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!camDrag)return;const dx=e.clientX-camDrag.x,dy=e.clientY-camDrag.y;if(camDrag.touch&&Math.abs(dy)>Math.abs(dx)*1.2)return;
+    if(Math.abs(dx)+Math.abs(dy)>3){poke();userCam=true}CAM_T.yaw=camDrag.yaw-dx*.006;CAM_T.pitch=clamp(camDrag.pitch+dy*.005,-1.2,1.45)});
+  const end=()=>{camDrag=null;cv.classList.remove('drag')};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+  cv.addEventListener('wheel',e=>{e.preventDefault();poke();userCam=true;CAM_T.dist=clamp(CAM_T.dist*Math.exp(e.deltaY*.0012),14,180)},{passive:false});
+  addEventListener('resize',()=>{fit();if(!userCam)camPreset(S.camKind||'wide');drawTG()})}
+function hookUI(){
+  const segH=(id,fn)=>$(`#${id}`).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;poke();fn(b.dataset.v)});
+  segH('pos',v=>{S.flip=false;S.camKind='wide';userCam=false;setCfg({pos:v})});
+  segH('cage',v=>setCfg({on:v==='on'}));
+  segH('heavy',v=>setCfg({U:+v}));
+  segH('speed',v=>{S.speed=+v;syncControls()});
+  $('#spring').addEventListener('input',e=>{const v=+e.target.value;poke();setCfg({W:N*v/1000})});
+  $('#idx').addEventListener('input',e=>{const v=+e.target.value;poke();setCfg({idx:v/100})});
+  $('#ex').addEventListener('input',e=>{const v=+e.target.value;poke();S.camKind='wide';setExplode(v/1000)});
+  $('#xray').addEventListener('click',()=>{poke();setXray(!S.xray)});
+  $('#wind').addEventListener('click',()=>{poke();windCrown()});
+  $('#flip').addEventListener('click',()=>{poke();const p=W.S.cfg.pos;if(HORIZ(p)){S.flip=false;setCfg({pos:p==='dd'?'du':'dd'})}else{S.flip=!S.flip;userCam=false;camPreset(S.camKind||'wide')}syncControls()});
+  for(const b of[$('#tourb')])b.addEventListener('click',()=>{tourReset();startTour()})}
+
+/* ================= start ================= */
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,IFR?0:1500))])}catch(e){}
+  try{R3=makeScene()}catch(e){console.warn(e);R3=null;document.documentElement.classList.add('nogl')}
+  hook();hookUI();fit();
+  S.pose&&S.pose.quaternion.copy(QPOSE.dd);
+  if(OGQ){// og frames: 1 = the cage close on the bench, 2 = stood upright, three-quarter
+    S.speed=1;tourDone=true;S.T=37.31;
+    if(OGQ==='2'){setCfg({pos:'cu'},'init');S.rot=null;if(R3){S.pose.quaternion.copy(QPOSE.cu);S.root.position.y=17;Object.assign(CAM_T,{yaw:-.52,pitch:.16,dist:56,tx:-3,ty:17.5,tz:1.5})}}
+    else if(R3)Object.assign(CAM_T,{yaw:-.34,pitch:.74,dist:34,tx:-2.5,ty:3,tz:5.4});
+    if(R3){Object.assign(CAM,CAM_T);fit()}W.runTo(S.T);cap(CAP.you())}
+  else if(STATIC){setCfg({pos:'cu',on:true},'static');S.rot=null;if(S.pose)S.pose.quaternion.copy(QPOSE.cu);if(S.root)S.root.position.y=17;T0.held=W.table().cu.held;T0.turn=W.table().cu.turning;
+    S.T=150;W.runTo(150);setCfg({beta:heavyDown('cu')},'static');T0.held=W.table().cu.held;T0.turn=W.table().cu.turning;S.speed=0;S.camKind='wide';if(R3){camPreset('wide');Object.assign(CAM,CAM_T)}tourDone=true;cap(CAP.still())}
+  else{startTour();if(FIXED){// frame 0: the cage close up, mid-beat
+    tourTick();S.T=1.3;W.runTo(S.T);if(R3)Object.assign(CAM,CAM_T)}}
+  syncControls();readouts(true);ready=true;lastSeg=W.S.log.length?W.S.log[W.S.log.length-1].id:0;
+  if(R3){poseParts();placeCam()}}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)};
+(async()=>{await start();if(R3&&!OGQ&&!STATIC){applyExplode()}render();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the watch
+window.tourbillon={
+  state:()=>{if(!ready)return{ready:false};const st=W.S,info=renderer?renderer.info.render:null;
+    return{ready:true,facts:Object.assign({},TB.facts),cfg:Object.assign({},st.cfg),k:st.k,t:st.t,W:st.W,hoursLeft:st.W*F.hoursPerBarrel,stopped:st.stopped,
+      rateNow:W.rateAt(st.k,st.W).r,rateMin:W.minuteRate(),amp:TB.ampDeg(st.W,st.cfg.pos),table:W.table(),T:S.T,speed:S.speed,explode:S.ex,explodeTarget:S.exT,xray:S.xray,
+      tour:tour?tour.k:null,tourDone,caption:$('#caption').textContent,shown:{rmin:$('#rmin').textContent,rnow:$('#rnow').textContent,ramp:$('#ramp').textContent,res:$('#rres').textContent},
+      parts:PARTS,meshes:MESHES.length,tris:info?info.triangles:null,calls:info?info.calls:null,lite,
+      angles:ANG?Object.assign({},ANG):null,ratchet:S.ratchet,
+      log:st.log.map(s=>({id:s.id,why:s.why,k0:s.k0,t0:s.t0,W0:s.W0,cfg:Object.assign({},s.cfg),psi0:s.psi0,Foff:s.Foff,Khold:s.Khold,n:s.n,hash:s.hash,tEnd:s.tEnd,WEnd:s.WEnd}))}},
+  layout:()=>({L:JSON.parse(JSON.stringify(TB.L)),M:Object.assign({},TB.M),Z:Object.assign({},TB.Z),PH:Object.assign({},TB.PH)}),
+  beats:(n)=>{const st=W.S,out=[];for(let k=Math.max(0,st.k-n);k<=st.k;k++)out.push([k,st.ring[k&4095]]);return out},
+};
+</script>
+</body>
+</html>

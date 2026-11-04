@@ -1,0 +1,11 @@
+{
+ "slug": "tourbillon",
+ "title": "Tourbillon",
+ "no": "036",
+ "date": "2026-11-04",
+ "kind": "Watch movement · three.js",
+ "blurb": "A one-minute tourbillon built part by part in your browser: 116 parts, every wheel turned by its tooth count, the balance beating four times a second in a cage that turns once a minute. Stand it on edge with a heavy spot on the balance, freeze the cage, and the timegrapher shows the error that the turning cage cancels.",
+ "color": "#8c909c",
+ "exhibit": "tourbillon",
+ "lane": "3d"
+}
