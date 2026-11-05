@@ -172,8 +172,9 @@ details a,.foot a{color:var(--gold)}
   #sc{overscroll-behavior:auto}
   #panel{position:static;width:auto;margin:10px 10px calc(14px + env(safe-area-inset-bottom));background:rgba(22,14,11,.98)}
   :root{--pw:0px}
-  .ribbon{right:auto;left:22px;height:calc(100% - 40px)}
-  .ribbon .tag{left:-14px;width:52px;font-size:11px;padding:5px 0 6px}
+  .ribbon{right:14px;top:calc(var(--uh) + 18px);height:calc(100% - var(--uh) - 34px)}
+  .ribbon .tag{left:-44px;width:52px;font-size:11px;padding:5px 0 6px}
+  #ulag{display:none}
   .ribbon .tag small{font-size:7px}
   #under{right:8px;top:8px}
   #under .cap{font-size:8.5px}
