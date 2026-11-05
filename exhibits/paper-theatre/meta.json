@@ -1,0 +1,11 @@
+{
+ "slug": "paper-theatre",
+ "title": "Paper Theatre",
+ "no": "037",
+ "date": "2026-11-05",
+ "kind": "Scroll-driven animation · CSS 3D",
+ "blurb": "A Victorian toy theatre in a pop-up book, played by the scroll bar: 35 CSS animations on one scroll timeline open the book, raise the curtain and run a harbour, a storm and a dawn. Freeze JavaScript for three seconds and the stage keeps playing on the compositor thread, while an understudy moved by a scroll listener stops dead.",
+ "color": "#0008bc",
+ "exhibit": "paperTheatre",
+ "lane": "web"
+}
