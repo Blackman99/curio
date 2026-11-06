@@ -1,0 +1,11 @@
+{
+ "slug": "marbling-tray",
+ "title": "Marbling Tray",
+ "no": "038",
+ "date": "2026-11-06",
+ "kind": "Paper marbling · WebGL2",
+ "blurb": "Turkish ebru with exact maths: sprinkle paint on the size, rake it into gel-git, nonpareil and bouquet, then lay paper on it. Every drop and stroke is a closed-form map that keeps area; the GPU draws each pixel backwards, each drop's outline is pushed forwards, and a disc 7 cm across becomes a thread metres long with its area unchanged.",
+ "color": "#50bc00",
+ "exhibit": "marblingTray",
+ "lane": "science"
+}

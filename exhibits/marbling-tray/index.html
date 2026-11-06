@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marbling Tray — ebru paper marbling, computed exactly</title>
+<meta name="description" content="A Turkish ebru marbling tray in your browser. Sprinkle paint, rake it into gel-git, nonpareil and bouquet patterns, then lay a sheet of paper on it. Every drop and stroke is a closed-form, area-preserving map (Lu, Jaffer et al., Mathematical Marbling, 2012): the picture is drawn backwards pixel by pixel on the GPU, and every drop's outline is pushed forward as a vector polygon whose area never changes.">
+<meta property="og:title" content="Marbling Tray">
+<meta property="og:description" content="Ebru marbling with exact maths: sprinkle, rake and print, while every drop's outline is traced as a vector and its area stays exactly what it was when it fell.">
+<meta property="og:image" content="https://blackman99.github.io/curio/marbling-tray/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Marbling Tray">
+<meta name="twitter:description" content="Paper marbling as exact, area-preserving maths: rake a bouquet, trace one drop into a thread metres long, and print it.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/marbling-tray/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#100d0a;--paper:#f2ebdc;--paper2:#b1a793;--gold:#e0a94a;--blue:#8fa6e6;--red:#ff8a72;--line:rgba(240,222,190,.14);--panel:rgba(18,14,11,.92)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:#15110d}
+#c,#o{position:absolute;inset:0;width:100%;height:100%;display:block}
+#o{touch-action:none;cursor:crosshair}
+#o.loupe{cursor:none}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(14,11,8,.55)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--gold);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(14,11,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--gold);color:#1a1205;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-shadow:0 1px 4px #000}
+h1{margin:8px 0 0;font:500 clamp(36px,3.5vw,54px)/1 'Cormorant Garamond',Georgia,serif;letter-spacing:.02em;color:#fbf3e2;text-shadow:0 2px 0 #3d2410,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:860px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(14,11,8,.72)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#f6f0e4;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--gold)}
+#caption .g{color:#ffd27a;font-weight:600}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,236,200,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none;text-align:right}
+.sec{margin-bottom:12px}
+.btn{border:1px solid var(--line);background:rgba(224,169,74,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(224,169,74,.18);border-color:var(--gold);outline:none}
+.btn.go{background:var(--gold);border-color:var(--gold);color:#1b1305;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd27a}
+.btn[aria-pressed=true]{background:rgba(143,166,230,.22);border-color:var(--blue)}
+.btn:disabled{opacity:.4;cursor:default}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg.r3{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}
+.seg button{border:0;background:transparent;padding:7px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg.r3 button{border-top:1px solid var(--line)}
+.seg.r3 button:nth-child(-n+3){border-top:0}
+.seg.r3 button:nth-child(3n+1){border-left:0}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(224,169,74,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--gold);color:#1b1305;font-weight:500}
+#pal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+#pal button{height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.12);padding:0;box-shadow:inset 0 -3px 6px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.6)}
+#pal button[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px var(--gold),inset 0 -3px 6px rgba(0,0,0,.35)}
+#pal button:focus-visible{outline:1px dashed var(--gold);outline-offset:3px}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:9px 10px}
+.ctl .lab{margin-bottom:5px;letter-spacing:.11em;font-size:9.5px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#3a2812,#e0a94a);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#3a2812,#e0a94a)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#5d3606 120%);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#5d3606 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--gold);outline-offset:3px}
+.ends{display:flex;justify-content:space-between;font:400 10px/1 'DM Mono',monospace;color:var(--paper2);margin-top:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+#hint{font:400 10.5px/1.35 'DM Mono',monospace;color:var(--paper2);margin-top:6px;min-height:2.7em}
+table.led{width:100%;border-collapse:collapse;font:400 11px/1.25 'DM Mono',monospace;color:var(--paper2);font-variant-numeric:tabular-nums}
+table.led th{font:500 9px/1.1 'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--paper2);text-align:right;padding:2px 3px}
+table.led th:first-child,table.led td:first-child{text-align:left}
+table.led td{text-align:right;padding:2px 3px;border-top:1px solid rgba(240,222,190,.07);white-space:nowrap}
+table.led td i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;box-shadow:inset 0 -2px 3px rgba(0,0,0,.4)}
+table.led tr.tot td{color:var(--paper);border-top:1px solid var(--line)}
+#ledn{font:400 10.5px/1.4 'DM Mono',monospace;color:var(--paper2);margin-top:5px}
+#ledn b{color:#ffd27a;font-weight:500}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--gold)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(240,228,210,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--gold);text-decoration:underline;font:inherit}
+#gl{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:30px;font:400 16px/1.5 'Newsreader',serif;color:var(--paper2)}
+.nogl #gl{display:flex}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(32px,3vw,44px);margin-top:7px}.sec{margin-bottom:9px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:40px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:6.9em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,300px);margin-top:4px}
+  #panel{position:static;width:auto;margin:6px 10px calc(14px + env(safe-area-inset-bottom));background:rgba(20,16,12,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+.og #title{background:rgba(14,11,8,.78)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 038 · Paper marbling</span>
+  <h1>Marbling Tray</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-hidden="true"></canvas>
+  <canvas id="o" aria-label="A marbling tray seen from above: drops of indigo, madder red, ochre, black and white paint float on the size and are raked into fine combed patterns. Click to drop paint, drag to rake it."></canvas>
+  <div id="gl">This exhibit needs WebGL 2, which this browser has switched off. The ink ledger on the right still traces every drop.</div>
+</div>
+<aside id="panel" aria-label="Tools and the ink ledger">
+  <div class="sec">
+    <div class="lab"><span>Tool</span><b id="toolv">rake · drag across the tray</b></div>
+    <div class="seg r3" id="tool"><button data-v="sprinkle" aria-pressed="false" title="Flick a brush: thirty drops of the chosen paint land at random">Sprinkle</button><button data-v="drop" aria-pressed="false" title="Click to drop one blob of paint">Drop</button><button data-v="stylus" aria-pressed="false" title="Drag one pin straight across the tray">Stylus</button><button data-v="rake" aria-pressed="true" title="Drag a comb across the whole tray">Comb</button><button data-v="wavy" aria-pressed="false" title="Drag a comb while wiggling it side to side">Wavy comb</button><button data-v="swirl" aria-pressed="false" title="Circle a pin around a point">Swirl</button></div>
+    <div id="hint">Drag across the tray: every tine of the comb pulls the paint along with it.</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Paint</span><b id="palv">ochre</b></div>
+    <div id="pal"></div>
+  </div>
+  <div class="sec ctl">
+    <div><div class="lab"><span>Drop size</span><b id="sizev">2.4 cm</b></div>
+      <div class="seg" id="size"><button data-v="1.2" aria-pressed="false">S</button><button data-v="2.4" aria-pressed="true">M</button><button data-v="4" aria-pressed="false">L</button></div></div>
+    <div><div class="lab"><span>Tines apart</span><b id="spv">2 cm</b></div>
+      <div class="seg" id="spacing"><button data-v="1.2" aria-pressed="false">1.2</button><button data-v="2" aria-pressed="true">2</button><button data-v="4" aria-pressed="false">4</button><button data-v="6" aria-pressed="false">6</button></div></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Steps</span><b id="stepv">0 of 0</b></div>
+    <input id="steps" type="range" min="0" max="0" value="0" step="1" aria-label="Go back to any step: everything after it is undone">
+    <div class="row3" style="margin-top:4px"><button class="btn" id="undo" title="Undo the last step (Ctrl+Z)">Undo</button><button class="btn" id="redo" title="Redo">Redo</button><button class="btn" id="clear" title="Skim the tray clean">Skim clean</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Ink ledger</span><b id="ledv">–</b></div>
+    <table class="led" id="led"><thead><tr><th>Paint</th><th>Drops</th><th>Dropped cm²</th><th>Traced cm²</th><th>Drift</th></tr></thead><tbody></tbody></table>
+    <div id="ledn">–</div>
+  </div>
+  <div class="sec">
+    <div class="row3"><button class="btn" id="trace" aria-pressed="false" title="Click any paint to trace the outline of the drop it came from">Trace a drop</button><button class="btn" id="loupe" aria-pressed="false" title="A magnifier: the picture is recomputed at every zoom">Loupe</button><button class="btn go" id="print" title="Lay a sheet of paper on the tray and lift the print">Lay paper</button></div>
+    <div class="row2" style="margin-top:6px"><button class="btn" id="png" title="Render the print at 4800 × 3200 pixels">Print as PNG</button><button class="btn" id="svg" title="Every traced outline as a vector path">Print as SVG</button></div>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p><b>Ebru</b> is the Turkish art of paper marbling (on UNESCO’s list of intangible heritage since 2014). Paint mixed with ox gall is dropped on a bath of size thickened with gum tragacanth, where it spreads into floating discs. Styluses and combs drawn through the size drag the paint into patterns, and a sheet of paper laid on top lifts them off as a mirror image. The tour makes four classic ones: <b>battal</b> (stone), <b>gel-git</b> (come and go), <b>nonpareil</b> and <b>bouquet</b>.</p>
+    <p><b>The maths</b> is from Shufang Lu, Aubrey Jaffer, Xiaogang Jin, Hanli Zhao and Xiaoyang Mao, <a href="https://doi.org/10.1109/MCG.2011.51">“Mathematical Marbling”</a> (IEEE Computer Graphics and Applications, 2012), with the formulas as Jaffer gives them on his <a href="https://people.csail.mit.edu/jaffer/Marbling/Mathematics">Mathematics of Marbling</a> and <a href="https://people.csail.mit.edu/jaffer/Marbling/Dropping-Paint">Dropping Paint</a> pages. Each drop, comb and swirl is a closed-form map of the plane onto itself. A drop of radius r at c moves every point to c + (p−c)·√(1 + r²/|p−c|²). A tine moves paint along its track by z·u<sup>d</sup>, where d is the distance from the track; here u = 2<sup>−1/c</sup>, so the pull halves every c cm. A swirl does the same around a circle. A wavy comb is a straight comb between a sideways sine shift and its inverse, Jaffer’s trick for serpentine and bouquet patterns. Each map keeps every area exactly as it was.</p>
+    <p><b>The picture is drawn backwards.</b> For every pixel the GPU runs the steps in reverse, asking where that point was before each one, until it lands inside a drop at the moment it fell. That is why the loupe stays sharp at any zoom. <b>The outlines are pushed forwards.</b> On the CPU, in double precision, each drop’s circle is pushed through every later step, and a chord is split, from the drop’s own circle, whenever it grows longer than 0.6 mm or bends sharply. That is the ink ledger, the traced drop and the SVG print. The two agree: on a grid of 106,800 points over the default bouquet, the GPU’s float32 answer and the float64 answer differ at 5, each within 0.01 mm of an outline.</p>
+    <p><b>What the ledger measures</b> on the default bouquet: 158 drops become 2,100,194 vertices. Their outlines fell as 22.3 m of circles and are now 665.6 m long, 30× longer. Each paint’s area is what it was when it fell, to within 0.0009% (the worst single drop is off by 0.019%). That error is the chords cutting corners: with 1.2, 0.6 and 0.3 mm chords the worst of the 40 smallest drops is off by 0.052%, 0.019% and 0.0037%. Running the four strokes backwards, with −z, returns every point to within 7.8×10<sup>−13</sup> cm, after moving them up to 6.6 cm.</p>
+    <p><b>Real and not.</b> The maps are the model’s idealised steady state of a thin, incompressible, laminar layer. They are not a fluid simulation. The animation between “before” and “after” just scales each stroke, the bath is endless (paint pushed past the rim still counts in the ledger), and the darker rims and grain of the paint are shading. A Python reference reproduces all 158 outlines bit for bit, and every vertex mapped back lands on its drop’s circle to within 2.1×10<sup>−11</sup> of its radius.</p>
+  </details>
+  <div class="foot">Click to drop · drag to rake · scroll on the tray to zoom the loupe · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script type="module">
+/* ================= marbling engine (float64; mirrored op for op by mref.py) ================= */
+const MB=(()=>{
+const TAU=6.283185307179586,LN2=0.6931471805599453,NE=20,NS=16;
+const P2=new Float64Array(81);P2[0]=1;for(let i=1;i<=80;i++)P2[i]=P2[i-1]*0.5;
+// 2^(-y) for y>=0, 0 beyond 60: own series so JS and numpy agree to the last bit
+function exp2n(y){if(!(y<=60))return 0;const k=Math.floor(y),f=y-k,x=f*LN2;let p=1;for(let n=NE;n>=1;n--)p=1-x*p/n;return p*P2[k]}
+const SC=[0,0];
+function sincos(a){const k=Math.floor(a/TAU+0.5),r=a-k*TAU,r2=r*r;let s=1,c=1;
+  for(let n=NS;n>=1;n--){s=1-r2*s/((2*n)*(2*n+1));c=1-r2*c/((2*n-1)*(2*n))}SC[0]=r*s;SC[1]=c;return SC}
+function combSum(t,o){const t0=o.t0,s=o.s,n=o.n,c=o.c,q=o._q===undefined?(o._q=exp2n(s/c)):o._q;
+  const k0=Math.floor((t-t0)/s),kl=Math.min(k0,n-1),kr=Math.max(k0+1,0);let res=0;
+  if(kl>=0)res=exp2n((t-(t0+kl*s))/c)*(1-exp2n((kl+1)*s/c))/(1-q);
+  if(kr<=n-1)res=res+exp2n(((t0+kr*s)-t)/c)*(1-exp2n((n-kr)*s/c))/(1-q);
+  return res}
+const P=[0,0];
+// push one point forward through op o at strength w (w=1: the whole stroke)
+function fwd(o,x,y,w){switch(o.k){
+  case'drop':{const r=w===1?o.r:o.r*Math.sqrt(w),qx=x-o.x,qy=y-o.y,d2=qx*qx+qy*qy,r2=r*r;
+    if(d2<1e-300){P[0]=o.x+r;P[1]=o.y;return P}const f=Math.sqrt(1+r2/d2);P[0]=o.x+qx*f;P[1]=o.y+qy*f;return P}
+  case'comb':{const t=x*(-o.my)+y*o.mx,D=(o.z*w)*combSum(t,o);P[0]=x+D*o.mx;P[1]=y+D*o.my;return P}
+  case'shift':{const t=x*(-o.my)+y*o.mx,s=sincos(t/o.L*TAU+o.ph)[0],D=(o.A*w)*s;P[0]=x+D*o.mx;P[1]=y+D*o.my;return P}
+  case'swirl':{const qx=x-o.x,qy=y-o.y,h=Math.sqrt(qx*qx+qy*qy);if(h===0){P[0]=x;P[1]=y;return P}
+    const l=(o.z*w)*exp2n(Math.abs(h-o.r)/o.c),a=l/h,sc=sincos(a),sa=sc[0],ca=sc[1];P[0]=o.x+qx*ca-qy*sa;P[1]=o.y+qx*sa+qy*ca;return P}}
+  throw new Error('op '+o.k)}
+// inverse map: whose ink is at (x,y) after ops[0..upto)? returns drop index or -1 (bare size); stops above `stop`
+function label(ops,x,y,upto,stop){if(upto===undefined)upto=ops.length;if(stop===undefined)stop=-1;
+  for(let j=upto-1;j>stop;j--){const o=ops[j];switch(o.k){
+    case'drop':{const qx=x-o.x,qy=y-o.y,d2=qx*qx+qy*qy,r2=o.r*o.r;if(d2<r2){P[0]=x;P[1]=y;return j}
+      const f=Math.sqrt(Math.max(0,1-r2/(d2>0?d2:1)));x=o.x+qx*f;y=o.y+qy*f;break}
+    case'comb':{const t=x*(-o.my)+y*o.mx,D=o.z*combSum(t,o);x=x-D*o.mx;y=y-D*o.my;break}
+    case'shift':{const t=x*(-o.my)+y*o.mx,s=sincos(t/o.L*TAU+o.ph)[0],D=o.A*s;x=x-D*o.mx;y=y-D*o.my;break}
+    case'swirl':{const qx=x-o.x,qy=y-o.y,h=Math.sqrt(qx*qx+qy*qy);if(h===0)break;const l=o.z*exp2n(Math.abs(h-o.r)/o.c),a=-(l/h),sc=sincos(a),sa=sc[0],ca=sc[1];
+      x=o.x+qx*ca-qy*sa;y=o.y+qx*sa+qy*ca;break}}}
+  P[0]=x;P[1]=y;return -1}
+// outline of drop ops[i] after ops[0..upto): pushed forward op by op, refined after each op so that no chord is
+// longer than H, and chords longer than HMIN are split where the outline turns by more than ~8 degrees
+const H=0.06,HMIN=0.002,CT=0.99,PASSES=60,MAXV=3000000;
+function circ(o,th){const sc=sincos(th);P[0]=o.x+o.r*sc[1];P[1]=o.y+o.r*sc[0];return P}
+function* traceGen(ops,i,upto,lim){const o=ops[i];lim=lim||MAXV;
+  const n0=Math.max(400,Math.ceil(TAU*o.r/H));let n=n0,th=new Float64Array(n),X=new Float64Array(n),Y=new Float64Array(n);
+  for(let v=0;v<n;v++){th[v]=v*(TAU/n0);circ(o,th[v]);X[v]=P[0];Y[v]=P[1]}
+  let capped=false,work=0;
+  for(let k=i+1;k<upto;k++){const ok=ops[k];
+    for(let v=0;v<n;v++){fwd(ok,X[v],Y[v],1);X[v]=P[0];Y[v]=P[1]}work+=n;
+    for(let pass=0;pass<PASSES;pass++){
+      // mark chords to split (same tests as numpy: l2>H^2, or l2>HMIN^2 and a sharp turn at either end)
+      const mark=new Uint8Array(n);let m=0;
+      for(let v=0;v<n;v++){const v1=v+1===n?0:v+1,vp=v===0?n-1:v-1,v2=v1+1===n?0:v1+1;
+        const dx=X[v1]-X[v],dy=Y[v1]-Y[v],l2=dx*dx+dy*dy;
+        if(l2>H*H){mark[v]=1;m++;continue}
+        if(!(l2>HMIN*HMIN))continue;
+        const pdx=X[v]-X[vp],pdy=Y[v]-Y[vp],pl2=pdx*pdx+pdy*pdy;
+        if(pdx*dx+pdy*dy<CT*Math.sqrt(pl2*l2)){mark[v]=1;m++;continue}
+        const ndx=X[v2]-X[v1],ndy=Y[v2]-Y[v1],nl2=ndx*ndx+ndy*ndy;
+        if(dx*ndx+dy*ndy<CT*Math.sqrt(l2*nl2)){mark[v]=1;m++}}
+      if(!m)break;
+      if(n+m>lim){capped=true;break}
+      const N2=n+m,th2=new Float64Array(N2),X2=new Float64Array(N2),Y2=new Float64Array(N2);let w=0;
+      for(let v=0;v<n;v++){th2[w]=th[v];X2[w]=X[v];Y2[w]=Y[v];w++;
+        if(mark[v]){const nt=v+1===n?th[0]+TAU:th[v+1],mid=(th[v]+nt)*0.5;circ(o,mid);let px=P[0],py=P[1];
+          for(let j=i+1;j<=k;j++){fwd(ops[j],px,py,1);px=P[0];py=P[1]}work+=k-i;
+          th2[w]=mid;X2[w]=px;Y2[w]=py;w++}}
+      th=th2;X=X2;Y=Y2;n=N2;
+      if(work>4e5){work=0;yield n}}
+    if(work>4e5){work=0;yield n}}
+  return{i,upto,n,th,X,Y,capped}}
+function trace(ops,i,upto,lim){const g=traceGen(ops,i,upto,lim);let r;do r=g.next();while(!r.done);return r.value}
+function area(X,Y,n){let s=0;for(let v=0;v<n;v++){const v1=v+1===n?0:v+1;s=s+(X[v]*Y[v1]-X[v1]*Y[v])}return s*0.5}
+function length(X,Y,n){let s=0;for(let v=0;v<n;v++){const v1=v+1===n?0:v+1,dx=X[v1]-X[v],dy=Y[v1]-Y[v];s=s+Math.sqrt(dx*dx+dy*dy)}return s}
+// polynomial hash over the 32-bit words of the float64s (little endian), mod 2^32
+function phash(arrs,n){let h=0,pk=1;const b=new Float64Array(1),u=new Uint32Array(b.buffer);
+  for(const A of arrs)for(let v=0;v<n;v++){b[0]=A[v];for(let q=0;q<2;q++){pk=Math.imul(pk,0x01000193)>>>0;h=(h+Math.imul(u[q],pk))>>>0}}return h}
+// the drop whose ink each drop's centre landed on (-1: bare size)
+function parents(ops,upto){if(upto===undefined)upto=ops.length;const par=new Map();
+  for(let j=0;j<upto;j++)if(ops[j].k==='drop')par.set(j,label(ops,ops[j].x,ops[j].y,j));return par}
+function enclosed(ops,i,par){let s=0;for(const[j]of par){let q=j;while(q!==-1&&q!==i)q=par.get(q);if(q===i)s+=Math.PI*ops[j].r*ops[j].r}return s}
+// seeded PRNG
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+return{TAU,exp2n,sincos,combSum,fwd,label,traceGen,trace,area,length,phash,parents,enclosed,mulberry32,H,HMIN,CT}})();
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches,STILL=Q.has('still'),STATIC=RM||STILL,OGQ=Q.get('og'),IFR=window.self!==window.top;
+if(FIXED||STATIC)document.documentElement.classList.add('still');
+if(OGQ)document.documentElement.classList.add('og');
+const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const MOB=()=>innerWidth<=820;
+const TW=48,TH=32,RIMW=1.7,PW=44,PH=28,MAXOPS=1024;
+const PAINTS=[
+  {name:'indigo',rgb:[36,50,112]},{name:'madder',rgb:[178,50,46]},{name:'ochre',rgb:[216,160,58]},{name:'lamp black',rgb:[26,24,28]},
+  {name:'chalk white',rgb:[240,234,218]},{name:'verdigris',rgb:[46,116,102]},{name:'rose',rgb:[218,128,134]}];
+const hex=c=>'#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');
+const fmtN=(v,d=0)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtLen=cm=>cm>=100?(cm/100).toFixed(cm>=1000?1:2)+' m':cm.toFixed(0)+' cm';
+const fmtDrift=d=>(d>=0?'+':'−')+Math.abs(d*100).toFixed(Math.abs(d)<1e-4?4:3)+'%';
+
+/* ================= the tray's state: steps of ops ================= */
+const S={steps:[],cur:0,nextId:1,tool:'rake',paint:2,size:4,spacing:2,anims:[],T:0,print:0,printT:0,lay:null,
+  trace:null,tracing:false,loupe:{on:false,x:0,y:0,zoom:6,px:-1},drag:null,hover:null,view:null};
+let OPS=[];               // ops of the steps that are applied (plain objects, float64)
+let opsDirty=true,dirty=true;
+function rebuildOps(){OPS=[];for(let s=0;s<S.cur;s++){if(S.steps[s].kind==='clear')OPS=[];for(const o of S.steps[s].ops)OPS.push(o)}opsDirty=true;dirty=true;ledgerReset();
+  if(S.trace&&!(S.trace.i<OPS.length&&OPS[S.trace.i].k==='drop'))S.trace=null;else if(S.trace)S.trace.stale=true}
+function addStep(kind,ops,why,label,anim){
+  if(OPS.length+ops.length>MAXOPS){cap(CAP.full());return null}
+  S.steps.length=S.cur;const st={id:S.nextId++,kind,ops,why,label};S.steps.push(st);S.cur=S.steps.length;
+  for(const o of ops){o.w=1}
+  if(anim&&!STATIC){const t=S.T;anim.forEach((a,j)=>{const o=ops[a.op===undefined?j:a.op];o.w=0;S.anims.push({o,t0:t+(a.delay||0),dur:a.dur,drop:o.k==='drop'})})}
+  rebuildOps();syncControls();return st}
+function busy(){return S.anims.length>0}
+// a stroke is "pulled" by z: the paint on the tine's track moves z cm; drag length sets it
+const pullOf=L=>clamp(.22*L,.2,9);
+function sprinkleOps(paint,count,r0,r1,seed,region){const R=MB.mulberry32(seed),o=[];
+  for(let n=0;n<count;n++){const x=(R()-.5)*TW*region,y=(R()-.5)*TH*region,r=r0+(r1-r0)*R();o.push({k:'drop',x,y,r,i:paint})}return o}
+function rakeOps(A,B,s,kind){const dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy),mx=dx/L,my=dy/L,nx=-my,ny=mx,tA=A[0]*nx+A[1]*ny,z=pullOf(L);
+  if(kind==='stylus')return[{k:'comb',mx,my,t0:tA,s:1,n:1,z,c:.5}];
+  let lo=1e9,hi=-1e9;for(const[cx,cy]of[[-1,-1],[1,-1],[-1,1],[1,1]]){const t=cx*(TW/2+6)*nx+cy*(TH/2+6)*ny;lo=Math.min(lo,t);hi=Math.max(hi,t)}
+  const k0=Math.floor((lo-tA)/s),k1=Math.ceil((hi-tA)/s),comb={k:'comb',mx,my,t0:tA+k0*s,s,n:k1-k0+1,z,c:clamp(.2*s,.3,.9)};
+  if(kind==='rake')return[comb];
+  // wavy comb: a straight comb between two sinusoidal shifts (Jaffer's serpentine trick): S⁻¹ ∘ comb ∘ S
+  const Aw=s/4,Lw=s;return[{k:'shift',mx:nx,my:ny,A:-Aw,L:Lw,ph:0},comb,{k:'shift',mx:nx,my:ny,A:Aw,L:Lw,ph:0}]}
+function swirlOps(C,r,turn){const z=r*turn*.5;return[{k:'swirl',x:C[0],y:C[1],r,z,c:Math.max(.5,.3*r)}]}
+const ANIM={drop:.45,stroke:1.1,wavy:1.4,swirl:1.2};
+function animFor(ops,kind){if(kind==='sprinkle'){const n=ops.length;return ops.map((_,j)=>({delay:j*Math.min(.04,1.2/n),dur:ANIM.drop}))}
+  if(kind==='drop')return[{dur:ANIM.drop}];if(kind==='wavy')return[{op:1,dur:ANIM.wavy}];if(kind==='swirl')return[{dur:ANIM.swirl}];return[{dur:ANIM.stroke}]}
+function doStep(kind,ops,why,label){return addStep(kind,ops,why,label,animFor(ops,kind))}
+
+/* ================= the ink ledger: every drop's outline pushed forward ================= */
+let LED=null,ledJob=null;
+function ledgerReset(){LED={sig:S.steps.slice(0,S.cur).map(s=>s.id).join(','),done:false,items:[],progress:0,par:null,nDrops:OPS.filter(o=>o.k==='drop').length};ledJob=null;ledgerUI()}
+function* ledgerGen(ops){const par=MB.parents(ops);LED.par=par;const ids=[];for(let i=0;i<ops.length;i++)if(ops[i].k==='drop')ids.push(i);
+  for(const i of ids){const g=MB.traceGen(ops,i,ops.length);let r;while(!(r=g.next()).done)yield 1;const t=r.value;
+    LED.items.push({i,n:t.n,area:MB.area(t.X,t.Y,t.n),len:MB.length(t.X,t.Y,t.n),hash:MB.phash([t.X,t.Y],t.n),capped:t.capped,
+      X:Float32Array.from(t.X.subarray(0,t.n)),Y:Float32Array.from(t.Y.subarray(0,t.n))});LED.progress=LED.items.length/ids.length;yield 1}
+  LED.done=true;LED.progress=1;ledgerSum()}
+function ledgerTick(budgetMs){if(!LED||LED.done||busy())return;if(!ledJob)ledJob=ledgerGen(OPS.slice());
+  const t0=performance.now();let k=0;
+  while(true){const r=ledJob.next();k++;if(r.done){ledJob=null;break}if(FIXED?k>=8:performance.now()-t0>budgetMs)break}
+  ledgerUI()}
+function ledgerFinish(){while(LED&&!LED.done){if(!ledJob)ledJob=ledgerGen(OPS.slice());const r=ledJob.next();if(r.done)ledJob=null}ledgerUI()}
+function ledgerSum(){const by=new Map(),items=new Map(LED.items.map(it=>[it.i,it]));let len=0,len0=0,worst=0;
+  for(const it of LED.items){const o=OPS[it.i];len+=it.len;len0+=MB.TAU*o.r;
+    let vis=it.area;for(const[j,p]of LED.par)if(p===it.i)vis-=items.get(j).area;it.visible=vis;it.dropped=Math.PI*o.r*o.r;
+    it.enclosed=MB.enclosed(OPS,it.i,LED.par);it.drift=(it.area-it.enclosed)/it.enclosed;worst=Math.max(worst,Math.abs(it.drift));
+    const b=by.get(o.i)||{paint:o.i,drops:0,dropped:0,traced:0};b.drops++;b.dropped+=it.dropped;b.traced+=vis;by.set(o.i,b)}
+  LED.colours=[...by.values()].sort((a,b)=>a.paint-b.paint).map(b=>Object.assign(b,{drift:(b.traced-b.dropped)/b.dropped}));
+  LED.len=len;LED.len0=len0;LED.worst=worst;LED.verts=LED.items.reduce((s,it)=>s+it.n,0);
+  let best=null;for(const it of LED.items){let kids=0;for(const[,p]of LED.par)if(p===it.i)kids++;it.kids=kids;const g=it.len/(MB.TAU*OPS[it.i].r);if(!best||g>best.g)best={i:it.i,g}}LED.best=best}
+let ledShown='';
+function ledgerUI(){if(!LED)return;const key=LED.sig+'|'+LED.done+'|'+(LED.done?'':Math.floor(LED.progress*20));if(key===ledShown)return;ledShown=key;
+  const tb=$('#led tbody');
+  if(!LED.nDrops){tb.innerHTML='';$('#ledv').textContent='empty tray';$('#ledn').textContent='No paint yet. Sprinkle some.';return}
+  if(!LED.done){$('#ledv').textContent=busy()?'waiting for the stroke…':`tracing ${Math.round(LED.progress*100)}%`;
+    if(!tb.children.length||LED.progress===0)tb.innerHTML=`<tr><td colspan="5">pushing ${LED.nDrops} outlines through ${OPS.length} steps…</td></tr>`;$('#ledn').textContent='Each outline is pushed forward through every later drop and stroke.';return}
+  let s='',d=0,t=0,n=0;for(const b of LED.colours){s+=`<tr><td><i style="background:${hex(PAINTS[b.paint].rgb)}"></i>${PAINTS[b.paint].name}</td><td>${b.drops}</td><td>${b.dropped.toFixed(2)}</td><td>${b.traced.toFixed(2)}</td><td>${fmtDrift(b.drift)}</td></tr>`;d+=b.dropped;t+=b.traced;n+=b.drops}
+  s+=`<tr class="tot"><td>all</td><td>${n}</td><td>${d.toFixed(2)}</td><td>${t.toFixed(2)}</td><td>${fmtDrift((t-d)/d)}</td></tr>`;tb.innerHTML=s;
+  $('#ledv').textContent=`${fmtN(LED.verts)} vertices`;
+  $('#ledn').innerHTML=`Outlines: <b>${fmtLen(LED.len)}</b> long (they fell as ${fmtLen(LED.len0)} of circles). Worst single drop: ${fmtDrift(LED.worst).replace('+','±').replace('−','±')} — chord error of ${MB.H*10} mm segments.`}
+
+/* ================= WebGL2: the picture, drawn backwards pixel by pixel ================= */
+const VS=`#version 300 es
+in vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
+const FS=`#version 300 es
+precision highp float;precision highp int;precision highp sampler2D;
+uniform sampler2D uOps;uniform int uN;uniform vec2 uRes;uniform vec3 uXf;uniform vec4 uLoupe;uniform int uMode;uniform vec4 uGrid;
+uniform float uPrint,uRoll,uDpr;uniform int uSS;uniform vec3 uPal[8];
+out vec4 frag;
+const float TAU=6.283185307179586,TW=48.,TH=32.,RIM=${RIMW.toFixed(2)},PW=${PW.toFixed(1)},PH=${PH.toFixed(1)};
+float combSum(float t,float t0,float s,float n,float c){float q=exp2(-s/c),k0=floor((t-t0)/s),kl=min(k0,n-1.),kr=max(k0+1.,0.),r=0.;
+  if(kl>=0.)r=exp2(-(t-(t0+kl*s))/c)*(1.-exp2(-(kl+1.)*s/c))/(1.-q);
+  if(kr<=n-1.)r+=exp2(-((t0+kr*s)-t)/c)*(1.-exp2(-(n-kr)*s/c))/(1.-q);return r;}
+int inkAt(vec2 p,out vec2 ql,out float col){
+  for(int i=uN-1;i>=0;i--){vec4 a=texelFetch(uOps,ivec2(i,0),0),b=texelFetch(uOps,ivec2(i,1),0);int k=int(a.x+.5);
+    if(k==0){vec2 q=p-a.yz;float d2=dot(q,q),r=a.w*sqrt(b.x),r2=r*r;if(r2<=0.)continue;if(d2<r2){ql=q/r;col=b.y;return i;}p=a.yz+q*sqrt(max(0.,1.-r2/max(d2,1e-30)));}
+    else if(k==1){vec2 M=a.yz,N=vec2(-M.y,M.x);p-=b.z*combSum(dot(p,N),a.w,b.x,b.y,b.w)*M;}
+    else if(k==2){vec2 M=a.yz,N=vec2(-M.y,M.x);p-=a.w*sin(dot(p,N)/b.x*TAU+b.y)*M;}
+    else{vec2 q=p-a.yz;float h=length(q);if(h>0.){float l=b.x*exp2(-abs(h-a.w)/b.y),an=-l/h,c=cos(an),s=sin(an);p=a.yz+vec2(q.x*c-q.y*s,q.x*s+q.y*c);}}}
+  return -1;}
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+vec3 inkColour(vec2 w,out float bare){vec2 ql;float ci;int id=inkAt(w,ql,ci);
+  if(id<0){bare=1.;return vec3(.86,.83,.76);}bare=0.;
+  vec3 c=uPal[int(ci+.5)];float f=length(ql);
+  float g=vnoise(ql*6.+vec2(float(id)*7.13,float(id)*3.7))*.6+vnoise(ql*19.+float(id))*.4;
+  c*=1.+.07*(1.-f*f)+.07*(g-.5);
+  c=mix(c,c*.6,pow(smoothstep(.86,1.,f),1.4));
+  return c;}
+vec3 bench(vec2 w){float n=vnoise(w*vec2(.9,.12))*.6+vnoise(w*vec2(3.,.5))*.4;return vec3(.085,.066,.05)*(.85+.3*n);}
+vec3 wood(vec2 w,vec2 e){float n=vnoise(vec2(w.x*.18+sin(w.y*.9)*.4,w.y*2.4))*.7+vnoise(w*vec2(.5,9.))*.3;vec3 c=mix(vec3(.24,.14,.075),vec3(.38,.23,.12),n);
+  return c*(.75+.35*clamp(e.y,0.,1.));}
+`;
+const FS0=`
+vec3 traySample0(vec2 w){
+  vec2 a=abs(w)-vec2(TW*.5,TH*.5);float out1=max(a.x,a.y);
+  if(out1>0.){ // the tray's rim and the bench
+    vec2 ra=abs(w)-vec2(TW*.5+RIM,TH*.5+RIM)+1.;float rr=length(max(ra,0.))+min(max(ra.x,ra.y),0.)-1.;
+    if(rr<0.){vec2 e=vec2(0.,clamp(-w.y/(TH*.5+RIM),-1.,1.)*.5+.5);float bev=smoothstep(0.,.5,-rr)*smoothstep(0.,.35,out1);
+      vec3 c=wood(w,e)*(.7+.45*bev);c*=1.-.45*exp(-out1*2.2);return c;}
+    return bench(w)*(1.-.6*exp(-rr*.45));}
+  float bare;vec3 c=inkColour(w,bare);
+  // the size: a little sheen from the window, and the meniscus darkening at the walls
+  float sheen=exp(-pow((w.x*.55+w.y+6.)/9.,2.))*.06;
+  c=c*(1.-.28*exp(out1*1.6))+sheen;
+  if(w.x<uRoll){float bk=smoothstep(uRoll-.01,uRoll-1.2,w.x);c=mix(c,vec3(.93,.9,.83)*(.9+.08*bk),.86);c*=1.-.35*exp(-(uRoll-w.x)*3.);}
+  else if(uRoll>-1e8)c*=1.-.25*exp(-(w.x-uRoll)*1.5);
+  return c;}
+vec3 traySample(vec2 px){
+  vec2 sp=px;if(uLoupe.w>0.){vec2 d=px-uLoupe.xy;if(dot(d,d)<uLoupe.z*uLoupe.z)sp=uLoupe.xy+d/uLoupe.w;}
+  vec2 w=(sp-uXf.xy)/uXf.z;
+  vec2 a=abs(w)-vec2(TW*.5,TH*.5);
+  if(uPrint>.001){ // the print: paper on the bench, the tray's mirror image
+    vec2 pa=abs(w)-vec2(PW*.5,PH*.5);vec3 bg=bench(w)*(1.-.55*exp(-max(max(pa.x,pa.y),0.)*.6));
+    float bare;vec3 pc=vec3(0);if(max(pa.x,pa.y)<0.){vec3 ink=inkColour(vec2(-w.x,w.y),bare);
+      float fib=vnoise(w*vec2(14.,2.))*.5+vnoise(w*vec2(3.,30.))*.5,laid=.5+.5*sin(w.y*TAU/.12);
+      vec3 paper=vec3(.955,.93,.875)*(.975+.04*fib-.008*laid);pc=bare>.5?paper:mix(ink*1.06,paper,.04)*(.985+.03*fib);}
+    else pc=bg;
+    if(uPrint>=.999)return pc;
+    vec3 tc=traySample0(w);return mix(tc,pc,uPrint);}
+  return traySample0(w);}
+void main(){
+  vec2 px=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y)/uDpr;
+  if(uMode==1){vec2 w=uGrid.xy+(gl_FragCoord.xy-.5)*uGrid.zw;vec2 ql;float ci;int id=inkAt(w,ql,ci)+1;
+    frag=vec4(float(id&255)/255.,float((id>>8)&255)/255.,float((id>>16)&255)/255.,1.);return;}
+  vec3 c=vec3(0);
+  if(uSS==1)c=traySample(px);
+  else{for(int j=0;j<2;j++)for(int i=0;i<2;i++){vec2 o=(vec2(i,j)-.5)*.5+vec2(.125,-.125)*(j==0?1.:-1.);c+=traySample(px+o/uDpr);}c*=.25;}
+  frag=vec4(pow(clamp(c,0.,1.),vec3(1.)),1.);}`;
+let gl=null,prog=null,U={},opTex=null,opBuf=new Float32Array(MAXOPS*2*4),lite=false,SS=2,renderScale=1;
+function initGL(){const cv=$('#c');gl=cv.getContext('webgl2',{antialias:false,alpha:false,preserveDrawingBuffer:FIXED||!!OGQ,premultipliedAlpha:false});
+  if(!gl)throw new Error('no webgl2');
+  const src=FS+FS0;
+  const sh=(t,s)=>{const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(x));return x};
+  prog=gl.createProgram();gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,src));gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(prog,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  for(const n of['uOps','uN','uRes','uXf','uLoupe','uMode','uGrid','uPrint','uRoll','uDpr','uSS','uPal'])U[n]=gl.getUniformLocation(prog,n);
+  opTex=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,opTex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,MAXOPS,2,0,gl.RGBA,gl.FLOAT,null);gl.uniform1i(U.uOps,0);
+  const pal=new Float32Array(24);PAINTS.forEach((p,i)=>{for(let k=0;k<3;k++)pal[i*3+k]=Math.pow(p.rgb[k]/255,1)});gl.uniform3fv(U.uPal,pal)}
+function uploadOps(){const B=opBuf,n=OPS.length;
+  for(let i=0;i<n;i++){const o=OPS[i],w=o.w===undefined?1:o.w,a=i*4,b=(MAXOPS+i)*4;
+    if(o.k==='drop'){B[a]=0;B[a+1]=o.x;B[a+2]=o.y;B[a+3]=o.r;B[b]=w;B[b+1]=o.i;B[b+2]=0;B[b+3]=0}
+    else if(o.k==='comb'){B[a]=1;B[a+1]=o.mx;B[a+2]=o.my;B[a+3]=o.t0;B[b]=o.s;B[b+1]=o.n;B[b+2]=o.z*w;B[b+3]=o.c}
+    else if(o.k==='shift'){B[a]=2;B[a+1]=o.mx;B[a+2]=o.my;B[a+3]=o.A*w;B[b]=o.L;B[b+1]=o.ph;B[b+2]=0;B[b+3]=0}
+    else{B[a]=3;B[a+1]=o.x;B[a+2]=o.y;B[a+3]=o.r;B[b]=o.z*w;B[b+1]=o.c;B[b+2]=0;B[b+3]=0}}
+  gl.bindTexture(gl.TEXTURE_2D,opTex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,MAXOPS,2,gl.RGBA,gl.FLOAT,B);opsDirty=false}
+let XF={ox:0,oy:0,s:1},CSS={w:1,h:1},DPR=1;
+function fit(){const st=$('#stage');let w=innerWidth,h=innerHeight;
+  const tw=TW+2*RIMW,th=TH+2*RIMW;
+  if(MOB()){w=st.clientWidth||innerWidth;h=Math.round(w*th/tw)+16;st.style.setProperty('--sh',h+'px')}
+  CSS={w,h};DPR=Math.min(devicePixelRatio||1,2)*renderScale;SS=(devicePixelRatio||1)>=1.5?1:2;
+  for(const cv of[$('#c'),$('#o')]){cv.width=Math.round(w*DPR);cv.height=Math.round(h*DPR)}
+  let L=12,R=w-12,T=12,B=h-12;
+  if(OGQ==='1'){const s=Math.max(w/(TW-1.5),h/(TH-1));XF={s,ox:w/2,oy:h/2};dirty=true;return}
+  if(OGQ==='2'){const s=Math.max(w/(PW+3),h/(PH+2.4));XF={s,ox:w/2+s*.0,oy:h/2};dirty=true;return}
+  if(!MOB()){R=w-($('#panel').offsetWidth+32);const tb=$('#title').getBoundingClientRect();T=tb.bottom+6;B=h-104;L=16}
+  else{L=6;R=w-6;T=6;B=h-6}
+  const s=Math.min((R-L)/tw,(B-T)/th);XF={s,ox:(L+R)/2,oy:(T+B)/2};dirty=true}
+const toWorld=(x,y)=>[(x-XF.ox)/XF.s,(y-XF.oy)/XF.s],toPx=(x,y)=>[XF.ox+x*XF.s,XF.oy+y*XF.s];
+let renders=0;
+function render(){if(!gl)return;if(opsDirty)uploadOps();const cv=$('#c');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);
+  gl.uniform1i(U.uN,OPS.length);gl.uniform2f(U.uRes,cv.width,cv.height);gl.uniform3f(U.uXf,XF.ox,XF.oy,XF.s);gl.uniform1f(U.uDpr,DPR);
+  const L=S.loupe;gl.uniform4f(U.uLoupe,L.x,L.y,L.r||0,L.on&&L.px>=0?L.zoom:0);gl.uniform1i(U.uMode,0);
+  gl.uniform1f(U.uPrint,ease(S.print));gl.uniform1f(U.uRoll,S.lay&&S.lay.roll!==undefined?S.lay.roll:-1e9);gl.uniform1i(U.uSS,SS===2&&!lite?2:1);
+  gl.drawArrays(gl.TRIANGLES,0,3);renders++}
+// for tests: the GPU's answer (float32) to "whose ink is here?" on an nx × ny grid of tray points
+function probe(nx,ny,x0,y0,x1,y1){if(!gl)return null;if(opsDirty)uploadOps();const fb=gl.createFramebuffer(),rb=gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER,rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,nx,ny);gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rb);
+  gl.viewport(0,0,nx,ny);gl.uniform1i(U.uMode,1);gl.uniform1i(U.uN,OPS.length);gl.uniform4f(U.uGrid,x0,y0,(x1-x0)/(nx-1),(y1-y0)/(ny-1));gl.drawArrays(gl.TRIANGLES,0,3);
+  const px=new Uint8Array(nx*ny*4);gl.readPixels(0,0,nx,ny,gl.RGBA,gl.UNSIGNED_BYTE,px);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fb);gl.deleteRenderbuffer(rb);
+  gl.uniform1i(U.uMode,0);const out=new Int32Array(nx*ny);for(let k=0;k<nx*ny;k++)out[k]=(px[k*4]|px[k*4+1]<<8|px[k*4+2]<<16)-1;dirty=true;return Array.from(out)}
+
+/* ================= overlay: tool ghosts, the traced outline, the loupe ================= */
+function drawOverlay(){const cv=$('#o'),g=cv.getContext('2d');g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,CSS.w,CSS.h);
+  const P=(x,y)=>toPx(x,y),pr=ease(S.print);
+  // the traced drop: everything but its own paint veiled, its outline in gold (and again, magnified, in the loupe)
+  const L=S.loupe,lo=L.on&&L.px>=0;
+  const drawTrace=(Pf,lw,dots,R)=>{const t=S.trace,poly=q=>{for(let v=0;v<q.n;v++){const p=Pf(q.X[v],q.Y[v]);v?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1])}g.closePath()};
+    g.beginPath();g.rect(0,0,CSS.w,CSS.h);poly(t);for(const k of t.kids||[])poly(k);g.fillStyle='rgba(10,8,6,.58)';g.fill('evenodd');
+    g.beginPath();poly(t);g.lineWidth=lw;g.strokeStyle='#ffd27a';g.shadowColor='rgba(0,0,0,.9)';g.shadowBlur=3;g.stroke();g.shadowBlur=0;
+    if(dots){g.fillStyle='#fff3d0';for(let v=0;v<t.n;v++){const p=Pf(t.X[v],t.Y[v]);if(Math.abs(p[0]-L.x)<L.r&&Math.abs(p[1]-L.y)<L.r)g.fillRect(p[0]-1.5,p[1]-1.5,3,3)}}};
+  if(S.trace&&S.trace.X&&pr<.5){g.save();g.globalAlpha=1-pr*2;const tl=toPx(-TW/2,-TH/2);g.beginPath();g.rect(tl[0],tl[1],TW*XF.s,TH*XF.s);
+    if(lo){g.moveTo(L.x+L.r,L.y);g.arc(L.x,L.y,L.r,0,MB.TAU,true)}g.clip('evenodd');drawTrace(P,1.4,false);g.restore();
+    if(lo){g.save();g.globalAlpha=1-pr*2;g.beginPath();g.arc(L.x,L.y,L.r,0,MB.TAU);g.clip();const z=L.zoom;
+      drawTrace((x,y)=>{const p=toPx(x,y);return[L.x+(p[0]-L.x)*z,L.y+(p[1]-L.y)*z]},1.3,z>=8);g.restore()}}
+  // tool ghost while dragging
+  const d=S.drag;if(d&&d.B&&pr<.5){g.save();const A=P(...d.A),B=P(...d.B);g.strokeStyle='rgba(255,236,190,.85)';g.fillStyle='rgba(255,236,190,.85)';g.lineWidth=1.2;
+    if(d.kind==='swirl'){const r=Math.hypot(d.B[0]-d.A[0],d.B[1]-d.A[1])*XF.s;g.setLineDash([4,5]);g.beginPath();g.arc(A[0],A[1],r,0,MB.TAU);g.stroke();g.setLineDash([]);
+      g.beginPath();g.arc(A[0],A[1],3,0,MB.TAU);g.fill()}
+    else if(d.ops){const tl=toPx(-TW/2,-TH/2);g.beginPath();g.rect(tl[0],tl[1],TW*XF.s,TH*XF.s);g.clip();
+      const comb=d.ops.find(o=>o.k==='comb'),sh=d.ops.find(o=>o.k==='shift');const mx=comb.mx,my=comb.my,nx=-my,ny=mx;
+      g.globalAlpha=.55;for(let k=0;k<comb.n;k++){const t=comb.t0+k*comb.s;g.beginPath();
+        for(let u=-40;u<=40;u+=sh?.25:80){let x=nx*t+mx*u,y=ny*t+my*u;if(sh){const off=-sh.A*Math.sin((-u)/sh.L*MB.TAU+sh.ph);x+=off*nx;y+=off*ny}const p=P(x,y);u===-40?g.moveTo(p[0],p[1]):g.lineTo(p[0],p[1])}g.stroke()}
+      g.globalAlpha=1;g.lineWidth=2;g.beginPath();g.moveTo(A[0],A[1]);g.lineTo(B[0],B[1]);g.stroke();
+      const an=Math.atan2(B[1]-A[1],B[0]-A[0]);g.beginPath();g.moveTo(B[0],B[1]);g.lineTo(B[0]-10*Math.cos(an-.4),B[1]-10*Math.sin(an-.4));g.lineTo(B[0]-10*Math.cos(an+.4),B[1]-10*Math.sin(an+.4));g.closePath();g.fill()}
+    g.restore()}
+  // drop preview
+  if(S.hover&&!d&&pr<.5&&(S.tool==='drop')&&!S.tracing){const p=P(...S.hover);g.strokeStyle='rgba(255,236,190,.6)';g.setLineDash([3,4]);g.beginPath();g.arc(p[0],p[1],S.size/2*XF.s,0,MB.TAU);g.stroke();g.setLineDash([])}
+  // the loupe's brass ring
+  if(lo){
+    g.lineWidth=7;g.strokeStyle='#8a6a2c';g.beginPath();g.arc(L.x,L.y,L.r+3,0,MB.TAU);g.stroke();g.lineWidth=2;g.strokeStyle='#e6c47a';g.beginPath();g.arc(L.x,L.y,L.r+.5,0,MB.TAU);g.stroke();
+    g.font='500 11px "DM Mono",monospace';g.fillStyle='#ffe7b0';g.textAlign='center';g.fillText('×'+L.zoom,L.x,L.y+L.r+20)}}
+
+/* ================= captions and the tour ================= */
+let shownCap='',capTimer=0;
+function cap(html){if(html===shownCap)return;const el=$('#caption');shownCap=html;
+  if(STATIC||FIXED){el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{el.innerHTML='<span>'+shownCap+'</span>';el.classList.remove('fade')},330)}
+const T0={};
+const CAP={
+  open:()=>`<b>An ebru tray.</b> A bath of thickened water (the size), 48 × 32 cm. Paint dropped on it spreads into a disc and floats; a comb drawn through it drags the paint along.`,
+  stone:()=>`<b>Battal, the stone pattern:</b> ${T0.drops} drops in five paints. Each new drop pushes every older one outward, <span class="m">p′ = c + (p−c)·√(1 + r²/|p−c|²)</span>, so a ring gets thinner but keeps exactly its area.`,
+  gelgit:()=>`<b>Gel-git, “come and go”:</b> a comb with tines 4 cm apart drawn right, then back left between the first tracks. A tine moves paint by <span class="m">z·2<sup>−d/c</sup></span>, halving every c cm away from it.`,
+  nonp:()=>`<b>Nonpareil:</b> ${T0.tines} tines 1.2 cm apart, drawn down the tray. Every point slides straight down by an amount that depends only on how far it sits across the comb: a shear, so no area is gained or lost.`,
+  bouquet:()=>`<b>Bouquet:</b> a wide comb drawn up while it wiggles side to side, done exactly as a straight comb between a sideways sine shift and its inverse.`,
+  trace:()=>`<b>Follow one drop.</b> This ${T0.paint} drop fell ${T0.d} cm across, an outline of ${T0.l0} cm. Pushed through every later step it is now <b class="g">${T0.len}</b> long, ${T0.g}× longer, and its paint still covers <b>${T0.a1} cm²</b> (it fell as ${T0.a0})${T0.kids?`; ${T0.kids} later drop${T0.kids>1?'s':''} landed on it`:''}.`,
+  print:()=>`<b>Lay a sheet of paper on the size and lift it:</b> the paint comes away on the paper, as the tray’s mirror image. All ${T0.drops} outlines together are now <b class="g">${T0.total}</b> long; they fell as ${T0.total0} of circles.`,
+  you:()=>`<b>Your turn.</b> Sprinkle or drop paint, drag a comb, a wavy comb or a stylus, or circle a swirl. Go back to any step, trace a drop, look through the loupe, and print.`,
+  still0:()=>`<b>A bouquet pattern</b>: ${T0.drops} drops raked four times. Tracing every outline as a vector… (Paused for reduced motion: the tools all work.)`,
+  clean:()=>`<b>Skimmed clean.</b> The marbler draws a strip of newspaper across the size to lift the old paint. Undo brings it back.`,
+  still:()=>`<b>A bouquet pattern</b>: ${T0.drops} drops raked four times. Every outline is traced as a vector polygon; together they are <b class="g">${T0.total}</b> long, and each drop’s area is what it was when it fell. (Paused for reduced motion: the tools all work.)`,
+  full:()=>`<b>The tray is full</b> (${MAXOPS} drops and strokes). Skim it clean, or undo a few steps.`,
+};
+const TOUR_SPEC=[['sprinkle',0,30,3.2,4.4],['sprinkle',1,34,2.4,3.4],['sprinkle',2,34,1.8,2.6],['sprinkle',3,30,1.0,1.6],['sprinkle',4,30,.7,1.1]];
+function stoneOps(){let ops=[];TOUR_SPEC.forEach(([,p,n,r0,r1],j)=>{ops=ops.concat(sprinkleOps(p,n,r0,r1,7+j*101,1.1))});return ops}
+function recipe(){return[
+  ['sprinkle',stoneOps(),'battal'],
+  ['rake',rakeOps([-14,-16],[-14+22.73,-16],4,'rake'),'gel'],
+  ['rake',rakeOps([14,-14],[14-22.73,-14],4,'rake'),'git'],
+  ['rake',rakeOps([-23.4,-10],[-23.4,-10+18.18],1.2,'rake'),'nonpareil'],
+  ['wavy',rakeOps([0,9],[0,9-18.18],6,'wavy'),'bouquet']]}
+function stoneAnim(ops){return ops.map((_,j)=>({delay:j*.034,dur:.42}))}
+let tour=null,tourDone=false;
+const TOUR=[
+  {gap:0,go:()=>{tourReset();cap(CAP.open())}},
+  {gap:1.4,go:()=>{const r=recipe()[0];const st=addStep('sprinkle',r[1],'tour',r[2],stoneAnim(r[1]));T0.drops=r[1].length;cap(CAP.stone())}},
+  {gap:.5,when:()=>!busy(),go:()=>{const r=recipe()[1];doStep('rake',r[1],'tour',r[2]);cap(CAP.gelgit())}},
+  {gap:.25,when:()=>!busy(),go:()=>{const r=recipe()[2];doStep('rake',r[1],'tour',r[2])}},
+  {gap:.6,when:()=>!busy(),go:()=>{const r=recipe()[3];T0.tines=r[1][0].n;doStep('rake',r[1],'tour',r[2]);cap(CAP.nonp())}},
+  {gap:1.6,when:()=>!busy(),go:()=>{const r=recipe()[4];doStep('wavy',r[1],'tour',r[2]);cap(CAP.bouquet())}},
+  {gap:3.2,when:()=>!busy()&&LED&&LED.done,go:()=>{traceDrop(LED.best.i);T0.total=fmtLen(LED.len);T0.total0=fmtLen(LED.len0);cap(CAP.trace())}},
+  {gap:9,go:()=>{layPaper();cap(CAP.print())}},
+  {gap:9,go:()=>{cap(CAP.you());tour=null;tourDone=true}},
+];
+function tourReset(){S.steps=[];S.cur=0;S.anims=[];S.trace=null;S.tracing=false;S.print=0;S.printT=0;S.lay=null;rebuildOps();syncControls()}
+function startTour(){tour={k:0,t:-1e9};tourDone=false}
+function poke(){if(tour){tour=null;tourDone=true;for(const a of S.anims)a.o.w=1;S.anims=[];opsDirty=true;dirty=true;cap(CAP.you())}}
+function tourTick(){while(tour&&tour.k<TOUR.length){const b=TOUR[tour.k];if(S.T-tour.t<b.gap||(b.when&&!b.when()))break;tour.k++;tour.t=S.T;b.go()}}
+
+function didCap(st){const o=st.ops.find(q=>q.k!=='shift')||st.ops[0],p=o&&o.k==='drop'?PAINTS[o.i].name:'';
+  switch(st.kind){case'drop':return`<b>One drop</b> of ${p}, ${(2*o.r).toFixed(1)} cm across. Every outline already on the size was pushed outward to make room, and each kept its area.`;
+    case'sprinkle':return`<b>${st.ops.length} drops</b> of ${p}, flicked from the brush. Each pushes all the paint already floating outward.`;
+    case'stylus':return`<b>One pin</b> drawn right across the tray: paint on its track moves ${o.z.toFixed(1)} cm, paint ${o.c.toFixed(1)} cm away half as far, ${(2*o.c).toFixed(1)} cm away a quarter.`;
+    case'rake':return`<b>A comb</b>: ${o.n} tines ${o.s} cm apart, pulled ${o.z.toFixed(1)} cm. Each point slides along the stroke by z·Σ2<sup>−d/c</sup>, d its distance from each tine.`;
+    case'wavy':return`<b>A wavy comb</b>: ${o.n} tines ${o.s} cm apart, wiggling ±${(o.s/4).toFixed(1)} cm, pulled ${o.z.toFixed(1)} cm: a sideways sine shift, a straight comb, and the shift undone.`;
+    case'swirl':return`<b>A swirl</b> around a circle of radius ${o.r.toFixed(1)} cm, paint on it carried ${Math.abs(o.z).toFixed(1)} cm ${o.z>0?'clockwise':'anticlockwise'}; the turn fades as 2<sup>−d/c</sup> on both sides.`}
+  return CAP.you()}
+
+/* ================= tracing one drop, printing ================= */
+function traceDrop(i){if(i<0||OPS[i].k!=='drop'){S.trace=null;dirty=true;return}
+  let it=LED&&LED.done?LED.items.find(x=>x.i===i):null;
+  if(!it){const t=MB.trace(OPS,i,OPS.length);it={i,n:t.n,X:t.X,Y:t.Y,area:MB.area(t.X,t.Y,t.n),len:MB.length(t.X,t.Y,t.n),hash:MB.phash([t.X,t.Y],t.n)};
+    const par=MB.parents(OPS);it.enclosed=MB.enclosed(OPS,i,par)}
+  const o=OPS[i];let kids=[],own=it.area;
+  if(LED&&LED.done){for(const[j,p]of LED.par)if(p===i){const k=LED.items.find(x=>x.i===j);kids.push(k);own-=k.area}}
+  else{const par=MB.parents(OPS);for(const[j,p]of par)if(p===i){const t=MB.trace(OPS,j,OPS.length);const k={i:j,n:t.n,X:t.X,Y:t.Y,area:MB.area(t.X,t.Y,t.n)};kids.push(k);own-=k.area}}
+  S.trace={i,n:it.n,X:it.X,Y:it.Y,area:it.area,len:it.len,hash:it.hash,enclosed:it.enclosed,own,kids};
+  T0.paint=PAINTS[o.i].name;T0.d=(2*o.r).toFixed(1);T0.l0=(MB.TAU*o.r).toFixed(1);T0.len=fmtLen(it.len);T0.g=Math.round(it.len/(MB.TAU*o.r));
+  T0.a0=(Math.PI*o.r*o.r).toFixed(2);T0.a1=own.toFixed(2);T0.kids=kids.length;S.trace.caption=CAP.trace();dirty=true}
+function layPaper(){if(S.printT===1){S.printT=0;S.lay=null;syncControls();dirty=true;return}
+  S.lay={t:0};S.printT=1;syncControls();if(STATIC){S.lay=null;S.print=1}dirty=true}
+function updatePrint(dt){if(S.lay){S.lay.t+=dt;const t=S.lay.t;S.lay.roll=-TW/2-RIMW+ease(t/1.3)*(TW+2*RIMW);
+    if(t>1.8){S.print=Math.min(1,(t-1.8)/.8)}if(t>2.6){S.lay=null;S.print=1}dirty=true}
+  else if(S.printT===0&&S.print>0){S.print=Math.max(0,S.print-dt/.5);dirty=true}}
+async function printPNG(){if(!gl)return;const W=2400,Hh=1600,cv=document.createElement('canvas');cv.width=W;cv.height=Hh;
+  const fb=gl.createFramebuffer(),rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.RGBA8,W,Hh);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rb);if(opsDirty)uploadOps();
+  gl.viewport(0,0,W,Hh);gl.uniform2f(U.uRes,W,Hh);gl.uniform1f(U.uDpr,1);const s=Math.min(W/PW,Hh/PH);gl.uniform3f(U.uXf,W/2,Hh/2,s);gl.uniform4f(U.uLoupe,0,0,0,0);
+  gl.uniform1f(U.uPrint,1);gl.uniform1f(U.uRoll,-1e9);gl.uniform1i(U.uSS,2);gl.uniform1i(U.uN,OPS.length);gl.drawArrays(gl.TRIANGLES,0,3);
+  const px=new Uint8Array(W*Hh*4);gl.readPixels(0,0,W,Hh,gl.RGBA,gl.UNSIGNED_BYTE,px);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fb);gl.deleteRenderbuffer(rb);
+  const g=cv.getContext('2d'),im=g.createImageData(W,Hh);for(let y=0;y<Hh;y++)im.data.set(px.subarray((Hh-1-y)*W*4,(Hh-y)*W*4),y*W*4);g.putImageData(im,0,0);dirty=true;
+  cv.toBlob(b=>download(b,'marbling-print.png'),'image/png')}
+function printSVG(){if(!LED||!LED.done){ledgerFinish()}const f=v=>(Math.round(v*1000)/1000).toString();
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-PW/2} ${-PH/2} ${PW} ${PH}" width="${PW}cm" height="${PH}cm"><defs><clipPath id="p"><rect x="${-PW/2}" y="${-PH/2}" width="${PW}" height="${PH}"/></clipPath></defs><rect x="${-PW/2}" y="${-PH/2}" width="${PW}" height="${PH}" fill="#f4eddf"/><g clip-path="url(#p)" transform="scale(-1,1)">`;
+  const parts=[s];for(const it of LED.items){const o=OPS[it.i];let d='M'+f(it.X[0])+' '+f(it.Y[0]);for(let v=1;v<it.n;v++)d+='L'+f(it.X[v])+' '+f(it.Y[v]);parts.push(`<path fill="${hex(PAINTS[o.i].rgb)}" d="${d}Z"/>`)}
+  parts.push('</g></svg>');download(new Blob(parts,{type:'image/svg+xml'}),'marbling-print.svg')}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+
+/* ================= controls ================= */
+const HINT={sprinkle:'Click the tray: a flick of the brush scatters thirty drops of this paint.',drop:'Click to drop one blob of paint where you click.',
+  stylus:'Drag a straight line: one pin is drawn along it, right across the tray.',rake:'Drag across the tray: every tine of the comb pulls the paint along with it.',
+  wavy:'Drag across the tray: the comb wiggles side to side as it goes (the bouquet stroke).',swirl:'Press on a point and circle around it: a pin swirls the paint.'};
+const TOOLV={sprinkle:'click anywhere',drop:'click to drop',stylus:'drag a line',rake:'drag across the tray',wavy:'drag across the tray',swirl:'press, then circle'};
+function segSet(id,v){for(const b of $$(`#${id} button`))b.setAttribute('aria-pressed',String(b.dataset.v===String(v)))}
+function syncControls(){segSet('tool',S.tool);segSet('size',S.size);segSet('spacing',S.spacing);
+  for(const b of $$('#pal button'))b.setAttribute('aria-pressed',String(+b.dataset.v===S.paint));
+  $('#palv').textContent=PAINTS[S.paint].name;$('#sizev').textContent=S.size+' cm';$('#spv').textContent=S.spacing+' cm';
+  $('#toolv').textContent=TOOLV[S.tool];if(!S.drag)$('#hint').textContent=S.tracing?'Click any paint: its drop’s outline is pushed forward through every later step.':HINT[S.tool];
+  const sl=$('#steps');sl.max=S.steps.length;sl.value=S.cur;const st=S.steps[S.cur-1];
+  $('#stepv').textContent=`${S.cur} of ${S.steps.length}${st?' · '+st.label:''}`;
+  $('#undo').disabled=S.cur===0;$('#redo').disabled=S.cur>=S.steps.length;
+  $('#trace').setAttribute('aria-pressed',String(S.tracing));$('#loupe').setAttribute('aria-pressed',String(S.loupe.on));
+  $('#print').textContent=S.printT?'Back to the tray':'Lay paper';$('#o').classList.toggle('loupe',S.loupe.on)}
+function setCur(k){S.cur=clamp(k,0,S.steps.length);for(const a of S.anims)a.o.w=1;S.anims=[];if(S.printT){S.printT=0}rebuildOps();
+  if(S.trace)traceDrop(S.trace.i);syncControls()}
+function evPt(e){const r=$('#o').getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+const inTray=w=>Math.abs(w[0])<=TW/2&&Math.abs(w[1])<=TH/2;
+function hook(){const o=$('#o');
+  o.addEventListener('pointerdown',e=>{const p=evPt(e),w=toWorld(...p);if(S.loupe.on){S.loupe.x=p[0];S.loupe.y=p[1];S.loupe.px=1}
+    if(!inTray(w))return;poke();
+    if(S.printT){S.printT=0;syncControls()}
+    if(S.tracing){const i=MB.label(OPS,w[0],w[1]);traceDrop(i);if(S.trace)cap(S.trace.caption);S.tracing=false;syncControls();return}
+    S.drag={kind:S.tool,A:w,B:null,p0:p,ang:0,last:Math.atan2(0,0),pid:e.pointerId};o.setPointerCapture(e.pointerId);dirty=true});
+  o.addEventListener('pointermove',e=>{const p=evPt(e),w=toWorld(...p);S.hover=inTray(w)?w:null;
+    if(S.loupe.on&&(e.pointerType!=='touch'||S.drag)){S.loupe.x=p[0];S.loupe.y=p[1];S.loupe.px=1;dirty=true}
+    const d=S.drag;if(!d){if(S.tool==='drop')dirty=true;return}
+    d.B=w;const L=Math.hypot(w[0]-d.A[0],w[1]-d.A[1]);
+    if(d.kind==='swirl'){const a=Math.atan2(w[1]-d.A[1],w[0]-d.A[0]);if(d.prevA!==undefined){let da=a-d.prevA;if(da>Math.PI)da-=MB.TAU;if(da<-Math.PI)da+=MB.TAU;d.ang+=da}d.prevA=a;
+      $('#hint').textContent=`radius ${L.toFixed(1)} cm · ${Math.abs(d.ang/MB.TAU*360).toFixed(0)}° ${d.ang>=0?'clockwise':'anticlockwise'}`}
+    else if(['stylus','rake','wavy'].includes(d.kind)&&L>.5){d.ops=rakeOps(d.A,d.B,S.spacing,d.kind);const c=d.ops.find(q=>q.k==='comb');
+      $('#hint').textContent=`${c.n===1?'one pin':c.n+' tines, '+S.spacing+' cm apart'} · pull z = ${c.z.toFixed(1)} cm · sharpness c = ${c.c.toFixed(2)} cm`}
+    dirty=true});
+  const end=e=>{const d=S.drag;if(!d)return;S.drag=null;const p=evPt(e),w=toWorld(...p),L=Math.hypot(w[0]-d.A[0],w[1]-d.A[1]);
+    let st=null;
+    if(d.kind==='drop'){const at=L<1.5?d.A:w;if(inTray(at))st=doStep('drop',[{k:'drop',x:at[0],y:at[1],r:S.size/2,i:S.paint}],'user',`a ${PAINTS[S.paint].name} drop`)}
+    else if(d.kind==='sprinkle'){st=doStep('sprinkle',sprinkleOps(S.paint,30,S.size*.3,S.size*.55,(S.nextId*7919)>>>0,1.06),'user',`${PAINTS[S.paint].name} sprinkled`)}
+    else if(d.kind==='swirl'){if(L>.5&&Math.abs(d.ang)>.3)st=doStep('swirl',swirlOps(d.A,L,d.ang),'user','a swirl')}
+    else if(L>.8){const ops=rakeOps(d.A,w,S.spacing,d.kind);st=doStep(d.kind==='wavy'?'wavy':d.kind==='stylus'?'stylus':'rake',ops,'user',d.kind==='stylus'?'a stylus line':d.kind==='wavy'?`a wavy comb (${S.spacing} cm)`:`a comb (${S.spacing} cm)`)}
+    if(st)cap(didCap(st));syncControls();dirty=true};
+  o.addEventListener('pointerup',end);o.addEventListener('pointercancel',()=>{S.drag=null;syncControls();dirty=true});
+  o.addEventListener('pointerleave',()=>{S.hover=null;if(S.loupe.on&&!S.drag){S.loupe.px=-1}dirty=true});
+  o.addEventListener('wheel',e=>{if(!S.loupe.on)return;e.preventDefault();poke();const z=[2,4,6,12,24,48,96],i=z.indexOf(S.loupe.zoom);S.loupe.zoom=z[clamp(i+(e.deltaY<0?1:-1),0,z.length-1)];dirty=true},{passive:false});
+  addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();poke();setCur(S.cur+(e.shiftKey?1:-1))}});
+  addEventListener('resize',()=>{fit();S.loupe.r=loupeR()})}
+const loupeR=()=>clamp(Math.min(CSS.w,CSS.h)*.17,70,150);
+function hookUI(){
+  const segH=(id,fn)=>$(`#${id}`).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;poke();fn(b.dataset.v);syncControls()});
+  segH('tool',v=>{S.tool=v;S.tracing=false});segH('size',v=>{S.size=+v});segH('spacing',v=>{S.spacing=+v});
+  const pal=$('#pal');PAINTS.forEach((p,i)=>{const b=document.createElement('button');b.dataset.v=i;b.title=p.name;b.setAttribute('aria-label',p.name+' paint');
+    b.style.background=`radial-gradient(circle at 35% 30%,${hex(p.rgb.map(v=>Math.min(255,v+40)))},${hex(p.rgb)} 60%)`;pal.appendChild(b)});
+  pal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;poke();S.paint=+b.dataset.v;if(S.tool!=='drop'&&S.tool!=='sprinkle')S.tool='drop';syncControls()});
+  $('#steps').addEventListener('input',e=>{const v=+e.target.value;poke();setCur(v)});
+  $('#undo').addEventListener('click',()=>{poke();setCur(S.cur-1)});$('#redo').addEventListener('click',()=>{poke();setCur(S.cur+1)});
+  $('#clear').addEventListener('click',()=>{poke();if(!OPS.length)return;S.trace=null;S.printT=0;addStep('clear',[],'user','skimmed clean',null);cap(CAP.clean())});
+  $('#trace').addEventListener('click',()=>{poke();S.tracing=!S.tracing;if(!S.tracing){S.trace=null;dirty=true}syncControls()});
+  $('#loupe').addEventListener('click',()=>{poke();S.loupe.on=!S.loupe.on;S.loupe.r=loupeR();if(S.loupe.on&&S.loupe.px<0){S.loupe.x=XF.ox+TW*XF.s*.15;S.loupe.y=XF.oy;S.loupe.px=1}syncControls();dirty=true});
+  $('#print').addEventListener('click',()=>{poke();layPaper();cap(S.printT?CAP.print():CAP.you())});
+  $('#png').addEventListener('click',()=>{poke();printPNG()});$('#svg').addEventListener('click',()=>{poke();printSVG()});
+  $('#tourb').addEventListener('click',()=>{tourReset();startTour()})}
+
+/* ================= loop ================= */
+let ready=false,last=0,frameMs=16,slowFrames=0,lastLedUI=0;window.__frame=0;
+function update(dt){S.T+=dt;
+  if(S.anims.length){const keep=[];for(const a of S.anims){const t=(S.T-a.t0)/a.dur;a.o.w=a.drop?clamp(t,0,1):ease(t);if(t<1)keep.push(a);else a.o.w=1}S.anims=keep;opsDirty=true;dirty=true;
+    if(!S.anims.length)ledShown=''}
+  updatePrint(dt);tourTick();
+  if(LED&&!LED.done)ledgerTick(FIXED?0:7)}
+function frame(ts,skip){
+  if(!FIXED)requestAnimationFrame(frame);
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.1);
+  if(!FIXED&&last&&dirty){frameMs=frameMs*.95+(now-last)*.05;if(frameMs>45&&!lite&&++slowFrames>30)goLite()}
+  last=now;window.__frame++;
+  update(dt);if(!skip&&(dirty||FIXED)){render();drawOverlay();dirty=false}
+  window.__state={t:+S.T.toFixed(3),frame:window.__frame,tour:tour?tour.k:null,steps:S.cur,ops:OPS.length,ledger:LED?LED.progress:0,print:S.print}}
+function pump(){if(LED&&!LED.done&&!busy())ledgerTick(12);if(STATIC&&LED&&LED.done&&!T0.stillShown&&tourDone&&S.cur===5){T0.stillShown=1;T0.total=fmtLen(LED.len);cap(CAP.still())}setTimeout(pump,LED&&LED.done?400:0)}
+function goLite(){lite=true;renderScale=.5;fit();S.loupe.r=loupeR()}
+
+/* ================= start ================= */
+function applyRecipe(){for(const r of recipe())addStep(r[0],r[1],'tour',r[2],null);T0.drops=OPS.filter(o=>o.k==='drop').length}
+async function start(){
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,IFR?0:1500))])}catch(e){}
+  try{initGL()}catch(e){console.warn(e);gl=null;document.documentElement.classList.add('nogl')}
+  hook();hookUI();fit();S.loupe.r=loupeR();ledgerReset();
+  if(OGQ){applyRecipe();if(OGQ==='2'){S.print=1;S.printT=1}tourDone=true;cap(CAP.you())}
+  else if(STATIC){applyRecipe();tourDone=true;cap(CAP.still0());pump()}
+  else{startTour();if(FIXED){// frame 0: the finished bouquet; the tour then carries on from there
+      tourTick();applyRecipe();T0.tines=S.steps[3].ops[0].n;tour.k=6;tour.t=S.T;cap(CAP.bouquet())}}
+  syncControls();ready=true;dirty=true}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)};
+(async()=>{await start();render();drawOverlay();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+
+// for tests: a read-only view of the tray
+const plain=o=>{const r={};for(const k in o)if(k[0]!=='_'&&k!=='w')r[k]=o[k];return r};
+window.marbling={
+  state:()=>{if(!ready)return{ready:false};return{ready:true,gl:!!gl,lite,ss:SS===2&&!lite?2:1,renders,T:S.T,tool:S.tool,paint:S.paint,size:S.size,spacing:S.spacing,
+    cur:S.cur,steps:S.steps.map(s=>({id:s.id,kind:s.kind,why:s.why,label:s.label,n:s.ops.length})),ops:OPS.map(plain),busy:busy(),
+    tour:tour?tour.k:null,tourDone,caption:$('#caption').textContent,print:S.print,printT:S.printT,
+    ledger:LED?{done:LED.done,progress:LED.progress,verts:LED.verts,len:LED.len,len0:LED.len0,worst:LED.worst,best:LED.best,
+      items:LED.items.map(it=>({i:it.i,n:it.n,area:it.area,len:it.len,hash:it.hash,capped:it.capped,enclosed:it.enclosed,visible:it.visible,drift:it.drift})),
+      colours:LED.colours||null,shown:{head:$('#ledv').textContent,note:$('#ledn').textContent,rows:$$('#led tbody tr').map(r=>r.textContent)}}:null,
+    trace:S.trace?{i:S.trace.i,n:S.trace.n,area:S.trace.area,len:S.trace.len,hash:S.trace.hash,enclosed:S.trace.enclosed}:null,
+    xf:Object.assign({},XF),loupe:Object.assign({},S.loupe),T0:Object.assign({},T0)}},
+  probe,label:(x,y)=>MB.label(OPS,x,y),
+};
+</script>
+</body>
+</html>
