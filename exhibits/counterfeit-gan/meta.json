@@ -1,0 +1,11 @@
+{
+ "slug": "counterfeit-gan",
+ "title": "Counterfeit GAN",
+ "no": "039",
+ "date": "2026-11-07",
+ "kind": "GANs · Canvas forger vs detective",
+ "blurb": "Goodfellow's counterfeiters and police, really trained in your browser: a forger net learns to print all eight denominations while a detective net learns to catch it. Give the forger five lessons per round and every forgery becomes the same note; make the detective check notes in pairs and the collapse comes undone.",
+ "color": "#000054",
+ "exhibit": "counterfeitGan",
+ "lane": "ml"
+}
