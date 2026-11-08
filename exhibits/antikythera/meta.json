@@ -1,0 +1,11 @@
+{
+ "slug": "antikythera",
+ "title": "Antikythera Mechanism",
+ "no": "040",
+ "date": "2026-11-08",
+ "kind": "Ancient computer · three.js",
+ "blurb": "The ancient Greek astronomical computer, rebuilt gear by gear after Freeth et al. 2021: 67 bronze gears turned by their tooth counts. Crank it to any date and check its Moon, Sun and five planets against the real sky, watch the pin-and-slot speed the Moon up, and read the eclipse glyphs on its Saros dial.",
+ "color": "#844000",
+ "exhibit": "antikythera",
+ "lane": "3d"
+}

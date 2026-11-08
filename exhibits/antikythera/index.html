@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Antikythera Mechanism — a bronze computer from 205 BC, gear by gear</title>
+<meta name="description" content="The Antikythera Mechanism rebuilt in three.js after Freeth et al. 2021: 69 gears turned by their tooth counts. Crank it to any date and compare the Moon, Sun and five planets with the real sky, watch the pin-and-slot speed the Moon up, read the Metonic calendar and the Saros eclipse dial on the back, and take the case apart.">
+<meta property="og:title" content="Antikythera Mechanism">
+<meta property="og:description" content="69 bronze gears from a 2,000-year-old shipwreck, rebuilt and turned by their tooth counts: crank it to a date, read its eclipse dial, and check it against the real sky.">
+<meta property="og:image" content="https://blackman99.github.io/curio/antikythera/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Antikythera Mechanism">
+<meta name="twitter:description" content="The ancient Greek astronomical computer, gear by gear: crank it to any date, read its eclipse dial, and check every pointer against the real sky.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/antikythera/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&family=GFS+Neohellenic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0b0a08;--paper:#f2ebdd;--paper2:#b2a690;--gold:#e0b562;--blue:#8fb4ff;--red:#ff8a6a;--green:#9fe0a6;--line:rgba(240,222,190,.14);--panel:rgba(15,12,9,.9)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:#0e0c0a}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 80% at 38% 48%,transparent 55%,rgba(0,0,0,.55) 100%)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:600px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,7,.5)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--gold);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(12,10,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--gold);color:#1a1205;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-shadow:0 1px 4px #000}
+h1{margin:8px 0 0;font:500 clamp(34px,3.3vw,52px)/1 'Cormorant Garamond',Georgia,serif;letter-spacing:.02em;color:#fbf2df;text-shadow:0 2px 0 #3d2c10,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:880px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,7,.68)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#f6efe2;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--gold)}
+#caption .r{color:#ff9a84;font-weight:600}
+#caption .g{color:var(--green);font-weight:600}
+#caption .gk{font-family:'GFS Neohellenic',serif;letter-spacing:.04em}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:376px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.lab b{font:500 11px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none;text-align:right}
+.sec{margin-bottom:12px}
+.date{display:flex;align-items:center;gap:10px}
+.date .dt{flex:1;min-width:0}
+.date .dt b{display:block;font:500 25px/1.05 'DM Mono',monospace;color:#ffd98a;letter-spacing:-.03em;white-space:nowrap}
+.date .dt small{display:block;margin-top:4px;font:400 11px/1.3 'DM Mono',monospace;color:var(--paper2)}
+.date .dt small .gk{font-family:'GFS Neohellenic',serif;font-size:13px;color:var(--paper);letter-spacing:.04em}
+#jog{width:74px;height:74px;flex:none;touch-action:none;cursor:grab;border-radius:50%}
+.btn{border:1px solid var(--line);background:rgba(224,181,98,.05);border-radius:8px;padding:7px 4px;font:400 11px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(224,181,98,.18);border-color:var(--gold);outline:none}
+.btn.go{background:var(--gold);border-color:var(--gold);color:#1b1305;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd98a}
+.btn[aria-pressed=true]{background:rgba(143,180,255,.22);border-color:var(--blue)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 2px;font:400 10.5px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(224,181,98,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--gold);color:#1b1305;font-weight:500}
+.row6{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.goto{display:grid;grid-template-columns:1.15fr .8fr .95fr .75fr 1fr;gap:4px;margin-top:8px}
+.goto input,.goto select{min-width:0;width:100%;background:rgba(255,240,210,.04);border:1px solid var(--line);border-radius:7px;padding:6px 5px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.goto input:focus-visible,.goto select:focus-visible{outline:1px dashed var(--gold);outline-offset:1px}
+.presets{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.presets button{flex:1 1 auto;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 7px;font:400 10px/1 'DM Mono',monospace;color:var(--paper2)}
+.presets button:hover,.presets button:focus-visible{border-color:var(--gold);color:var(--paper);outline:none}
+table.sky{width:100%;border-collapse:collapse;font:400 11px/1.25 'DM Mono',monospace;color:var(--paper2);font-variant-numeric:tabular-nums}
+table.sky th{font:500 8.5px/1.1 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2);text-align:right;padding:2px 3px}
+table.sky th:first-child,table.sky td:first-child{text-align:left}
+table.sky td{text-align:right;padding:2.5px 3px;border-top:1px solid rgba(240,225,200,.07);white-space:nowrap}
+table.sky td i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0;box-shadow:inset 0 -1px 2px rgba(0,0,0,.5)}
+table.sky td.e{color:var(--paper)}
+table.sky td.e.big{color:#ffb39e}
+table.sky td.e.ok{color:var(--green)}
+.back{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+.bd{display:flex;flex-direction:column;gap:3px;min-width:0;padding:6px 7px;border:1px solid rgba(240,225,200,.08);border-radius:8px;background:rgba(255,240,210,.025)}
+.bd span{font:500 8.5px/1.1 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--paper2)}
+.bd b{font:400 15px/1.1 'GFS Neohellenic',serif;color:var(--paper);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd small{font:400 10.5px/1.2 'DM Mono',monospace;color:var(--paper2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd.ecl{border-color:rgba(255,190,120,.5);background:rgba(255,170,90,.08)}
+.bd.ecl b{color:#ffd29a}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#3a2c14,#e0b562);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#3a2c14,#e0b562)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#5d3f06 120%);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#5d3f06 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--gold);outline-offset:3px}
+.ends{display:flex;justify-content:space-between;font:400 10px/1 'DM Mono',monospace;color:var(--paper2);margin-top:1px}
+#chain{margin-top:6px;font:400 11px/1.4 'DM Mono',monospace;color:var(--paper2);min-height:2.8em}
+#chain b{color:#ffd98a;font-weight:500}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--gold)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(240,230,215,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--gold);text-decoration:underline;font:inherit}
+#gl{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:30px;font:400 16px/1.5 'Newsreader',serif;color:var(--paper2)}
+.nogl #gl{display:flex}
+#ogtxt{display:none}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(30px,2.9vw,42px);margin-top:7px}.sec{margin-bottom:9px}.date .dt b{font-size:22px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:344px}#story{width:calc(100vw - 404px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:38px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:7.6em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,440px);margin-top:4px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(16,13,10,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+.og #title{background:rgba(10,9,7,.55)}
+.og #ogtxt{display:block;position:fixed;left:30px;bottom:36px;z-index:2;max-width:520px;padding:14px 18px;border-radius:12px;background:rgba(10,9,7,.7);font:400 21px/1.35 'Newsreader',serif;color:#f6efe2}
+.og #ogtxt b{color:#ffd98a;font-weight:600}
+.og #ogtxt .m{font:500 .8em 'DM Mono',monospace;color:var(--gold)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 040 · Ancient computer</span>
+  <h1>Antikythera Mechanism</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A reconstruction of the Antikythera Mechanism in a wooden case: a bronze front dial with the zodiac and the Egyptian calendar, concentric rings carrying gem markers for the five planets, a silver Moon pointer with a half-black phase ball and a golden Sun pointer; behind it dozens of triangular-toothed bronze gears; on the back two spiral dials for the 19-year calendar and the eclipse cycle."></canvas>
+  <div id="vig"></div>
+  <div id="gl">This exhibit needs WebGL, which this browser has switched off. The dates, dials and the comparison with the real sky on the right still run.</div>
+</div>
+<div id="ogtxt"></div>
+<aside id="panel" aria-label="Dials and controls">
+  <div class="sec">
+    <div class="lab"><span>The date on the dial</span><b id="yv">b1 at 0.00 turns</b></div>
+    <div class="date">
+      <div class="dt"><b id="dv">–</b><small id="egv">–</small></div>
+      <canvas id="jog" width="148" height="148" aria-label="Crank: drag round to turn the mechanism, one turn of the crank is about 78.6 days" role="slider" tabindex="0"></canvas>
+    </div>
+    <div class="row6" id="step"><button class="btn" data-v="-y" title="Back one year">−yr</button><button class="btn" data-v="-m" title="Back one month (a lunation)">−mo</button><button class="btn" data-v="-d" title="Back one day">−day</button><button class="btn" data-v="+d" title="Forward one day">+day</button><button class="btn" data-v="+m" title="Forward one lunation">+mo</button><button class="btn" data-v="+y" title="Forward one year">+yr</button></div>
+    <div class="seg" id="run" style="margin-top:6px"><button data-v="0" aria-pressed="true">stop</button><button data-v="1" aria-pressed="false" title="Crank at one day a second">day/s</button><button data-v="30" aria-pressed="false" title="A lunation a second">month/s</button><button data-v="365.25" aria-pressed="false" title="A year a second">year/s</button></div>
+    <div class="goto"><input id="gy" type="number" min="1" max="4000" value="205" aria-label="Year"><select id="ge" aria-label="Era"><option value="bc" selected>BC</option><option value="ad">AD</option></select><select id="gm" aria-label="Month"></select><input id="gd" type="number" min="1" max="31" value="23" aria-label="Day"><button class="btn go" id="gogo" title="Turn the crank to this date">Turn</button></div>
+    <div class="presets" id="pre"><button data-v="epoch">start · 205 BC</button><button data-v="eclipse">eclipse · 205 BC</button><button data-v="lunar">lunar eclipse · 196 BC</button><button data-v="today">today</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Front dial vs the real sky</span><b id="skyv">degrees of longitude</b></div>
+    <table class="sky" id="tab"><thead><tr><th>Pointer</th><th>Mechanism</th><th>Real sky</th><th>Error</th></tr></thead><tbody></tbody></table>
+    <div class="row2" style="margin-top:7px"><button class="btn" id="real" aria-pressed="true" title="Small diamonds outside the zodiac show where the bodies really were">Real sky marks</button><button class="btn" id="anom" aria-pressed="false" title="Lock the pin-and-slot: the Moon pointer runs at its mean rate">Moon without pin &amp; slot</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Back dials</span><b id="ecv">no eclipse this month</b></div>
+    <div class="back">
+      <div class="bd"><span>Metonic · 235 months</span><b id="met">–</b><small id="metn">–</small></div>
+      <div class="bd" id="sarbox"><span>Saros · 223 months</span><b id="sar">–</b><small id="sarn">–</small></div>
+      <div class="bd"><span>Games · 4 years</span><b id="gam">–</b><small id="gamn">–</small></div>
+      <div class="bd"><span>Callippic · Exeligmos</span><b id="cal">–</b><small id="caln">–</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Look</span><b id="viewv">front</b></div>
+    <div class="seg" id="view"><button data-v="front" aria-pressed="true">Front</button><button data-v="back" aria-pressed="false">Back</button><button data-v="inside" aria-pressed="false">Inside</button></div>
+    <div class="lab" style="margin-top:9px"><span>Open the case</span><b id="opv">closed</b></div>
+    <input id="open" type="range" min="0" max="1000" value="0" step="1" aria-label="Open the case: fade the plates, then pull the layers of gears apart">
+    <div class="ends"><span>closed</span><span>plates off</span><span>exploded</span></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Trace a gear train</span><b id="trv">none</b></div>
+    <div class="seg" id="train"><button data-v="none" aria-pressed="true">none</button><button data-v="moon" aria-pressed="false">Moon</button><button data-v="metonic" aria-pressed="false">Metonic</button><button data-v="saros" aria-pressed="false">Saros</button><button data-v="venus" aria-pressed="false">Venus</button><button data-v="mars" aria-pressed="false">Mars</button></div>
+    <div id="chain"></div>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p><b>The machine.</b> A shoebox-sized bronze gearbox found in 1901 in a Roman-era shipwreck off Antikythera; 82 corroded fragments and 30 gears survive. X-ray tomography in 2005 recovered the gearing behind the main wheel and thousands of characters of inscription. This model follows <a href="https://www.nature.com/articles/s41598-021-84310-w" target="_blank" rel="noopener">Freeth et al. 2021</a>: the surviving rear trains (Freeth et al. 2006, 2008) plus their reconstruction of the planetary Cosmos at the front, 67 gears in all. The crank’s 48-tooth crown wheel drives the great wheel b1 (223 teeth); one turn of b1 is one year, about 78.6 days per turn of the crank.</p>
+    <p><b>What is computed.</b> Every pointer is moved by tooth counts and nothing else. Moon: 64/38 · 48/24 · 127/32 = <b>254/19</b> turns a year. Metonic spiral: 5/19 (235 months in five turns); Games dial ¼; Callippic 1/76. The e3 turntable turns 477/4237 a year (once in 8.88 years); the Saros spiral 940/4237 (223 months in four turns), the Exeligmos a twelfth of that. The front trains are those of Freeth et al.’s Fig. 3: Mercury 51 → 72 · 89 → 40 → 20 (1513/480), Venus 51 → 44 · 34 → 26 → 63 (289/462), Nodes 49 → 62 · 64 → 48 (−5/93, 18.6 years), Saturn 56 → 52 · 61 → 40 → 68 (427/442), Jupiter 56 → 64 · 45 → 40 → 43 (315/344), Mars 56 → 64 · 38 → 40 → 71 (133/284), the true Sun 56 → 52 → 56. The anomalies come from pins: the lunar pin sits 9.6 mm out on k1 and k2’s axle is 1.1 mm off (up to ±6.58°); the planets use the pin distances and offsets of their Supplementary Table S9; the Sun uses Hipparchus’ eccentricity of 1/24 with apogee at Gemini 5½°. Every meshing pair sits at (z<sub>1</sub>m<sub>1</sub> + z<sub>2</sub>m<sub>2</sub>)/2 using the modules measured on the surviving gears.</p>
+    <p><b>Set on 23 August 205 BC.</b> The Metonic calendar starts just after the new moon of 23 August 205 BC (Iversen 2017) and the Saros dial just after the new moon of 28 April 205 BC (<a href="https://doi.org/10.1007/s00407-014-0145-5" target="_blank" rel="noopener">Carman &amp; Evans 2014</a>). On that first date every pointer is set to the modern mean longitude of its body (Meeus; JPL). Choosing a date turns b1 by days ÷ 365.25, as if the Egyptian calendar ring were moved back a day every four years. The real sky comes from Meeus’ series for the Sun and Moon and Standish’s long-range elements for the planets, which I checked against JPL Horizons at 64 dates from 300 BC to AD 2100 (worst: Saturn 0.38°, Moon 0.019°).</p>
+    <p><b>How good was it?</b> Over the first 19 years the Sun stays within 0.5° of the real Sun and the Moon within <b>3.3°</b>; lock the pin and slot and the Moon strays 8.8°. The planets ride on uniform circles: Venus within 5.4°, Jupiter 6.5°, Saturn 8.1°, Mercury 12.0°, and Mars up to <b>33°</b>, because a circle cannot follow Mars’s eccentric orbit. The Venus ratio 289/462 drifts 1.0° of synodic phase a century, a shade better than the Babylonians’ “exact” 720/1151 (1.1°) and far better than 5 cycles in 8 years (18.4°). Crank it to today and the Sun pointer is 16.8° behind: the 365¼-day year has gained 17.4 days on the seasons since 205 BC, the drift the Gregorian reform removed.</p>
+    <p><b>Eclipses.</b> For each of the Saros dial’s 223 months the page finds where the Moon pointer meets and opposes the true Sun pointer, and marks the cell <span class="gk">Η</span> (solar) or <span class="gk">Σ</span> (lunar) if an end of the Dragon Hand is close enough. The limits I measured from NASA’s Five Millennium Canon for 300–100 BC: every solar eclipse came within 18.09° of a node and every umbral lunar eclipse within 11.96°. With those limits the dial flags 74 new and full moons in 55 cells; all 68 real eclipses of those 18 years (41 solar, 27 lunar) are among them, with 6 false alarms, and the mechanism’s new and full moons fall within 0.19 days of the real ones. With the tighter limits (16.67° and 10.38°) it flags 64 and none is false, but 4 are missed. The real dial has 51 glyph cells and predicted only what could be seen, which this does not attempt.</p>
+    <p><b>What is simplified.</b> The gear positions are my own layout: every pair meshes at the right distance, but Freeth et al.’s front gears sit elsewhere, and they use 0.5 mm modules here. The Moon’s phase ball turns directly; the two gears of its differential are left out. The Dragon Hand is hypothetical, as Freeth et al. say. Month names: each year starts with the first month after the Sun returns to its starting longitude, and Eukleios is doubled in the seven 13-month years, Freeth et al.’s proposed intercalary month; the real sequence survives only in part. The front ring is drawn as the 365-day Egyptian calendar; counts of its holes suggest 354 (Budiselić et al. 2020). The glyphs here say only Η or Σ, not the hour. The parapegma text is the published transcription.</p>
+  </details>
+  <div class="foot">Drag to turn the case · scroll or pinch to zoom · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script type="module">
+/* ================= engine: the Antikythera Mechanism, gear by gear, and the real sky ================= */
+const AK=(()=>{
+const PI=Math.PI,TAU=2*PI,D=PI/180;
+const wrap=a=>((a%360)+360)%360,dang=(a,b)=>((((a-b+180)%360)+360)%360)-180;
+const ang=(x,y)=>Math.atan2(y,x)/D;
+
+/* ---------- tooth counts ---------- */
+// rear gearing: Freeth et al. 2006, 2008 (survivors measured in Freeth et al. 2021, Supp. Table S8)
+const Z={a1:48,b1:223,b2:64,b3:32,c1:38,c2:48,d1:24,d2:127,e1:32,e2:32,e3:223,e4:188,e5:50,e6:50,f1:53,f2:30,g1:54,g2:20,
+  h1:60,h2:15,i1:60,k1:50,k2:50,l1:38,l2:53,m1:96,m2:15,m3:27,n1:53,n2:57,n3:15,o1:60,p1:60,p2:12,q1:60};
+// front Cosmos: Freeth et al. 2021 Fig. 3e/f and Supp. Table S9 (i, o, d in mm)
+const TR={
+  mercury:{carrier:'b1',g:[51,72,89,40,20],kind:'inferior',syn:[1513,480],i:36.0,d:14.04},
+  venus:{carrier:'b1',g:[51,44,34,26,63],kind:'inferior',syn:[289,462],i:27.8,d:20.01},
+  nodes:{carrier:'b1',g:[49,62,64,48],kind:'nodes'},
+  saturn:{carrier:'CP',g:[56,52,61,40,68,86,86],kind:'superior',syn:[427,442],o:1.50,d:14.37},
+  jupiter:{carrier:'CP',g:[56,64,45,40,43,65,65],kind:'superior',syn:[315,344],o:1.58,d:8.22},
+  mars:{carrier:'CP',g:[56,64,38,40,71,80,80],kind:'superior',syn:[133,284],o:6.58,d:10.00},
+  sun:{carrier:'CP',g:[56,52,56],kind:'truesun'}};
+
+/* ---------- mean rates in turns per turn of b1 (front clockwise positive), straight from the tooth counts ---------- */
+const r=(a,b)=>a/b;
+const RATE={};
+RATE.b=1;
+RATE.c=-RATE.b*r(Z.b2,Z.c1);RATE.d=-RATE.c*r(Z.c2,Z.d1);RATE.e25=-RATE.d*r(Z.d2,Z.e2);
+RATE.l=-RATE.b*r(Z.b2,Z.l1);RATE.m=-RATE.l*r(Z.l2,Z.m1);RATE.n=-RATE.m*r(Z.m2,Z.n1);
+RATE.o=-RATE.n*r(Z.n2,Z.o1);RATE.p=-RATE.n*r(Z.n3,Z.p1);RATE.q=-RATE.p*r(Z.p2,Z.q1);
+RATE.e34=-RATE.m*r(Z.m3,Z.e3);RATE.f=-RATE.e34*r(Z.e4,Z.f1);RATE.g=-RATE.f*r(Z.f2,Z.g1);RATE.h=-RATE.g*r(Z.g2,Z.h1);RATE.i=-RATE.h*r(Z.h2,Z.i1);
+// on the e3 turntable: e5 ~ k1 (pin) -> k2 (slot) ~ e6
+RATE.k1=RATE.e34-(RATE.e25-RATE.e34)*r(Z.e5,Z.k1);RATE.k2=RATE.k1;RATE.e61=RATE.e34-(RATE.k2-RATE.e34)*r(Z.k2,Z.e6);
+RATE.b3=-RATE.e61*r(Z.e1,Z.b3);
+const FR={};// front trains: relative rate of each epicyclic gear (relative basic law, fixed g1 turns -1 relative to the carrier)
+for(const k in TR){const g=TR[k].g,o={};o.g2=g[0]/g[1];
+  if(TR[k].kind==='truesun'){o.g3=-o.g2*g[1]/g[2];o.out=1;FR[k]=o;continue}
+  o.g3=o.g2;
+  if(TR[k].kind==='nodes'){o.g4=-o.g3*g[2]/g[3];o.out=1+o.g4;FR[k]=o;continue}
+  o.g4=-o.g3*g[2]/g[3];o.g5=-o.g4*g[3]/g[4];
+  if(TR[k].kind==='inferior'){o.helio=1+o.g5;o.out=1}else{o.g6=o.g5;o.g7=-o.g6*g[5]/g[6];o.helio=1+o.g7;o.out=o.helio}
+  FR[k]=o}
+const APS=-RATE.e34;                       // apsidal line of the Moon, turns per year (prograde)
+const SID=RATE.b3;                          // Moon pointer: sidereal months per year (254/19)
+
+/* ---------- pin-and-slot ---------- */
+const PIN_R=9.6,PIN_EPS=1.1;               // lunar pin radius and axis offset, mm (Freeth et al. 2006)
+const SUN_E=1/24,SUN_APO=65.5;             // Hipparchus' solar theory (Almagest III.4): eccentricity 2;30/60, apogee Gemini 5;30
+function pinslot(th,rr=PIN_R,eps=PIN_EPS){const t=th*D,phi=Math.atan2(rr*Math.sin(t),rr*Math.cos(t)-eps);const k=Math.round((t-phi)/TAU);return(phi+TAU*k)/D}
+
+/* ---------- the real sky (Meeus ch.25 / ch.47; Standish & Williams' elements, JPL Table 2a/2b) ---------- */
+const M47TA=[[0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],[0,1,0,0,-185116],[0,0,0,2,-114332],[2,0,-2,0,58793],[2,-1,-1,0,57066],[2,0,1,0,53322],[2,-1,0,0,45758],[0,1,-1,0,-40923],[1,0,0,0,-34720],[0,1,1,0,-30383],[2,0,0,-2,15327],[0,0,1,2,-12528],[0,0,1,-2,10980],[4,0,-1,0,10675],[0,0,3,0,10034],[4,0,-2,0,8548],[2,1,-1,0,-7888],[2,1,0,0,-6766],[1,0,-1,0,-5163],[1,1,0,0,4987],[2,-1,1,0,4036],[2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2689],[2,0,-1,2,-2602],[2,-1,-2,0,2390],[1,0,1,0,-2348],[2,-2,0,0,2236],[0,1,2,0,-2120],[0,2,0,0,-2069],[2,-2,-1,0,2048],[2,0,1,-2,-1773],[2,0,0,2,-1595],[4,-1,-1,0,1215],[0,0,2,2,-1110],[3,0,-1,0,-892],[2,1,1,0,-810],[4,-1,-2,0,759],[0,2,-1,0,-713],[2,2,-1,0,-700],[2,1,-2,0,691],[2,-1,0,-2,596],[4,0,1,0,549],[0,0,4,0,537],[4,-1,0,0,520],[1,0,-2,0,-487],[2,1,0,-2,-399],[0,0,2,-2,-381],[1,1,1,0,351],[3,0,-2,0,-340],[4,0,-3,0,330],[2,-1,2,0,327],[0,2,1,0,-323],[1,1,-1,0,299],[2,0,3,0,294],[2,0,-1,-2,0]],M47TB=[[0,0,0,1,5128122],[0,0,1,1,280602],[0,0,1,-1,277693],[2,0,0,-1,173237],[2,0,-1,1,55413],[2,0,-1,-1,46271],[2,0,0,1,32573],[0,0,2,1,17198],[2,0,1,-1,9266],[0,0,2,-1,8822],[2,-1,0,-1,8216],[2,0,-2,-1,4324],[2,0,1,1,4200],[2,1,0,-1,-3359],[2,-1,-1,1,2463],[2,-1,0,1,2211],[2,-1,-1,-1,2065],[0,1,-1,-1,-1870],[4,0,-1,-1,1828],[0,1,0,1,-1794],[0,0,0,3,-1749],[0,1,-1,1,-1565],[1,0,0,1,-1491],[0,1,1,1,-1475],[0,1,1,-1,-1410],[0,1,0,-1,-1344],[1,0,0,-1,-1335],[0,0,3,1,1107],[4,0,0,-1,1021],[4,0,-1,1,833],[0,0,1,-3,777],[4,0,-2,1,671],[2,0,0,-3,607],[2,0,2,-1,596],[2,-1,1,-1,491],[2,0,-2,1,-451],[0,0,3,-1,439],[2,0,2,1,422],[2,0,-3,-1,421],[2,1,-1,1,-366],[2,1,0,1,-351],[4,0,0,1,331],[2,-1,1,1,315],[2,-2,0,-1,302],[0,0,1,3,-283],[2,1,1,-1,-229],[1,1,0,-1,223],[1,1,0,1,223],[0,1,-2,-1,-220],[2,1,-1,-1,-220],[1,0,1,1,-185],[2,-1,-2,-1,181],[0,1,2,1,-177],[4,0,-2,-1,176],[4,-1,-1,-1,166],[1,0,1,-1,-164],[4,0,1,-1,132],[1,0,-1,-1,-119],[4,-1,0,-1,115],[2,-2,0,1,107]];
+function nutLon(T){const om=125.04452-1934.136261*T,Ls=280.4665+36000.7698*T,Lm=218.3165+481267.8813*T;
+  return(-17.20*Math.sin(om*D)-1.32*Math.sin(2*Ls*D)-0.23*Math.sin(2*Lm*D)+0.21*Math.sin(2*om*D))/3600}
+function sun(jde){const T=(jde-2451545)/36525,L0=280.46646+36000.76983*T+0.0003032*T*T,M=357.52911+35999.05029*T-0.0001537*T*T;
+  const C=(1.914602-0.004817*T-0.000014*T*T)*Math.sin(M*D)+(0.019993-0.000101*T)*Math.sin(2*M*D)+0.000289*Math.sin(3*M*D);
+  const om=125.04-1934.136*T;return wrap(L0+C-0.00569-0.00478*Math.sin(om*D))}
+function hor(T,c){let s=0;for(let i=c.length-1;i>=0;i--)s=s*T+c[i];return s}
+function moon(jde,lat){const T=(jde-2451545)/36525;
+  const Lp=hor(T,[218.3164477,481267.88123421,-0.0015786,1/538841,-1/65194000]),d=hor(T,[297.8501921,445267.1114034,-0.0018819,1/545868,-1/113065000]),
+    m=hor(T,[357.5291092,35999.0502909,-0.0001536,1/24490000]),mp=hor(T,[134.9633964,477198.8675055,0.0087414,1/69699,-1/14712000]),
+    f=hor(T,[93.2720950,483202.0175233,-0.0036539,-1/3526000,1/863310000]);
+  const a1=119.75+131.849*T,a2=53.09+479264.29*T,a3=313.45+481266.484*T,E=1-0.002516*T-0.0000074*T*T;
+  let sl=3958*Math.sin(a1*D)+1962*Math.sin((Lp-f)*D)+318*Math.sin(a2*D);
+  let sb=-2235*Math.sin(Lp*D)+382*Math.sin(a3*D)+175*Math.sin((a1-f)*D)+175*Math.sin((a1+f)*D)+127*Math.sin((Lp-mp)*D)-115*Math.sin((Lp+mp)*D);
+  for(const t of M47TA){const arg=(t[0]*d+t[1]*m+t[2]*mp+t[3]*f)*D;sl+=t[4]*Math.sin(arg)*Math.pow(E,Math.abs(t[1]))}
+  if(lat)for(const t of M47TB){const arg=(t[0]*d+t[1]*m+t[2]*mp+t[3]*f)*D;sb+=t[4]*Math.sin(arg)*Math.pow(E,Math.abs(t[1]))}
+  const lon=wrap(Lp+sl*1e-6+nutLon(T));return lat?[lon,sb*1e-6]:lon}
+function moonNode(jde){const T=(jde-2451545)/36525;return wrap(125.0445479-1934.1362891*T+0.0020754*T*T+T*T*T/467441-T*T*T*T/60616000)}
+const EL={mercury:[0.38709843,0.20563661,7.00559432,252.25166724,77.45771895,48.33961819,0,0.00002123,-0.00590158,149472.67486623,0.15940013,-0.12214182],
+  venus:[0.72332102,0.00676399,3.39777545,181.97970850,131.76755713,76.67261496,-0.00000026,-0.00005107,0.00043494,58517.81560260,0.05679648,-0.27274174],
+  emb:[1.00000018,0.01673163,-0.00054346,100.46691572,102.93005885,-5.11260389,-0.00000003,-0.00003661,-0.01337178,35999.37306329,0.31795260,-0.24123856],
+  mars:[1.52371243,0.09336511,1.85181869,-4.56813164,-23.91744784,49.71320984,0.00000097,0.00009149,-0.00724757,19140.29934243,0.45223625,-0.26852431],
+  jupiter:[5.20248019,0.04853590,1.29861416,34.33479152,14.27495244,100.29282654,-0.00002864,0.00018026,-0.00322699,3034.90371757,0.18199196,0.13024619],
+  saturn:[9.54149883,0.05550825,2.49424102,50.07571329,92.86136063,113.63998702,-0.00003065,-0.00032044,0.00451969,1222.11494724,0.54179478,-0.25015002]};
+const EXTRA={jupiter:[-0.00012452,0.06064060,-0.35635438,38.35125000],saturn:[0.00025899,-0.13434469,0.87320147,38.35125000]};
+function helio(name,jde){const T=(jde-2451545)/36525,e0=EL[name],v=[];for(let k=0;k<6;k++)v.push(e0[k]+e0[k+6]*T);
+  const[a,e,I,L,w,O]=v,om=w-O;let M=L-w;if(EXTRA[name]){const x=EXTRA[name];M+=x[0]*T*T+x[1]*Math.cos(x[3]*T*D)+x[2]*Math.sin(x[3]*T*D)}
+  M=((M+180)%360+360)%360-180;const es=e/D;let E=M+es*Math.sin(M*D);
+  for(let i=0;i<50;i++){const dM=M-(E-es*Math.sin(E*D)),dE=dM/(1-e*Math.cos(E*D));E+=dE;if(Math.abs(dE)<=1e-9)break}
+  const xp=a*(Math.cos(E*D)-e),yp=a*Math.sqrt(1-e*e)*Math.sin(E*D);
+  const co=Math.cos(om*D),so=Math.sin(om*D),cO=Math.cos(O*D),sO=Math.sin(O*D),cI=Math.cos(I*D),sI=Math.sin(I*D);
+  return[(co*cO-so*sO*cI)*xp+(-so*cO-co*sO*cI)*yp,(co*sO+so*cO*cI)*xp+(-so*sO+co*cO*cI)*yp,(so*sI)*xp+(co*sI)*yp]}
+const EPS0=23.43928*D;
+function precessEcl(x,y,z,jde){const t=(jde-2451545)/36525;
+  const xe=x,ye=Math.cos(EPS0)*y-Math.sin(EPS0)*z,ze=Math.sin(EPS0)*y+Math.cos(EPS0)*z;
+  const zeta=(2306.2181*t+0.30188*t*t+0.017998*t*t*t)/3600*D,zz=(2306.2181*t+1.09468*t*t+0.018203*t*t*t)/3600*D,th=(2004.3109*t-0.42665*t*t-0.041833*t*t*t)/3600*D;
+  const cz=Math.cos(zeta),sz=Math.sin(zeta),cZ=Math.cos(zz),sZ=Math.sin(zz),ct=Math.cos(th),st=Math.sin(th);
+  const X=(cZ*ct*cz-sZ*sz)*xe+(-cZ*ct*sz-sZ*cz)*ye+(-cZ*st)*ze,Y=(sZ*ct*cz+cZ*sz)*xe+(-sZ*ct*sz+cZ*cz)*ye+(-sZ*st)*ze,Zc=(st*cz)*xe+(-st*sz)*ye+ct*ze;
+  const eps=(23.4392911-(46.8150*t+0.00059*t*t-0.001813*t*t*t)/3600)*D;
+  return[X,Math.cos(eps)*Y+Math.sin(eps)*Zc,-Math.sin(eps)*Y+Math.cos(eps)*Zc]}
+function planet(name,jde){const ex=helio('emb',jde);let tau=0,g;
+  for(let i=0;i<3;i++){const p=helio(name,jde-tau);g=[p[0]-ex[0],p[1]-ex[1],p[2]-ex[2]];tau=0.0057755183*Math.hypot(g[0],g[1],g[2])}
+  const[X,Y,Zc]=precessEcl(g[0],g[1],g[2],jde),lam=Math.atan2(Y,X)/D,T=(jde-2451545)/36525,ls=sun(jde),beta=Math.atan2(Zc,Math.hypot(X,Y));
+  const ab=-20.49552*Math.cos((ls-lam)*D)/Math.max(Math.cos(beta),1e-6)/3600;return wrap(lam+ab+nutLon(T))}
+function sky(jde){const o={sun:sun(jde),moon:moon(jde)};for(const p of['mercury','venus','mars','jupiter','saturn'])o[p]=planet(p,jde);o.node=moonNode(jde);return o}
+
+/* ---------- calendars ---------- */
+function jdFromDate(y,mo,d){if(mo<=2){y-=1;mo+=12}const greg=y>1582||(y===1582&&(mo>10||(mo===10&&d>=15)));let B=0;
+  if(greg){const A=Math.floor(y/100);B=2-A+Math.floor(A/4)}return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(mo+1))+d+B-1524.5}
+function dateFromJd(jd){const Zd=Math.floor(jd+.5),F=jd+.5-Zd;let A=Zd;if(Zd>=2299161){const al=Math.floor((Zd-1867216.25)/36524.25);A=Zd+1+al-Math.floor(al/4)}
+  const B=A+1524,C=Math.floor((B-122.1)/365.25),Dd=Math.floor(365.25*C),E=Math.floor((B-Dd)/30.6001),day=B-Dd-Math.floor(30.6001*E)+F,mo=E<14?E-1:E-13,y=mo>2?C-4716:C-4715;return[y,mo,day]}
+function deltaT(y){let u,t;
+  if(y<-500){u=(y-1820)/100;return-20+32*u*u}
+  if(y<500){u=y/100;return 10583.6-1014.41*u+33.78311*u**2-5.952053*u**3-0.1798452*u**4+0.022174192*u**5+0.0090316521*u**6}
+  if(y<1600){u=(y-1000)/100;return 1574.2-556.01*u+71.23472*u**2+0.319781*u**3-0.8503463*u**4-0.005050998*u**5+0.0083572073*u**6}
+  if(y<1700){t=y-1600;return 120-0.9808*t-0.01532*t*t+t**3/7129}
+  if(y<1800){t=y-1700;return 8.83+0.1603*t-0.0059285*t*t+0.00013336*t**3-t**4/1174000}
+  if(y<1860){t=y-1800;return 13.72-0.332447*t+0.0068612*t**2+0.0041116*t**3-0.00037436*t**4+0.0000121272*t**5-0.0000001699*t**6+0.000000000875*t**7}
+  if(y<1900){t=y-1860;return 7.62+0.5737*t-0.251754*t**2+0.01680668*t**3-0.0004473624*t**4+t**5/233174}
+  if(y<1920){t=y-1900;return-2.79+1.494119*t-0.0598939*t**2+0.0061966*t**3-0.000197*t**4}
+  if(y<1941){t=y-1920;return 21.20+0.84493*t-0.076100*t**2+0.0020936*t**3}
+  if(y<1961){t=y-1950;return 29.07+0.407*t-t*t/233+t**3/2547}
+  if(y<1986){t=y-1975;return 45.45+1.067*t-t*t/260-t**3/718}
+  if(y<2005){t=y-2000;return 63.86+0.3345*t-0.060374*t**2+0.0017275*t**3+0.000651814*t**4+0.00002373599*t**5}
+  if(y<2050){t=y-2000;return 62.92+0.32217*t+0.005589*t*t}
+  if(y<2150)return-20+32*((y-1820)/100)**2-0.5628*(2150-y);
+  u=(y-1820)/100;return-20+32*u*u}
+
+/* ---------- epoch and settings ---------- */
+function findSyzygy(jd,target=0){for(let i=0;i<60;i++){const e=dang(moon(jd)-sun(jd),target);jd-=e/12.19;if(Math.abs(e)<1e-9)break}return jd}
+function meanElements(jde){const T=(jde-2451545)/36525,prec=(5029.0966*T+1.11113*T*T)/3600,o={};
+  o.sun=wrap(280.46646+36000.76983*T+0.0003032*T*T);
+  o.moonL=wrap(218.3164477+481267.88123421*T-0.0015786*T*T+T**3/538841-T**4/65194000);
+  o.moonM=wrap(134.9633964+477198.8675055*T+0.0087414*T*T+T**3/69699-T**4/14712000);
+  o.node=moonNode(jde);
+  for(const p of['mercury','venus','mars','jupiter','saturn']){const e0=EL[p];o[p]=wrap(e0[3]+e0[9]*T+prec)}return o}
+const JD_EPOCH=findSyzygy(jdFromDate(-204,8,23));   // new moon of 23 Aug 205 BC: the Metonic calendar starts (Iversen 2017)
+const JD_SAROS=findSyzygy(jdFromDate(-204,4,28));   // new moon of 28 Apr 205 BC: the Saros dial starts (Carman & Evans 2014)
+const SAROS_AT_EPOCH=Math.round((JD_EPOCH-JD_SAROS)/29.530589);
+const YEAR=365.25;                                  // one turn of b1 on the front calendar ring (moved back a day every 4 years)
+const C=(()=>{const me=meanElements(JD_EPOCH),c={jd_epoch:JD_EPOCH,jd_saros:JD_SAROS,saros_months_at_epoch:SAROS_AT_EPOCH,
+  sun0:me.sun,moonL0:me.moonL,moonM0:me.moonM,node0:me.node,met0:0,sar0:SAROS_AT_EPOCH};
+  for(const p of['mercury','venus','mars','jupiter','saturn'])c[p+'0']=me[p];return c})();
+
+/* ---------- the mechanism: everything from Y = turns of b1 since the epoch ---------- */
+function mech(Y,o={}){const c=C,out={},mean=!!o.noAnomaly;
+  const ms=wrap(c.sun0+360*Y);out.meanSun=ms;out.date=ms;
+  out.sun=wrap(ang(Math.cos(ms*D)+SUN_E*Math.cos(SUN_APO*D),Math.sin(ms*D)+SUN_E*Math.sin(SUN_APO*D)));
+  const L=c.moonL0+360*SID*Y,M=c.moonM0+360*(SID-APS)*Y,eq=mean?0:pinslot(M)-M;
+  out.moonMean=wrap(L);out.moonAnom=wrap(M);out.moonEq=eq;out.moon=wrap(L+eq);out.phase=wrap(out.moon-ms);
+  out.node=wrap(c.node0+360*FR.nodes.out*Y);
+  for(const p of['mercury','venus']){const t=TR[p],lh=c[p+'0']+360*FR[p].helio*Y;out[p+'Helio']=wrap(lh);
+    out[p]=wrap(ang(t.i*Math.cos(ms*D)+t.d*Math.cos(lh*D),t.i*Math.sin(ms*D)+t.d*Math.sin(lh*D)))}
+  for(const p of['mars','jupiter','saturn']){const t=TR[p],lh=c[p+'0']+360*FR[p].helio*Y;out[p+'Helio']=wrap(lh);
+    out[p]=wrap(ang(t.o*Math.cos(ms*D)+t.d*Math.cos(lh*D),t.o*Math.sin(ms*D)+t.d*Math.sin(lh*D)))}
+  out.metMonths=c.met0-RATE.n*Y*47;out.sarMonths=c.sar0-RATE.g*Y*223/4;
+  out.metCell=((Math.floor(out.metMonths)%235)+235)%235;out.sarCell=((Math.floor(out.sarMonths)%223)+223)%223;
+  out.callippic=((Math.floor(-RATE.q*Y*4)%4)+4)%4;out.games=((Math.floor(RATE.o*Y*4)%4)+4)%4;
+  out.exeligmos=((Math.floor(out.sarMonths/223)%3)+3)%3;
+  return out}
+const Yof=jd=>(jd-C.jd_epoch)/YEAR,jdOf=Y=>C.jd_epoch+Y*YEAR;
+
+/* ---------- eclipse months: the Dragon Hand near the true Sun when the Moon and Sun pointers meet or oppose ---------- */
+// limits measured from NASA's Five Millennium Canon, 300-100 BC, Sun's distance from the mean node at the real syzygy:
+// every solar eclipse within 18.09 deg, every syzygy within 16.67 deg had one; umbral lunar eclipses 11.96 / 10.38 deg
+const LIM={solar:[16.67,18.09],lunar:[10.38,11.96]};
+function syzygies(n=223){const out=[],Y0=Yof(C.jd_saros),sm=19/235;
+  for(let k=0;k<n;k++)for(const[tg,kind]of[[0,'solar'],[180,'lunar']]){let Y=Y0+(k+tg/360)*sm;
+    for(let i=0;i<40;i++){const m=mech(Y),e=dang(m.moon-m.sun,tg);Y-=e/360*sm*0.93;if(Math.abs(e)<1e-10)break}
+    const m=mech(Y),dn=dang(m.sun,m.node),dd=dang(m.sun,m.node+180),dist=Math.abs(dn)<Math.abs(dd)?dn:dd;
+    out.push({cell:k,kind,Y,jd:jdOf(Y),dist,head:Math.abs(dn)<Math.abs(dd)})}return out}
+
+/* ---------- calendar labels ---------- */
+const MONTHS=['ΦΟΙΝΙΚΑΙΟΣ','ΚΡΑΝΕΙΟΣ','ΛΑΝΟΤΡΟΠΙΟΣ','ΜΑΧΑΝΕΥΣ','ΔΩΔΕΚΑΤΕΥΣ','ΕΥΚΛΕΙΟΣ','ΑΡΤΕΜΙΣΙΟΣ','ΨΥΔΡΕΥΣ','ΓΑΜΕΙΛΙΟΣ','ΑΓΡΙΑΝΙΟΣ','ΠΑΝΑΜΟΣ','ΑΠΕΛΛΑΙΟΣ'];
+const MONTHS_EN=['Phoinikaios','Kraneios','Lanotropios','Machaneus','Dodekateus','Eukleios','Artemisios','Psydreus','Gameilios','Agrianios','Panamos','Apellaios'];
+// 235 cells: each year starts with the first month that begins once the mean Sun is back where it was at the start;
+// in the seven 13-month years Eukleios is doubled (Freeth et al. 2008's proposed intercalary month)
+const METONIC=(()=>{const sm=19/235;
+  // year j starts at the first cell whose start is >= j turns of b1
+  const st=[];for(let j=0;j<19;j++)st.push(Math.ceil(j/sm-1e-9));st.push(235);
+  const cells=[];for(let j=0;j<19;j++){const n=st[j+1]-st[j];for(let i=0;i<n;i++){let mi=i,inter=false;if(n===13){if(i===6){mi=5;inter=true}else if(i>6)mi=i-1}cells.push({year:j+1,month:mi,inter})}}
+  return cells})();
+const GAMES=[['ΙΣΘΜΙΑ','ΟΛΥΜΠΙΑ'],['ΝΕΜΕΑ','ΝΑΑ'],['ΙΣΘΜΙΑ','ΠΥΘΙΑ'],['ΝΕΜΕΑ','ΑΛΙΕΙΑ']];
+const GAMES_EN=[['Isthmia','Olympia'],['Nemea','Naa'],['Isthmia','Pythia'],['Nemea','Halieia']];
+const EGYPT=['ΘΩΘ','ΦΑΩΦΙ','ΑΘΥΡ','ΧΟΙΑΚ','ΤΥΒΙ','ΜΕΧΕΙΡ','ΦΑΜΕΝΩΘ','ΦΑΡΜΟΥΘΙ','ΠΑΧΩΝ','ΠΑΥΝΙ','ΕΠΙΦΙ','ΜΕΣΟΡΗ','ΕΠΑΓ'];
+const EGYPT_EN=['Thoth','Phaophi','Athyr','Choiak','Tybi','Mecheir','Phamenoth','Pharmouthi','Pachon','Payni','Epiphi','Mesore','Epagomenai'];
+const NABONASSAR=jdFromDate(-746,2,26);            // 1 Thoth of the Era of Nabonassar (26 Feb 747 BC, Julian)
+function egypt(jd){const d=Math.floor(jd+.5)-Math.floor(NABONASSAR+.5),doy=((d%365)+365)%365;return{doy,month:Math.floor(doy/30),day:doy%30+1}}
+const ZODIAC=['ΚΡΙΟΣ','ΤΑΥΡΟΣ','ΔΙΔΥΜΟΙ','ΚΑΡΚΙΝΟΣ','ΛΕΩΝ','ΠΑΡΘΕΝΟΣ','ΧΗΛΑΙ','ΣΚΟΡΠΙΟΣ','ΤΟΞΟΤΗΣ','ΑΙΓΟΚΕΡΩΣ','ΥΔΡΟΧΟΟΣ','ΙΧΘΥΕΣ'];
+const ZODIAC_EN=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+
+return{PI,TAU,D,wrap,dang,Z,TR,RATE,FR,APS,SID,PIN_R,PIN_EPS,SUN_E,SUN_APO,pinslot,sun,moon,moonNode,planet,sky,helio,
+  jdFromDate,dateFromJd,deltaT,findSyzygy,meanElements,C,YEAR,mech,Yof,jdOf,LIM,syzygies,METONIC,MONTHS,MONTHS_EN,GAMES,GAMES_EN,
+  EGYPT,EGYPT_EN,egypt,NABONASSAR,ZODIAC,ZODIAC_EN}})();
+/* ================= page ================= */
+import * as THREE from '../assets/vendor/three.module.min.js';
+const LAY={"mod":{"b1":0.578,"b2":0.479,"b3":0.546,"c1":0.517,"c2":0.447,"d1":0.452,"d2":0.491,"e1":0.572,"e2":0.465,"e3":0.466,"e4":0.526,"e5":0.505,"e6":0.534,"f1":0.499,"f2":0.522,"g1":0.513,"g2":0.451,"h1":0.445,"h2":0.454,"i1":0.429,"k1":0.519,"k2":0.534,"l1":0.455,"l2":0.487,"m1":0.503,"m2":0.514,"o1":0.417,"m3":0.466,"n1":0.514,"n2":0.417,"n3":0.5,"p1":0.5,"p2":0.5,"q1":0.5,"a1":0.578},"axes":{"b":[0.0,0.0],"e":[-17.616241,-3.106219],"c":[21.781405,-12.5755],"d":[20.429574,3.51983],"l":[14.759253,18.890982],"m":[-0.605123,52.604502],"n":[0.0,70.070022],"o":[19.223128,55.051268],"p":[-17.619237,63.657144],"q":[-6.915732,49.185275],"f":[-20.744165,-65.695608],"g":[0.0,-72.0],"h":[-7.547962,-55.813343],"i":[-21.583294,-64.052584],"k1":[7.983759,-3.106219],"k2":[9.083759,-3.106219]},"front":{"venus":{"g2":[11.875,-20.568103],"g4":[11.910084,-35.568062],"g5":[23.047245,-15.545563]},"mercury":{"g2":[-15.375,26.630281],"g4":[6.36337,50.452661],"g5":[6.251334,35.453079]},"nodes":{"g2":[-23.359303,-13.4865],"m1":0.486,"m2":0.481661},"saturn":{"g2":[-19.091883,19.091883],"g4":[-28.483068,42.530487],"g5":[-1.553028,44.472892],"g6":[-1.500678,42.973806]},"jupiter":{"g2":[21.213203,-21.213203],"g4":[41.390937,-14.548252],"g5":[33.748336,4.743019],"g6":[32.183712,4.523126]},"mars":{"g2":[21.213203,-21.213203],"g4":[23.081811,-40.623466],"g5":[-4.059714,-46.402749],"g6":[-3.48623,-39.847788]},"sun":{"g2":[-19.091883,19.091883],"g3":[-43.387782,7.314393],"d":1.833333}},"front_module":0.5};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches,STILL=Q.has('still'),STATIC=RM||STILL,OGQ=Q.get('og'),IFR=window.self!==window.top;
+if(FIXED||STATIC)document.documentElement.classList.add('still');
+if(OGQ)document.documentElement.classList.add('og');
+const {D,TAU,PI,wrap,dang}=AK;
+const clamp=(x,a,b)=>x<a?a:x>b?b:x,lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const MOB=()=>innerWidth<=820;
+const BODIES=['sun','moon','mercury','venus','mars','jupiter','saturn','node'];
+const NAME={sun:'Sun',moon:'Moon',mercury:'Mercury',venus:'Venus',mars:'Mars',jupiter:'Jupiter',saturn:'Saturn',node:'Dragon ☊'};
+const GEMC={sun:'#e8b84a',moon:'#d9dde2',mercury:'#3fb7a6',venus:'#2c4fb0',mars:'#b8432c',jupiter:'#e9e4d6',saturn:'#26221f',node:'#a3884e'};
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const GN=n=>{const u=['','Α','Β','Γ','Δ','Ε','ϛ','Ζ','Η','Θ'],t=['','Ι','Κ','Λ','Μ','Ν','Ξ','Ο','Π','Ϙ'],h=['','Ρ','Σ','Τ','Υ','Φ','Χ','Ψ','Ω','ϡ'];return h[Math.floor(n/100)%10]+t[Math.floor(n/10)%10]+u[n%10]};
+
+/* ================= time ================= */
+const C=AK.C;
+const jdTTofDate=(y,m,d)=>{const jd=AK.jdFromDate(y,m,d)+.5;return jd+AK.deltaT(y+(m-.5)/12)/86400};   // noon UT on that day, in TT
+const Yof=AK.Yof,jdOf=AK.jdOf;
+function civil(Y){const jd=jdOf(Y),dt=AK.deltaT(AK.dateFromJd(jd)[0])/86400,[y,m,d]=AK.dateFromJd(jd-dt);return{y,m,d:Math.floor(d),frac:d-Math.floor(d)}}
+const fmtYear=y=>y<=0?(1-y)+' BC':(y<1000?'AD ':'')+y;
+const fmtDate=Y=>{const c=civil(Y);return c.d+' '+MON[c.m-1]+' '+fmtYear(c.y)};
+const PRESET={epoch:()=>Yof(C.jd_epoch),today:()=>{const n=new Date();return Yof(jdTTofDate(n.getUTCFullYear(),n.getUTCMonth()+1,n.getUTCDate()))}};
+/* eclipse months on the Saros dial, from the mechanism's own pointers */
+const SYZ=AK.syzygies();
+const GLYPH=[];for(let k=0;k<223;k++)GLYPH.push({});
+for(const s of SYZ){if(Math.abs(s.dist)<AK.LIM[s.kind][1])GLYPH[s.cell][s.kind]=s}
+const NPRED=SYZ.filter(s=>Math.abs(s.dist)<AK.LIM[s.kind][1]).length,NCELL=GLYPH.filter(g=>g.solar||g.lunar).length;
+// the tour's eclipse: the total solar eclipse of 25 June 205 BC (NASA canon -0204 Jun 25)
+const ECL=SYZ.find(s=>s.kind==='solar'&&Math.abs(s.jd-AK.jdFromDate(-204,6,25))<2);
+const LUN=SYZ.find(s=>s.kind==='lunar'&&Math.abs(s.jd-AK.jdFromDate(-195,1,5))<2);   // total lunar eclipse of 5 Jan 196 BC (NASA -0195 Jan 05)
+PRESET.eclipse=()=>ECL.Y;PRESET.lunar=()=>LUN.Y;
+
+/* ================= state ================= */
+const S={Y:PRESET.epoch(),Yt:null,run:0,view:'front',open:0,openT:0,train:'none',anom:true,real:true,log:[],lastTab:-1};
+let M=AK.mech(S.Y),SK=AK.sky(jdOf(S.Y));
+function logAct(kind,v){S.log.push({kind,v,Y:S.Y,t:+(performance.now()/1000).toFixed(2)});if(S.log.length>300)S.log.shift()}
+
+/* ================= textures ================= */
+const FONT_GK='"GFS Neohellenic","Cormorant Garamond",serif';
+function cvs(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function noiseFill(g,w,h,base,amp,seed){let s=seed>>>0;const rnd=()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296};
+  g.fillStyle=base;g.fillRect(0,0,w,h);const id=g.getImageData(0,0,w,h),d=id.data;
+  for(let i=0;i<d.length;i+=4){const n=(rnd()-.5)*amp;d[i]+=n;d[i+1]+=n*.9;d[i+2]+=n*.7}g.putImageData(id,0,0);
+  for(let k=0;k<40;k++){const x=rnd()*w,y=rnd()*h,r=(.05+rnd()*.25)*w;const gr=g.createRadialGradient(x,y,0,x,y,r);const a=rnd()*.07;gr.addColorStop(0,`rgba(${rnd()<.5?'40,26,10':'255,230,170'},${a})`);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,w,h)}}
+function tex(c,o={}){const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;if(o.flipU){t.wrapS=THREE.RepeatWrapping;t.repeat.x=-1}return t}
+const engrave=(m,s=1.6)=>{m.bumpMap=m.map;m.bumpScale=s;return m};
+const INK='rgba(28,17,5,.95)',INK2='rgba(28,17,5,.6)';
+// circular canvas helper: N px across a radius R (mm); returns g and a mm->px mapper
+function disc(N,R){const c=cvs(N,N),g=c.getContext('2d'),k=N/(2*R);return{c,g,k,X:x=>N/2+x*k,Y:y=>N/2-y*k}}
+function arcText(g,txt,cx,cy,r,a0,size,font,cw){ // text along a circle, centred at angle a0 (canvas angle, radians), reading clockwise
+  g.save();g.font=`${size}px ${font}`;const w=g.measureText(txt).width,da=w/r;let a=a0-da/2;
+  for(const ch of txt){const cwid=g.measureText(ch).width;a+=cwid/2/r;g.save();g.translate(cx+Math.cos(a)*r,cy+Math.sin(a)*r);g.rotate(a+PI/2);g.fillText(ch,0,0);g.restore();a+=cwid/2/r}g.restore()}
+function zodiacTex(){const R=71,{c,g,k,X,Y}=disc(2048,R);noiseFill(g,2048,2048,'#c29b60',22,11);
+  const cx=X(0),cy=Y(0);g.fillStyle='rgba(30,18,6,.45)';g.beginPath();g.arc(cx,cy,61.6*k,0,TAU);g.fill();
+  g.strokeStyle=INK;g.lineWidth=k*.28;for(const rr of[62,70,64.2]){g.beginPath();g.arc(cx,cy,rr*k,0,TAU);g.stroke()}
+  // longitude increases clockwise, 0 at the top (Krios begins at 12 o'clock); canvas angle = -90deg + lambda
+  for(let d=0;d<360;d++){const a=(-90+d)*D,r0=d%30===0?62:d%5===0?62.9:63.4;g.lineWidth=k*(d%30===0?.3:.13);g.beginPath();g.moveTo(cx+Math.cos(a)*r0*k,cy+Math.sin(a)*r0*k);g.lineTo(cx+Math.cos(a)*64.2*k,cy+Math.sin(a)*64.2*k);g.stroke()}
+  g.fillStyle=INK;g.textAlign='center';g.textBaseline='middle';
+  for(let s=0;s<12;s++)arcText(g,AK.ZODIAC[s],cx,cy,67.2*k,(-90+s*30+15)*D,k*3.3,FONT_GK);
+  return tex(c)}
+function egyptTex(){const R=80.5,{c,g,k,X,Y}=disc(2048,R);noiseFill(g,2048,2048,'#b8925a',22,23);
+  const cx=X(0),cy=Y(0);g.strokeStyle=INK;g.lineWidth=k*.28;for(const rr of[70.7,79.8,73.2]){g.beginPath();g.arc(cx,cy,rr*k,0,TAU);g.stroke()}
+  for(let d=0;d<365;d++){const a=(-90+d*360/365)*D,r1=d%30===0&&d<360?70.7:72.1;g.lineWidth=k*(d%30===0&&d<=360?.3:.11);g.beginPath();g.moveTo(cx+Math.cos(a)*r1*k,cy+Math.sin(a)*r1*k);g.lineTo(cx+Math.cos(a)*73.2*k,cy+Math.sin(a)*73.2*k);g.stroke()}
+  g.fillStyle=INK;g.textAlign='center';g.textBaseline='middle';
+  for(let m=0;m<13;m++){const mid=m<12?m*30+15:360+2.5;arcText(g,AK.EGYPT[m],cx,cy,76.4*k,(-90+mid*360/365)*D,k*(m<12?3.1:2.3),FONT_GK)}
+  return tex(c)}
+const RING={mercury:[20,24.5],venus:[25,29.5],sun:[30,38.5],mars:[39,43.5],jupiter:[44,48.5],saturn:[49,53.5],date:[54,58]};
+const RMAX=58.5;
+function ringsTex(){const{c,g,k,X,Y}=disc(2048,RMAX);g.clearRect(0,0,2048,2048);
+  const cx=X(0),cy=Y(0),gkName={mercury:'ΕΡΜΗΣ',venus:'ΑΦΡΟΔΙΤΗ',sun:'ΗΛΙΟΣ',mars:'ΑΡΗΣ',jupiter:'ΖΕΥΣ',saturn:'ΚΡΟΝΟΣ',date:''};
+  const base={mercury:'#b58745',venus:'#a77a3c',sun:'#bf9550',mars:'#a3763a',jupiter:'#b38643',saturn:'#a57a3d',date:'#ad8243'};
+  for(const n in RING){const[a,b]=RING[n];const gr=g.createRadialGradient(cx,cy,a*k,cx,cy,b*k);gr.addColorStop(0,base[n]);gr.addColorStop(.5,'#c9a066');gr.addColorStop(1,base[n]);
+    g.fillStyle=gr;g.beginPath();g.arc(cx,cy,b*k,0,TAU);g.arc(cx,cy,a*k,0,TAU,true);g.fill();
+    g.strokeStyle=INK;g.lineWidth=k*.22;for(const rr of[a+.35,b-.35]){g.beginPath();g.arc(cx,cy,rr*k,0,TAU);g.stroke()}
+    g.fillStyle=INK;g.textAlign='center';g.textBaseline='middle';
+    if(n==='sun'){// age of the Moon in days, read by the Moon pointer (Freeth 2021, after Price): day k sits 12.19 deg east of the Sun marker
+      for(let dd=1;dd<=30;dd++){const a2=(-90+dd*12.19)*D;g.lineWidth=k*.18;g.beginPath();g.moveTo(cx+Math.cos(a2)*(a+.6)*k,cy+Math.sin(a2)*(a+.6)*k);g.lineTo(cx+Math.cos(a2)*(a+2)*k,cy+Math.sin(a2)*(a+2)*k);g.stroke();
+        if(dd<30)arcText(g,GN(dd),cx,cy,(a+5.6)*k,(-90+dd*12.19-6.1)*D,k*2.5,FONT_GK)}}
+    else if(n==='date'){for(let t=0;t<72;t++){const a2=(-90+t*5)*D;g.lineWidth=k*.12;g.beginPath();g.moveTo(cx+Math.cos(a2)*(a+.8)*k,cy+Math.sin(a2)*(a+.8)*k);g.lineTo(cx+Math.cos(a2)*(b-.8)*k,cy+Math.sin(a2)*(b-.8)*k);g.stroke()}}
+    else{for(let t=0;t<36;t++){if(t>=34||t<=2)continue;const a2=(-90+t*10)*D;g.lineWidth=k*.14;g.beginPath();g.moveTo(cx+Math.cos(a2)*(b-.6)*k,cy+Math.sin(a2)*(b-.6)*k);g.lineTo(cx+Math.cos(a2)*(b-1.6)*k,cy+Math.sin(a2)*(b-1.6)*k);g.stroke()}
+      arcText(g,gkName[n],cx,cy,((a+b)/2)*k,(-90+180)*D,k*2.6,FONT_GK)}}
+  return tex(c)}
+// back dials, drawn as seen from the back
+const MET={r0:33,pitch:6,cells:47,turns:5},SAR={r0:33,pitch:7.2,cells:223/4,turns:4},DIALR=70.5,SUBR=7.5;
+const spiralR=(sp,m)=>sp.r0+sp.pitch*(m/sp.cells);        // groove radius at month m (m counted along the spiral)
+function backTex(kind){const R=DIALR,{c,g,k,X,Y}=disc(2048,R);noiseFill(g,2048,2048,'#c09a62',22,kind==='met'?31:37);
+  const sp=kind==='met'?MET:SAR,n=kind==='met'?235:223,cx=X(0),cy=Y(0);
+  g.strokeStyle=INK;g.fillStyle=INK;g.textAlign='center';g.textBaseline='middle';
+  // groove: from the inner start to one turn past the last cell
+  g.lineWidth=k*.42;g.beginPath();for(let i=0;i<=(n+sp.cells)*6;i++){const m=i/6,a=-PI/2+m/sp.cells*TAU,r=spiralR(sp,m)*k;const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;i?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();
+  for(let m=0;m<=n;m++){const a=-PI/2+m/sp.cells*TAU,r1=spiralR(sp,m),r2=spiralR(sp,m+sp.cells);g.lineWidth=k*.16;g.beginPath();g.moveTo(cx+Math.cos(a)*r1*k,cy+Math.sin(a)*r1*k);g.lineTo(cx+Math.cos(a)*r2*k,cy+Math.sin(a)*r2*k);g.stroke()}
+  for(let m=0;m<n;m++){const am=-PI/2+(m+.5)/sp.cells*TAU,rm=spiralR(sp,m+.5)+sp.pitch/2;
+    g.save();g.translate(cx+Math.cos(am)*rm*k,cy+Math.sin(am)*rm*k);g.rotate(am+PI/2);
+    if(kind==='met'){const cl=AK.METONIC[m],nm=AK.MONTHS[cl.month];g.font=`${k*1.25}px ${FONT_GK}`;g.fillText(nm.length>8?nm.slice(0,7)+'.':nm,0,-k*.6);g.font=`${k*1.3}px ${FONT_GK}`;
+      if(cl.inter){g.fillText('★',0,k*1.3)}else if(cl.month===0){g.fillText('L'+GN(cl.year),0,k*1.4)}}
+    else{const G=GLYPH[m];g.font=`${k*1.15}px ${FONT_GK}`;g.fillText(GN(m+1),0,-k*1.9);
+      if(G.solar||G.lunar){g.font=`700 ${k*2.5}px ${FONT_GK}`;const t=(G.lunar?'Σ':'')+(G.solar?'Η':'');g.fillText(t,0,k*.9)}}
+    g.restore()}
+  // subsidiary dials (positions mirrored: seen from the back)
+  const subs=kind==='met'?[['o',4,AK.GAMES.map(x=>x[1])],['q',4,['Α','Β','Γ','Δ']]]:[['i',3,['','Η','Ιϛ']]];
+  const ctr=kind==='met'?LAY.axes.n:LAY.axes.g;
+  for(const[ax,ns,labels]of subs){const p=LAY.axes[ax],sx=X(-(p[0]-ctr[0])),sy=Y(p[1]-ctr[1]);
+    g.lineWidth=k*.3;g.beginPath();g.arc(sx,sy,SUBR*k,0,TAU);g.stroke();g.lineWidth=k*.15;g.beginPath();g.arc(sx,sy,(SUBR-2.6)*k,0,TAU);g.stroke();
+    for(let j=0;j<ns;j++){const a=-PI/2+(ax==='o'?-j:j)*TAU/ns;g.beginPath();g.moveTo(sx+Math.cos(a)*(SUBR-2.6)*k,sy+Math.sin(a)*(SUBR-2.6)*k);g.lineTo(sx+Math.cos(a)*SUBR*k,sy+Math.sin(a)*SUBR*k);g.stroke();
+      const am=a+(ax==='o'?-1:1)*TAU/ns/2;g.font=`${k*1.25}px ${FONT_GK}`;g.save();g.translate(sx+Math.cos(am)*(SUBR-1.3)*k,sy+Math.sin(am)*(SUBR-1.3)*k);g.rotate(am+PI/2);g.fillText(labels[j],0,0);g.restore()}}
+  g.font=`${k*2.2}px ${FONT_GK}`;g.fillText(kind==='met'?'ΕΝ ΤΗΙ ΕΛΙΚΙ ΤΜΗΜΑΤΑ ΣΛΕ':'ΣΚΓ',cx,cy+(kind==='met'?-26:-24)*k);
+  return tex(c)}
+function plateTex(front){const W=1140,H=1800,c=cvs(W,H),g=c.getContext('2d'),k=W/190;noiseFill(g,W,H,front?'#a98454':'#a58050',20,front?41:43);
+  g.strokeStyle='rgba(45,28,10,.7)';g.lineWidth=k*.5;g.strokeRect(k*4,k*4,W-k*8,H-k*8);g.lineWidth=k*.2;g.strokeRect(k*6,k*6,W-k*12,H-k*12);
+  if(front){g.fillStyle=INK;g.textAlign='left';g.textBaseline='middle';g.font=`${k*3.1}px ${FONT_GK}`;
+    const top=['Α ΑΙΓΟΚΕΡΩΣ ΑΡΧΕΤΑΙ ΑΝΑΤΕΛΛΕΙΝ','ΤΡΟΠΑΙ ΧΕΙΜΕΡΙΝΑΙ','Β ... ΕΙ ΕΣΠΕΡΙ','Γ ... ΙΕΣΠΕΡΙ','Δ ΥΔΡΟΧΟΟΣ ΑΡΧΕΤΑΙ ΕΠΙΤΕΛΛΕΙΝ','Ε ... ΕΣΠΕΡΙΟΣ','Ζ ... ΡΙΑΙ','Η ΙΧΘΥΕΣ ΑΡΧΟΝΤΑΙ ΕΠΙΤΕΛΛΕΙΝ','Θ ... ΙΑ'],
+      top2=['Ι ΚΡΙΟΣ ΑΡΧΕΤΑΙ ΕΠΙΤΕΛΛΕΙΝ','ΙΣΗΜΕΡΙΑ ΕΑΡΙΝΗ','Κ ... ΕΣΠΕΡΙΑ','Λ ΥΑΔΕΣ ΔΥΝΟΥΣΙΝ ΕΣΠΕΡΙΑΙ','Μ ΤΑΥΡΟΣ ΑΡΧΕΤΑΙ ΕΠΙΤΕΛΛΕΙΝ','Ν ΛΥΡΑ ΕΠΙΤΕΛΛΕΙ ΕΣΠΕΡΙΑ','Ξ ΠΛΕΙΑΣ ΕΠΙΤΕΛΛΕΙ ΕΩΙΑ','Ο ΥΑΣ ΕΠΙΤΕΛΛΕΙ ΕΩΙΑ','Π ΔΙΔΥΜΟΙ ΑΡΧΟΝΤΑΙ ΕΠΙΤΕΛΛΕΙΝ'],
+      bot=['Α ΧΗΛΑΙ ΑΡΧΟΝΤΑΙ ΕΠΙΤΕΛΛΕΙΝ','ΙΣΗΜΕΡΙΑ ΦΘΙΝΟΠΩΡΙΝΗ','Β ... ΑΝΑΤΕΛΛΟΥΣΙΝ ΕΣΠΕΡΙΟΙ','Γ ... ΑΝΑΤΕΛΛΕΙ ΕΣΠΕΡΙΑΙ','Δ ... ΤΕΛΛΕΙ','Ε ΣΚΟΡΠΙΟΣ ΑΡΧΕΤΑΙ ΑΝΑΤΕΛΛΕΙΝ','Ι ΤΟΞΟΤΗΣ ΑΡΧΕΤΑΙ ΕΠΙΤΕΛΛΕΙΝ'],
+      bot2=['Μ ΚΑΡΚΙΝΟΣ ΑΡΧΕΤΑΙ','ΤΡΟΠΑΙ ΘΕΡΙΝΑΙ','Ν ΩΡΙΩΝ ΑΝΤΕΛΛΕΙ ΕΩΙΟΣ','Ξ ΚΥΩΝ ΑΝΤΕΛΛΕΙ ΕΩΙΟΣ','Ο ΑΕΤΟΣ ΔΥΝΕΙ ΕΩΙΟΣ','Π ΛΕΩΝ ΑΡΧΕΤΑΙ ΕΠΙΤΕΛΛΕΙΝ'];
+    const col=(lines,x,y)=>{lines.forEach((l,i)=>g.fillText(l,x,y+i*k*5.4))};
+    g.strokeStyle='rgba(45,28,10,.55)';g.lineWidth=k*.25;g.strokeRect(k*10,k*12,W-k*20,k*52);g.strokeRect(k*10,H-k*64,W-k*20,k*52);
+    col(top,k*13,k*17);col(top2,k*98,k*17);col(bot,k*13,H-k*59);col(bot2,k*98,H-k*59)}
+  return tex(c)}
+function woodTex(){const c=cvs(512,1024),g=c.getContext('2d');g.fillStyle='#3b2416';g.fillRect(0,0,512,1024);
+  for(let i=0;i<220;i++){const x=Math.random()*512,w=1+Math.random()*4;g.strokeStyle=`rgba(${Math.random()<.5?'20,10,4':'110,70,40'},${.15+Math.random()*.25})`;g.lineWidth=w;g.beginPath();g.moveTo(x,0);
+    for(let y=0;y<=1024;y+=32)g.lineTo(x+Math.sin(y*.01+i)*6,y);g.stroke()}
+  return tex(c)}
+
+/* ================= geometry ================= */
+const pol=(r,a)=>[r*Math.cos(a),r*Math.sin(a)];
+// triangular teeth, as cut on the original (circular pitch ~1.6 mm; pitch circle halfway up the tooth)
+function gearShape(Zn,m,o={}){const rp=m*Zn/2,h=.866*PI*m*(o.hs??.8),P=TAU/Zn,sh=new THREE.Shape();
+  for(let i=0;i<Zn;i++){const a=i*P,r0=pol(rp-h/2,a-P/2),r1=pol(rp+h/2,a);i?sh.lineTo(r0[0],r0[1]):sh.moveTo(r0[0],r0[1]);sh.lineTo(r1[0],r1[1])}sh.closePath();
+  if(o.spokes){const rim=rp-h/2-Math.max(1.2,rp*.1),hub=Math.max(2.2,rp*.2),w=Math.max(.9,rp*.07);
+    for(let s=0;s<o.spokes;s++){const a0=s*TAU/o.spokes+(o.sa||0),a1=a0+TAU/o.spokes,dO=Math.asin(w/rim),dI=Math.asin(Math.min(.9,w/hub));
+      const p=new THREE.Path();p.absarc(0,0,rim,a0+dO,a1-dO,false);p.absarc(0,0,hub,a1-dI,a0+dI,true);p.closePath();sh.holes.push(p)}}
+  const hole=o.hole??Math.min(1.2,rp*.25);if(hole>0){const p=new THREE.Path();p.absarc(0,0,hole,0,TAU,true);sh.holes.push(p)}
+  return sh}
+function ext(shape,depth,seg=8){const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:seg});g.translate(0,0,-depth/2);g.computeVertexNormals();return g}
+function ringGeo(a,b,seg=192){const g=new THREE.RingGeometry(a,b,seg,1);const p=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<p.count;i++)uv.setXY(i,p.getX(i)/RMAX/2+.5,p.getY(i)/RMAX/2+.5);return g}
+function bar(len,w,t){const g=new THREE.BoxGeometry(w,len,t);g.translate(0,len/2,0);return g}
+function cyl(r,h,seg=24){const g=new THREE.CylinderGeometry(r,r,h,seg);g.rotateX(PI/2);return g}
+
+/* ================= scene ================= */
+let R3=null,renderer,scene,camera,mats={},lite=false,PARTS=0;
+const G={},GEARS=[],FADE=[],EXP=[],ALLMESH=[];let NREAR=0;
+const Zl={b1:0};          // layer z (mm), +z toward the front
+const T3=new THREE.Vector3();
+function makeScene(){
+  const cv=$('#c');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance',preserveDrawingBuffer:FIXED});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x0f0e0d);scene.fog=new THREE.Fog(0x0f0e0d,1600,3800);
+  camera=new THREE.PerspectiveCamera(28,1,4,6000);
+  {const pm=new THREE.PMREMGenerator(renderer),es=new THREE.Scene();es.background=new THREE.Color(0x1d1f22);
+   const box=(w,h,x,y,z,c,i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(c).multiplyScalar(i),side:THREE.DoubleSide,toneMapped:false}));m.position.set(x,y,z);m.lookAt(0,0,0);es.add(m)};
+   box(12,6,-2,10,6,0xfff3e2,5.5);box(14,6,-11,4,5,0xdde8ff,2.8);box(9,10,10,4,-7,0xc6d8ff,2.4);box(30,2,0,-1,-11,0xffe6c4,1.6);box(6,6,6,9,7,0xffffff,3.4);box(30,3,0,2,12,0xf4f0ea,1.5);box(3,18,-12,3,-6,0xffffff,2.2);box(40,1.5,0,-4,0,0x9fb4d0,1.2);
+   const fl=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshBasicMaterial({color:new THREE.Color(0x24211d),side:THREE.DoubleSide}));fl.rotation.x=-PI/2;fl.position.y=-6;es.add(fl);
+   scene.environment=pm.fromScene(es,.02).texture;pm.dispose()}
+  scene.add(new THREE.HemisphereLight(0xfff2e0,0x16130f,.3));scene.environmentIntensity=.85;
+  const key=new THREE.DirectionalLight(0xfff0dc,3.0);key.position.set(-220,420,520);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+  Object.assign(key.shadow.camera,{left:-230,right:230,top:230,bottom:-230,near:100,far:1600});key.shadow.bias=-.0004;key.shadow.normalBias=.4;scene.add(key);G.key=key;
+  const rim=new THREE.DirectionalLight(0xfff0dc,2.3);rim.position.set(260,380,-560);scene.add(rim);const rim2=new THREE.DirectionalLight(0xc8dcff,.6);rim2.position.set(-300,-100,-400);scene.add(rim2);
+  const fill=new THREE.DirectionalLight(0xffe6c8,.5);fill.position.set(420,-120,260);scene.add(fill);
+
+  mats.bronze=new THREE.MeshStandardMaterial({color:0xc29a62,metalness:.9,roughness:.34});
+  mats.bronzeD=new THREE.MeshStandardMaterial({color:0x9c7a52,metalness:.88,roughness:.44});
+  mats.bronzeL=new THREE.MeshStandardMaterial({color:0xdcb57a,metalness:.92,roughness:.26});
+  mats.fixed=new THREE.MeshStandardMaterial({color:0x8f7658,metalness:.85,roughness:.52});
+  mats.steel=new THREE.MeshStandardMaterial({color:0xcfd3d6,metalness:.95,roughness:.22});
+  mats.silver=new THREE.MeshStandardMaterial({color:0xe3e6ea,metalness:1,roughness:.16});
+  mats.gold=new THREE.MeshStandardMaterial({color:0xf2c35a,metalness:1,roughness:.2,emissive:0x2a1a02,emissiveIntensity:.4});
+  mats.black=new THREE.MeshStandardMaterial({color:0x111111,metalness:.2,roughness:.4});
+  mats.wood=new THREE.MeshStandardMaterial({map:woodTex(),color:0xb09080,metalness:0,roughness:.75,transparent:true});
+  mats.glow=new THREE.MeshStandardMaterial({color:0xf3c977,metalness:.75,roughness:.3,emissive:0xff9a2a,emissiveIntensity:.22});
+  mats.glowT=new THREE.MeshStandardMaterial({color:0xf3c977,metalness:.6,roughness:.3,emissive:0xff9a2a,emissiveIntensity:.25,transparent:true,opacity:.35,depthWrite:false});
+  mats.ghost=new THREE.MeshStandardMaterial({color:0x9a8a74,metalness:.4,roughness:.6,transparent:true,opacity:.13,depthWrite:false});
+  const gem=(c,rough=.12,met=.05)=>new THREE.MeshPhysicalMaterial({color:c,metalness:met,roughness:rough,clearcoat:1,clearcoatRoughness:.05});
+  mats.gems={mercury:gem(0x2fb0a0,.35),venus:gem(0x1f3f9a,.2),mars:gem(0xa53a24,.18),jupiter:gem(0xece6d8,.05),saturn:gem(0x0d0b0a,.06),node:mats.bronzeL};
+  const plateFront=new THREE.MeshStandardMaterial({map:plateTex(true),color:0xffffff,metalness:.55,roughness:.55,transparent:true});
+  const plateBack=new THREE.MeshStandardMaterial({map:plateTex(false),color:0xffffff,metalness:.55,roughness:.56,transparent:true});
+  const plateEdge=new THREE.MeshStandardMaterial({color:0x8a6034,metalness:.85,roughness:.5,transparent:true});
+  mats.dialZ=new THREE.MeshStandardMaterial({map:zodiacTex(),metalness:.6,roughness:.45,transparent:true});
+  mats.dialE=new THREE.MeshStandardMaterial({map:egyptTex(),metalness:.6,roughness:.42});
+  mats.rings=new THREE.MeshStandardMaterial({map:ringsTex(),metalness:.7,roughness:.36,side:THREE.DoubleSide});
+  mats.met=new THREE.MeshStandardMaterial({map:backTex('met'),metalness:.58,roughness:.48,transparent:true});
+  mats.sar=new THREE.MeshStandardMaterial({map:backTex('sar'),metalness:.58,roughness:.48,transparent:true});
+  for(const k of['plateFront','plateBack','plateEdge'])mats[k]={plateFront,plateBack,plateEdge}[k];
+  for(const k of['plateFront','plateBack','dialZ','dialE','rings','met','sar'])engrave(mats[k],k.startsWith('plate')?1.2:1.8);
+
+  const root=new THREE.Group();scene.add(root);G.root=root;
+  const add=(parent,geo,mat,o={})=>{const m=new THREE.Mesh(geo,mat);m.castShadow=o.cast!==false;m.receiveShadow=true;if(o.p)m.position.set(o.p[0],o.p[1],o.p[2]||0);parent.add(m);ALLMESH.push(m);if(o.part!==false)PARTS++;return m};
+  // explode bookkeeping: every movable thing sits in a holder whose z is set from its layer z and the explode amount
+  const holder=(parent,z,kind)=>{const h=new THREE.Group();h.position.z=z;parent.add(h);EXP.push({h,z,kind});return h};
+
+  /* ---- the wooden case ---- */
+  const W=196,H=310,F=37,B=-41;G.box={W,H,F,B};
+  const wall=(w,h,d,x,y,z)=>{const m=add(root,new THREE.BoxGeometry(w,h,d),mats.wood,{p:[x,y,z],part:false});FADE.push({m,kind:'wood'});return m};
+  wall(8,H,F-B,-W/2-4,0,(F+B)/2);wall(8,H,F-B,W/2+4,0,(F+B)/2);wall(W+16,8,F-B,0,H/2+4,(F+B)/2);wall(W+16,8,F-B,0,-H/2-4,(F+B)/2);
+  /* ---- front plate, dial and Egyptian ring ---- */
+  const FP=holder(root,31,'front');G.FP=FP;
+  {const geo=new THREE.BoxGeometry(W-4,H-4,2);const hole=null;
+   const m=add(FP,geo,[plateEdge,plateEdge,plateEdge,plateEdge,plateFront,plateEdge],{part:true});FADE.push({m,kind:'plate'});
+   const dz=add(FP,new THREE.CircleGeometry(71,160),mats.dialZ,{p:[0,0,1.05]});FADE.push({m:dz,kind:'plate'});
+   G.egypt=add(FP,new THREE.RingGeometry(70.6,80,256,1),mats.dialE,{p:[0,0,1.6]});
+   const lip=add(FP,new THREE.TorusGeometry(80.4,.7,8,160),mats.bronzeD,{p:[0,0,1.6],part:false})}
+  /* ---- the Cosmos display: Earth, rings, pointers (on the output tubes) ---- */
+  const DISP=holder(root,33.2,'front');G.DISP=DISP;
+  add(DISP,new THREE.SphereGeometry(8,40,20,0,TAU,0,PI/2).rotateX(PI/2),mats.bronzeL,{p:[0,0,4.6]});
+  G.rings={};const ringZ={date:.2,saturn:.6,jupiter:1.0,mars:1.4,sun:1.8,venus:2.2,mercury:2.6};
+  for(const n in RING){const g=new THREE.Group();g.position.z=ringZ[n];DISP.add(g);G.rings[n]=g;add(g,ringGeo(RING[n][0],RING[n][1]),mats.rings);
+    const tube=add(g,cyl(RING[n][0]-.2,.8,64).translate(0,0,-.4),mats.bronzeD,{part:false});
+    if(mats.gems[n]&&n!=='node'){const s=add(g,new THREE.SphereGeometry(1.75,24,14,0,TAU,0,PI*.62),mats.gems[n],{p:[0,(RING[n][0]+RING[n][1])/2,.25]});s.rotation.x=PI/2;
+      add(g,new THREE.TorusGeometry(1.85,.32,8,24),mats.gold,{p:[0,(RING[n][0]+RING[n][1])/2,.3],part:false})}}
+  // true Sun on its ring: a little golden sphere with rays and a pointer (Back Cover Inscription)
+  {const g=G.rings.sun,y=(RING.sun[0]+RING.sun[1])/2;add(g,new THREE.SphereGeometry(2.3,24,16),mats.gold,{p:[0,y,1.6]});
+   for(let i=0;i<12;i++){const r=add(g,new THREE.ConeGeometry(.55,2.6,4),mats.gold,{p:[0,y,1.6],part:false});const a=i*TAU/12;r.position.x+=Math.cos(a)*3.2;r.position.y+=Math.sin(a)*3.2;r.rotation.z=a-PI/2}
+   add(g,bar(69-y,1.0,.5),mats.gold,{p:[0,y,1.3],part:false});add(g,new THREE.ConeGeometry(1.4,3.2,4).rotateZ(0),mats.gold,{p:[0,69.6,1.3],part:false})}
+  // date pointer (mean Sun, on b1's tube) reaching the Egyptian calendar
+  G.datePtr=new THREE.Group();G.datePtr.position.z=3.4;DISP.add(G.datePtr);add(G.datePtr,bar(79,1.1,.5),mats.bronzeL);add(G.datePtr,new THREE.ConeGeometry(1.2,3,4),mats.bronzeL,{p:[0,79.5,0],part:false});
+  // Dragon Hand (hypothetical, Freeth 2021): head = ascending node, tail = descending node
+  G.dragon=new THREE.Group();G.dragon.position.z=3.8;DISP.add(G.dragon);
+  {const b=add(G.dragon,new THREE.BoxGeometry(1.2,118,.5),mats.bronzeD);const hd=new THREE.Shape();hd.moveTo(0,4.5);hd.lineTo(2.6,-1);hd.lineTo(0,.6);hd.lineTo(-2.6,-1);hd.closePath();
+   add(G.dragon,ext(hd,.8),mats.bronzeL,{p:[0,59,0],part:false});const tl=new THREE.Shape();tl.moveTo(0,0);tl.lineTo(2.4,-4);tl.lineTo(.9,-4);tl.lineTo(0,-2);tl.lineTo(-.9,-4);tl.lineTo(-2.4,-4);tl.closePath();add(G.dragon,ext(tl,.8),mats.bronzeL,{p:[0,-56,0],part:false});
+   G.limits=new THREE.Group();G.rings.sun.add(G.limits)}
+  // Moon pointer with the phase ball (a differential turns it by Moon minus mean Sun)
+  G.moonPtr=new THREE.Group();G.moonPtr.position.z=5.2;DISP.add(G.moonPtr);
+  add(G.moonPtr,bar(69,1.0,.6),mats.silver);add(G.moonPtr,new THREE.ConeGeometry(1.3,3.4,4),mats.silver,{p:[0,69.8,0],part:false});
+  add(G.moonPtr,cyl(2.6,1.4).translate(0,0,0),mats.silver,{part:false});
+  G.ball=new THREE.Group();G.ball.position.set(0,14,1.2);G.moonPtr.add(G.ball);
+  add(G.ball,new THREE.SphereGeometry(3,32,16,0,PI),mats.silver);const bk=add(G.ball,new THREE.SphereGeometry(3,32,16,PI,PI),mats.black,{part:false});
+  add(G.moonPtr,new THREE.TorusGeometry(3.35,.4,8,32),mats.silver,{p:[0,14,1.2],part:false});
+  // real-sky marks: small diamonds just inside the zodiac scale
+  G.real={};for(const b of BODIES){if(b==='node')continue;const g=new THREE.Group();g.position.z=1.6;DISP.add(g);
+    const mm=new THREE.MeshStandardMaterial({color:new THREE.Color(GEMC[b]),metalness:.3,roughness:.3,emissive:new THREE.Color(GEMC[b]),emissiveIntensity:b==='saturn'?.0:.35});
+    const d=add(g,new THREE.OctahedronGeometry(1.5),mm,{p:[0,60.4,0],part:false});d.scale.set(1,1.5,.5);G.real[b]=g}
+
+  /* ---- b1 and everything that rides on it (front side): Mercury, Venus, Nodes, mean Sun; Strap; Circular Plate ---- */
+  const L=LAY,FM=L.front_module,fz=z=>z===63?.521:FM;
+  const B1H=holder(root,0,'b1');const b1=new THREE.Group();B1H.add(b1);G.b1=b1;
+  const gearMesh=(parent,Zn,m,th,pos,mat,o={})=>{const grp=new THREE.Group();grp.position.set(pos[0],pos[1],0);parent.add(grp);
+    const ms=add(grp,ext(gearShape(Zn,m,o),th,o.seg||8),mat);ms.userData={Zn,tr:o.tr||[],base:mat,name:o.name};GEARS.push(ms);if(o.hub!==false)add(grp,cyl(Math.min(2.2,Math.max(.7,m*Zn*.08)),th+1.2,16),mats.steel,{part:false});return grp};
+  gearMesh(b1,223,.578,2.7,[0,0],mats.bronze,{spokes:4,sa:PI/4,name:'b1',tr:[],hole:2.4,seg:10});
+  // pillars: four long (to the CP) on the rim between the spokes, four short (to the Strap)
+  for(let i=0;i<4;i++){const a=PI/4+i*PI/2+PI/4,p=pol(60,a);add(b1,cyl(1.1,26,10).translate(p[0],p[1],13.5),mats.bronzeD,{part:false})}
+  for(const a of[-.25,.25,PI-.25,PI+.25]){const p=pol(40,a);add(b1,cyl(1,15,10).translate(p[0],p[1],8),mats.bronzeD,{part:false})}
+  const lay=(z,kind)=>{const h=holder(b1,z,kind);return h};
+  // mean Sun bar to the pierced block on spoke D
+  {const h=lay(2.6,'cos');add(h,new THREE.BoxGeometry(2,34,1.2).translate(0,17,0).rotateZ(-PI/4*3),mats.bronzeD,{part:false})}
+  G.front={};
+  // fixed central gears (held by the frame): 51 for Mercury & Venus, 49 for the Nodes, 56 for the CP trains
+  const FIX=holder(root,0,'fixed');G.FIX=FIX;
+  const fixedG=(Zn,m,z,tr)=>{const h=holder(FIX,z,'cos');return gearMesh(h,Zn,m,1.4,[0,0],mats.fixed,{tr,name:'fixed'+Zn})};
+  fixedG(49,L.front.nodes.m1,4.2,['nodes']);fixedG(51,FM,7.2,['venus','mercury']);fixedG(56,FM,28.4,['mars','saturn','jupiter','sun']);
+  add(FIX,cyl(2.2,40,20).translate(0,0,14),mats.fixed,{part:false});
+  // Nodes on spoke B: 49 ~ 62 + 64 ~ 48 (48 back on the centre, carrying the Dragon Hand's tube)
+  {const N=L.front.nodes;G.front.nodes={};
+   G.front.nodes.g23=[gearMesh(lay(4.2,'cos'),62,N.m1,1.3,N.g2,mats.bronze,{tr:['nodes'],name:'nodes.g2'}),gearMesh(lay(5.8,'cos'),64,N.m2,1.3,N.g2,mats.bronze,{tr:['nodes'],name:'nodes.g3'})];
+   G.front.nodes.g4=gearMesh(lay(5.8,'cos'),48,N.m2,1.3,[0,0],mats.bronzeL,{tr:['nodes'],hole:2.6,name:'nodes.g4'})}
+  // inferior planets: g1 fixed ~ g2 + g3 ~ g4 ~ g5 (+ disk and pin) and a slotted follower on the centre
+  const inferior=(name,g,zA,zB)=>{const P=L.front[name],o={};
+    o.g2=gearMesh(lay(zA,'cos'),g[1],FM,1.3,P.g2,mats.bronze,{tr:[name],name:name+'.g2'});o.g3=gearMesh(lay(zB,'cos'),g[2],FM,1.3,P.g2,mats.bronze,{tr:[name],name:name+'.g3'});
+    o.g4=gearMesh(lay(zB,'cos'),g[3],FM,1.3,P.g4,mats.bronze,{tr:[name],name:name+'.g4'});o.g5=gearMesh(lay(zB,'cos'),g[4],fz(g[4]),1.3,P.g5,mats.bronzeL,{tr:[name],name:name+'.g5'});
+    const d=AK.TR[name].d;
+    if(name==='venus'){add(o.g5,cyl(d+2.2,.8,48).translate(0,0,1.1),mats.bronzeD,{part:true})}// the disk of Fragment D
+    o.pin=add(o.g5,cyl(.55,2.6,10).translate(d,0,1.6),mats.steel,{part:false});
+    const fh=lay(zB+2.6,'cos');o.fol=new THREE.Group();fh.add(o.fol);const len=Math.hypot(P.g5[0],P.g5[1])+d+4;
+    const slot=add(o.fol,new THREE.BoxGeometry(len,2.4,.7).translate(len/2,0,0),mats.bronzeL,{});o.len=len;o.slot=slot;G.front[name]=o};
+  inferior('venus',[51,44,34,26,63],7.2,9.0);inferior('mercury',[51,72,89,40,20],7.2,11.6);
+  // the Strap on the short pillars
+  {const h=lay(15.8,'plate');const sh=new THREE.Shape();sh.moveTo(-46,-9);sh.lineTo(46,-9);sh.lineTo(46,9);sh.lineTo(-46,9);sh.closePath();const p=new THREE.Path();p.absarc(0,0,6,0,TAU,true);sh.holes.push(p);
+   const m=add(h,ext(sh,1.4,16),mats.bronzeD);m.rotation.z=.19;FADE.push({m,kind:'inner'})}
+  // the Circular Plate on the long pillars, and its trains (gears in front of it, mechanisms behind it)
+  {const h=lay(26.8,'plate');const sh=new THREE.Shape();sh.absarc(0,0,58,0,TAU,false);const p=new THREE.Path();p.absarc(0,0,6,0,TAU,true);sh.holes.push(p);
+   const m=add(h,ext(sh,1.4,64),mats.bronzeD);FADE.push({m,kind:'inner'})}
+  const P52=L.front.saturn.g2,P64=L.front.mars.g2;
+  G.front.g52=gearMesh(lay(28.4,'cos'),52,FM,1.3,P52,mats.bronze,{tr:['saturn','sun'],name:'g52'});
+  G.front.g64=gearMesh(lay(28.4,'cos'),64,FM,1.3,P64,mats.bronze,{tr:['mars','jupiter'],name:'g64'});
+  const superior=(name,g,zG,z6)=>{const P=L.front[name],o={},g2pos=P.g2;
+    o.g3=gearMesh(lay(zG,'cos'),g[2],FM,1.3,g2pos,mats.bronze,{tr:[name],name:name+'.g3'});o.g4=gearMesh(lay(zG,'cos'),g[3],FM,1.3,P.g4,mats.bronze,{tr:[name],name:name+'.g4'});
+    o.g5=gearMesh(lay(zG,'cos'),g[4],FM,1.3,P.g5,mats.bronzeL,{tr:[name],name:name+'.g5'});o.g6=gearMesh(lay(z6,'cos'),g[5],FM,1.3,P.g6,mats.bronzeL,{tr:[name],name:name+'.g6'});
+    o.g7=gearMesh(lay(z6,'cos'),g[6],FM,1.3,[0,0],mats.bronze,{tr:[name],hole:3,name:name+'.g7'});
+    const d=AK.TR[name].d;o.pin=add(o.g5,cyl(.5,2.2,10).translate(d,0,-1.4),mats.steel,{part:false});
+    o.slot=add(o.g6,new THREE.BoxGeometry(d+6,2,.6).translate((d+6)/2-2,0,.95),mats.steel,{part:false});G.front[name]=o};
+  superior('saturn',[56,52,61,40,68,86,86],24.4,21.9);superior('jupiter',[56,64,45,40,43,65,65],24.4,19.4);superior('mars',[56,64,38,40,71,80,80],22.4,17.6);
+  {const P=L.front.sun,o={};o.g3=gearMesh(lay(28.4,'cos'),56,FM,1.3,P.g3,mats.bronzeL,{tr:['sun'],name:'sun.g3'});o.pin=add(o.g3,cyl(.5,2.4,10).translate(P.d,0,-1.6),mats.steel,{part:false});
+   const fh=lay(25.6,'cos');o.fol=new THREE.Group();fh.add(o.fol);const len=Math.hypot(P.g3[0],P.g3[1])+6;add(o.fol,new THREE.BoxGeometry(len,2.2,.6).translate(len/2,0,0),mats.steel,{});G.front.sun=o}
+  // nested output tubes up the centre
+  for(let i=0;i<8;i++)add(b1,cyl(2.6+i*.55,34-i*1.5,24).translate(0,0,17+i*.6),i%2?mats.bronzeD:mats.bronze,{part:false,cast:false});
+
+  /* ---- behind b1: the surviving gearing (fixed frame), back plate and spiral dials ---- */
+  const A=L.axes,MOD=L.mod,REAR=holder(root,0,'rear');G.REAR=REAR;G.rear={};
+  const rz={b2:-3.6,b3:-6.4,c1:-3.6,c2:-6.4,d1:-6.4,d2:-9.2,e1:-6.4,e2:-9.2,e5:-15.6,e6:-12.8,e3:-18.4,e4:-21.2,k1:-15.6,k2:-14.2,l1:-3.6,l2:-12.0,m1:-12.0,m2:-14.8,m3:-18.4,
+    n1:-14.8,n2:-24.0,n3:-26.8,o1:-24.0,p1:-26.8,p2:-29.6,q1:-29.6,f1:-21.2,f2:-24.0,g1:-24.0,g2:-26.8,h1:-26.8,h2:-29.6,i1:-29.6};
+  const TRN={moon:['b2','c1','c2','d1','d2','e2','e5','k1','k2','e6','e1','b3'],metonic:['b2','l1','l2','m1','m2','n1','n2','o1','n3','p1','p2','q1'],saros:['b2','l1','l2','m1','m3','e3','e4','f1','f2','g1','g2','h1','h2','i1']};
+  const trOf=n=>Object.keys(TRN).filter(t=>TRN[t].includes(n));
+  const ARB={b:['b2'],b3:['b3'],c:['c1','c2'],d:['d1','d2'],e25:['e2','e5'],e34:['e3','e4'],e61:['e6','e1'],f:['f1','f2'],g:['g1','g2'],h:['h1','h2'],i:['i1'],l:['l1','l2'],m:['m1','m2','m3'],n:['n1','n2','n3'],o:['o1'],p:['p1','p2'],q:['q1']};
+  const axisOf={b:'b',b3:'b',c:'c',d:'d',e25:'e',e34:'e',e61:'e',f:'f',g:'g',h:'h',i:'i',l:'l',m:'m',n:'n',o:'o',p:'p',q:'q'};
+  G.arb={};
+  for(const ar in ARB){const grp=new THREE.Group();const ax=A[axisOf[ar]];grp.position.set(ax[0],ax[1],0);REAR.add(grp);G.arb[ar]=grp;
+    for(const gname of ARB[ar]){const Zn=AK.Z[gname],m=MOD[gname],big=Zn>=60,h=holder(grp,rz[gname],'rear');
+      gearMesh(h,Zn,m,gname==='e3'?1.4:1.3,[0,0],big?mats.bronze:mats.bronzeL,{spokes:big?(Zn>150?6:4):0,name:gname,tr:trOf(gname),hole:gname==='e3'?3:undefined,seg:big?10:6})}
+    const zs=ARB[ar].map(gn=>rz[gn]);add(grp,cyl(.9,Math.max(...zs)-Math.min(...zs)+3,12).translate(0,0,(Math.max(...zs)+Math.min(...zs))/2),mats.steel,{part:false,cast:false})}
+  // the e3 turntable carries k1 (pin) and k2 (slot); positions in the turntable frame
+  {const tt=G.arb.e34,k1=[A.k1[0]-A.e[0],A.k1[1]-A.e[1]],k2=[A.k2[0]-A.e[0],A.k2[1]-A.e[1]];
+   G.k1=gearMesh(holder(tt,rz.k1,'rear'),50,MOD.k1,.6,k1,mats.bronzeL,{name:'k1',tr:['moon']});G.k2=gearMesh(holder(tt,rz.k2,'rear'),50,MOD.k2,.6,k2,mats.bronzeL,{name:'k2',tr:['moon']});
+   G.pin=add(G.k1,cyl(.6,3.2,12).translate(AK.PIN_R,0,.8),mats.steel,{part:false});
+   G.slot=add(G.k2,new THREE.BoxGeometry(14,1.7,.5).translate(5,0,-.6),mats.black,{part:false});
+   add(tt,new THREE.BoxGeometry(34,5,1.2).translate(23,0,rz.k1-1.6),mats.bronzeD,{part:false})}
+  // a1: the crown wheel on the crank arbor, meshing b1 at its rim; the crank outside the case
+  {const crk=new THREE.Group();crk.position.set(W/2-26,0,4.5);root.add(crk);G.crank=crk;
+   const a1=gearMesh(crk,48,.578,1.6,[0,0],mats.bronzeL,{name:'a1',hole:1.5});a1.rotation.y=PI/2;
+   add(crk,cyl(1.3,60,12).rotateY(PI/2).translate(30,0,0),mats.steel,{part:false});
+   const arm=add(crk,new THREE.BoxGeometry(3,26,4).translate(0,13,0),mats.bronzeD,{p:[56,0,0],part:true});add(crk,cyl(2.6,10,16).rotateY(PI/2).translate(60,25,0),mats.wood,{part:false})}
+  NREAR=GEARS.filter(g=>/^[a-q][0-9]$/.test(g.userData.name||'')).length;
+  // back plate with the two spiral dials, their pointers and the subsidiary dials
+  const BP=holder(root,-34,'back');G.BP=BP;
+  {const m=add(BP,new THREE.BoxGeometry(W-4,H-4,2),[mats.plateEdge,mats.plateEdge,mats.plateEdge,mats.plateEdge,mats.plateEdge,mats.plateBack]);FADE.push({m,kind:'plate'})}
+  const backDial=(ctr,mat,z)=>{const g=new THREE.Group();g.position.set(ctr[0],ctr[1],-1.1);g.rotation.y=PI;BP.add(g);const d=add(g,new THREE.CircleGeometry(DIALR,160),mat);FADE.push({m:d,kind:'plate'});return g};
+  G.metD=backDial(A.n,mats.met);G.sarD=backDial(A.g,mats.sar);
+  const ptr=(parent,len,w,z,bead)=>{const g=new THREE.Group();g.position.z=z;parent.add(g);add(g,bar(len,w,.6),mats.bronzeL);add(g,new THREE.ConeGeometry(w*1.1,3,4),mats.bronzeL,{p:[0,len+.8,0],part:false});
+    add(g,cyl(2.2,1.2),mats.bronzeD,{part:false});if(bead){g.bead=add(g,new THREE.SphereGeometry(1.5,16,10),mats.steel,{part:false})}return g};
+  G.metP=ptr(G.metD,DIALR-1.5,1.2,1.4,true);G.sarP=ptr(G.sarD,DIALR-1.5,1.2,1.4,true);
+  const sub=(dialG,ax,ctr)=>{const p=LAY.axes[ax],g=new THREE.Group();g.position.set(-(p[0]-ctr[0]),p[1]-ctr[1],0);dialG.add(g);return ptr(g,SUBR-.6,.7,1.0,false)};
+  G.gamP=sub(G.metD,'o',A.n);G.calP=sub(G.metD,'q',A.n);G.exeP=sub(G.sarD,'i',A.g);
+}
+
+/* ================= pose everything for the current Y ================= */
+const deg=x=>x*D;
+function pose(){if(!R3)return;const Y=S.Y,m=M,L=LAY;
+  const rot=(o,turnsCW)=>{o.rotation.z=-turnsCW*TAU};       // clockwise seen from the front is negative about +z
+  const b1turns=m.meanSun/360;rot(G.b1,b1turns);
+  G.crank.rotation.x=-(Y*AK.Z.b1/AK.Z.a1)*TAU;
+  // display (rings carry their gem at 12 o'clock local)
+  for(const n of['mercury','venus','mars','jupiter','saturn','sun'])rot(G.rings[n],m[n]/360);
+  rot(G.rings.date,m.meanSun/360);rot(G.datePtr,m.meanSun/360);rot(G.dragon,m.node/360);rot(G.moonPtr,m.moon/360);
+  G.ball.rotation.y=-deg(m.phase);                           // new moon: black side up; full: silver
+  {const e=AK.egypt(jdOf(Y));const eg=(e.doy+.5)/365*360;rot(G.egypt,(m.meanSun-eg)/360)}
+  for(const b in G.real){G.real[b].visible=S.real;if(S.real)rot(G.real[b],SK[b]/360)}
+  // front trains, angles in the carrier frame (math convention, counterclockwise from +x)
+  const carr=-deg(m.meanSun);                                // world rotation of b1 and the CP (math)
+  const setRel=(grp,turnsCWrel)=>{grp.rotation.z=-turnsCWrel*TAU};
+  const FR=AK.FR,F=G.front;
+  setRel(F.nodes.g23[0],FR.nodes.g2*Y);setRel(F.nodes.g23[1],FR.nodes.g3*Y);F.nodes.g4.rotation.z=-deg(m.node)-carr;
+  for(const p of['venus','mercury']){const o=F[p],P=L.front[p].g5,a5=Math.atan2(P[1],P[0]),fr=FR[p];
+    setRel(o.g2,fr.g2*Y);setRel(o.g3,fr.g3*Y);setRel(o.g4,fr.g4*Y);
+    const al=a5+deg(m.meanSun-m[p+'Helio']);o.g5.rotation.z=al;                       // pin angle about g5 (carrier frame)
+    const d=AK.TR[p].d,px=P[0]+d*Math.cos(al),py=P[1]+d*Math.sin(al);o.fol.rotation.z=Math.atan2(py,px)}
+  for(const p of['saturn','jupiter','mars']){const o=F[p],P6=L.front[p].g6,a6=Math.atan2(P6[1],P6[0]),fr=FR[p];
+    setRel(o.g3,fr.g3*Y);setRel(o.g4,fr.g4*Y);
+    const al=a6+deg(m[p+'Helio']-m.meanSun);o.g5.rotation.z=al;
+    const P5=L.front[p].g5,d=AK.TR[p].d,px=P5[0]+d*Math.cos(al)-P6[0],py=P5[1]+d*Math.sin(al)-P6[1],b6=Math.atan2(py,px);o.g6.rotation.z=b6;o.g7.rotation.z=-b6}
+  setRel(F.g52,FR.saturn.g2*Y);setRel(F.g64,FR.mars.g2*Y);
+  {const o=F.sun,P=L.front.sun.g3,aS=Math.atan2(P[1],P[0]);o.g3.rotation.z=-carr;          // the epicyclic 56 does not turn at all
+   const apo=deg(90-AK.SUN_APO)-carr+(aS-PI/2),d=L.front.sun.d,px=P[0]+d*Math.cos(apo),py=P[1]+d*Math.sin(apo);o.fol.rotation.z=Math.atan2(py,px)}
+  // rear arbors
+  const R=AK.RATE,ar=G.arb;rot(ar.b,b1turns);rot(ar.c,R.c*Y);rot(ar.d,R.d*Y);rot(ar.e25,R.e25*Y);rot(ar.l,R.l*Y);rot(ar.m,R.m*Y);
+  rot(ar.n,-m.metMonths/47);rot(ar.o,R.o*Y);rot(ar.p,R.p*Y);rot(ar.q,R.q*Y);rot(ar.e34,R.e34*Y);rot(ar.f,R.f*Y);rot(ar.g,-m.sarMonths/(223/4));rot(ar.h,R.h*Y);rot(ar.i,-m.sarMonths/669);
+  rot(ar.b3,m.moon/360);rot(ar.e61,-m.moon/360);
+  {const k1=[LAY.axes.k1[0]-LAY.axes.e[0],LAY.axes.k1[1]-LAY.axes.e[1]],k2=[LAY.axes.k2[0]-LAY.axes.e[0],LAY.axes.k2[1]-LAY.axes.e[1]];
+   const al=-deg(m.moonAnom);G.k1.rotation.z=al;const px=k1[0]+AK.PIN_R*Math.cos(al)-k2[0],py=k1[1]+AK.PIN_R*Math.sin(al)-k2[1];G.k2.rotation.z=S.anom?Math.atan2(py,px):al}
+  // back pointers (in the back dial frames, counterclockwise as seen from the back is +z)
+  const mm=((m.metMonths%235)+235)%235,sm=((m.sarMonths%223)+223)%223;
+  G.metP.rotation.z=-mm/47*TAU;G.metP.bead.position.set(0,spiralR(MET,mm)+MET.pitch/2,1);
+  G.sarP.rotation.z=-sm/(223/4)*TAU;G.sarP.bead.position.set(0,spiralR(SAR,sm)+SAR.pitch/2,1);
+  G.gamP.rotation.z=(AK.RATE.o*Y)*TAU;G.calP.rotation.z=AK.RATE.q*Y*TAU;G.exeP.rotation.z=-(m.sarMonths/669)*TAU}
+
+/* ================= opening the case, tracing trains ================= */
+function applyOpen(){if(!R3)return;const o=S.open,fade=clamp(o/.35,0,1),E=ease(clamp((o-.35)/.65,0,1));
+  for(const f of FADE){const mt=Array.isArray(f.m.material)?f.m.material:[f.m.material];
+    const op=f.kind==='wood'?1-fade:f.kind==='plate'?1-.9*fade-.1*E:1-.55*E;f.m.visible=op>.02;
+    for(const x of mt){x.opacity=op;x.transparent=op<.999;x.depthWrite=op>.5}}
+  for(const e of EXP){let z=e.z;if(e.kind==='front')z=e.z+E*150;else if(e.kind==='back')z=e.z-E*140;else if(e.kind==='cos'||e.kind==='plate')z=e.z*(1+2.2*E);else if(e.kind==='rear')z=e.z*(1+2.4*E);e.h.position.z=z}}
+const CHAIN={none:'',
+  moon:'<b>Moon</b>: b1 223 · b2 64 → c1 38 · c2 48 → d1 24 · d2 127 → e2 32 = <b>254/19</b> turns a year (254 sidereal months in 19 years). On the e3 turntable (turning once in 8.88 years) e5 50 → k1 50 → pin &amp; slot → k2 50 → e6 50, then e1 32 → b3 32 to the pointer.',
+  metonic:'<b>Metonic</b>: b2 64 → l1 38 · l2 53 → m1 96 · m2 15 → n1 53 = <b>5/19</b>: five turns of the spiral (235 months) in 19 years. n2 57 → o1 60 = ¼ turn a year (Games); n3 15 → p1 60 · p2 12 → q1 60 = 1/76 (Callippic).',
+  saros:'<b>Saros</b>: b2 64 → l1 38 · l2 53 → m1 96 · m3 27 → e3 223 · e4 188 → f1 53 · f2 30 → g1 54 = <b>940/4237</b>: four turns (223 months) per Saros. g2 20 → h1 60 · h2 15 → i1 60 = a twelfth of that (Exeligmos).',
+  venus:'<b>Venus</b> (Freeth 2021): fixed 51 → 44 · 34 → 26 → 63 = <b>289/462</b> synodic cycles a year, relative to b1. A pin on the 63’s disk, 20.01 mm out, drives a slotted follower on the centre: the epicycle.',
+  mars:'<b>Mars</b> (Freeth 2021): fixed 56 → 64 · 38 → 40 → 71 = <b>133/284</b> relative to the plate; a pin on the 71 drives a slot in an 80 whose axis is 6.58 mm away, and an equal 80 on the centre turns the ring.'};
+const TRAINSET={none:null,moon:'moon',metonic:'metonic',saros:'saros',venus:'venus',mars:'mars'};
+function applyTrain(){if(!R3)return;const t=S.train;for(const g of GEARS){const on=t!=='none'&&g.userData.tr.includes(t);g.material=t==='none'?g.userData.base:on?mats.glow:mats.ghost;g.castShadow=t==='none'||on}
+  if(t==='moon'){const k1=GEARS.find(g=>g.userData.name==='k1');k1.material=mats.glowT}
+  $('#chain').innerHTML=CHAIN[t]||''}
+
+/* ================= camera ================= */
+const VIEWS={front:{yaw:0,pitch:.05,dist:800,tx:0,ty:0,tz:10},back:{yaw:PI,pitch:.05,dist:800,tx:0,ty:0,tz:-10},inside:{yaw:.7,pitch:.3,dist:880,tx:0,ty:0,tz:0},
+  moon:{yaw:PI-.38,pitch:.3,dist:150,tx:-12,ty:-4,tz:-40},dial:{yaw:.1,pitch:.08,dist:450,tx:0,ty:0,tz:30},og:{yaw:.78,pitch:.2,dist:600,tx:-62,ty:-8,tz:0},hero:{yaw:.78,pitch:.2,dist:700,tx:0,ty:-4,tz:0}};
+const CAM=Object.assign({},VIEWS.front),CAM_T=Object.assign({},VIEWS.front);let userCam=false,camDrag=null,pinch=null;
+function setView(v,instant){S.view=v;Object.assign(CAM_T,VIEWS[v]);if(instant)Object.assign(CAM,CAM_T);$$('#view button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v?'true':'false'));$('#viewv').textContent=v==='moon'?'the Moon’s pin & slot':v==='hero'||v==='og'?'three-quarter':v}
+function fit(){if(!R3)return;const st=$('#stage'),w=st.clientWidth,h=st.clientHeight;renderer.setSize(w,h,false);
+  const pw=MOB()||OGQ?0:($('#panel').offsetWidth+30);
+  if(pw>0){camera.aspect=(w+pw)/h;camera.setViewOffset(w+pw,h,pw,0,w,h)}else{camera.aspect=w/h;camera.clearViewOffset()}
+  camera.updateProjectionMatrix()}
+function placeCam(){const c=CAM,cp=Math.cos(c.pitch);camera.position.set(c.tx+Math.sin(c.yaw)*cp*c.dist,c.ty+Math.sin(c.pitch)*c.dist,c.tz+Math.cos(c.yaw)*cp*c.dist);camera.lookAt(c.tx,c.ty,c.tz);camera.updateMatrixWorld()}
+
+/* ================= readouts ================= */
+let lastRead=0;
+function readouts(force){const now=performance.now();if(!force&&!FIXED&&now-lastRead<120)return;lastRead=now;
+  const Y=S.Y,m=M,c=civil(Y),e=AK.egypt(jdOf(Y));
+  $('#dv').textContent=fmtDate(Y);$('#egv').innerHTML=`Egyptian ring: <span class="gk">${AK.EGYPT[e.month]} ${GN(e.day)}</span> · ${AK.EGYPT_EN[e.month]} ${e.day}`;
+  $('#yv').textContent='b1 '+(Y>=0?'+':'−')+Math.abs(Y).toFixed(2)+' turns';
+  const tb=$('#tab tbody');if(!tb.children.length){tb.innerHTML=BODIES.map(b=>`<tr data-b="${b}"><td><i style="background:${GEMC[b]}"></i>${NAME[b]}</td><td></td><td></td><td class="e"></td></tr>`).join('')}
+  for(const b of BODIES){const tr=tb.querySelector(`[data-b="${b}"]`),er=dang(m[b],SK[b]);tr.children[1].textContent=m[b].toFixed(1)+'°';tr.children[2].textContent=SK[b].toFixed(1)+'°';
+    tr.children[3].textContent=(er>=0?'+':'−')+Math.abs(er).toFixed(1)+'°';tr.children[3].className='e'+(Math.abs(er)<2?' ok':Math.abs(er)>10?' big':'')}
+  const cl=AK.METONIC[m.metCell];$('#met').textContent=AK.MONTHS[cl.month]+(cl.inter?' ★':'');$('#metn').textContent=`year ${cl.year} of 19 · ${AK.MONTHS_EN[cl.month]}${cl.inter?' (2nd)':''}`;
+  const gl=GLYPH[m.sarCell],has=gl.solar||gl.lunar;$('#sar').textContent=GN(m.sarCell+1)+(has?'  '+(gl.lunar?'Σ':'')+(gl.solar?'Η':''):'');
+  $('#sarn').textContent=`month ${m.sarCell+1} of 223`+(has?(gl.lunar?' · lunar':'')+(gl.solar?' · solar':''):'');$('#sarbox').classList.toggle('ecl',!!has);
+  $('#ecv').textContent=has?'eclipse month: '+[gl.solar?'Η solar':'',gl.lunar?'Σ lunar':''].filter(Boolean).join(' + '):'no eclipse glyph this month';
+  $('#gam').textContent=AK.GAMES[m.games].join(' · ');$('#gamn').textContent=`year ${m.games+1} · ${AK.GAMES_EN[m.games].join(', ')}`;
+  $('#cal').textContent=`${GN(m.callippic+1)} · ${['○','Η','Ιϛ'][m.exeligmos]}`;$('#caln').textContent=`Callippic cycle ${m.callippic+1} of 4 · Exeligmos +${m.exeligmos*8} h`;
+  $('#opv').textContent=S.open<.02?'closed':S.open<.36?'plates fading':'exploded '+Math.round((S.open-.35)/.65*100)+'%';$('#trv').textContent=S.train;
+  drawJog()}
+
+/* ================= captions ================= */
+let capKey='';
+function cap(html,key){const el=$('#caption');capKey=key||'';if(STATIC||FIXED){el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(cap.t);cap.t=setTimeout(()=>{el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade')},260)}
+const STAT={"moonPin":3.3,"moonMean":8.8,"venus2":1.0,"venus58":18.4,"nreal":68,"nfalse":6};
+const CAP={
+  open:()=>`<b>A bronze computer from about 205 BC</b>, found in a shipwreck off Antikythera in 1901. Turn the crank and every pointer moves by tooth counts alone: one turn of the great four-spoked wheel <span class="m">b1</span> (223 teeth) is one year, and the Moon goes round <span class="m">254/19</span> times.`,
+  pin:()=>`<b>The Moon speeds up and slows down.</b> Behind the dial, a pin on gear k1 drives a slot in k2, whose axle sits <span class="m">1.1 mm</span> off-centre, so k2 runs fast for half a month and slow for the other half. Over the first 19 years it keeps the Moon pointer within <span class="g">${STAT.moonPin.toFixed(1)}°</span> of the real Moon; lock it and the error grows to <span class="r">${STAT.moonMean.toFixed(1)}°</span>.`,
+  back:()=>`<b>The back is a calendar.</b> The upper spiral is 235 months in five turns (19 years: the Metonic cycle), with the Corinthian month names; the lower one is 223 months in four turns, the Saros eclipse cycle. Little dials count the Games (Olympia, Nemea, Isthmia, Pythia…) and the 76-year Callippic cycle.`,
+  venus:()=>`<b>${GEARS.length} gears</b> in this model: ${NREAR} at the back (the survivors and the accepted fills) and ${GEARS.length-NREAR} in front, after Freeth et al. 2021. The Venus train is fixed 51 → 44 · 34 → 26 → 63: <span class="m">289/462</span>, a period read on the front cover. Its synodic phase drifts ${STAT.venus2.toFixed(1)}° a century; the old 5-cycles-in-8-years rule would drift <span class="r">${STAT.venus58.toFixed(1)}°</span>.`,
+  eclipse:()=>`<b>${fmtDate(ECL.Y)}.</b> The Moon pointer passes the golden Sun right beside the Dragon’s ${ECL.head?'head':'tail'} (${Math.abs(ECL.dist).toFixed(1)}° off), and the Saros pointer sits on a cell marked <span class="gk">Η</span>: a solar eclipse. NASA’s canon lists a total solar eclipse that day. Across all 223 months the Dragon Hand flags ${NPRED} new and full moons, and <span class="g">all ${STAT.nreal}</span> real eclipses are among them (${STAT.nfalse} false alarms).`,
+  you:()=>`<b>Your turn.</b> Drag the crank, type a date, or turn the case round. The table compares every pointer with the real sky for that day.`,
+  still:()=>`<b>The Antikythera Mechanism</b> on ${fmtDate(ECL.Y)}: the Moon pointer meets the golden Sun beside the Dragon’s ${ECL.head?'head':'tail'}, and the Saros dial on the back shows <span class="gk">Η</span>, a solar eclipse; NASA lists a total one that day. Over its 223 months the dial flags ${NPRED} new and full moons, which include all ${STAT.nreal} real eclipses.`};
+
+/* ================= the tour ================= */
+let tour=null,tourDone=false;
+const TOUR=[
+  {t:0,do:()=>{setView('hero',false);S.openT=.62;S.train='none';S.run=30;cap(CAP.open(),'open')}},
+  {t:8,do:()=>{setView('moon');S.train='moon';S.openT=.6;S.run=4;cap(CAP.pin(),'pin')}},
+  {t:17,do:()=>{setView('back');S.train='none';S.openT=0;S.run=120;cap(CAP.back(),'back')}},
+  {t:26,do:()=>{setView('inside');S.openT=1;S.train='venus';S.run=40;cap(CAP.venus(),'venus')}},
+  {t:35,do:()=>{setView('dial');S.openT=0;S.train='none';S.run=0;crankTo(ECL.Y,2.6);cap(CAP.eclipse(),'eclipse')}},
+  {t:48,do:()=>{tour=null;tourDone=true;cap(CAP.you(),'you')}}];
+function startTour(){tour={t:0,i:0};tourDone=false}
+function tourStep(dt){if(!tour)return;tour.t+=dt;while(tour&&tour.i<TOUR.length&&tour.t>=TOUR[tour.i].t){const s=TOUR[tour.i];tour.i++;s.do();applyTrain();syncControls()}}
+function poke(){if(tour){tour=null;tourDone=true;S.run=0;S.openT=S.open;syncControls();cap(CAP.you(),'you')}}
+
+/* ================= controls ================= */
+function crankTo(Y,dur){S.Yt={y0:S.Y,y1:Y,t:0,dur:STATIC||FIXED&&!tour?0:dur};if(S.Yt.dur===0){S.Y=Y;S.Yt=null;recompute()}}
+function recompute(){M=AK.mech(S.Y,{noAnomaly:!S.anom});SK=AK.sky(jdOf(S.Y));pose()}
+function syncControls(){$$('#run button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===S.run?'true':'false'));
+  $$('#train button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.train?'true':'false'));
+  $('#open').value=Math.round(S.openT*1000);$('#real').setAttribute('aria-pressed',S.real?'true':'false');$('#anom').setAttribute('aria-pressed',S.anom?'false':'true')}
+function bind(){
+  $$('#step button').forEach(b=>b.addEventListener('click',()=>{poke();const v=b.dataset.v,sg=v[0]==='-'?-1:1,u=v[1];const days=u==='y'?365.25:u==='m'?29.530589:1;S.run=0;
+    crankTo((S.Yt?S.Yt.y1:S.Y)+sg*days/AK.YEAR,u==='d'?.25:.6);logAct('step',v);syncControls()}));
+  $$('#run button').forEach(b=>b.addEventListener('click',()=>{poke();S.run=+b.dataset.v;logAct('run',S.run);syncControls()}));
+  const mo=$('#gm');mo.innerHTML=MON.map((x,i)=>`<option value="${i+1}"${i===7?' selected':''}>${x}</option>`).join('');
+  $('#gogo').addEventListener('click',()=>{poke();let y=parseInt($('#gy').value,10)||1;const era=$('#ge').value,m=+$('#gm').value,d=clamp(parseInt($('#gd').value,10)||1,1,31);
+    const ay=era==='bc'?1-y:y;S.run=0;const Y=Yof(jdTTofDate(ay,m,d));crankTo(Y,1.6);logAct('goto',[ay,m,d]);syncControls()});
+  $$('#pre button').forEach(b=>b.addEventListener('click',()=>{poke();S.run=0;crankTo(PRESET[b.dataset.v](),1.6);logAct('preset',b.dataset.v);syncControls()}));
+  $('#real').addEventListener('click',()=>{poke();S.real=!S.real;logAct('real',S.real);syncControls();pose()});
+  $('#anom').addEventListener('click',()=>{poke();S.anom=!S.anom;logAct('anom',S.anom);recompute();syncControls();readouts(true)});
+  $$('#view button').forEach(b=>b.addEventListener('click',()=>{poke();userCam=false;setView(b.dataset.v);logAct('view',b.dataset.v)}));
+  $('#open').addEventListener('input',e=>{const v=+e.target.value/1000;poke();S.openT=v;if(STATIC||FIXED){S.open=v;applyOpen()}logAct('open',v)});
+  $$('#train button').forEach(b=>b.addEventListener('click',()=>{poke();S.train=b.dataset.v;if(S.train!=='none'&&S.openT<.4)S.openT=.42;if(STATIC||FIXED){S.open=S.openT;applyOpen()}applyTrain();logAct('train',S.train);syncControls()}));
+  $('#tourb').addEventListener('click',()=>{if(STATIC){return}userCam=false;S.Y=PRESET.epoch();S.Yt=null;recompute();startTour();tourStep(0)});
+  // the crank
+  const jog=$('#jog');let jd=null;
+  const angAt=e=>{const r=jog.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))};
+  jog.addEventListener('pointerdown',e=>{poke();S.run=0;syncControls();jd={a:angAt(e)};jog.setPointerCapture(e.pointerId);e.preventDefault()});
+  jog.addEventListener('pointermove',e=>{if(!jd)return;const a=angAt(e);let da=a-jd.a;da=Math.atan2(Math.sin(da),Math.cos(da));jd.a=a;S.crankAng=(S.crankAng||0)+da;
+    S.Yt=null;S.Y+=da/TAU*AK.Z.a1/AK.Z.b1;recompute();readouts(true)});
+  const end=()=>{if(jd){logAct('crank',S.Y)}jd=null};jog.addEventListener('pointerup',end);jog.addEventListener('pointercancel',end);
+  jog.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowUp'){poke();S.Y+=1/AK.YEAR;recompute();readouts(true);e.preventDefault()}if(e.key==='ArrowLeft'||e.key==='ArrowDown'){poke();S.Y-=1/AK.YEAR;recompute();readouts(true);e.preventDefault()}});
+  // camera
+  const cv=$('#c');
+  cv.addEventListener('pointerdown',e=>{camDrag={x:e.clientX,y:e.clientY,yaw:CAM_T.yaw,pitch:CAM_T.pitch,touch:e.pointerType==='touch'};cv.classList.add('drag');if(!camDrag.touch)cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!camDrag)return;const dx=e.clientX-camDrag.x,dy=e.clientY-camDrag.y;if(camDrag.touch&&Math.abs(dy)>Math.abs(dx)*1.2)return;if(Math.abs(dx)+Math.abs(dy)>3){poke();userCam=true}
+    CAM_T.yaw=camDrag.yaw-dx*.006;CAM_T.pitch=clamp(camDrag.pitch+dy*.004,-1.2,1.2)});
+  const up=()=>{camDrag=null;cv.classList.remove('drag')};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();poke();userCam=true;CAM_T.dist=clamp(CAM_T.dist*Math.exp(e.deltaY*.0012),120,1600)},{passive:false});
+  cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch={d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),dist:CAM_T.dist}}},{passive:true});
+  cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);poke();CAM_T.dist=clamp(pinch.dist*pinch.d/d,120,1600);e.preventDefault()}},{passive:false});
+  cv.addEventListener('touchend',()=>{pinch=null});
+  addEventListener('resize',()=>{sizeStage();fit();render()})}
+function drawJog(){const c=$('#jog'),g=c.getContext('2d'),n=c.width,r=n/2;g.clearRect(0,0,n,n);
+  const gr=g.createRadialGradient(r*.7,r*.6,2,r,r,r);gr.addColorStop(0,'#e7c27c');gr.addColorStop(1,'#6d4b1f');g.fillStyle=gr;g.beginPath();g.arc(r,r,r-3,0,TAU);g.fill();
+  g.strokeStyle='rgba(30,18,6,.7)';g.lineWidth=2;for(let i=0;i<48;i++){const a=i*TAU/48;g.beginPath();g.moveTo(r+Math.cos(a)*(r-3),r+Math.sin(a)*(r-3));g.lineTo(r+Math.cos(a)*(r-9),r+Math.sin(a)*(r-9));g.stroke()}
+  const a=-(S.Y*AK.Z.b1/AK.Z.a1)*TAU-PI/2;g.strokeStyle='#2a1a08';g.lineWidth=7;g.beginPath();g.moveTo(r,r);g.lineTo(r+Math.cos(a)*(r-20),r+Math.sin(a)*(r-20));g.stroke();
+  g.fillStyle='#3b2416';g.beginPath();g.arc(r+Math.cos(a)*(r-20),r+Math.sin(a)*(r-20),11,0,TAU);g.fill();g.fillStyle='#c9a066';g.beginPath();g.arc(r,r,7,0,TAU);g.fill()}
+
+/* ================= loop ================= */
+let ready=false,last=0,frameMs=16,slowFrames=0;window.__frame=0;
+function update(dt){
+  tourStep(dt);
+  if(S.Yt){S.Yt.t+=dt;const k=S.Yt.dur?ease(S.Yt.t/S.Yt.dur):1;S.Y=lerp(S.Yt.y0,S.Yt.y1,k);if(k>=1){S.Y=S.Yt.y1;S.Yt=null}recompute()}
+  else if(S.run){S.Y+=S.run*dt/AK.YEAR;recompute()}
+  if(Math.abs(S.open-S.openT)>1e-4){S.open=STATIC?S.openT:lerp(S.open,S.openT,1-Math.exp(-dt*2.6));if(Math.abs(S.open-S.openT)<1e-3)S.open=S.openT;applyOpen()}
+  if(R3&&S.view==='moon'&&!userCam){G.k1.getWorldPosition(T3);CAM_T.tx=T3.x;CAM_T.ty=T3.y;CAM_T.tz=T3.z}
+  if(R3){const k=STATIC||FIXED&&!tour?1:1-Math.exp(-dt*2.0);for(const p in CAM)CAM[p]=lerp(CAM[p],CAM_T[p],k);placeCam()}
+  if(!FIXED)readouts()}
+function render(){if(R3)renderer.render(scene,camera)}
+function frame(ts,skip){
+  if(!FIXED)requestAnimationFrame(frame);
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.1);
+  if(!FIXED&&last){frameMs=frameMs*.95+(now-last)*.05;if(frameMs>45&&!lite&&++slowFrames>30)goLite()}
+  last=now;window.__frame++;update(dt);if(!skip){if(FIXED)readouts(true);render()}
+  window.__state={t:tour?+tour.t.toFixed(3):null,frame:window.__frame,tour:tour?tour.i:null,Y:S.Y,view:S.view,open:S.open,train:S.train}}
+function goLite(){lite=true;if(renderer){renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;G.key.castShadow=false;fit()}}
+function sizeStage(){if(MOB()){$('#stage').style.setProperty('--sh',Math.round(Math.min(560,Math.max(380,innerWidth*1.25)))+'px')}}
+async function start(){sizeStage();
+  if(document.fonts){try{await Promise.race([Promise.all([document.fonts.load('400 30px "GFS Neohellenic"'),document.fonts.load('500 30px "DM Mono"'),document.fonts.ready]),new Promise(r=>setTimeout(r,IFR?0:1500))])}catch(e){}}
+  try{makeScene();R3=true}catch(e){console.warn(e);R3=null;document.body.classList.add('nogl')}
+  bind();fit();
+  if(STATIC){S.Y=ECL.Y;S.open=S.openT=0;setView('front',true);recompute();applyOpen();applyTrain();cap(CAP.still(),'still')}
+  else{S.Y=PRESET.epoch();recompute();setView('hero',true);S.open=S.openT=STATIC?0:.62;applyOpen();startTour();tourStep(0);
+    if(OGQ){S.Y=ECL.Y-3/AK.YEAR;S.run=0;tour=null;setView('og',true);S.open=S.openT=.62;recompute();applyOpen();
+      $('#ogtxt').innerHTML=`<b>${GEARS.length} bronze gears</b>, each turned by its tooth count. Set to 205 BC, its Moon stays within <b>${STAT.moonPin.toFixed(1)}°</b> of the real Moon for 19 years, and its eclipse dial catches all <b>${STAT.nreal}</b> eclipses of the Saros.`}
+    else if(FIXED){// frame 0: the case open at the start date, gears behind the dial
+      setView('hero',true);S.open=S.openT=.62;applyOpen();for(let i=0;i<30;i++)update(1/60)}}
+  syncControls();readouts(true);ready=true}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)};
+(async()=>{await start();render();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+window.antikythera={AK,LAY,state:()=>{if(!ready)return{ready:false};const info=renderer&&renderer.info?renderer.info.render:null;
+  const err={};for(const b of BODIES)err[b]=dang(M[b],SK[b]);
+  return{ready:true,Y:S.Y,jd:jdOf(S.Y),date:fmtDate(S.Y),civil:civil(S.Y),mech:Object.assign({},M),sky:Object.assign({},SK),err,anom:S.anom,real:S.real,view:S.view,open:S.open,openT:S.openT,train:S.train,run:S.run,
+    tour:tour?tour.i:null,tourDone,caption:$('#caption').textContent,capKey,glyphCells:GLYPH.map((g,i)=>g.solar||g.lunar?[i,!!g.solar,!!g.lunar]:null).filter(Boolean),npred:NPRED,ncell:NCELL,
+    ecl:{Y:ECL.Y,jd:ECL.jd,dist:ECL.dist,cell:ECL.cell},lun:{Y:LUN.Y,jd:LUN.jd,dist:LUN.dist,cell:LUN.cell},parts:PARTS,gears:GEARS.length,tris:info?info.triangles:null,calls:info?info.calls:null,lite,log:S.log.slice(),
+    egypt:AK.egypt(jdOf(S.Y)),metonic:AK.METONIC[M.metCell],r3:!!R3,gearsAt:R3?gearsAt():null}}};
+function gearsAt(){scene.updateMatrixWorld(true);return GEARS.map(g=>{const e=g.matrixWorld.elements;return[g.userData.name||'',g.userData.Zn,+e[12].toFixed(6),+e[13].toFixed(6),Math.atan2(e[1],e[0])]})}
+</script>
+</body>
+</html>
