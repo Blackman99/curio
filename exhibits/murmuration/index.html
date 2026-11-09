@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Murmuration — a quarter of a million starlings on your GPU</title>
+<meta name="description" content="262,144 starlings at dusk, simulated live in WebGPU compute shaders: every bird finds its 7 nearest neighbours through a spatial hash rebuilt 60 times a second. Send in a falcon, switch the birds between Ballerini's topological rule and a fixed radius, and count the stragglers.">
+<meta property="og:title" content="Murmuration">
+<meta property="og:description" content="A quarter of a million starlings, each one steering by its 7 nearest neighbours, simulated live on your GPU with WebGPU compute shaders. Send in a falcon and watch who gets left behind.">
+<meta property="og:image" content="https://blackman99.github.io/curio/murmuration/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Murmuration">
+<meta name="twitter:description" content="262,144 starlings on WebGPU compute shaders: each bird watches its 7 nearest neighbours, the way real starlings do. Send in a falcon.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/murmuration/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0d0b12;--paper:#f3ebe2;--paper2:#b9a9a6;--gold:#f2b27a;--rose:#e88f8a;--blue:#9fb4ff;--green:#a6e3b0;--red:#ff9a84;--line:rgba(250,225,205,.14);--panel:rgba(18,13,22,.88)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:#251a2c}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 85% at 40% 45%,transparent 60%,rgba(8,5,12,.45) 100%)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:620px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(16,11,20,.42)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--gold);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(16,11,20,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--gold);color:#22140c;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-shadow:0 1px 4px #000}
+h1{margin:8px 0 0;font:italic 500 clamp(36px,3.5vw,56px)/1 'Cormorant Garamond',Georgia,serif;letter-spacing:.01em;color:#fff4ea;text-shadow:0 2px 0 #3a2030,0 5px 24px rgba(0,0,0,.7)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:880px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(16,11,20,.62)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#f7efe6;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--gold)}
+#caption .r{color:var(--red);font-weight:600}
+#caption .g{color:var(--green);font-weight:600}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:376px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,235,215,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.lab b{font:500 11px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none;text-align:right}
+.sec{margin-bottom:12px}
+.btn{border:1px solid var(--line);background:rgba(242,178,122,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.15 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(242,178,122,.18);border-color:var(--gold);outline:none}
+.btn.go{background:var(--gold);border-color:var(--gold);color:#24150b;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd0a6}
+.btn:disabled{opacity:.45;cursor:default}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 2px;font:400 10.5px/1.1 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(242,178,122,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--gold);color:#24150b;font-weight:500}
+.seg.big button{padding:8px 4px;font-size:11px;line-height:1.25}
+.seg.big button small{display:block;font-size:9.5px;opacity:.8}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.note{margin:6px 0 0;font:400 11px/1.45 'DM Mono',monospace;color:var(--paper2)}
+.note b{color:var(--paper);font-weight:500}
+.note .g{color:var(--green)}
+.note .r{color:var(--red)}
+.read{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+.rd{display:flex;flex-direction:column;gap:3px;min-width:0;padding:7px 8px;border:1px solid rgba(250,225,205,.08);border-radius:8px;background:rgba(255,240,225,.025)}
+.rd span{font:500 8.5px/1.1 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 17px/1.05 'DM Mono',monospace;color:#ffe2c6;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd small{font:400 10px/1.25 'DM Mono',monospace;color:var(--paper2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd.hot{border-color:rgba(255,150,130,.45);background:rgba(255,120,100,.07)}
+.rd.cool{border-color:rgba(166,227,176,.4);background:rgba(166,227,176,.06)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#4a2c3c,#f2b27a);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,#4a2c3c,#f2b27a)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#6a3410 120%);box-shadow:0 2px 5px rgba(0,0,0,.7)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#fff 0,var(--gold) 45%,#6a3410 120%)}
+input[type=range]:focus-visible{outline:1px dashed var(--gold);outline-offset:3px}
+input[type=range]:disabled{opacity:.4}
+.ends{display:flex;justify-content:space-between;font:400 10px/1 'DM Mono',monospace;color:var(--paper2);margin-top:1px}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--gold);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--gold)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(245,230,220,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--gold);text-decoration:underline;font:inherit}
+#gpuflag{display:none;margin:0 0 10px;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,190,140,.35);background:rgba(255,170,110,.08);font:400 11px/1.45 'DM Mono',monospace;color:#ffd9bd}
+.nogpu #gpuflag{display:block}
+#ogtxt{display:none}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(32px,3vw,44px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:15px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:344px}#story{width:calc(100vw - 404px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:42px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:7.6em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,460px);margin-top:4px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(20,14,24,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+.og #title{background:rgba(16,11,20,.5)}
+.og #ogtxt{display:block;position:fixed;left:30px;bottom:36px;z-index:2;max-width:560px;padding:14px 18px;border-radius:12px;background:rgba(16,11,20,.66);font:400 21px/1.35 'Newsreader',serif;color:#f7efe6}
+.og #ogtxt b{color:#ffd2a8;font-weight:600}
+.og #ogtxt .m{font:500 .8em 'DM Mono',monospace;color:var(--gold)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 041 · WebGPU flocking</span>
+  <h1>Murmuration</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="Dusk over the sea: a huge flock of starlings swirls above the iron skeleton of a ruined pier, against an orange and violet sky with the sun on the horizon; the flock's shape folds and darkens where it turns, and a falcon can dive through it."></canvas>
+  <div id="vig"></div>
+</div>
+<div id="ogtxt"></div>
+<aside id="panel" aria-label="Flock controls and readouts">
+  <div id="gpuflag">This browser has no WebGPU adapter, so you are seeing the fallback: the same flocking step in JavaScript on the CPU, with far fewer birds, drawn on a 2D canvas. WebGPU is in Chrome and Edge 113+, Safari 26 and Firefox 141+ (Windows) / 145+ (Apple-silicon Macs).</div>
+  <div class="sec">
+    <div class="lab"><span>Who each bird listens to</span><b id="rulev">its 7 nearest</b></div>
+    <div class="seg big" id="rule"><button data-v="0" aria-pressed="true">7 nearest<small>topological</small></button><button data-v="1" aria-pressed="false">within 1.35 m<small>metric</small></button></div>
+    <div class="lab" style="margin-top:9px"><span>Neighbours each bird tracks</span><b id="kv">7</b></div>
+    <input id="k" type="range" min="1" max="14" value="7" step="1" aria-label="How many nearest neighbours each bird follows">
+    <div class="ends"><span>1</span><span>Ballerini: 6–7</span><span>14</span></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Predator</span><b id="falv">none in the sky</b></div>
+    <button class="btn go" id="falcon" style="width:100%">Send in the falcon</button>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>The flock right now</span><b id="whenv">–</b></div>
+    <div class="read">
+      <div class="rd" id="rdp"><span>Pieces</span><b id="pcs">–</b><small id="pcsn">groups more than 4 m apart</small></div>
+      <div class="rd" id="rds"><span>Stragglers</span><b id="str">–</b><small id="strn">lone birds</small></div>
+      <div class="rd"><span>Neighbours examined</span><b id="ex">–</b><small id="exn">per step, to find them</small></div>
+      <div class="rd"><span>One step takes</span><b id="ms">–</b><small id="msn">on the GPU</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>How many birds</span><b id="nv">262,144</b></div>
+    <div class="seg" id="size"></div>
+    <div class="lab" style="margin-top:9px"><span>Run the step on</span><b id="cpv">the GPU</b></div>
+    <div class="seg big" id="cpu"><button data-v="gpu" aria-pressed="true">GPU<small>WebGPU compute</small></button><button data-v="cpu" aria-pressed="false">CPU<small>same code in JS</small></button></div>
+    <p class="note" id="cpunote"></p>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p><b>A murmuration simulated live on your GPU.</b> Each starling is a point with a velocity. Every frame, a chain of WebGPU compute shaders does the whole step for all 262,144 birds. First it rebuilds a spatial hash with a counting sort: each bird counts itself into a grid cell with an atomic add, a prefix sum turns the counts into offsets, and the birds are copied into cell order. There are four grids, with 2, 8, 32 and 128 m cells. Then every bird searches outwards, ring by ring, until its 7 nearest neighbours are certain. Last, it steers by them and moves. Nothing is precomputed or recorded.</p>
+    <p><b>The rules</b> are Reynolds’ (1987): keep clear of birds closer than 1.1 m, match your neighbours’ velocity, drift towards their centre. On top of those: cruise near 12 m/s, prefer level flight, stay between 28 and 120 m up, turn back when more than 130 m from a roost point that wanders over the pier, flee a falcon within 20 m, and a small random jitter. The weights are mine, tuned until the flock looked like a murmuration. The birds are drawn 1.45 times life size (a starling spans about 40 cm) so you can see them, and each one banks into its turns, which is what makes the flock flicker as it wheels.</p>
+    <p><b>Seven nearest, not everyone close by.</b> Ballerini et al. (2008) reconstructed flocks of up to 2,600 starlings over Rome in 3D. Each bird’s interaction reaches a fixed <i>number</i> of neighbours, n<sub>c</sub> = 6.5 ± 0.9, and that number stays the same whether the flock is dense or sparse; a fixed distance would not. Their 2D simulation (200 particles) showed why it matters: hit by a predator, flocks with a metric rule most often broke into 5 pieces, with stragglers making up 43% of the pieces, against 5% for the topological rule.</p>
+    <p><b>We ran the same test in 3D</b> on 30 flocks of 262,144 birds, each starting compact and flying one way, as Ballerini’s did: 10 s of calm flight, then a falcon spawned 140 m out and dived through the centre for 8 s and left. We counted pieces 20 s after it appeared, with Ballerini’s link distance of 3 r<sub>c</sub> = 4.05 m. For the metric rule, r<sub>c</sub> = 1.35 m is about the 7th-nearest distance in the calm flock (median 1.23 m). Before the attack, metric birds actually had more neighbours in range (median 11). Metric flocks ended in a median of <b>197.5</b> pieces (89–503) with <b>87</b> lone stragglers (31–204); topological flocks in <b>43.5</b> pieces (13–106) with <b>1</b> (0–3; none at all in 13 of 30). Every one of the 30 metric flocks had more pieces and more stragglers than its topological twin. Lone birds were 38% of the metric pieces and 2% of the topological ones. Both rules lost a similar handful of large groups (about 2,000 birds outside the largest piece). Over the pier the falcon chases a single bird instead, because a folded flock’s centre can be empty air.</p>
+    <p><b>Why this needs the GPU.</b> The <i>CPU</i> switch runs the very same step in JavaScript on the same birds, sliced across frames so the page stays responsive. On an Apple M4 Pro, one step for 262,144 birds took 3.3 ms on the GPU and about 1,000 ms in JavaScript. WebGL could draw the birds, but it has no compute shaders, atomics or storage buffers, so it cannot rebuild the hash on the GPU. The GPU and JavaScript versions find identical neighbour lists, checked against brute force, and agree on every position and velocity to within float32 rounding. They differ only where the GPU fuses a multiply and an add.</p>
+    <p><b>What is made up:</b> the steering weights, the wandering roost, the falcon (it picks one bird and chases it with a limited turn; in the experiment it aims at the flock’s centre) and the scenery. The pier is an invented ruin. The neighbour search, the counting of pieces and every number in the panel are computed live.</p>
+    <p><b>Browser support</b> (MDN, 9 November 2026): WebGPU is in Chrome and Edge 113+ on Windows, macOS and ChromeOS (Linux from 144, on Intel Gen12+), Chrome for Android 121+, Safari 26, and Firefox 141+ on Windows and 145+ on Apple-silicon Macs (not Linux or Android yet). Elsewhere the page falls back to the same step in JavaScript with 2,048 birds, drawn on a 2D canvas.</p>
+    <p>Sources: M. Ballerini et al., <a href="https://doi.org/10.1073/pnas.0711437105">Interaction ruling animal collective behavior depends on topological rather than metric distance</a>, PNAS 105, 1232 (2008); C. W. Reynolds, <a href="https://doi.org/10.1145/37402.37406">Flocks, herds and schools: a distributed behavioral model</a>, SIGGRAPH 1987; MDN, <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API">WebGPU API</a>.</p>
+  </details>
+  <div class="foot">Drag to fly round the flock · scroll or pinch to zoom · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script type="module">
+// ===== Murmuration engine: the same flocking step on the GPU (WGSL) and on the CPU (JS, float32) =====
+// One step: every bird finds its neighbours (the k nearest, or everyone within rc) through a
+// spatial hash rebuilt by a counting sort, then steers by Reynolds' three rules plus speed, roost,
+// altitude, falcon and a little noise. Only + − × and comparisons touch floats in the bird update,
+// so the WGSL and JS versions can be compared number by number.
+const MUR=(()=>{
+const F=Math.fround,LEVELS=4,KMAX=16,RCPN=1024,PSIZE=320;
+// ---------- parameters ----------
+const DEF={n:65536,k:7,mode:0,rc:1.35,h0:2,ring:[2,2,2,2],levRatio:4,rsep:1.1,wsep:9,wali:1.6,wcoh:0.9,wlev:1.0,rad:0.3,amax:40,
+  v0:12,wspd:0.9,wroost:0.000006,R:130,ylo:28,yhi:120,wy:0.6,noise:3.0,rfear:20,wfear:60,dt:1/60,
+  fspeed:30,fturn:28,seed:7};
+function hpow(n){let h=1;while(h<n)h*=2;return h}
+function layout(n){// hash tables per level, laid out one after another; table sizes are powers of two
+  const H=[],off=[];let t=0;for(let l=0;l<LEVELS;l++){const h=Math.max(1024,hpow(n)>>(2*l));H.push(h);off.push(t);t+=h}
+  return{H,off,T:t}}
+function pcg(x){const s=(Math.imul(x>>>0,747796405)+2891336453)>>>0;const w=Math.imul(((s>>>((s>>>28)+4))^s)>>>0,277803737)>>>0;return((w>>>22)^w)>>>0}
+// pack the parameters for one step into the uniform layout shared by both engines
+function pack(p,L,step,roost,fcmd,fsp,fsv,flags,ftgt){
+  const b=new ArrayBuffer(PSIZE),u=new Uint32Array(b),f=new Float32Array(b);
+  const h0=Math.max(p.h0,p.mode===1?p.rc:0),nlev=p.mode===1?1:LEVELS;
+  u[0]=p.n;u[1]=p.k;u[2]=p.mode;u[3]=nlev;u[4]=step>>>0;u[5]=flags|0;u[6]=fcmd|0;u[7]=pcg((p.seed>>>0)^pcg(step>>>0));
+  for(let l=0;l<LEVELS;l++){const h=h0*Math.pow(p.levRatio,l);f[8+l]=1/h;u[12+l]=L.H[l]-1;u[16+l]=L.off[l];u[20+l]=p.mode===1?1:p.ring[l];
+    for(let r=0;r<4;r++)f[24+l*4+r]=(r*h)*(r*h)}
+  f[40]=p.rc*p.rc;f[41]=p.rsep*p.rsep;f[42]=p.wsep/(p.rsep*p.rsep*p.rsep);f[43]=p.wali;
+  f[44]=p.wcoh;f[45]=p.v0*p.v0;f[46]=p.wspd/(2*p.v0*p.v0);f[47]=p.wroost;
+  f[48]=roost[0];f[49]=roost[1];f[50]=roost[2];f[51]=p.R*p.R;
+  f[52]=p.ylo;f[53]=p.yhi;f[54]=p.wy;f[55]=p.noise;
+  f[56]=p.rfear*p.rfear;f[57]=p.wfear/(p.rfear*p.rfear*p.rfear);f[58]=p.dt;f[59]=p.fspeed;
+  f[60]=fsp[0];f[61]=fsp[1];f[62]=fsp[2];f[63]=0;f[64]=fsv[0];f[65]=fsv[1];f[66]=fsv[2];f[67]=0;
+  f[68]=p.fturn*p.dt;f[69]=1/p.n;u[70]=L.T+1;u[71]=0;f[72]=p.wlev;f[73]=1/(p.v0*p.v0);f[74]=p.rad;f[75]=p.amax;u[76]=ftgt===undefined||ftgt===null?0xffffffff:ftgt>>>0;
+  return b}
+const RCP=(()=>{const a=new Float32Array(RCPN*4);a[0]=0;for(let c=1;c<RCPN*4;c++)a[c]=1/(4096*c);return a})();
+// ---------- initial flock: a flat ellipsoid of birds flying roughly together ----------
+function flock(n,seed,roost){const a=new Float32Array(n*8);let s=pcg(seed>>>0^0x5bd1e995);
+  const U=()=>{s=pcg(s);return (s>>>8)/16777216};
+  // a thick ribbon swept along an S-curve, everyone flying along it, so the flock starts out folding
+  const len=190*Math.cbrt(n/262144),wid=len*.42,th=Math.max(1.5,len*.055);
+  for(let i=0;i<n;i++){const u=U(),w=U()*2-1,t=U()*2-1,ang=(u-.5)*Math.PI*1.25;
+    const cx=Math.sin(ang)*len*.55,cz=-Math.cos(ang)*len*.32+len*.12,tx=Math.cos(ang),tz=Math.sin(ang)*.58,tl=Math.hypot(tx,tz);
+    const nx=-tz/tl,nz=tx/tl,tw=Math.sin(ang*1.6)*.9,y=w*wid*.5*Math.sin(tw)+t*th,side=w*wid*.5*Math.cos(tw);
+    a[i*8]=roost[0]+cx+nx*side;a[i*8+1]=roost[1]+y;a[i*8+2]=roost[2]+cz+nz*side;a[i*8+3]=U();
+    a[i*8+4]=12*tx/tl+U()-.5;a[i*8+5]=(U()-.5)*1.5+Math.cos(ang*2)*2;a[i*8+6]=12*tz/tl+U()-.5;a[i*8+7]=0}
+  return a}
+// the compact, aligned test flock used for the falcon experiment (as in Ballerini's test: a cohesive, polarised flock)
+function flockCompact(n,seed,roost){const a=new Float32Array(n*8);let s=pcg(seed>>>0^0x5bd1e995);
+  const U=()=>{s=pcg(s);return (s>>>8)/16777216};
+  const vol=n/0.5,ax=Math.cbrt(vol/(4/3*Math.PI)/(0.6*1.0*0.14));
+  for(let i=0;i<n;i++){let x,y,z;do{x=U()*2-1;y=U()*2-1;z=U()*2-1}while(x*x+y*y+z*z>1);
+    a[i*8]=roost[0]+x*ax;a[i*8+1]=roost[1]+y*ax*.14;a[i*8+2]=roost[2]+z*ax*.6;a[i*8+3]=U();
+    const th=0.15*(U()*2-1);a[i*8+4]=12*Math.cos(th)+U()-.5;a[i*8+5]=U()-.5;a[i*8+6]=12*Math.sin(th)+U()-.5;a[i*8+7]=0}
+  return a}
+function centroid(a,n){let x=0,y=0,z=0;for(let i=0;i<n;i++){x+=a[i*8];y+=a[i*8+1];z+=a[i*8+2]}return[x/n,y/n,z/n]}
+// ---------- CPU engine (float32, identical arithmetic) ----------
+const toI=x=>Math.floor(F(x+0.5));
+function rsqrt(x){// bit-trick start + 4 Newton steps, + − × only (identical on GPU)
+  const b=new Float32Array(1),u=new Uint32Array(b.buffer);b[0]=x;u[0]=0x5f3759df-(u[0]>>>1);let y=b[0];
+  for(let i=0;i<4;i++)y=F(y*F(1.5-F(F(F(0.5*x)*y)*y)));return y}
+function hash3(cx,cy,cz,mask){return((Math.imul(cx,73856093)^Math.imul(cy,19349663)^Math.imul(cz,83492791))&mask)>>>0}
+class CPU{
+  constructor(p,birds){this.setParams(p);this.n=p.n;this.a=birds.slice();this.b=new Float32Array(p.n*8);this.prev=birds.slice();
+    this.fal=new Float32Array(32);this.fal.set(this.cent0(),16);this.stats=new Uint32Array(16);this.nb=null;this.cent=[0,0,0];this.sum=new Int32Array(4)}
+  cent0(){return centroid(this.a,this.n)}
+  setParams(p){this.p=Object.assign({},p);this.L=layout(p.n);this.cnt=new Uint32Array(this.L.T+1);
+    this.bk=new Uint32Array(LEVELS*p.n);this.rk=new Uint32Array(LEVELS*p.n);this.sorted=new Float32Array(LEVELS*p.n*4);this.sortedV=new Float32Array(p.n*4)}
+  // phase 1: counting sort into the per-level hash tables; also the centroid sums
+  sortA(P,i0,i1){const u=new Uint32Array(P),f=new Float32Array(P),n=u[0],nlev=u[3],a=this.a,cnt=this.cnt;if(i0===0){cnt.fill(0);this.sum.fill(0)}
+    for(let i=i0;i<i1;i++){const x=a[i*8],y=a[i*8+1],z=a[i*8+2];
+      for(let l=0;l<nlev;l++){const ih=f[8+l],b=u[16+l]+hash3(Math.floor(F(x*ih)),Math.floor(F(y*ih)),Math.floor(F(z*ih)),u[12+l]);this.bk[l*n+i]=b;this.rk[l*n+i]=cnt[b]++}
+      this.sum[0]+=toI(x);this.sum[1]+=toI(y);this.sum[2]+=toI(z)}}
+  prefix(){const cnt=this.cnt;let s=0;for(let i=0;i<cnt.length;i++){const c=cnt[i];cnt[i]=s;s+=c}}
+  sortB(P,i0,i1){const u=new Uint32Array(P),n=u[0],nlev=u[3],a=this.a;
+    for(let i=i0;i<i1;i++)for(let l=0;l<nlev;l++){const d=this.cnt[this.bk[l*n+i]]+this.rk[l*n+i];
+      this.sorted[d*4]=a[i*8];this.sorted[d*4+1]=a[i*8+1];this.sorted[d*4+2]=a[i*8+2];this.sorted[d*4+3]=i;
+      if(l===0){this.sortedV[d*4]=a[i*8+4];this.sortedV[d*4+1]=a[i*8+5];this.sortedV[d*4+2]=a[i*8+6]}}}
+  sort(P){this.sortA(P,0,this.n);this.prefix();this.sortB(P,0,this.n)}
+  // the same step cut into slices, so the page can spread one step over several frames
+  *stepGen(P,chunk){const n=this.n;this.stats.fill(0);
+    for(let i=0;i<n;i+=chunk){this.sortA(P,i,Math.min(n,i+chunk));yield}
+    this.prefix();yield;
+    for(let i=0;i<n;i+=chunk){this.sortB(P,i,Math.min(n,i+chunk));yield}
+    this.falcon(P);
+    for(let i=0;i<n;i+=chunk>>2){this.update(P,i,Math.min(n,i+(chunk>>2)));yield}
+    this.swap()}
+  falcon(P){falconStep(P,this.sum,this.fal,this.a)}
+  // phase 2: birds [i0,i1)
+  update(P,i0,i1){const u=new Uint32Array(P),f=new Float32Array(P),n=u[0],k=u[1],mode=u[2],nlev=u[3],flags=u[5],a=this.a,b=this.b,st=this.stats;
+    const kd=new Float32Array(KMAX),ki=new Uint32Array(KMAX);
+    if(flags&1&&(!this.nb||this.nb.length<n*k))this.nb=new Uint32Array(n*k);
+    for(let i=i0;i<i1;i++){const px=a[i*8],py=a[i*8+1],pz=a[i*8+2],vx=a[i*8+4],vy=a[i*8+5],vz=a[i*8+6];
+      let sv0=0,sv1=0,sv2=0,sp0=0,sp1=0,sp2=0,ss0=0,ss1=0,ss2=0,cn=0,exam=0,deep=0,sat=1;
+      const rsep2=f[41],wsepk=f[42];
+      const add=(j,qx,qy,qz,wx,wy,wz)=>{const dx=F(qx-px),dy=F(qy-py),dz=F(qz-pz),d2=F(F(F(dx*dx)+F(dy*dy))+F(dz*dz));
+        sv0+=toI(F(wx*4096));sv1+=toI(F(wy*4096));sv2+=toI(F(wz*4096));sp0+=toI(F(dx*4096));sp1+=toI(F(dy*4096));sp2+=toI(F(dz*4096));
+        if(d2<rsep2){const w=F(F(rsep2-d2)*wsepk);ss0+=toI(F(F(F(-dx)*w)*65536));ss1+=toI(F(F(F(-dy)*w)*65536));ss2+=toI(F(F(F(-dz)*w)*65536))}cn++};
+      if(mode===0){kd.fill(3.4e38);ki.fill(0xffffffff);let done=false;
+        for(let l=0;l<nlev&&!done;l++){const ih=f[8+l],mask=u[12+l],off=u[16+l],R=u[20+l],base=l*n;
+          const cx=Math.floor(F(px*ih)),cy=Math.floor(F(py*ih)),cz=Math.floor(F(pz*ih));if(l>0)deep=1;
+          for(let r=0;r<=R&&!done;r++){
+            for(let dz=-r;dz<=r;dz++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+              if(Math.max(Math.abs(dx),Math.abs(dy),Math.abs(dz))!==r)continue;
+              const X=cx+dx,Y=cy+dy,Z=cz+dz,bb=off+hash3(X,Y,Z,mask),s0=this.cnt[bb],s1=this.cnt[bb+1];
+              for(let s=s0;s<s1;s++){const qx=this.sorted[s*4],qy=this.sorted[s*4+1],qz=this.sorted[s*4+2],j=this.sorted[s*4+3];
+                if(Math.floor(F(qx*ih))!==X||Math.floor(F(qy*ih))!==Y||Math.floor(F(qz*ih))!==Z||j===i)continue;exam++;
+                const ex=F(qx-px),ey=F(qy-py),ez=F(qz-pz),d2=F(F(F(ex*ex)+F(ey*ey))+F(ez*ez));
+                if(d2<kd[k-1]||(d2===kd[k-1]&&j<ki[k-1])){let dup=false;for(let m=0;m<k;m++)if(ki[m]===j){dup=true;break}
+                  if(!dup){let m=k-1;while(m>0&&(kd[m-1]>d2||(kd[m-1]===d2&&ki[m-1]>j))){kd[m]=kd[m-1];ki[m]=ki[m-1];m--}kd[m]=d2;ki[m]=j}}}}
+            if(r>0&&kd[k-1]<=f[24+l*4+r])done=true}}
+        if(!done)sat=0;
+        for(let m=0;m<k;m++){const j=ki[m];if(j===0xffffffff)break;add(j,a[j*8],a[j*8+1],a[j*8+2],a[j*8+4],a[j*8+5],a[j*8+6])}
+        if(flags&1)for(let m=0;m<k;m++)this.nb[i*k+m]=ki[m]}
+      else{const ih=f[8],mask=u[12],rc2=f[40];const cx=Math.floor(F(px*ih)),cy=Math.floor(F(py*ih)),cz=Math.floor(F(pz*ih));
+        for(let dz=-1;dz<=1;dz++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=cx+dx,Y=cy+dy,Z=cz+dz,bb=hash3(X,Y,Z,mask),s0=this.cnt[bb],s1=this.cnt[bb+1];
+          for(let s=s0;s<s1;s++){const qx=this.sorted[s*4],qy=this.sorted[s*4+1],qz=this.sorted[s*4+2],j=this.sorted[s*4+3];
+            if(Math.floor(F(qx*ih))!==X||Math.floor(F(qy*ih))!==Y||Math.floor(F(qz*ih))!==Z||j===i)continue;exam++;
+            const ex=F(qx-px),ey=F(qy-py),ez=F(qz-pz),d2=F(F(F(ex*ex)+F(ey*ey))+F(ez*ez));
+            if(d2<rc2)add(j,qx,qy,qz,this.sortedV[s*4],this.sortedV[s*4+1],this.sortedV[s*4+2])}}
+        if(flags&1){this.nb[i*k]=cn;for(let m=1;m<k;m++)this.nb[i*k+m]=0}}
+      // steering
+      let ax=0,ay=0,az=0;
+      if(cn>0){const rc=RCP[Math.min(cn,RCPN*4-1)],wa=f[43],wc=f[44];
+        ax=F(ax+F(F(F(F(sv0)*rc)-vx)*wa));ay=F(ay+F(F(F(F(sv1)*rc)-vy)*wa));az=F(az+F(F(F(F(sv2)*rc)-vz)*wa));
+        ax=F(ax+F(F(F(sp0)*rc)*wc));ay=F(ay+F(F(F(sp1)*rc)*wc));az=F(az+F(F(F(sp2)*rc)*wc));
+        ax=F(ax+F(F(ss0)*(1/65536)));ay=F(ay+F(F(ss1)*(1/65536)));az=F(az+F(F(ss2)*(1/65536)))}
+      const s2=F(F(F(vx*vx)+F(vy*vy))+F(vz*vz)),ks=F(F(f[45]-s2)*f[46]);
+      ax=F(ax+F(vx*ks));ay=F(ay+F(vy*ks));az=F(az+F(vz*ks));
+      const rx=F(px-f[48]),rz=F(pz-f[50]),r2=F(F(rx*rx)+F(rz*rz));
+      if(r2>f[51]){const kk=F(F(r2-f[51])*f[47]),dv=F(F(F(vx*rx)+F(vz*rz))/Math.max(F(F(vx*vx)+F(vz*vz)),1));
+        const lx=F(F(F(vx*dv)-rx)-F(rx*f[74])),lz=F(F(F(vz*dv)-rz)-F(rz*f[74]));ax=F(ax+F(lx*kk));az=F(az+F(lz*kk))}
+      ay=F(ay-F(vy*f[72]));
+      if(py<f[52])ay=F(ay+F(F(f[52]-py)*f[54]));else if(py>f[53])ay=F(ay-F(F(py-f[53])*f[54]));
+      if(this.fal[12]>0.5){const ex=F(px-this.fal[0]),ey=F(py-this.fal[1]),ez=F(pz-this.fal[2]),d2=F(F(F(ex*ex)+F(ey*ey))+F(ez*ez));
+        if(d2<f[56]){const w=F(F(f[56]-d2)*f[57]);ax=F(ax+F(ex*w));ay=F(ay+F(ey*w));az=F(az+F(ez*w))}}
+      const h1=pcg((i^u[7])>>>0),h2=pcg(h1),h3=pcg(h2),nz=f[55];
+      ax=F(ax+F(F(F((h1>>>8)*(1/8388608))-1)*nz));ay=F(ay+F(F(F((h2>>>8)*(1/8388608))-1)*nz));az=F(az+F(F(F((h3>>>8)*(1/8388608))-1)*nz));
+      const am=f[75];ax=Math.min(Math.max(ax,-am),am);ay=Math.min(Math.max(ay,-am),am);az=Math.min(Math.max(az,-am),am);
+      const dt=f[58],nvx=F(vx+F(ax*dt)),nvy=F(vy+F(ay*dt)),nvz=F(vz+F(az*dt));
+      b[i*8]=F(px+F(nvx*dt));b[i*8+1]=F(py+F(nvy*dt));b[i*8+2]=F(pz+F(nvz*dt));b[i*8+3]=a[i*8+3];b[i*8+4]=nvx;b[i*8+5]=nvy;b[i*8+6]=nvz;b[i*8+7]=cn;
+      st[0]+=exam;st[1]+=deep;st[2]+=1-sat;if(exam>st[3])st[3]=exam;st[4]+=cn;st[5]+=cn===0?1:0}}
+  swap(){const t=this.prev;this.prev=this.a;this.a=this.b;this.b=t}
+  step(P){this.stats.fill(0);this.sort(P);this.falcon(P);this.update(P,0,this.n);this.swap()}
+}
+// the falcon: one agent, steered at the flock's centroid with a limited turn; shared by both engines
+function falconStep(P,sum,fal,a){const u=new Uint32Array(P),f=new Float32Array(P),cmd=u[6],invn=f[69];
+  const cx=F(F(sum[0])*invn),cy=F(F(sum[1])*invn),cz=F(F(sum[2])*invn);fal[8]=cx;fal[9]=cy;fal[10]=cz;
+  fal[16]=F(fal[16]+F(F(cx-fal[16])*F(.02)));fal[17]=F(fal[17]+F(F(cy-fal[17])*F(.02)));fal[18]=F(fal[18]+F(F(cz-fal[18])*F(.02)));
+  if(cmd===1){fal[0]=F(cx+f[60]);fal[1]=F(cy+f[61]);fal[2]=F(cz+f[62]);fal[4]=f[64];fal[5]=f[65];fal[6]=f[66];fal[12]=1;fal[13]=0;return}
+  if(cmd===4){fal[12]=0;fal[0]=0;fal[1]=-1000;fal[2]=0;fal[4]=fal[5]=fal[6]=0;return}
+  if(fal[12]<0.5)return;
+  const tg=u[76],gx=tg!==0xffffffff?a[tg*8]:cx,gy=tg!==0xffffffff?a[tg*8+1]:cy,gz=tg!==0xffffffff?a[tg*8+2]:cz;
+  let tx=F(gx-fal[0]),ty=F(gy-fal[1]),tz=F(gz-fal[2]);
+  if(cmd===3){tx=F(fal[4]);ty=F(F(fal[5]>0?fal[5]:0)+30);tz=F(fal[6])}
+  const t2=F(F(F(tx*tx)+F(ty*ty))+F(tz*tz)),ir=rsqrt(F(t2+F(1e-6))),sp=f[59];
+  const dx=F(F(F(tx*ir)*sp)-fal[4]),dy=F(F(F(ty*ir)*sp)-fal[5]),dz=F(F(F(tz*ir)*sp)-fal[6]);
+  const d2=F(F(F(dx*dx)+F(dy*dy))+F(dz*dz)),lim=f[68];let sc=F(1);
+  if(d2>F(lim*lim))sc=F(lim*rsqrt(d2));
+  fal[4]=F(fal[4]+F(dx*sc));fal[5]=F(fal[5]+F(dy*sc));fal[6]=F(fal[6]+F(dz*sc));
+  const dt=f[58];fal[0]=F(fal[0]+F(fal[4]*dt));fal[1]=F(fal[1]+F(fal[5]*dt));fal[2]=F(fal[2]+F(fal[6]*dt));fal[13]=F(fal[13]+dt)}
+
+// ---------- WGSL ----------
+const PSTRUCT=`struct P{n:u32,k:u32,mode:u32,nlev:u32,step:u32,flags:u32,fcmd:u32,seed:u32,
+ invh:vec4f,hmask:vec4u,hoff:vec4u,ring:vec4u,rr2:array<vec4f,4>,
+ rc2:f32,rsep2:f32,wsepk:f32,wali:f32,wcoh:f32,v02:f32,wspdk:f32,wroost:f32,roost:vec4f,
+ ylo:f32,yhi:f32,wy:f32,noise:f32,rf2:f32,wfeark:f32,dt:f32,fspeed:f32,fsp:vec4f,fsv:vec4f,flim:f32,invn:f32,tlen:u32,zero:u32,wlev:f32,iv02:f32,rad:f32,amax:f32,ftgt:u32,q1:u32,q2:u32,q3:u32};
+struct Bird{p:vec4f,v:vec4f};
+@group(0) @binding(0) var<uniform> U:P;
+fn hash3(c:vec3i,mask:u32)->u32{return ((bitcast<u32>(c.x)*73856093u)^(bitcast<u32>(c.y)*19349663u)^(bitcast<u32>(c.z)*83492791u))&mask;}
+fn cellOf(p:vec3f,ih:f32)->vec3i{return vec3i(floor(p*ih));}
+fn toI(x:f32)->i32{return i32(floor(x+0.5));}
+fn pcg(x:u32)->u32{let s=x*747796405u+2891336453u;let w=((s>>((s>>28u)+4u))^s)*277803737u;return (w>>22u)^w;}
+// nf(): an opaque identity (xor with a uniform zero) so the compiler cannot fuse a*b+c into one fma
+fn nf(x:f32)->f32{return bitcast<f32>(bitcast<u32>(x)^U.zero);}
+fn nf3(x:vec3f)->vec3f{return bitcast<vec3f>(bitcast<vec3u>(x)^vec3u(U.zero));}
+fn dot3(a:vec3f)->f32{let x=nf(a.x*a.x);let y=nf(a.y*a.y);let z=nf(a.z*a.z);return nf(nf(x+y)+z);}
+`;
+const rep=(n,f,j='')=>Array.from({length:n},(_,m)=>f(m)).join(j);
+const WG={
+clear:PSTRUCT+`
+@group(0) @binding(1) var<storage,read_write> cnt:array<u32>;
+@group(0) @binding(2) var<storage,read_write> misc:array<u32>;
+@compute @workgroup_size(256) fn main(@builtin(global_invocation_id) g:vec3u){let i=g.x;if(i<U.tlen){cnt[i]=0u;}if(i<32u){misc[i]=0u;}}`,
+count:PSTRUCT+`
+@group(0) @binding(1) var<storage,read> bin:array<Bird>;
+@group(0) @binding(2) var<storage,read_write> cnt:array<atomic<u32>>;
+@group(0) @binding(3) var<storage,read_write> bk:array<u32>;
+@group(0) @binding(4) var<storage,read_write> rk:array<u32>;
+@group(0) @binding(5) var<storage,read_write> misc:array<atomic<i32>>;
+var<workgroup> ws:array<atomic<i32>,3>;
+@compute @workgroup_size(256) fn main(@builtin(global_invocation_id) g:vec3u,@builtin(local_invocation_index) li:u32){
+ if(li<3u){atomicStore(&ws[li],0);}workgroupBarrier();
+ let i=g.x;if(i<U.n){let p=bin[i].p.xyz;
+  for(var l=0u;l<U.nlev;l++){let b=U.hoff[l]+hash3(cellOf(p,U.invh[l]),U.hmask[l]);bk[l*U.n+i]=b;rk[l*U.n+i]=atomicAdd(&cnt[b],1u);}
+  atomicAdd(&ws[0],toI(p.x));atomicAdd(&ws[1],toI(p.y));atomicAdd(&ws[2],toI(p.z));}
+ workgroupBarrier();if(li<3u){atomicAdd(&misc[li],atomicLoad(&ws[li]));}}`,
+scanA:PSTRUCT+`
+@group(0) @binding(1) var<storage,read_write> cnt:array<u32>;
+@group(0) @binding(2) var<storage,read_write> bs:array<u32>;
+var<workgroup> sh:array<u32,256>;
+@compute @workgroup_size(256) fn main(@builtin(local_invocation_index) l:u32,@builtin(workgroup_id) w:vec3u){
+ let base=w.x*2048u+l*8u;var loc:array<u32,8>;var s=0u;
+ for(var e=0u;e<8u;e++){let j=base+e;var c=0u;if(j<U.tlen){c=cnt[j];}loc[e]=s;s+=c;}
+ sh[l]=s;workgroupBarrier();
+ for(var o=1u;o<256u;o*=2u){var t=0u;if(l>=o){t=sh[l-o];}workgroupBarrier();sh[l]+=t;workgroupBarrier();}
+ let ex=sh[l]-s;for(var e=0u;e<8u;e++){let j=base+e;if(j<U.tlen){cnt[j]=loc[e]+ex;}}
+ if(l==255u){bs[w.x]=sh[255];}}`,
+scanB:PSTRUCT+`
+@group(0) @binding(1) var<storage,read_write> bs:array<u32>;
+var<workgroup> sh:array<u32,256>;
+@compute @workgroup_size(256) fn main(@builtin(local_invocation_index) l:u32){
+ let nb=(U.tlen+2047u)/2048u;let per=(nb+255u)/256u;let base=l*per;var s=0u;
+ for(var e=0u;e<per;e++){let j=base+e;if(j<nb){s+=bs[j];}}
+ sh[l]=s;workgroupBarrier();
+ for(var o=1u;o<256u;o*=2u){var t=0u;if(l>=o){t=sh[l-o];}workgroupBarrier();sh[l]+=t;workgroupBarrier();}
+ var run=sh[l]-s;for(var e=0u;e<per;e++){let j=base+e;if(j<nb){let c=bs[j];bs[j]=run;run+=c;}}}`,
+scanC:PSTRUCT+`
+@group(0) @binding(1) var<storage,read_write> cnt:array<u32>;
+@group(0) @binding(2) var<storage,read> bs:array<u32>;
+@compute @workgroup_size(256) fn main(@builtin(local_invocation_index) l:u32,@builtin(workgroup_id) w:vec3u){
+ let base=w.x*2048u+l*8u;let a=bs[w.x];for(var e=0u;e<8u;e++){let j=base+e;if(j<U.tlen){cnt[j]+=a;}}}`,
+scatter:PSTRUCT+`
+@group(0) @binding(1) var<storage,read> bin:array<Bird>;
+@group(0) @binding(2) var<storage,read> cnt:array<u32>;
+@group(0) @binding(3) var<storage,read> bk:array<u32>;
+@group(0) @binding(4) var<storage,read> rk:array<u32>;
+@group(0) @binding(5) var<storage,read_write> so:array<vec4f>;
+@group(0) @binding(6) var<storage,read_write> sv:array<vec4f>;
+@compute @workgroup_size(256) fn main(@builtin(global_invocation_id) g:vec3u){let i=g.x;if(i>=U.n){return;}
+ let b=bin[i];for(var l=0u;l<U.nlev;l++){let d=cnt[bk[l*U.n+i]]+rk[l*U.n+i];so[d]=vec4f(b.p.xyz,bitcast<f32>(i));if(l==0u){sv[d]=vec4f(b.v.xyz,0.0);}}}`,
+falcon:PSTRUCT+`
+@group(0) @binding(1) var<storage,read> misc:array<i32>;
+@group(0) @binding(2) var<storage,read_write> fal:array<vec4f,8>;
+@group(0) @binding(3) var<storage,read> bin:array<Bird>;
+fn rsq(x:f32)->f32{var y=bitcast<f32>(0x5f3759dfu-(bitcast<u32>(x)>>1u));for(var i=0;i<4;i++){y=y*(1.5-nf(nf(nf(0.5*x)*y)*y));}return y;}
+@compute @workgroup_size(1) fn main(@builtin(global_invocation_id) g:vec3u){
+ let c=vec3f(f32(misc[0])*U.invn,f32(misc[1])*U.invn,f32(misc[2])*U.invn);fal[2]=vec4f(c,0.0);
+ let ct=fal[4].xyz;fal[4]=vec4f(ct+nf3((c-ct)*0.02),0.0);
+ if(U.fcmd==1u){fal[0]=vec4f(c+U.fsp.xyz,0.0);fal[1]=vec4f(U.fsv.xyz,0.0);fal[3]=vec4f(1.0,0.0,0.0,0.0);return;}
+ if(U.fcmd==4u){fal[0]=vec4f(0.0,-1000.0,0.0,0.0);fal[1]=vec4f(0.0);fal[3]=vec4f(0.0);return;}
+ if(fal[3].x<0.5){return;}
+ var p=fal[0].xyz;var v=fal[1].xyz;var tc=c;if(U.ftgt!=0xffffffffu){tc=bin[U.ftgt].p.xyz;}var t=tc-p;
+ if(U.fcmd==3u){t=vec3f(v.x,max(v.y,0.0)+30.0,v.z);}
+ let ir=rsq(dot3(t)+1e-6);let dv=nf3(nf3(t*ir)*U.fspeed)-v;let d2=dot3(dv);var sc=1.0;
+ if(d2>U.flim*U.flim){sc=U.flim*rsq(d2);}
+ v=v+nf3(dv*sc);p=p+nf3(v*U.dt);fal[0]=vec4f(p,0.0);fal[1]=vec4f(v,0.0);fal[3]=vec4f(1.0,fal[3].y+U.dt,0.0,0.0);}`,
+update:K=>PSTRUCT+`
+@group(0) @binding(1) var<uniform> RC:array<vec4f,${RCPN}>;
+@group(0) @binding(2) var<storage,read> bin:array<Bird>;
+@group(0) @binding(3) var<storage,read_write> bout:array<Bird>;
+@group(0) @binding(4) var<storage,read> cnt:array<u32>;
+@group(0) @binding(5) var<storage,read> so:array<vec4f>;
+@group(0) @binding(6) var<storage,read> sv:array<vec4f>;
+@group(0) @binding(7) var<storage,read> fal:array<vec4f,8>;
+@group(0) @binding(8) var<storage,read_write> dbg:array<atomic<u32>>;
+var<private> sv0:vec3i;var<private> sp0:vec3i;var<private> ss0:vec3i;var<private> cn:u32;
+fn add(p:vec3f,q:vec3f,w:vec3f){let d=q-p;let d2=dot3(d);
+ sv0+=vec3i(toI(w.x*4096.0),toI(w.y*4096.0),toI(w.z*4096.0));sp0+=vec3i(toI(d.x*4096.0),toI(d.y*4096.0),toI(d.z*4096.0));
+ if(d2<U.rsep2){let k=(U.rsep2-d2)*U.wsepk;let e=nf3((-d)*k)*65536.0;ss0+=vec3i(toI(e.x),toI(e.y),toI(e.z));}cn+=1u;}
+@compute @workgroup_size(64) fn main(@builtin(global_invocation_id) g:vec3u){if(g.x>=U.n){return;}let i=bitcast<u32>(so[g.x].w);
+ let me=bin[i];let p=me.p.xyz;let v=me.v.xyz;sv0=vec3i(0);sp0=vec3i(0);ss0=vec3i(0);cn=0u;var exam=0u;var deep=0u;var sat=1u;
+ if(U.mode==0u){var kd:array<f32,${K}>;var ki:array<u32,${K}>;${rep(K,m=>`kd[${m}]=3.4e38;ki[${m}]=0xffffffffu;`)}var done=false;
+  for(var l=0u;l<U.nlev&&!done;l++){let ih=U.invh[l];let mask=U.hmask[l];let off=U.hoff[l];let R=i32(U.ring[l]);let c=cellOf(p,ih);if(l>0u){deep=1u;}
+   for(var r=0;r<=R&&!done;r++){
+    for(var dz=-r;dz<=r;dz++){for(var dy=-r;dy<=r;dy++){for(var dx=-r;dx<=r;dx++){
+     if(max(abs(dx),max(abs(dy),abs(dz)))!=r){continue;}
+     let X=c+vec3i(dx,dy,dz);let bb=off+hash3(X,mask);let s1=cnt[bb+1u];
+     for(var s=cnt[bb];s<s1;s++){let q=so[s];let j=bitcast<u32>(q.w);if(any(cellOf(q.xyz,ih)!=X)||j==i){continue;}exam++;
+      let d2=dot3(q.xyz-p);
+      if((d2<kd[${K-1}]||(d2==kd[${K-1}]&&j<ki[${K-1}]))&&(l==0u||(${rep(K,m=>`ki[${m}]!=j`,'&&')}))){var cd=d2;var cj=j;
+       ${rep(K,m=>`if(cd<kd[${m}]||(cd==kd[${m}]&&cj<ki[${m}])){let td=kd[${m}];let tj=ki[${m}];kd[${m}]=cd;ki[${m}]=cj;cd=td;cj=tj;}`)}}}}}}
+    if(r>0&&kd[${K-1}]<=U.rr2[l][r]){done=true;}}}
+  if(!done){sat=0u;}
+  ${rep(K,m=>`if(ki[${m}]!=0xffffffffu){let b=bin[ki[${m}]];add(p,b.p.xyz,b.v.xyz);}`)}
+  if((U.flags&1u)!=0u){${rep(K,m=>`atomicStore(&dbg[16u+i*${K}u+${m}u],ki[${m}]);`)}}}
+ else{let ih=U.invh[0];let mask=U.hmask[0];let c=cellOf(p,ih);
+  for(var dz=-1;dz<=1;dz++){for(var dy=-1;dy<=1;dy++){for(var dx=-1;dx<=1;dx++){let X=c+vec3i(dx,dy,dz);let bb=hash3(X,mask);let s1=cnt[bb+1u];
+   for(var s=cnt[bb];s<s1;s++){let q=so[s];let j=bitcast<u32>(q.w);if(any(cellOf(q.xyz,ih)!=X)||j==i){continue;}exam++;
+    if(dot3(q.xyz-p)<U.rc2){add(p,q.xyz,sv[s].xyz);}}}}}
+  if((U.flags&1u)!=0u){atomicStore(&dbg[16u+i*${K}u],cn);${rep(K-1,m=>`atomicStore(&dbg[16u+i*${K}u+${m+1}u],0u);`)}}}
+ var ax=0.0;var ay=0.0;var az=0.0;
+ if(cn>0u){let rc=RC[min(cn,${RCPN*4-1}u)/4u][min(cn,${RCPN*4-1}u)%4u];
+  let m0=nf(f32(sv0.x)*rc);let m1=nf(f32(sv0.y)*rc);let m2=nf(f32(sv0.z)*rc);
+  ax=nf(ax+nf(nf(m0-v.x)*U.wali));ay=nf(ay+nf(nf(m1-v.y)*U.wali));az=nf(az+nf(nf(m2-v.z)*U.wali));
+  ax=nf(ax+nf(nf(f32(sp0.x)*rc)*U.wcoh));ay=nf(ay+nf(nf(f32(sp0.y)*rc)*U.wcoh));az=nf(az+nf(nf(f32(sp0.z)*rc)*U.wcoh));
+  ax=nf(ax+nf(f32(ss0.x)*(1.0/65536.0)));ay=nf(ay+nf(f32(ss0.y)*(1.0/65536.0)));az=nf(az+nf(f32(ss0.z)*(1.0/65536.0)));}
+ let ks=nf(nf(U.v02-dot3(v))*U.wspdk);ax=nf(ax+nf(v.x*ks));ay=nf(ay+nf(v.y*ks));az=nf(az+nf(v.z*ks));
+ let rx=nf(p.x-U.roost.x);let rz=nf(p.z-U.roost.z);let r2=nf(nf(rx*rx)+nf(rz*rz));
+ if(r2>U.roost.w){let kk=nf(nf(r2-U.roost.w)*U.wroost);let dv=nf(nf(nf(v.x*rx)+nf(v.z*rz))/max(nf(nf(v.x*v.x)+nf(v.z*v.z)),1.0));
+  let lx=nf(nf(nf(v.x*dv)-rx)-nf(rx*U.rad));let lz=nf(nf(nf(v.z*dv)-rz)-nf(rz*U.rad));ax=nf(ax+nf(lx*kk));az=nf(az+nf(lz*kk));}
+ ay=nf(ay-nf(v.y*U.wlev));
+ if(p.y<U.ylo){ay=nf(ay+nf(nf(U.ylo-p.y)*U.wy));}else if(p.y>U.yhi){ay=nf(ay-nf(nf(p.y-U.yhi)*U.wy));}
+ if(fal[3].x>0.5){let ex=nf(p.x-fal[0].x);let ey=nf(p.y-fal[0].y);let ez=nf(p.z-fal[0].z);let d2=nf(nf(nf(ex*ex)+nf(ey*ey))+nf(ez*ez));
+  if(d2<U.rf2){let w=nf(nf(U.rf2-d2)*U.wfeark);ax=nf(ax+nf(ex*w));ay=nf(ay+nf(ey*w));az=nf(az+nf(ez*w));}}
+ let h1=pcg(i^U.seed);let h2=pcg(h1);let h3=pcg(h2);
+ ax=nf(ax+nf(nf(nf(f32(h1>>8u)*(1.0/8388608.0))-1.0)*U.noise));ay=nf(ay+nf(nf(nf(f32(h2>>8u)*(1.0/8388608.0))-1.0)*U.noise));az=nf(az+nf(nf(nf(f32(h3>>8u)*(1.0/8388608.0))-1.0)*U.noise));
+ ax=clamp(ax,-U.amax,U.amax);ay=clamp(ay,-U.amax,U.amax);az=clamp(az,-U.amax,U.amax);
+ let nvx=nf(v.x+nf(ax*U.dt));let nvy=nf(v.y+nf(ay*U.dt));let nvz=nf(v.z+nf(az*U.dt));
+ let npx=nf(p.x+nf(nvx*U.dt));let npy=nf(p.y+nf(nvy*U.dt));let npz=nf(p.z+nf(nvz*U.dt));
+ bout[i]=Bird(vec4f(npx,npy,npz,me.p.w),vec4f(nvx,nvy,nvz,f32(cn)));
+ atomicAdd(&dbg[0],exam);atomicAdd(&dbg[1],deep);atomicAdd(&dbg[2],1u-sat);atomicMax(&dbg[3],exam);atomicAdd(&dbg[4],cn);if(cn==0u){atomicAdd(&dbg[5],1u);}}`};
+
+// ---------- GPU engine ----------
+class GPU{
+  static async create(dev,p,birds){const g=new GPU();g.dev=dev;await g.init(p,birds);return g}
+  async init(p,birds){const d=this.dev;this.p=Object.assign({},p);this.n=p.n;this.L=layout(p.n);const n=p.n,L=this.L;
+    const S=GPUBufferUsage.STORAGE,CS=GPUBufferUsage.COPY_SRC,CD=GPUBufferUsage.COPY_DST;
+    const mk=(size,usage)=>d.createBuffer({size:Math.max(16,size),usage});
+    this.ub=mk(PSIZE,GPUBufferUsage.UNIFORM|CD);this.rcb=mk(RCPN*16,GPUBufferUsage.UNIFORM|CD);d.queue.writeBuffer(this.rcb,0,RCP);
+    this.bird=[mk(n*32,S|CS|CD),mk(n*32,S|CS|CD)];this.cur=0;
+    this.cnt=mk((L.T+1)*4,S|CS);this.bs=mk(4096*4,S);this.bk=mk(LEVELS*n*4,S);this.rk=mk(LEVELS*n*4,S);
+    this.so=mk(LEVELS*n*16,S);this.sv=mk(n*16,S);this.misc=mk(32*4,S|CS|CD);this.fal=mk(128,S|CS|CD);this.dbg=mk((16+n*KMAX)*4,S|CS|CD);
+    d.queue.writeBuffer(this.bird[0],0,birds);d.queue.writeBuffer(this.bird[1],0,birds);
+    const f0=new Float32Array(32);f0[1]=-1000;f0.set(centroid(birds,n),16);d.queue.writeBuffer(this.fal,0,f0);
+    const pipe=async(name)=>d.createComputePipelineAsync({layout:'auto',compute:{module:d.createShaderModule({code:name==='update'?WG.update(p.k):WG[name]}),entryPoint:'main'}});
+    const names=['clear','count','scanA','scanB','scanC','scatter','falcon','update'];const ps=await Promise.all(names.map(pipe));this.pl={};names.forEach((k,i)=>this.pl[k]=ps[i]);
+    const bg=(pl,list)=>d.createBindGroup({layout:pl.getBindGroupLayout(0),entries:list.map((b,i)=>({binding:i,resource:{buffer:b}}))});
+    this.bg=[0,1].map(c=>{const A=this.bird[c],B=this.bird[1-c];return{
+      clear:bg(this.pl.clear,[this.ub,this.cnt,this.misc]),count:bg(this.pl.count,[this.ub,A,this.cnt,this.bk,this.rk,this.misc]),
+      scanA:bg(this.pl.scanA,[this.ub,this.cnt,this.bs]),scanB:bg(this.pl.scanB,[this.ub,this.bs]),scanC:bg(this.pl.scanC,[this.ub,this.cnt,this.bs]),
+      scatter:bg(this.pl.scatter,[this.ub,A,this.cnt,this.bk,this.rk,this.so,this.sv]),falcon:bg(this.pl.falcon,[this.ub,this.misc,this.fal,A]),
+      update:bg(this.pl.update,[this.ub,this.rcb,A,B,this.cnt,this.so,this.sv,this.fal,this.dbg])}});
+    this.nblk=Math.ceil((L.T+1)/2048);if(this.nblk>4096)throw new Error('hash table too large')}
+  async setK(k){const d=this.dev;this.p.k=k;const pl=await d.createComputePipelineAsync({layout:'auto',compute:{module:d.createShaderModule({code:WG.update(k)}),entryPoint:'main'}});
+    this.pl.update=pl;[0,1].forEach(c=>{const A=this.bird[c],B=this.bird[1-c];this.bg[c].update=d.createBindGroup({layout:pl.getBindGroupLayout(0),entries:[this.ub,this.rcb,A,B,this.cnt,this.so,this.sv,this.fal,this.dbg].map((b,i)=>({binding:i,resource:{buffer:b}}))})})}
+  encode(enc,P,tw){const g=this.bg[this.cur],n=this.n,ps=enc.beginComputePass(tw?{timestampWrites:tw}:undefined),run=(k,x)=>{ps.setPipeline(this.pl[k]);ps.setBindGroup(0,g[k]);ps.dispatchWorkgroups(x)};
+    run('clear',Math.ceil((this.L.T+1)/256));run('count',Math.ceil(n/256));run('scanA',this.nblk);run('scanB',1);run('scanC',this.nblk);
+    run('scatter',Math.ceil(n/256));run('falcon',1);run('update',Math.ceil(n/64));ps.end();this.cur=1-this.cur}
+  step(P,time){const d=this.dev;d.queue.writeBuffer(this.dbg,0,new Uint32Array(16));d.queue.writeBuffer(this.ub,0,P);const e=d.createCommandEncoder();
+    const tq=time&&this.dev.features.has('timestamp-query')&&!this.tbusy;
+    if(tq&&!this.qs){this.qs=d.createQuerySet({type:'timestamp',count:2});this.qr=d.createBuffer({size:16,usage:GPUBufferUsage.QUERY_RESOLVE|GPUBufferUsage.COPY_SRC});this.qm=d.createBuffer({size:16,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST})}
+    this.encode(e,P,tq?{querySet:this.qs,beginningOfPassWriteIndex:0,endOfPassWriteIndex:1}:null);
+    if(tq){e.resolveQuerySet(this.qs,0,2,this.qr,0);e.copyBufferToBuffer(this.qr,0,this.qm,0,16);this.tbusy=true}
+    d.queue.submit([e.finish()]);
+    if(tq){this.qm.mapAsync(GPUMapMode.READ).then(()=>{const t=new BigUint64Array(this.qm.getMappedRange());const ms=Number(t[1]-t[0])/1e6;this.qm.unmap();this.tbusy=false;if(ms>0&&ms<1000)this.lastMs=ms}).catch(()=>{this.tbusy=false})}}
+  async read(what){// what: list of 'bird','fal','dbg'
+    const d=this.dev,out={},jobs=[];const e=d.createCommandEncoder();
+    for(const w of what){const src=w==='bird'?this.bird[this.cur]:w==='prev'?this.bird[1-this.cur]:w==='fal'?this.fal:w==='misc'?this.misc:this.dbg;
+      const size=w==='dbg'?(16+this.n*this.p.k)*4:src.size;const rb=d.createBuffer({size,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});
+      e.copyBufferToBuffer(src,0,rb,0,size);jobs.push([w,rb])}
+    d.queue.submit([e.finish()]);
+    await Promise.all(jobs.map(async([w,rb])=>{await rb.mapAsync(GPUMapMode.READ);const c=rb.getMappedRange().slice(0);rb.unmap();rb.destroy();
+      out[w]=w==='dbg'||w==='misc'?new Uint32Array(c):new Float32Array(c)}));return out}
+  write(birds,prev){this.dev.queue.writeBuffer(this.bird[this.cur],0,birds);this.dev.queue.writeBuffer(this.bird[1-this.cur],0,prev||birds)}
+  writeFal(f){this.dev.queue.writeBuffer(this.fal,0,f)}
+  destroy(){for(const k of['ub','rcb','cnt','bs','bk','rk','so','sv','misc','fal','dbg'])this[k].destroy();this.bird.forEach(b=>b.destroy());if(this.qs){this.qs.destroy();this.qr.destroy()}}
+}
+// brute-force k nearest (for checking): returns indices sorted by (d2, j), with the same float32 distance
+function bruteKNN(a,n,i,k){const px=a[i*8],py=a[i*8+1],pz=a[i*8+2],best=[];
+  for(let j=0;j<n;j++){if(j===i)continue;const ex=F(a[j*8]-px),ey=F(a[j*8+1]-py),ez=F(a[j*8+2]-pz),d2=F(F(F(ex*ex)+F(ey*ey))+F(ez*ez));
+    if(best.length<k||d2<best[k-1][0]||(d2===best[k-1][0]&&j<best[k-1][1])){best.push([d2,j]);best.sort((x,y)=>x[0]-y[0]||x[1]-y[1]);if(best.length>k)best.pop()}}
+  return best}
+return{flockCompact,centroid,DEF,LEVELS,KMAX,PSIZE,layout,pack,pcg,flock,CPU,GPU,falconStep,bruteKNN,RCP,rsqrt}})();
+// ===== Murmuration renderer: dusk sky and sea, a ruined pier, the birds and the falcon =====
+// Shared scene description + a WebGPU renderer (the main path) + a WebGL2 renderer (the fallback).
+const SCENE=(()=>{
+const TAU=Math.PI*2;
+// the ruined pier: piles, braces, a deck stub at the shore and the iron skeleton of the old pavilion out at sea
+function pier(){const B=[];let s=11;const R=()=>{s=(s*16807)%2147483647;return s/2147483647};
+  const box=(x,y,z,hx,hy,hz,yaw=0)=>B.push([x,y,z,hx,hy,hz,yaw]);
+  const X0=135;// the pier runs out from the shore (z=260) towards the sea (−z)
+  for(let z=250;z>-40;z-=9){if(z<120&&R()<.28)continue;const h=z>150?9:6+R()*3,lean=(R()-.5)*.12;
+    box(X0-5,h/2-1,z,.32,h/2+1,.32,lean);box(X0+5,h/2-1,z,.32,h/2+1,.32,-lean);
+    if(z>150||R()<.5)box(X0,h-1.2,z,5.4,.22,.22);if(z>150&&R()<.8)box(X0,h-.2,z+4.5,5.6,.12,4.6)}
+  // the pavilion skeleton: a ring of columns, arched ribs and a lattice dome frame
+  const cx=X0+6,cz=-120,r=17;
+  for(let i=0;i<20;i++){const a=i/20*TAU,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r*.7,miss=R()<.25;
+    box(x,6,z,.35,6.5,.35);if(!miss){box(x,13.2,z,.3,.9,.3)}
+    const a2=(i+1)/20*TAU;if(R()<.7)box((x+cx+Math.cos(a2)*r)/2,12.4,(z+cz+Math.sin(a2)*r*.7)/2,r*Math.sin(TAU/40)+.2,.18,.18,-(a+a2)/2+Math.PI/2)}
+  for(let i=0;i<9;i++){const a=i/9*Math.PI,len=r*.9;if(R()<.3)continue;// ribs of the dome, half-collapsed
+    for(let k=0;k<6;k++){const t0=k/6*Math.PI/2,t1=(k+1)/6*Math.PI/2,y0=13+Math.sin(t0)*9,y1=13+Math.sin(t1)*9,rr0=len*Math.cos(t0),rr1=len*Math.cos(t1);
+      if(k>3&&R()<.5)break;const x0=cx+Math.cos(a)*rr0,z0=cz+Math.sin(a)*rr0*.7,x1=cx+Math.cos(a)*rr1,z1=cz+Math.sin(a)*rr1*.7;
+      box((x0+x1)/2,(y0+y1)/2,(z0+z1)/2,.18,Math.hypot(y1-y0,Math.hypot(x1-x0,z1-z0))/2,.18,0);
+      const B2=B[B.length-1];B2.push(Math.atan2(Math.hypot(x1-x0,z1-z0),y1-y0),Math.atan2(x1-x0,z1-z0))}}
+  for(let z=-40;z>-102;z-=9){if(R()<.4)continue;box(X0-5,2.5,z,.32,3.5,.32);box(X0+5,2.5,z,.32,3.5,.32)}
+  for(let i=0;i<14;i++){const a=R()*TAU,rr=r*R()*1.1;box(cx+Math.cos(a)*rr,1.5,cz+Math.sin(a)*rr*.7,.3,2.5+R()*2,.3)}
+  // pack: center xyz, half sizes, yaw, tilt, tilt-azimuth (8 floats)
+  const out=new Float32Array(B.length*8);B.forEach((b,i)=>{out.set([b[0],b[1],b[2],b[3],b[4],b[5],b[6]||0,0],i*8);if(b.length>7){out[i*8+6]=b[8];out[i*8+7]=b[7]}});return out}
+const PIER=pier(),NPIER=PIER.length/8;
+// colours of the dusk; the same numbers go to both renderers
+const SKY={zen:[.075,.085,.20],mid:[.30,.20,.36],hor:[.98,.55,.30],glow:[1.0,.72,.42],sun:[1.0,.93,.74],sea:[.06,.07,.12],land:[.055,.045,.07],bird:[.012,.009,.016],sunDir:[-.30,.045,-.95]};
+// camera: orbit (yaw, pitch, dist) around a target; offx shifts the principal point (room for the panel)
+function camera(t,yaw,pitch,dist,aspect,tanf,offx){const cp=Math.cos(pitch);
+  const eye=[t[0]+dist*Math.sin(yaw)*cp,Math.max(3,t[1]+dist*Math.sin(pitch)),t[2]+dist*Math.cos(yaw)*cp];
+  let f=[t[0]-eye[0],t[1]-eye[1],t[2]-eye[2]];const fl=Math.hypot(...f);f=f.map(x=>x/fl);
+  let r=[f[1]*0-f[2]*1,f[2]*0-f[0]*0,f[0]*1-f[1]*0];const rl=Math.hypot(...r);r=r.map(x=>x/rl);
+  const u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
+  // column-major viewProj: clip = P * V * p
+  const V=[r[0],u[0],-f[0],0, r[1],u[1],-f[1],0, r[2],u[2],-f[2],0, -(r[0]*eye[0]+r[1]*eye[1]+r[2]*eye[2]),-(u[0]*eye[0]+u[1]*eye[1]+u[2]*eye[2]),(f[0]*eye[0]+f[1]*eye[1]+f[2]*eye[2]),1];
+  const g=1/tanf,n=1,P=[g/aspect,0,0,0, 0,g,0,0, -offx,0,0,-1, 0,0,n,0];// reversed-z, infinite far
+  const M=new Array(16).fill(0);for(let c=0;c<4;c++)for(let rr=0;rr<4;rr++){let s=0;for(let k=0;k<4;k++)s+=P[k*4+rr]*V[c*4+k];M[c*4+rr]=s}
+  return{eye,f,r,u,vp:M,tanf,aspect,offx}}
+function project(cam,p,w,h){const m=cam.vp,x=m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],y=m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],ww=m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15];
+  if(ww<=0)return null;return[(x/ww*.5+.5)*w,(1-(y/ww*.5+.5))*h,ww]}
+function ray(cam,sx,sy,w,h){const nx=sx/w*2-1,ny=1-sy/h*2,a=(nx-cam.offx)*cam.tanf*cam.aspect,b=ny*cam.tanf;
+  const d=[cam.f[0]+a*cam.r[0]+b*cam.u[0],cam.f[1]+a*cam.r[1]+b*cam.u[1],cam.f[2]+a*cam.r[2]+b*cam.u[2]];const l=Math.hypot(...d);return d.map(x=>x/l)}
+
+// ---------- shared shading code (WGSL and GLSL spell it differently, the maths is the same) ----------
+const C=a=>`vec3f(${a.map(x=>x.toFixed(4)).join(',')})`,G=a=>`vec3(${a.map(x=>x.toFixed(4)).join(',')})`;
+const SKYFN_WGSL=`
+fn hsh(p:vec2f)->f32{let q=fract(p*vec2f(123.34,456.21));let r=q+dot(q,q+45.32);return fract(r.x*r.y);}
+fn vnoise(p:vec2f)->f32{let i=floor(p);let f=fract(p);let u=f*f*(3.0-2.0*f);
+ return mix(mix(hsh(i),hsh(i+vec2f(1,0)),u.x),mix(hsh(i+vec2f(0,1)),hsh(i+vec2f(1,1)),u.x),u.y);}
+fn fbm(p0:vec2f)->f32{var p=p0;var s=0.0;var a=.5;for(var i=0;i<5;i++){s+=a*vnoise(p);p=p*2.03+vec2f(17.1,9.7);a*=.5;}return s;}
+fn skyCol(d:vec3f)->vec3f{let sd=normalize(${C(SKY.sunDir)});let h=max(d.y,0.0);let mu=max(dot(d,sd),0.0);
+ var c=mix(${C(SKY.hor)},${C(SKY.mid)},smoothstep(0.0,.22,h));c=mix(c,${C(SKY.zen)},smoothstep(.18,.85,h));
+ let az=max(dot(normalize(vec2f(d.x,d.z)),normalize(sd.xz)),0.0);
+ c+=${C(SKY.glow)}*(pow(mu,6.0)*.55+pow(az,3.0)*exp(-h*7.0)*.35);
+ c+=${C(SKY.sun)}*(smoothstep(.99965,.99985,mu)*5.0+pow(mu,1400.0)*1.2);
+ if(d.y>0.003){let q=d.xz/(d.y+.06)*1.4;let k=fbm(q*vec2f(.55,1.9)+vec2f(3.1,.4));let band=smoothstep(.55,.82,k)*smoothstep(.02,.12,d.y)*(1.0-smoothstep(.35,.7,d.y));
+  let lit=mix(${C(SKY.mid)}*.55,${C(SKY.glow)}*1.15,pow(mu,3.0)*.8+az*.25);c=mix(c,lit,band*.85);}
+ return c;}
+fn landH(d:vec3f)->f32{let a=atan2(d.x,-d.z);let hill=smoothstep(.25,.75,a)*(.012+.022*fbm(vec2f(a*5.0,2.0)))+smoothstep(.9,1.6,a)*.03*fbm(vec2f(a*2.0,5.0));
+ let far=smoothstep(-.75,-1.3,a)*(.004+.008*vnoise(vec2f(a*14.0,3.0)));return max(hill,far);}
+fn world(eye:vec3f,d:vec3f,t:f32)->vec3f{
+ if(d.y>=0.0){let lh=landH(d);if(d.y<lh){return mix(${C(SKY.land)},skyCol(vec3f(d.x,.0,d.z))*.55,.35);}return skyCol(d);}
+ let tt=-eye.y/d.y;let hp=eye+d*tt;
+ let wq=hp.xz*vec2f(.05,.16);let w=vec2f(fbm(wq+vec2f(t*.08,0.0)),fbm(wq*1.3+vec2f(5.2,t*.06)))-.5;
+ var n=normalize(vec3f(w.x*.10,1.0,w.y*.22));let r=reflect(d,n);
+ let fr=.02+.98*pow(1.0-max(-d.y,0.0),5.0);var c=mix(${C(SKY.sea)},skyCol(vec3f(r.x,abs(r.y),r.z)),fr);
+ let sd=normalize(${C(SKY.sunDir)});c+=${C(SKY.sun)}*pow(max(dot(r,sd),0.0),300.0)*1.6;
+ let fog=1.0-exp(-tt*.0009);c=mix(c,skyCol(vec3f(d.x,.0,d.z))*.9,fog*.7);
+ if(hp.z>340.0){c=mix(c,vec3f(.07,.06,.075),.55);}
+ return c;}
+fn tone(c:vec3f)->vec3f{let x=c*1.05;return pow(x/(1.0+x*.22),vec3f(1.0/1.05));}`;
+
+// ---------- WebGPU renderer ----------
+const RW=`struct R{yaw:f32,pitch:f32,dist:f32,tanf:f32,aspect:f32,offx:f32,time:f32,alpha:f32,vh:f32,minpx:f32,n:u32,refl:u32,dt:f32,flap:f32,size:f32,pad:f32};
+struct Cam{vp:mat4x4f,eye:vec4f,f:vec4f,r:vec4f,u:vec4f};
+struct Bird{p:vec4f,v:vec4f};
+@group(0) @binding(0) var<uniform> R0:R;
+@group(0) @binding(1) var<storage,read_write> cam:Cam;
+@group(0) @binding(2) var<storage,read> fal:array<vec4f,8>;
+@compute @workgroup_size(1) fn camMain(){let t=fal[4].xyz;let cp=cos(R0.pitch);
+ let eye=vec3f(t.x+R0.dist*sin(R0.yaw)*cp,max(3.0,t.y+R0.dist*sin(R0.pitch)),t.z+R0.dist*cos(R0.yaw)*cp);
+ let f=normalize(t-eye);let r=normalize(cross(f,vec3f(0,1,0)));let u=cross(r,f);
+ let V=mat4x4f(vec4f(r.x,u.x,-f.x,0),vec4f(r.y,u.y,-f.y,0),vec4f(r.z,u.z,-f.z,0),vec4f(-dot(r,eye),-dot(u,eye),dot(f,eye),1));
+ let g=1.0/R0.tanf;let P=mat4x4f(vec4f(g/R0.aspect,0,0,0),vec4f(0,g,0,0),vec4f(-R0.offx,0,0,-1),vec4f(0,0,1,0));
+ cam.vp=P*V;cam.eye=vec4f(eye,1);cam.f=vec4f(f,0);cam.r=vec4f(r,0);cam.u=vec4f(u,0);}`;
+const SKY_WGSL=`struct R{yaw:f32,pitch:f32,dist:f32,tanf:f32,aspect:f32,offx:f32,time:f32,alpha:f32,vh:f32,minpx:f32,n:u32,refl:u32,dt:f32,flap:f32,size:f32,pad:f32};
+struct Cam{vp:mat4x4f,eye:vec4f,f:vec4f,r:vec4f,u:vec4f};
+@group(0) @binding(0) var<uniform> R0:R;
+@group(0) @binding(1) var<storage,read> cam:Cam;
+struct VO{@builtin(position) pos:vec4f,@location(0) ndc:vec2f};
+@vertex fn vs(@builtin(vertex_index) i:u32)->VO{let p=vec2f(f32((i<<1u)&2u),f32(i&2u))*2.0-1.0;var o:VO;o.pos=vec4f(p,0,1);o.ndc=p;return o;}
+${SKYFN_WGSL}
+@fragment fn fs(i:VO)->@location(0) vec4f{let a=(i.ndc.x-R0.offx)*R0.tanf*R0.aspect;let b=i.ndc.y*R0.tanf;
+ let d=normalize(cam.f.xyz+a*cam.r.xyz+b*cam.u.xyz);return vec4f(tone(world(cam.eye.xyz,d,R0.time)),1);}`;
+const PIER_WGSL=`struct R{yaw:f32,pitch:f32,dist:f32,tanf:f32,aspect:f32,offx:f32,time:f32,alpha:f32,vh:f32,minpx:f32,n:u32,refl:u32,dt:f32,flap:f32,size:f32,pad:f32};
+struct Cam{vp:mat4x4f,eye:vec4f,f:vec4f,r:vec4f,u:vec4f};
+@group(0) @binding(0) var<uniform> R0:R;
+@group(0) @binding(1) var<storage,read> cam:Cam;
+@group(0) @binding(2) var<storage,read> bx:array<f32>;
+struct VO{@builtin(position) pos:vec4f,@location(0) c:vec3f};
+${SKYFN_WGSL}
+@vertex fn vs(@builtin(vertex_index) vi:u32,@builtin(instance_index) ii:u32)->VO{
+ let k=ii%${NPIER}u;let tm=R0.time;let mir=ii>=${NPIER}u;let o=k*8u;
+ let corner=array<vec3f,8>(vec3f(-1,-1,-1),vec3f(1,-1,-1),vec3f(1,1,-1),vec3f(-1,1,-1),vec3f(-1,-1,1),vec3f(1,-1,1),vec3f(1,1,1),vec3f(-1,1,1));
+ let idx=array<u32,36>(0,1,2,0,2,3,4,6,5,4,7,6,0,4,5,0,5,1,3,2,6,3,6,7,0,3,7,0,7,4,1,5,6,1,6,2);
+ var q=corner[idx[vi]]*vec3f(bx[o+3u],bx[o+4u],bx[o+5u]);
+ let tl=bx[o+7u];if(tl!=0.0){let az=bx[o+6u];let y=q.y;let ct=cos(tl);let st=sin(tl);let yy=q.y*ct-q.z*st;let zz=q.y*st+q.z*ct;q=vec3f(q.x,yy,zz);let ca=cos(az);let sa=sin(az);q=vec3f(q.x*ca+q.z*sa,q.y,-q.x*sa+q.z*ca);}
+ else{let ya=bx[o+6u];let ca=cos(ya);let sa=sin(ya);q=vec3f(q.x*ca+q.z*sa,q.y,-q.x*sa+q.z*ca);}
+ var w=q+vec3f(bx[o],bx[o+1u],bx[o+2u]);if(w.y<0.0){w.y=0.0;}if(mir){w.y=-w.y;}
+ var out:VO;out.pos=cam.vp*vec4f(w,1);let dd=length(w-cam.eye.xyz);let dir=normalize(w-cam.eye.xyz);
+ let hz=tone(skyCol(vec3f(dir.x,.0,dir.z)));var c=mix(vec3f(.045,.038,.055),hz,(1.0-exp(-dd*.0016))*.85);if(mir){c=mix(c,tone(${C(SKY.sea)}),.45);}
+ out.c=c;return out;}
+@fragment fn fs(i:VO)->@location(0) vec4f{return vec4f(i.c,1);}`;
+const BIRD_WGSL=`struct R{yaw:f32,pitch:f32,dist:f32,tanf:f32,aspect:f32,offx:f32,time:f32,alpha:f32,vh:f32,minpx:f32,n:u32,refl:u32,dt:f32,flap:f32,size:f32,pad:f32};
+struct Cam{vp:mat4x4f,eye:vec4f,f:vec4f,r:vec4f,u:vec4f};
+struct Bird{p:vec4f,v:vec4f};
+@group(0) @binding(0) var<uniform> R0:R;
+@group(0) @binding(1) var<storage,read> cam:Cam;
+@group(0) @binding(2) var<storage,read> b0:array<Bird>;
+@group(0) @binding(3) var<storage,read> b1:array<Bird>;
+@group(0) @binding(4) var<storage,read> fal:array<vec4f,8>;
+struct VO{@builtin(position) pos:vec4f,@location(0) a:f32};
+fn shape(vi:u32,f:vec3f,r:vec3f,u:vec3f,flap:f32,span:f32,len:f32)->vec3f{
+ let t=vi%3u;let side=select(-1.0,1.0,vi>=3u);
+ if(t==0u){return f*len*.55;} if(t==1u){return -f*len*.45;}
+ return r*side*span*.5+u*flap*span*.38-f*len*.12;}
+@vertex fn vs(@builtin(vertex_index) vi:u32,@builtin(instance_index) ii:u32)->VO{
+ var out:VO;let n=R0.n;let fa=ii==2u*n||ii==2u*n+1u;let mir=(ii>=n&&ii<2u*n)||ii==2u*n+1u;let k=ii%n;
+ var p:vec3f;var v:vec3f;var vp:vec3f;var span=.38*R0.size;var len=.21*R0.size;var ph:f32;var dark=1.0;
+ if(fa){if(fal[3].x<.5){out.pos=vec4f(0,0,-2,1);return out;}p=fal[0].xyz;v=fal[1].xyz;vp=v;span=2.2;len=.9;ph=0.0;}
+ else{let a=b0[k];let b=b1[k];p=mix(a.p.xyz,b.p.xyz,R0.alpha);v=b.v.xyz;vp=a.v.xyz;ph=b.p.w;}
+ let sp=max(length(v),.01);let f=v/sp;let acc=(v-vp)/R0.dt;let lat=acc-f*dot(acc,f);
+ let upb=normalize(vec3f(0,9.81,0)+lat*.9);let r=normalize(cross(f,upb));let u=cross(r,f);
+ var fl:f32;if(fa){fl=.25*sin(R0.time*5.0)-.1;}else{let gl=smoothstep(-.2,.6,sin(R0.time*.6+ph*40.0));fl=gl*.9*sin(R0.time*31.4*(.85+.3*ph)+ph*TAU)*R0.flap+(1.0-gl)*.1;}
+ var q=shape(vi,f,r,u,fl,span,len);
+ if(mir){p.y=-p.y;q.y=-q.y;}
+ let dd=length(p-cam.eye.xyz);let px=span*R0.vh/(2.0*R0.tanf*max(dd,1.0));var a=1.0;
+ let mpx=select(R0.minpx,2.2,fa);if(px<mpx){let s=mpx/px;q*=s;a=(px/mpx)*(px/mpx);}
+ out.pos=cam.vp*vec4f(p+q,1);let fog=exp(-dd*.0006);a*=fog*select(1.0,.32,mir)*dark;out.a=a;return out;}
+const TAU=6.2831853;
+@fragment fn fs(i:VO)->@location(0) vec4f{return vec4f(mix(vec3f(1),${C(SKY.bird)},clamp(i.a,0.0,1.0)),1);}`;
+class GPUView{
+  static async create(dev,canvas,eng){const v=new GPUView();await v.init(dev,canvas,eng);return v}
+  async init(dev,canvas,eng){this.dev=dev;this.cv=canvas;this.ctx=canvas.getContext('webgpu');this.fmt=navigator.gpu.getPreferredCanvasFormat();
+    this.ctx.configure({device:dev,format:this.fmt,alphaMode:'opaque'});
+    this.ub=dev.createBuffer({size:64,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});
+    this.camb=dev.createBuffer({size:128,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC});
+    this.pb=dev.createBuffer({size:PIER.byteLength,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});dev.queue.writeBuffer(this.pb,0,PIER);
+    const mod=c=>dev.createShaderModule({code:c});
+    this.camPl=await dev.createComputePipelineAsync({layout:'auto',compute:{module:mod(RW),entryPoint:'camMain'}});
+    const tgt=[{format:this.fmt}],mul=[{format:this.fmt,blend:{color:{srcFactor:'zero',dstFactor:'src',operation:'add'},alpha:{srcFactor:'zero',dstFactor:'one',operation:'add'}}}];
+    const ms={count:4};
+    const [sky,pi,bi]=await Promise.all([
+      dev.createRenderPipelineAsync({layout:'auto',vertex:{module:mod(SKY_WGSL),entryPoint:'vs'},fragment:{module:mod(SKY_WGSL),entryPoint:'fs',targets:tgt},multisample:ms}),
+      dev.createRenderPipelineAsync({layout:'auto',vertex:{module:mod(PIER_WGSL),entryPoint:'vs'},fragment:{module:mod(PIER_WGSL),entryPoint:'fs',targets:tgt},primitive:{cullMode:'none'},multisample:ms}),
+      dev.createRenderPipelineAsync({layout:'auto',vertex:{module:mod(BIRD_WGSL),entryPoint:'vs'},fragment:{module:mod(BIRD_WGSL),entryPoint:'fs',targets:mul},primitive:{cullMode:'none'},multisample:ms})]);
+    this.skyPl=sky;this.pierPl=pi;this.birdPl=bi;this.bind(eng)}
+  bind(eng){const d=this.dev;this.eng=eng;
+    this.camBG=d.createBindGroup({layout:this.camPl.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.ub}},{binding:1,resource:{buffer:this.camb}},{binding:2,resource:{buffer:eng.fal}}]});
+    this.skyBG=d.createBindGroup({layout:this.skyPl.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.ub}},{binding:1,resource:{buffer:this.camb}}]});
+    this.pierBG=d.createBindGroup({layout:this.pierPl.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.ub}},{binding:1,resource:{buffer:this.camb}},{binding:2,resource:{buffer:this.pb}}]});
+    this.birdBG=[0,1].map(c=>d.createBindGroup({layout:this.birdPl.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.ub}},{binding:1,resource:{buffer:this.camb}},{binding:2,resource:{buffer:eng.bird[1-c]}},{binding:3,resource:{buffer:eng.bird[c]}},{binding:4,resource:{buffer:eng.fal}}]}))}
+  size(w,h){if(this.msTex&&this.msTex.width===w&&this.msTex.height===h)return;if(this.msTex)this.msTex.destroy();
+    this.msTex=this.dev.createTexture({size:[w,h],sampleCount:4,format:this.fmt,usage:GPUTextureUsage.RENDER_ATTACHMENT})}
+  draw(V){const d=this.dev,w=this.cv.width,h=this.cv.height;this.size(w,h);
+    const u=new ArrayBuffer(64),f=new Float32Array(u),ui=new Uint32Array(u);
+    f.set([V.yaw,V.pitch,V.dist,V.tanf,w/h,V.offx,V.time,V.alpha,h,V.minpx]);ui[10]=this.eng.n;ui[11]=V.refl?1:0;f[12]=V.dt;f[13]=V.flap;f[14]=V.size||1;
+    d.queue.writeBuffer(this.ub,0,u);
+    const e=d.createCommandEncoder();const cp=e.beginComputePass();cp.setPipeline(this.camPl);cp.setBindGroup(0,this.camBG);cp.dispatchWorkgroups(1);cp.end();
+    const rp=e.beginRenderPass({colorAttachments:[{view:this.msTex.createView(),resolveTarget:this.ctx.getCurrentTexture().createView(),loadOp:'clear',storeOp:'discard',clearValue:{r:0,g:0,b:0,a:1}}]});
+    rp.setPipeline(this.skyPl);rp.setBindGroup(0,this.skyBG);rp.draw(3);
+    rp.setPipeline(this.pierPl);rp.setBindGroup(0,this.pierBG);rp.draw(36,NPIER*(V.refl?2:1));
+    rp.setPipeline(this.birdPl);rp.setBindGroup(0,this.birdBG[this.eng.cur]);rp.draw(6,this.eng.n*(V.refl?2:1));rp.draw(6,V.refl?2:1,0,2*this.eng.n);rp.end();
+    d.queue.submit([e.finish()])}
+}
+
+// ---------- Canvas 2D fallback (no WebGPU): the same scene drawn with paths and gradients ----------
+const hex=c=>{const t=x=>{x=x*1.05;x=x/(1+x*.22);return Math.round(255*Math.min(1,Math.pow(x,1/1.05)))};return`rgb(${t(c[0])},${t(c[1])},${t(c[2])})`};
+class CanvasView{
+  constructor(cv){this.cv=cv;this.g=cv.getContext('2d');this.glit=[];let s=5;for(let i=0;i<70;i++){s=(s*16807)%2147483647;const a=s/2147483647;s=(s*16807)%2147483647;this.glit.push([a,s/2147483647])}}
+  draw(V,cur,prev,alpha,fal,n){const cv=this.cv,g=this.g,w=cv.width,h=cv.height;
+    const cam=camera([fal[16],fal[17],fal[18]],V.yaw,V.pitch,V.dist,w/h,V.tanf,V.offx);this.cam=cam;
+    const far=[cam.eye[0]+cam.f[0]*1e5,0,cam.eye[2]+cam.f[2]*1e5],hz=project(cam,far,w,h);const hy=hz?hz[1]:h*.6;
+    const sd=SKY.sunDir,sl=Math.hypot(...sd),sun=project(cam,[cam.eye[0]+sd[0]/sl*1e5,cam.eye[1]+sd[1]/sl*1e5,cam.eye[2]+sd[2]/sl*1e5],w,h);
+    let gr=g.createLinearGradient(0,0,0,hy);gr.addColorStop(0,hex(SKY.zen));gr.addColorStop(.55,hex(SKY.mid));gr.addColorStop(1,hex(SKY.hor));g.fillStyle=gr;g.fillRect(0,0,w,Math.max(0,hy));
+    if(sun){const r=Math.max(w,h)*.55;gr=g.createRadialGradient(sun[0],sun[1],0,sun[0],sun[1],r);gr.addColorStop(0,'rgba(255,214,150,.9)');gr.addColorStop(.12,'rgba(255,170,100,.45)');gr.addColorStop(1,'rgba(255,140,80,0)');
+      g.fillStyle=gr;g.fillRect(0,0,w,hy);g.fillStyle='#fff3d0';g.beginPath();g.arc(sun[0],sun[1],Math.max(3,h*.012),0,Math.PI*2);g.fill()}
+    gr=g.createLinearGradient(0,hy,0,h);gr.addColorStop(0,hex([SKY.hor[0]*.85,SKY.hor[1]*.8,SKY.hor[2]*.85]));gr.addColorStop(.25,hex([.35,.24,.33]));gr.addColorStop(1,hex(SKY.sea));g.fillStyle=gr;g.fillRect(0,hy,w,h-hy);
+    if(sun){g.fillStyle='rgba(255,226,170,.55)';for(const [a,b] of this.glit){const y=hy+Math.pow(a,1.7)*(h-hy)*.75,ww=(4+b*26)*(1-a*.6)*w/1440,x=sun[0]+(b-.5)*ww*2.2*(.4+a);g.fillRect(x-ww/2,y,ww,Math.max(1,h*.002))}}
+    // the headland to the right of the sun
+    g.fillStyle=hex(SKY.land);g.beginPath();g.moveTo(w,hy+1);for(let i=0;i<=40;i++){const az=.25+i/40*1.4,d=[Math.sin(az),0,-Math.cos(az)],q=project(cam,[cam.eye[0]+d[0]*6000,cam.eye[1]+(.012+.02*Math.sin(az*9)*Math.sin(az*3.3))*smooth(.25,.75,az)*6000,cam.eye[2]+d[2]*6000],w,h);if(q)g.lineTo(q[0],q[1])}g.lineTo(w,hy+1);g.fill();
+    // the pier
+    g.fillStyle='rgb(18,15,22)';const P=PIER;for(let b=0;b<NPIER;b++){const o=b*8,cx=P[o],cy=P[o+1],cz=P[o+2],hx=P[o+3],hy2=P[o+4],hz2=P[o+5],ya=P[o+6],tl=P[o+7];
+      const pts=[];for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1]){let x=sx*hx,y=sy*hy2,z=sz*hz2;
+        if(tl){const yy=y*Math.cos(tl)-z*Math.sin(tl),zz=y*Math.sin(tl)+z*Math.cos(tl);y=yy;z=zz}
+        const ca=Math.cos(ya),sa=Math.sin(ya),X=x*ca+z*sa,Z=-x*sa+z*ca;const q=project(cam,[cx+X,Math.max(0,cy+y),cz+Z],w,h);if(!q){pts.length=0;break}pts.push(q)}
+      if(pts.length===8){const hull=hull2(pts);g.beginPath();g.moveTo(hull[0][0],hull[0][1]);for(const q of hull)g.lineTo(q[0],q[1]);g.fill()}}
+    // birds: one dark mark each, faded with distance; reflections first
+    const span=.38*(V.size||1),foc=h/(2*V.tanf),m=cam.vp;
+    for(const mir of [1,0]){g.fillStyle=mir?'rgba(20,14,24,.2)':'rgba(8,5,12,.85)';g.beginPath();
+      for(let i=0;i<n;i++){const x=prev[i*8]+(cur[i*8]-prev[i*8])*alpha,y0=prev[i*8+1]+(cur[i*8+1]-prev[i*8+1])*alpha,z=prev[i*8+2]+(cur[i*8+2]-prev[i*8+2])*alpha,y=mir?-y0:y0;
+        const ww=m[3]*x+m[7]*y+m[11]*z+m[15];if(ww<=1)continue;const sx=((m[0]*x+m[4]*y+m[8]*z+m[12])/ww*.5+.5)*w,sy=(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/ww*.5+.5))*h;
+        if(sx<-4||sy<-4||sx>w+4||sy>h+4)continue;const px=Math.min(3.4,Math.max(1.4,span*foc/ww));g.rect(sx-px/2,sy-px*.18,px,Math.max(1,px*.36))}
+      g.fill()}
+    if(fal[12]>.5){const q=project(cam,[fal[0],fal[1],fal[2]],w,h);if(q){const px=Math.max(4,1.6*foc/q[2]);g.fillStyle='#120c10';g.beginPath();g.moveTo(q[0]-px,q[1]-px*.2);g.lineTo(q[0],q[1]+px*.25);g.lineTo(q[0]+px,q[1]-px*.2);g.lineTo(q[0],q[1]);g.fill()}}}
+}
+function smooth(a,b,x){const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t)}
+function hull2(p){p=p.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];
+  for(const q of p){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q)}for(let i=p.length-1;i>=0;i--){const q=p[i];while(up.length>1&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop();up.push(q)}
+  lo.pop();up.pop();return lo.concat(up)}
+return{PIER,NPIER,SKY,camera,project,ray,GPUView,CanvasView,SKYFN_WGSL}})();
+// flock analysis from a read-back bird array: connected pieces (link distance L), stragglers, polarisation, k-th neighbour distances
+const ANA=(()=>{
+function pieces(a,n,L,minSize){const ih=1/L,map=new Map(),par=new Int32Array(n),key=(x,y,z)=>((x*73856093)^(y*19349663)^(z*83492791));
+  for(let i=0;i<n;i++)par[i]=i;
+  const find=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i]}return i};
+  const cx=new Int32Array(n),cy=new Int32Array(n),cz=new Int32Array(n);
+  for(let i=0;i<n;i++){const x=Math.floor(a[i*8]*ih),y=Math.floor(a[i*8+1]*ih),z=Math.floor(a[i*8+2]*ih);cx[i]=x;cy[i]=y;cz[i]=z;const k=key(x,y,z);let l=map.get(k);if(!l){l=[];map.set(k,l)}l.push(i)}
+  const L2=L*L;
+  for(let i=0;i<n;i++){const px=a[i*8],py=a[i*8+1],pz=a[i*8+2];
+    for(let dz=-1;dz<=1;dz++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const l=map.get(key(cx[i]+dx,cy[i]+dy,cz[i]+dz));if(!l)continue;
+      for(const j of l){if(j<=i)continue;const ex=a[j*8]-px,ey=a[j*8+1]-py,ez=a[j*8+2]-pz;if(ex*ex+ey*ey+ez*ez<L2){const ri=find(i),rj=find(j);if(ri!==rj)par[ri]=rj}}}}
+  const size=new Map();for(let i=0;i<n;i++){const r=find(i);size.set(r,(size.get(r)||0)+1)}
+  const sizes=[...size.values()].sort((x,y)=>y-x);
+  return{comps:sizes.length,big:sizes.filter(s=>s>=minSize).length,largest:sizes[0],out:n-sizes[0],singles:sizes.filter(s=>s===1).length,top:sizes.slice(0,6)}}
+function polar(a,n){let x=0,y=0,z=0;for(let i=0;i<n;i++){const vx=a[i*8+4],vy=a[i*8+5],vz=a[i*8+6],s=Math.hypot(vx,vy,vz)||1;x+=vx/s;y+=vy/s;z+=vz/s}return Math.hypot(x,y,z)/n}
+return{pieces,polar}})();
+const ANA_SRC="// flock analysis from a read-back bird array: connected pieces (link distance L), stragglers, polarisation, k-th neighbour distances\nconst ANA=(()=>{\nfunction pieces(a,n,L,minSize){const ih=1/L,map=new Map(),par=new Int32Array(n),key=(x,y,z)=>((x*73856093)^(y*19349663)^(z*83492791));\n  for(let i=0;i<n;i++)par[i]=i;\n  const find=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i]}return i};\n  const cx=new Int32Array(n),cy=new Int32Array(n),cz=new Int32Array(n);\n  for(let i=0;i<n;i++){const x=Math.floor(a[i*8]*ih),y=Math.floor(a[i*8+1]*ih),z=Math.floor(a[i*8+2]*ih);cx[i]=x;cy[i]=y;cz[i]=z;const k=key(x,y,z);let l=map.get(k);if(!l){l=[];map.set(k,l)}l.push(i)}\n  const L2=L*L;\n  for(let i=0;i<n;i++){const px=a[i*8],py=a[i*8+1],pz=a[i*8+2];\n    for(let dz=-1;dz<=1;dz++)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const l=map.get(key(cx[i]+dx,cy[i]+dy,cz[i]+dz));if(!l)continue;\n      for(const j of l){if(j<=i)continue;const ex=a[j*8]-px,ey=a[j*8+1]-py,ez=a[j*8+2]-pz;if(ex*ex+ey*ey+ez*ez<L2){const ri=find(i),rj=find(j);if(ri!==rj)par[ri]=rj}}}}\n  const size=new Map();for(let i=0;i<n;i++){const r=find(i);size.set(r,(size.get(r)||0)+1)}\n  const sizes=[...size.values()].sort((x,y)=>y-x);\n  return{comps:sizes.length,big:sizes.filter(s=>s>=minSize).length,largest:sizes[0],out:n-sizes[0],singles:sizes.filter(s=>s===1).length,top:sizes.slice(0,6)}}\nfunction polar(a,n){let x=0,y=0,z=0;for(let i=0;i<n;i++){const vx=a[i*8+4],vy=a[i*8+5],vz=a[i*8+6],s=Math.hypot(vx,vy,vz)||1;x+=vx/s;y+=vy/s;z+=vz/s}return Math.hypot(x,y,z)/n}\nreturn{pieces,polar}})();\n";
+/* ================= Murmuration: page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches,STILL=Q.has('still'),STATIC=RM||STILL,OGQ=Q.get('og'),IFR=window.self!==window.top,NOGPU=Q.has('nogpu');
+if(FIXED||STATIC)document.documentElement.classList.add('still');
+if(OGQ)document.documentElement.classList.add('og');
+const TAU=Math.PI*2,clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),MOB=()=>innerWidth<=820;
+const STAT={"top":{"comps":"43.5","singles":"1"},"met":{"comps":"197.5","singles":"87"}};
+const fmt=x=>Math.round(x).toLocaleString('en-US');
+const SIZES_GPU=[16384,65536,262144,1048576],SIZES_CPU=[1024,2048,4096];
+const TF=480,TL=180,WARM=240;// falcon: hunts 8 s, leaves for 3 s, then is gone
+const S={ftgt:0,rule:0,k:7,n:262144,compute:'gpu',step:0,acc:0,fstart:-1e9,fcount:0,fsp:[0,0,0],fsv:[0,0,0],yaw:0,pitch:-.18,dist:300,log:[],
+  pieces:null,piecesStep:-1,stats:null,statsStep:-1,ms:null,cpuRate:null,cpuSteps:[],lite:false,speed:1};
+let GPUOK=false,dev=null,G=null,view=null,CPUE=null,cview=null,P0=null,L=null,adapterInfo='',busy=false,cpuGen=null,switching=false;
+const roostAt=s=>{const T=s/60;return[Math.sin(T*.05)*90,60,Math.sin(T*.083+1)*70-20]};
+function params(){return Object.assign({},MUR.DEF,{n:S.n,mode:S.rule,k:S.k,seed:7})}
+function falconCmd(s){const d=s-S.fstart;if(d===0)return 1;if(d>0&&d<TF)return 2;if(d>=TF&&d<TF+TL)return 3;if(d===TF+TL)return 4;return 0}
+function falconPhase(){const d=S.step-S.fstart;return d>=0&&d<TF?'hunting':d>=TF&&d<=TF+TL?'leaving':'none'}
+function packStep(flags){P0.mode=S.rule;P0.k=S.k;return MUR.pack(P0,L,S.step,roostAt(S.step),falconCmd(S.step),S.fsp,S.fsv,flags||0,S.ftgt%S.n)}
+function logAct(a,v){S.log.push({step:S.step,a,v});if(S.log.length>400)S.log.shift()}
+function camDist(){return clamp(340*Math.cbrt(S.n/262144),80,560)}
+function piecesIn(){if(capKey==='count')cap(CAP.count(),'count');readouts(true)}
+
+/* ================= engines ================= */
+async function initGPU(){if(NOGPU||!navigator.gpu)return false;
+  try{const ad=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});if(!ad)return false;
+    const feats=ad.features.has('timestamp-query')?['timestamp-query']:[];
+    dev=await ad.requestDevice({requiredFeatures:feats,requiredLimits:{maxStorageBufferBindingSize:Math.min(ad.limits.maxStorageBufferBindingSize,1<<30),maxBufferSize:Math.min(ad.limits.maxBufferSize,1<<30)}});
+    const i=ad.info||{};adapterInfo=[i.vendor,i.architecture].filter(Boolean).join(' ');
+    dev.lost.then(e=>{console.warn('WebGPU device lost',e&&e.message)});return true}catch(e){console.warn(e);return false}}
+async function buildFlock(){P0=params();L=MUR.layout(S.n);const birds=MUR.flock(S.n,7,roostAt(S.step));
+  if(GPUOK){const old=G;G=await MUR.GPU.create(dev,P0,birds);if(view)view.bind(G);if(old)old.destroy()}
+  else{CPUE=new MUR.CPU(P0,birds)}
+  S.pieces=null;S.stats=null;S.dist=S.userCam?S.dist:camDist()}
+function simStepSync(){// one whole step, now
+  const P=packStep(0);if(GPUOK)G.step(P,S.step%30===0);else CPUE.step(P);S.step++}
+
+/* ================= the CPU comparison (WebGPU pages only) ================= */
+async function toCPU(){if(!GPUOK||S.compute==='cpu')return;if(switching){setTimeout(toCPU,150);return}switching=true;
+  const r=await G.read(['bird','prev','fal']);CPUE=new MUR.CPU(P0,r.bird);CPUE.prev=r.prev;CPUE.fal.set(r.fal);S.compute='cpu';S.cpuSteps=[];cpuGen=null;switching=false;syncControls();cpuNote()}
+function toGPU(){if(S.compute==='gpu')return;S.compute='gpu';cpuGen=null;syncControls();cpuNote()}
+function cpuWork(budget){// run the JS step in slices until the frame budget is spent; upload when a step completes
+  const t0=performance.now();
+  while(performance.now()-t0<budget){if(!cpuGen){cpuGen=CPUE.stepGen(packStep(0),8192);cpuGen.t0=performance.now();cpuGen.work=0}
+    const t1=performance.now(),dn=cpuGen.next().done;cpuGen.work+=performance.now()-t1;
+    if(dn){const dt=cpuGen.work;S.cpuSteps.push({at:performance.now(),dt});if(S.cpuSteps.length>20)S.cpuSteps.shift();
+      cpuGen=null;S.step++;G.write(CPUE.a,CPUE.prev);G.writeFal(CPUE.fal);return true}}
+  return false}
+
+/* ================= analysis: pieces and stragglers (in a worker for big flocks) ================= */
+let worker=null,wBusy=false;
+function makeWorker(){try{const src=`${ANA_SRC};onmessage=e=>{const a=new Float32Array(e.data.buf);const r=ANA.pieces(a,e.data.n,e.data.L,100);delete r.rootSize;postMessage(Object.assign(r,{step:e.data.step}))}`;
+  worker=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));worker.onmessage=e=>{wBusy=false;S.pieces=e.data;S.piecesStep=e.data.step;piecesIn()}}catch(e){worker=null}}
+const LINK=3*MUR.DEF.rc;
+async function analyse(){if(busy||wBusy)return;busy=true;
+  try{let birds,step=S.step;
+    if(GPUOK){const r=await G.read(['bird','dbg']);birds=r.bird;S.stats=Array.from(r.dbg.slice(0,6));S.statsStep=step}
+    else{birds=CPUE.a.slice();S.stats=Array.from(CPUE.stats.slice(0,6));S.statsStep=step}
+    if(worker&&S.n>8192){wBusy=true;worker.postMessage({buf:birds.buffer,n:S.n,L:LINK,step},[birds.buffer])}
+    else{const r=ANA.pieces(birds,S.n,LINK,100);delete r.rootSize;r.step=step;S.pieces=r;S.piecesStep=step;piecesIn()}}
+  catch(e){console.warn(e)}busy=false;readouts(true)}
+
+/* ================= captions ================= */
+let capKey='';
+function cap(html,key){const el=$('#caption');capKey=key||'';if(STATIC||FIXED){el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(cap.t);cap.t=setTimeout(()=>{el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade')},260)}
+const NB=()=>fmt(S.n),WHERE=()=>GPUOK?'your GPU':'your CPU (no WebGPU here)';
+const CAP={
+  open:()=>`<b>${NB()} starlings at dusk</b>, over the iron skeleton of an old pier. Each one is simulated on ${WHERE()}: 60 times a second it finds its <span class="m">7</span> nearest neighbours and steers by them. Nobody leads; the shape comes from neighbours watching neighbours.`,
+  seven:()=>`<b>Why seven?</b> Ballerini et al. (2008) filmed real flocks over Rome with stereo cameras and rebuilt them in 3D. Each starling interacts with about <span class="m">6.5</span> nearest neighbours, <b>however far apart</b> they are: a count, not a distance.`,
+  falcon:()=>`<b>A peregrine dives in.</b> Birds within <span class="m">20 m</span> of it bolt; their neighbours turn with them, and the turn runs through the flock as a wave. The flock tears, folds round the falcon and closes up behind it.`,
+  gpu:()=>GPUOK?`<b>All of this is one WebGPU compute pass a frame:</b> rebuild a spatial hash of ${NB()} birds with a counting sort, let every bird search the cells around it, then move it. The last step examined <span class="m">${S.stats?fmt(S.stats[0]):'…'}</span> candidates in <span class="m">${S.ms?S.ms.toFixed(1)+' ms':'a few ms'}</span>.`:`<b>Without WebGPU this page falls back to JavaScript</b> on the main thread, so the flock is ${NB()} birds instead of 262,144. Try it in a browser with WebGPU to see the full murmuration.`,
+  metric:()=>`<b>Now each bird listens only to birds within ${MUR.DEF.rc} m</b>, the textbook rule, and the falcon comes again. Before the attack that radius held more neighbours than seven. But a bird knocked a few metres out has nobody in range any more, and it flies on alone.`,
+  count:()=>{const p=S.pieces;return`<b>${p?fmt(p.comps):'…'} pieces, ${p?fmt(p.singles):'…'} lone stragglers</b> under the metric rule. We ran this attack on 30 flocks of 262,144: metric flocks ended in a median of <span class="r">${STAT.met.comps}</span> pieces with <span class="r">${STAT.met.singles}</span> stragglers; topological ones in <span class="g">${STAT.top.comps}</span> pieces with <span class="g">${STAT.top.singles}</span>.`},
+  back:()=>`<b>Back to seven nearest.</b> Every straggler still has seven neighbours, somewhere, and steers towards them, so the stragglers come home. That is Ballerini’s point: a count of neighbours, unlike a radius, holds a flock together through the density changes a predator causes.`,
+  you:()=>`<b>Your turn.</b> Send in the falcon, switch the rule, change how many neighbours each bird tracks, or run the same step on the CPU to see why it needs the GPU. Drag to fly round the flock.`,
+  still:()=>`<b>${NB()} starlings</b>, each steering by its 7 nearest neighbours, just after a falcon has dived through them. Send in the falcon or switch to the metric rule, and the flock is simulated 10 seconds on.`};
+
+/* ================= the tour (simulation time) ================= */
+let tour=null,tourDone=false;
+const TOUR=[
+  {t:0,do:()=>{setRule(0);cap(CAP.open(),'open')}},
+  {t:8,do:()=>cap(CAP.seven(),'seven')},
+  {t:14,do:()=>{releaseFalcon();cap(CAP.falcon(),'falcon')}},
+  {t:25,do:()=>cap(CAP.gpu(),'gpu')},
+  {t:33,do:()=>{setRule(1);releaseFalcon();cap(CAP.metric(),'metric')}},
+  {t:52,do:()=>cap(CAP.count(),'count')},
+  {t:62,do:()=>{setRule(0);cap(CAP.back(),'back')}},
+  {t:72,do:()=>{tour=null;tourDone=true;cap(CAP.you(),'you')}}];
+function startTour(){tour={t:0,i:0};tourDone=false}
+function tourStep(dt){if(!tour)return;tour.t+=dt;while(tour&&tour.i<TOUR.length&&tour.t>=TOUR[tour.i].t-1e-9){const s=TOUR[tour.i];tour.i++;s.do();syncControls()}}
+function poke(){if(tour){tour=null;tourDone=true;cap(CAP.you(),'you')}}
+
+/* ================= controls ================= */
+function setRule(r){S.rule=r}
+function releaseFalcon(){S.fcount++;S.fstart=S.step;S.ftgt=MUR.pcg(S.fcount*7919+3);const a=((S.fcount*2654435761+7)>>>0)/4294967296*TAU;S.fsp=[Math.cos(a)*140,30,Math.sin(a)*140];
+  const l=Math.hypot(...S.fsp);S.fsv=S.fsp.map(x=>-x/l*30)}
+function staticAdvance(steps){// reduced motion: actions jump the flock forward instead of animating it
+  for(let i=0;i<steps;i++)simStepSync();render();analyse()}
+function syncControls(){$$('#rule button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===S.rule?'true':'false'));
+  $('#k').value=S.k;$('#k').disabled=S.rule===1;$('#kv').textContent=S.rule===1?'all within '+MUR.DEF.rc+' m':S.k;
+  $('#rulev').textContent=S.rule===0?`its ${S.k} nearest`:`everyone within ${MUR.DEF.rc} m`;
+  $$('#size button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===S.n?'true':'false'));$('#nv').textContent=fmt(S.n);
+  $$('#cpu button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.compute?'true':'false'));
+  $('#cpv').textContent=S.compute==='gpu'?'the GPU':'the CPU (JavaScript)';
+  const fp=falconPhase();$('#falcon').textContent=fp==='none'?'Send in the falcon':fp==='hunting'?'Falcon hunting… send another':'Falcon leaving… send another';
+  $('#falv').textContent=fp==='none'?'none in the sky':fp==='hunting'?'peregrine, 30 m/s':'peregrine, climbing away'}
+function bind(){
+  const sz=GPUOK?SIZES_GPU:SIZES_CPU;$('#size').innerHTML=sz.map(n=>`<button data-v="${n}" aria-pressed="false">${n>=1048576?'1M':n>=1024?(n/1024)+'k':n}</button>`).join('');
+  $$('#rule button').forEach(b=>b.addEventListener('click',()=>{poke();setRule(+b.dataset.v);logAct('rule',S.rule);syncControls();if(STATIC||FIXED&&!tour)staticAdvance(STATIC?600:0)}));
+  $('#k').addEventListener('input',async e=>{const v=+e.target.value;poke();S.k=v;logAct('k',v);syncControls();if(GPUOK)await G.setK(v);if(STATIC)staticAdvance(600)});
+  $('#falcon').addEventListener('click',()=>{poke();releaseFalcon();logAct('falcon',S.fcount);syncControls();if(STATIC)staticAdvance(600)});
+  $$('#size button').forEach(b=>b.addEventListener('click',async()=>{const n=+b.dataset.v;if(n===S.n||switching)return;poke();switching=true;
+    if(S.compute==='cpu')toGPU();S.n=n;logAct('n',n);syncControls();await buildFlock();switching=false;cpuNote();if(STATIC)staticAdvance(600);else render()}));
+  $$('#cpu button').forEach(b=>b.addEventListener('click',()=>{poke();logAct('compute',b.dataset.v);if(b.dataset.v==='cpu')toCPU();else toGPU()}));
+  $('#tourb').addEventListener('click',()=>{if(STATIC)return;if(S.compute==='cpu')toGPU();setRule(0);startTour();tourStep(0);syncControls()});
+  const cv=$('#c');let drag=null,pinch=null;
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw:S.yaw,pitch:S.pitch,touch:e.pointerType==='touch'};cv.classList.add('drag');if(!drag.touch)cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(drag.touch&&Math.abs(dy)>Math.abs(dx)*1.2)return;
+    if(Math.abs(dx)+Math.abs(dy)>3){poke();S.userCam=true}S.yaw=drag.yaw-dx*.005;S.pitch=clamp(drag.pitch+dy*.003,-.45,.6);if(STATIC||FIXED)render()});
+  const up=()=>{drag=null;cv.classList.remove('drag')};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();poke();S.userCam=true;S.dist=clamp(S.dist*Math.exp(e.deltaY*.0012),50,900);if(STATIC||FIXED)render()},{passive:false});
+  cv.addEventListener('touchstart',e=>{if(e.touches.length===2)pinch={d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),dist:S.dist}},{passive:true});
+  cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);poke();S.dist=clamp(pinch.dist*pinch.d/d,50,900);e.preventDefault()}},{passive:false});
+  cv.addEventListener('touchend',()=>{pinch=null});
+  addEventListener('resize',()=>{sizeStage();fit();render()})}
+function cpuNote(){const el=$('#cpunote');if(!GPUOK){el.innerHTML=`No WebGPU here: the step always runs in JavaScript, which is why the flock is small.`;return}
+  if(S.compute==='gpu'){el.innerHTML=S.ms?`The GPU does a whole step for ${fmt(S.n)} birds in <b>${S.ms.toFixed(2)} ms</b>${adapterInfo?' ('+adapterInfo+')':''}. Switch to the CPU to run the very same step in JavaScript.`:`Switch to the CPU to run the very same step in JavaScript on the same birds.`;return}
+  const st=S.cpuSteps;if(st.length<1){el.innerHTML=`Running the same step in JavaScript… the first one takes a while.`;return}
+  const mean=st.reduce((a,b)=>a+b.dt,0)/st.length,rate=st.length>1?(st.length-1)/((st[st.length-1].at-st[0].at)/1000):1000/Math.max(mean,1);S.cpuRate=rate;
+  el.innerHTML=`<span class="r">JavaScript: ${rate.toFixed(rate<10?1:0)} steps a second</span> (${mean.toFixed(0)} ms of work each), so the flock moves at <b>${Math.min(100,rate/60*100).toFixed(rate<6?1:0)}%</b> of real speed${S.ms?`; the GPU does the step in ${S.ms.toFixed(2)} ms`:''}.`}
+
+/* ================= readouts ================= */
+let lastRead=0;
+function readouts(force){const now=performance.now();if(!force&&!FIXED&&now-lastRead<250)return;lastRead=now;
+  const p=S.pieces;$('#pcs').textContent=p?fmt(p.comps):'…';$('#pcsn').textContent=p?`largest holds ${(p.largest/S.n*100).toFixed(p.largest===S.n?0:1)}%`:'groups more than 4 m apart';
+  $('#str').textContent=p?fmt(p.singles):'…';$('#strn').textContent=p?(p.singles===0?'everyone has company':p.singles===1?'one bird alone':'nobody within 4 m'):'lone birds';
+  $('#rdp').classList.toggle('hot',!!p&&p.comps>60);$('#rds').classList.toggle('hot',!!p&&p.singles>5);$('#rds').classList.toggle('cool',!!p&&p.singles===0);
+  const st=S.stats;$('#ex').textContent=st?fmt(st[0]):'…';$('#exn').textContent=st?(S.rule===0?`${(st[0]/S.n).toFixed(0)} a bird, ${S.k} kept`:`${(st[4]/S.n).toFixed(1)} a bird in range`):'per step';
+  if(GPUOK&&G&&G.lastMs)S.ms=G.lastMs;
+  $('#ms').textContent=S.compute==='cpu'&&S.cpuSteps.length?(S.cpuSteps[S.cpuSteps.length-1].dt).toFixed(0)+' ms':S.ms?S.ms.toFixed(2)+' ms':GPUOK?'…':(CPUE&&CPUE.lastMs?CPUE.lastMs.toFixed(1)+' ms':'…');
+  $('#msn').textContent=S.compute==='cpu'||!GPUOK?'in JavaScript':'on the GPU, all birds';
+  const pp=S.pieces?Math.max(0,(S.step-S.piecesStep)/60):0;$('#whenv').textContent=`t = ${(S.step/60).toFixed(0)} s`+(S.pieces?` · counted ${pp<1.5?'just now':pp.toFixed(0)+' s ago'}`:'');
+  cpuNote();syncControls()}
+
+/* ================= loop ================= */
+let ready=false,last=0,frameMs=16,slow=0,anaT=0,lastFps=0,fpsN=0,fpsT=0;window.__frame=0;
+const tanf=Math.tan(25*Math.PI/180);
+function V(alpha){return{yaw:S.yaw,pitch:S.pitch,dist:S.dist,tanf,offx:MOB()||OGQ?0:-(($('#panel').offsetWidth||376)+16)/innerWidth,time:S.step/60,alpha,minpx:1.25,refl:true,dt:1/60,flap:1,size:1.45}}
+let alphaNow=1;
+function render(){if(GPUOK&&view){view.draw(V(alphaNow))}else if(cview&&CPUE){cview.draw(V(alphaNow),CPUE.a,CPUE.prev,alphaNow,CPUE.fal,S.n)}}
+function frame(ts){
+  if(!FIXED)requestAnimationFrame(frame);
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.1);
+  if(!FIXED&&last){frameMs=frameMs*.95+(now-last)*.05;if(frameMs>45&&!S.lite&&++slow>40)goLite()}
+  last=now;window.__frame++;fpsN++;if(now-fpsT>1000){lastFps=fpsN*1000/(now-fpsT);fpsN=0;fpsT=now}
+  if(!ready||switching)return;
+  if(STATIC){render();return}
+  if(S.compute==='cpu'&&GPUOK){tourStep(0);if(cpuWork(S.lite?20:12))alphaNow=1}
+  else{let k=0;if(FIXED){k=1}else{S.acc+=dt*S.speed;k=Math.min(4,Math.floor(S.acc*60+1e-9));S.acc-=k/60;if(k===4)S.acc=0}
+    for(let i=0;i<k;i++){tourStep(1/60);simStepSync()}
+    alphaNow=FIXED?1:clamp(S.acc*60,0,1);if(!GPUOK)alphaNow=FIXED?1:clamp(S.acc*60,0,1)}
+  render();
+  if(!FIXED&&now-anaT>(S.n>300000?3000:1500)){anaT=now;analyse()}
+  if(FIXED)readouts(true);else readouts();
+  window.__state={t:tour?+tour.t.toFixed(3):null,frame:window.__frame,step:S.step,tour:tour?tour.i:null,rule:S.rule,falcon:falconPhase(),compute:S.compute}}
+function goLite(){S.lite=true;fit()}
+function sizeStage(){if(MOB()){$('#stage').style.setProperty('--sh',Math.round(Math.min(560,Math.max(400,innerWidth*1.2)))+'px')}}
+function fit(){const cv=$('#c'),r=cv.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,S.lite?1:GPUOK?2:1.5);
+  cv.width=Math.max(2,Math.round(r.width*dpr));cv.height=Math.max(2,Math.round(r.height*dpr))}
+async function start(){sizeStage();
+  if(document.fonts){try{await Promise.race([Promise.all([document.fonts.load('500 30px "DM Mono"'),document.fonts.ready]),new Promise(r=>setTimeout(r,IFR?0:1500))])}catch(e){}}
+  GPUOK=await initGPU();
+  if(!GPUOK){document.documentElement.classList.add('nogpu');S.n=FIXED?2048:(IFR?2048:SIZES_CPU[1]);S.compute='cpu-only';$('#cpu').style.display='none';$('#cpv').textContent='the CPU (no WebGPU)'}
+  else if(Q.get('n')&&SIZES_GPU.includes(+Q.get('n')))S.n=+Q.get('n');
+  bind();fit();S.dist=camDist();await buildFlock();
+  if(GPUOK){try{view=await SCENE.GPUView.create(dev,$('#c'),G)}catch(e){console.warn(e);GPUOK=false;document.documentElement.classList.add('nogpu')}}
+  if(!GPUOK){S.compute='cpu-only';if(!CPUE){S.n=2048;await buildFlock()}cview=new SCENE.CanvasView($('#c'))}
+  if(!GPUOK){const s0=CPUE.step.bind(CPUE);CPUE.step=P=>{const t=performance.now();s0(P);CPUE.lastMs=CPUE.lastMs?CPUE.lastMs*.9+(performance.now()-t)*.1:performance.now()-t}}
+  makeWorker();
+  // where the page opens: the tour from the start, or (fixed / reduced motion / og) mid-attack
+  for(let i=0;i<WARM;i++)simStepSync();
+  const pre=STATIC||OGQ?(14+5.5):FIXED?(14+5.5):0;
+  if(STATIC){S.rule=0;startTour();for(let i=0;i<Math.round(pre*60);i++){tourStep(1/60);simStepSync()}tour=null;tourDone=true;cap(CAP.still(),'still')}
+  else{startTour();tourStep(0);if(pre){for(let i=0;i<Math.round(pre*60);i++){tourStep(1/60);simStepSync()}}}
+  if(OGQ){tour=null;$('#ogtxt').innerHTML=`<b>${fmt(S.n)} starlings</b>, each one steering by its <b>7 nearest</b> neighbours, on WebGPU compute shaders. After a falcon’s dive, flocks that keep to a fixed radius leave a median of <b>${STAT.met.singles}</b> stragglers behind; seven-nearest flocks leave <b>${STAT.top.singles}</b>.`}
+  if(Q.has('yaw'))S.yaw=+Q.get('yaw');if(Q.has('pitch'))S.pitch=+Q.get('pitch');if(Q.has('dist'))S.dist=+Q.get('dist');
+  if(OGQ){S.yaw=.42;S.pitch=-.12;S.dist=255}
+  syncControls();cpuNote();ready=true;await analyse();readouts(true)}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++){if(i<n-1){window.__frame++;tourStep(1/60);simStepSync()}else frame(0)}analyse()};
+(async()=>{await start();render();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+window.murmuration={MUR,SCENE,ANA,
+  state:()=>{if(!ready)return{ready:false};const p=S.pieces?Object.assign({},S.pieces):null;
+    return{ready:true,switching,webgpu:GPUOK,adapter:adapterInfo,compute:S.compute,n:S.n,rule:S.rule,k:S.k,rc:MUR.DEF.rc,link:LINK,step:S.step,simTime:S.step/60,falcon:{phase:falconPhase(),start:S.fstart,count:S.fcount,spawn:S.fsp,vel:S.fsv},
+      pieces:p,piecesStep:S.piecesStep,stats:S.stats,statsStep:S.statsStep,ms:S.ms,cpuSteps:S.cpuSteps.map(x=>x.dt),cpuRate:S.cpuRate,tour:tour?tour.i:null,tourT:tour?tour.t:null,tourDone,caption:$('#caption').textContent,capKey,
+      cam:{yaw:S.yaw,pitch:S.pitch,dist:S.dist},lite:S.lite,fps:lastFps,log:S.log.slice(),params:Object.assign({},P0),roost:roostAt(S.step),stat:STAT}},
+  // read the whole flock (positions, velocities, falcon) for tests
+  read:async()=>{if(GPUOK){const r=await G.read(['bird','prev','fal','dbg']);return{bird:Array.from(r.bird),prev:Array.from(r.prev),fal:Array.from(r.fal),dbg:Array.from(r.dbg.slice(0,6))}}
+    return{bird:Array.from(CPUE.a),prev:Array.from(CPUE.prev),fal:Array.from(CPUE.fal),dbg:Array.from(CPUE.stats.slice(0,6))}},
+  // the falcon experiment behind the numbers in "What is this?": compact aligned flock, 10 s calm, falcon 8 s + 3 s, count 20 s after it appears
+  experiment:async(o)=>{if(!GPUOK)return{webgpu:false};const pp=Object.assign({},MUR.DEF,{n:o.n||262144,mode:o.mode,k:7,seed:o.seed});const LL=MUR.layout(pp.n);
+    const E=await MUR.GPU.create(dev,pp,MUR.flockCompact(pp.n,o.seed,[0,60,0]));let st=0;
+    const run=(k,cmd,sp,sv)=>{for(let i=0;i<k;i++){E.step(MUR.pack(pp,LL,st,roostAt(st),i===0?cmd:(cmd===1?0:cmd),sp||[0,0,0],sv||[0,0,0],0));st++}};
+    run(600,0);const ang=((o.seed*2654435761)>>>0)/4294967296*TAU,sp=[Math.cos(ang)*140,30,Math.sin(ang)*140],l=Math.hypot(...sp),sv=sp.map(x=>-x/l*30);
+    run(1,1,sp,sv);run(TF-1,2);run(TL,3);run(1,4);run(1200-TL-TF,0);const r=await E.read(['bird']);const post=ANA.pieces(r.bird,pp.n,LINK,100);delete post.rootSize;E.destroy();return{seed:o.seed,mode:o.mode,post}},
+  // one step on the GPU and the same step in JavaScript from the same state, compared number by number
+  selfTest:async(sample,dump)=>{if(!GPUOK)return{webgpu:false};if(S.compute==='cpu')toGPU();const r=await G.read(['bird','prev','fal']);const C=new MUR.CPU(P0,r.bird);C.prev=r.prev;C.fal.set(r.fal);
+    const P=packStep(1);G.step(P,false);C.stats.fill(0);C.sort(P);C.falcon(P);C.update(P,0,S.n);C.swap();S.step++;
+    const g=await G.read(['bird','dbg']);const n=S.n,K=S.k;let eq=0,maxd=0,maxp=0;for(let i=0;i<n*8;i++){const d=Math.abs(g.bird[i]-C.a[i]);if(d===0)eq++;if((i&7)<3)maxp=Math.max(maxp,d);else maxd=Math.max(maxd,d)}
+    let nbEq=0,brute=0,bruteN=0,deep=0;const nb=g.dbg.subarray(16);
+    if(S.rule===0){for(let i=0;i<n;i++){let ok=true;for(let m=0;m<K;m++)if(nb[i*K+m]!==C.nb[i*K+m]){ok=false;break}if(ok)nbEq++}
+      const step=Math.max(1,Math.floor(n/(sample||256)));for(let i=0;i<n;i+=step){const b=MUR.bruteKNN(r.bird,n,i,K).map(x=>x[1]);bruteN++;let ok=true;for(let m=0;m<K;m++)if(b[m]!==nb[i*K+m])ok=false;if(ok)brute++}}
+    else{for(let i=0;i<n;i++)if(nb[i*K]===C.nb[i*K])nbEq++}
+    const out={n,rule:S.rule,k:K,floats:n*8,equal:eq,maxPosDiff:maxp,maxVelDiff:maxd,nbEqual:nbEq,bruteChecked:bruteN,bruteEqual:brute,gpuStats:Array.from(g.dbg.slice(0,6)),cpuStats:Array.from(C.stats.slice(0,6))};
+    if(dump){const pos=new Float32Array(n*3);for(let i=0;i<n;i++){pos[i*3]=r.bird[i*8];pos[i*3+1]=r.bird[i*8+1];pos[i*3+2]=r.bird[i*8+2]}out.pos=b64(pos);out.nb=b64(new Uint32Array(nb.slice(0,n*K)))}
+    return out}};
+function b64(t){const u=new Uint8Array(t.buffer,t.byteOffset,t.byteLength);let s='';for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)}
+</script>
+</body>
+</html>

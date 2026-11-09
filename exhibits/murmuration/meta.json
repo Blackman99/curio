@@ -1,0 +1,11 @@
+{
+ "slug": "murmuration",
+ "title": "Murmuration",
+ "no": "041",
+ "date": "2026-11-09",
+ "kind": "Starling flock · WebGPU compute",
+ "blurb": "A quarter of a million starlings at dusk, simulated live in WebGPU compute shaders: every bird finds its 7 nearest neighbours through a GPU spatial hash, 60 times a second. Send in a falcon, switch between Ballerini's seven-nearest rule and a fixed radius, and count the stragglers left behind.",
+ "color": "#a06898",
+ "exhibit": "murmuration",
+ "lane": "web"
+}
