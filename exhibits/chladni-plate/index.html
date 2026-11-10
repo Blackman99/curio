@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chladni Plate — sand figures on a bowed glass plate, computed the way Ritz did in 1909</title>
+<meta name="description" content="A square glass plate strewn with sand. Bow its edge and the sand runs to the lines that stand still: Chladni's figures. The plate's modes are computed in your browser with Walther Ritz's 1909 method, and set beside the numbers Ritz worked out by hand and the notes Chladni heard.">
+<meta property="og:title" content="Chladni Plate">
+<meta property="og:description" content="Bow a glass plate and the sand draws its vibration. The modes are computed live with Ritz's 1909 method and compared with Ritz's own hand-worked table and the notes Chladni heard.">
+<meta property="og:image" content="https://blackman99.github.io/curio/chladni-plate/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Chladni Plate">
+<meta name="twitter:description" content="Sand on a bowed glass plate gathers on the lines that stand still. The figures are computed live with Walther Ritz's 1909 method, beside his hand-worked table and Chladni's ear.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/chladni-plate/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0b0d10;--paper:#efe7d6;--paper2:#aaa391;--brass:#d9b25f;--sand:#efe2c8;--red:#f08a6c;--line:rgba(239,226,200,.14);--panel:rgba(13,15,17,.93)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:#0d0b09}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,8,.6)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(10,9,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--brass);color:#1d1406;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);text-shadow:0 1px 4px #000}
+h1{margin:9px 0 0;font:400 clamp(32px,3.2vw,48px)/1 'DM Serif Display',Georgia,serif;letter-spacing:.005em;color:#fbf3e2;text-shadow:0 2px 0 #3a2a12,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:880px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,8,.74)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#fbf5e8;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--brass)}
+#caption sub,.atl sub,details sub{font-size:.7em}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+.read{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:9px 6px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 19px/1 'DM Mono',monospace;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{font-size:24px;color:#ffe2a0}
+.rd small{font:400 10.5px/1.15 'DM Mono',monospace;color:var(--paper2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{border:1px solid var(--line);background:rgba(217,178,95,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(217,178,95,.18);border-color:var(--brass);outline:none}
+.btn.go{background:var(--brass);border-color:var(--brass);color:#1d1406;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd789}
+.btn[aria-pressed=true]{background:rgba(217,178,95,.28);border-color:var(--brass)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(217,178,95,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--brass);color:#1d1406;font-weight:500}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:9px 8px}
+.ctl .lab{margin-bottom:5px;letter-spacing:.11em;font-size:9.5px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.dialrow{display:grid;grid-template-columns:28px 1fr 28px;gap:5px;align-items:stretch}
+.dialrow .btn{padding:0;font-size:14px}
+#dial{display:block;width:100%;height:92px;border-radius:9px;background:#0a0b0c;border:1px solid rgba(255,255,255,.07);touch-action:none;cursor:ew-resize}
+.hint{font:400 10.5px/1.35 'DM Mono',monospace;color:var(--paper2);margin-top:5px}
+input[type=range]{width:100%;accent-color:var(--brass);margin:2px 0 0}
+#atlas{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.atl{position:relative;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:0;background:#0a0b0d;overflow:hidden;aspect-ratio:1/1}
+.atl canvas{display:block;width:100%;height:100%}
+.atl i{position:absolute;left:3px;bottom:1px;font:500 9px/1.1 'DM Mono',monospace;font-style:normal;color:var(--brass);text-shadow:0 1px 2px #000}
+.atl:hover,.atl:focus-visible{border-color:var(--brass);outline:none}
+.atl[aria-pressed=true]{border-color:#ffe2a0;box-shadow:0 0 0 1px #ffe2a0 inset}
+#rowinfo{font:400 11px/1.4 'DM Mono',monospace;color:var(--paper2);margin-top:6px;min-height:2.8em}
+#rowinfo b{color:var(--paper);font-weight:500}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(239,231,214,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(28px,2.8vw,40px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:17px}.rd.big b{font-size:21px}#dial{height:78px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:34px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:6.9em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,390px);margin-top:4px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(14,15,17,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+#ogtext{display:none}
+.og #ogtext{display:block;position:fixed;right:26px;top:118px;width:27vw;z-index:2;font:400 27px/1.3 'Newsreader',serif;color:#f6ecd8;text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.og #ogtext p{margin:0 0 18px}.og #ogtext b{color:#ffe2a0;font-weight:600}
+.og #ogtext .chips{font:500 17px/1.55 'DM Mono',monospace;color:#d9b25f;letter-spacing:.02em}
+.og #title{background:rgba(10,9,8,.72)}
+.lite #title,.lite #story{background:rgba(10,9,8,.86)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 042 · Plate vibration modes</span>
+  <h1>Chladni Plate</h1>
+</header>
+<div id="ogtext" aria-hidden="true"><p>Bow a glass plate and the sand runs to the lines that stand still.</p><p>The figures are computed live with <b>Walther Ritz's 1909 method</b>, beside the numbers he worked out by hand and the notes <b>Chladni</b> heard.</p><p class="chips" id="ogchips"></p></div>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A square glass plate seen from above, strewn with pale sand, on a dark table. A violin bow touches one edge. Where the plate vibrates the sand hops about; it collects in thin lines along the places that stand still, drawing a Chladni figure. Sand that hops off the edge lies on the table around the plate."></canvas>
+</div>
+<aside id="panel" aria-label="Readings and controls">
+  <div class="sec">
+    <div class="lab"><span>The plate</span><b id="platev">glass · 20 cm square</b></div>
+    <div class="read">
+      <div class="rd big"><span>Pitch</span><b id="rf">–</b><small id="rnote">–</small></div>
+      <div class="rd"><span>Mode</span><b id="rmode">–</b><small id="rmode2">–</small></div>
+      <div class="rd"><span>Glass moves</span><b id="rg">–</b><small>peak, in g</small></div>
+      <div class="rd"><span>Still glass</span><b id="rstill">–</b><small>under 1 g</small></div>
+      <div class="rd"><span>Sand at rest</span><b id="rrest">–</b><small id="rsand">grains</small></div>
+      <div class="rd"><span>Fallen off</span><b id="rfall">–</b><small>grains</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Pitch dial</span><b id="dialv">drag to tune</b></div>
+    <div class="dialrow"><button class="btn" id="prevr" title="Down to the next resonance" aria-label="Previous resonance">◀</button><canvas id="dial" aria-label="Pitch dial: how hard the plate shakes at each pitch with the bow where it is. Peaks are resonances. Drag across it to tune; the bright line is the pitch now."></canvas><button class="btn" id="nextr" title="Up to the next resonance" aria-label="Next resonance">▶</button></div>
+    <div class="hint" id="dialhint">Peaks are the notes this plate rings at with the bow where it is.</div>
+  </div>
+  <div class="sec row3"><button class="btn go" id="playb">Pause</button><button class="btn" id="soundb" aria-pressed="false" title="Play the pitch (Web Audio)">Sound off</button><button class="btn" id="waveb" aria-pressed="false" title="Show how the glass moves, in slow motion">Show motion</button></div>
+  <div class="sec">
+    <div class="lab"><span>Bow pressure</span><b id="pressv">25</b></div>
+    <input type="range" id="press" min="6" max="60" step="1" value="25" aria-label="Bow pressure">
+    <div class="hint">Drag the bow round the edge. Click the glass to rest a fingertip on it (two at most); click a fingertip to lift it.</div>
+  </div>
+  <div class="sec ctl">
+    <div><div class="lab"><span>Plate</span></div>
+      <div class="seg" id="mat"><button data-v="glass" aria-pressed="true" title="Glass, Poisson's ratio 0.225 (Ritz's value)">glass</button><button data-v="steel" aria-pressed="false" title="Steel, Poisson's ratio 0.29">steel</button><button data-v="brass" aria-pressed="false" title="Brass, Poisson's ratio 0.34">brass</button></div></div>
+    <div><div class="lab"><span>Shape</span></div>
+      <div class="seg" id="shape"><button data-v="1" aria-pressed="true" title="A 20 cm square">square</button><button data-v="3:2" aria-pressed="false" title="20 by 13.3 cm">3 : 2</button><button data-v="2:1" aria-pressed="false" title="20 by 10 cm">2 : 1</button></div></div>
+  </div>
+  <div class="sec row3"><button class="btn" id="sprb" title="Strew another 20,000 grains">Sprinkle</button><button class="btn" id="brb" title="Brush all the sand off">Brush off</button><button class="btn" id="liftb" title="Lift both fingertips">Lift fingers</button></div>
+  <div class="sec">
+    <div class="lab"><span id="atlasl">Ritz's table, 1909</span><b id="atlasv">35 figures</b></div>
+    <div id="atlas"></div>
+    <div id="rowinfo"></div>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+    <p>A 20 cm square of glass, 1.1 mm thick, strewn with sand. A violin bow drives one point of its edge at the pitch on the dial. Wherever the glass accelerates faster than gravity the sand hops; it can only come to rest where the glass moves <b>less than 1 g</b>. Ernst Chladni showed these figures in 1787, bowing glass plates and writing down the note each figure sang. The plate here is sized so that its lowest note is a G (98.3 Hz), like his.</p>
+    <p><b>Computed, the way Ritz did it.</b> In 1909 Walther Ritz calculated Chladni's figures for the first time, and invented a method to do it: write the plate's bending energy (Kirchhoff's) for a sum of products of free–free beam shapes u<sub>m</sub>(x)·v<sub>n</sub>(y), and minimise it. The page does exactly that in your browser, with 16 × 16 = 256 products and Poisson's ratio 0.225 (Ritz's value for glass): Gauss–Legendre integrals, then a Jacobi eigen-solver (7–8 sweeps). LAPACK on the same matrices agrees to 4 × 10<sup>−13</sup>. A separate Ritz solution with 576 Legendre polynomials (Python) puts the page's first 60 eigenvalues 0.04%–0.45% high (Ritz's method can only err upward), and both agree with Gander &amp; Kwok's finite-difference table to within 0.4%.</p>
+    <p><b>Ritz's table and Chladni's ear.</b> The 35 figures in the panel are the rows of Ritz's <i>Tabelle der Tonhöhen</i>. The 9 he worked through fully by hand are within 2.0% of this page; for the rest he kept one term and is up to 11% high (λ = 2,020 for u<sub>2</sub>v<sub>4</sub> + u<sub>4</sub>v<sub>2</sub>). His sixth row is printed u<sub>1</sub>v<sub>1</sub>; it can only be u<sub>2</sub>v<sub>2</sub>. Chladni named 32 of the notes by ear: 18 are within half a semitone of the page's pitch and 30 within a semitone. He was mostly flat (27 of 32), at worst by 2.0 semitones.</p>
+    <p><b>Same note, different figures.</b> When m + n is odd, u<sub>m</sub>v<sub>n</sub> and u<sub>n</sub>v<sub>m</sub> ring at exactly the same pitch (here they agree to the last bit), and any mixture of the two is also a mode. So where you bow picks the figure, and a fingertip, modelled as pinning one point of the glass to zero, picks the one whose line runs under it.</p>
+    <p><b>What is modelled, and how loosely.</b> The response is the sum of all 253 bending modes, each with a quality factor of 1,000 (assumed), driven by a steady force at the bow; the plate's rigid motions are left out. The sand is a simple rule, not ballistics: each tick, a grain where the glass moves faster than 1 g hops a random step of 2 mm × (0.35 + √(a − 1)), and grains that go over the edge fall onto the table. That is enough to make the lines and set their width: on the diagonals the median grain ends 5.0 mm from the line at bow pressure 12, 2.2 mm at 25 and 0.9 mm at 50. A real bow picks its own pitch by stick and slip (here you set it); Chladni clamped his plates at the centre (here, as in Ritz's paper, the plate is free); the sound is a plain sine at the dial's pitch. The engine and a Python reference agree bit for bit, grain by grain.</p>
+    <p>Sources: W. Ritz, <a href="https://doi.org/10.1002/andp.19093330403">“Theorie der Transversalschwingungen einer quadratischen Platte mit freien Rändern”</a>, Annalen der Physik 1909; M. J. Gander &amp; G. Wanner, <a href="https://doi.org/10.1137/100804036">“From Euler, Ritz, and Galerkin to modern computing”</a>, SIAM Review 2012 (reprints Ritz's table); M. J. Gander &amp; F. Kwok, <a href="https://doi.org/10.1137/10081931X">“Chladni figures and the Tacoma Bridge”</a>, SIAM Review 2012; E. F. F. Chladni, <i>Entdeckungen über die Theorie des Klanges</i>, 1787.</p>
+  </details>
+  <div class="foot">Speed <span class="seg" id="speed" style="display:inline-grid;width:150px;vertical-align:middle"><button data-v="slow" aria-pressed="false">slow</button><button data-v="normal" aria-pressed="true">normal</button><button data-v="fast" aria-pressed="false">fast</button></span> · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script>
+/* Chladni Plate engine. Ritz's 1909 method for a free rectangular plate (products of free-free beam functions,
+   energy minimised, Jacobi eigen-solver), the plate's forced response to a bow at one point (fingers pin points to
+   zero), and sand that hops wherever the plate accelerates faster than gravity.
+   Plain float64 with + − × ÷ and sqrt only (exp, sin and cos are fixed series here), so ref.py reproduces every
+   number bit for bit. */
+const CH=(()=>{
+const PI=3.141592653589793,HALFPI=1.5707963267948966,LOG2E=1.4426950408889634,LN2=0.6931471805599453;
+const PIO2_1=1.5707963267341256,PIO2_2=6.077100506506192e-11,PIO2_3=2.0222662487959506e-21;
+const P2=new Float64Array(2201);{let v=1;P2[1100]=1;for(let k=1;k<=1100;k++){v=v*2;P2[1100+k]=v}v=1;for(let k=1;k<=1100;k++){v=v/2;P2[1100-k]=v}}
+function exp(x){if(x>700)x=700;if(!(x>-700))x=-700;const y=x*LOG2E,k=Math.floor(y),u=(y-k)*LN2;let s=1,t=1;for(let n=1;n<=22;n++){t=t*u/n;s=s+t}return s*P2[1100+k]}
+function sincos(x){const n=Math.floor(x/HALFPI+0.5);const r=((x-n*PIO2_1)-n*PIO2_2)-n*PIO2_3,r2=r*r;
+ let s=r,t=r;for(let k=1;k<=11;k++){t=-t*r2/((2*k)*(2*k+1));s=s+t}
+ let c=1;t=1;for(let k=1;k<=11;k++){t=-t*r2/((2*k-1)*(2*k));c=c+t}
+ const q=((n%4)+4)%4;return q===0?[s,c]:q===1?[c,-s]:q===2?[-s,-c]:[-c,s]}
+/* counter PRNG: the n-th draw of stream `seed` is a hash of seed+(n+1)·0x6D2B79F5 */
+function draw(seed,n){let a=(seed+Math.imul(n+1,0x6D2B79F5))|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+/* --- free-free beam functions on [-1,1] (Ritz's u_m) --- */
+function roots(N){const ks=new Float64Array(N);for(let m=2;m<N;m++){let k=(2*m-1)*PI/4;
+  for(let it=0;it<40;it++){const [s,c]=sincos(k),e=exp(-2*k),t=(1-e)/(1+e);
+   let f,df;if(m%2===0){f=s+c*t;df=c-s*t+c*(1-t*t)}else{f=s-c*t;df=c+s*t-c*(1-t*t)}k=k-f/df}ks[m]=k}return ks}
+const SQH=Math.sqrt(0.5),SQ32=Math.sqrt(1.5);
+function beam(m,k,x,out){ // out[0..2] = u, u', u''
+ if(m===0){out[0]=SQH;out[1]=0;out[2]=0;return out}
+ if(m===1){out[0]=SQ32*x;out[1]=SQ32;out[2]=0;return out}
+ const e=exp(-2*k),ek=exp(-k),E1=exp(k*(x-1)),E2=exp(-k*(x+1)),[s,c]=sincos(k*x),[sk,ck]=sincos(k),kk=k*k;
+ if(m%2===0){const ch=(E1+E2)/(1+e),sh=(E1-E2)/(1+e),q=ck*2*ek/(1+e),nr=Math.sqrt(1+q*q);
+  out[0]=(c+ck*ch)/nr;out[1]=(-k*s+ck*k*sh)/nr;out[2]=(-kk*c+ck*kk*ch)/nr}
+ else{const ch=(E1+E2)/(1-e),sh=(E1-E2)/(1-e),q=sk*2*ek/(1-e),nr=Math.sqrt(1-q*q);
+  out[0]=(s+sk*sh)/nr;out[1]=(k*c+sk*k*ch)/nr;out[2]=(-kk*s+sk*kk*sh)/nr}
+ return out}
+/* Gauss-Legendre nodes (Numerical Recipes gauleg), Q points, composite over NP panels */
+function gauleg(Q){const x=new Float64Array(Q),w=new Float64Array(Q);for(let i=0;i<Q/2;i++){let z=sincos(PI*(i+0.75)/(Q+0.5))[1],pp=0;
+  for(let it=0;it<12;it++){let p1=1,p2=0;for(let j=1;j<=Q;j++){const p3=p2;p2=p1;p1=((2*j-1)*z*p2-(j-1)*p3)/j}pp=Q*(z*p1-p2)/(z*z-1);z=z-p1/pp}
+  x[i]=-z;x[Q-1-i]=z;w[i]=2/((1-z*z)*pp*pp);w[Q-1-i]=w[i]}return{x,w}}
+const QG=16,NP=32;
+function beamMats(N){const ks=roots(N),g=gauleg(QG),M=QG*NP,X=new Float64Array(M),Wq=new Float64Array(M);
+ for(let p=0;p<NP;p++){const c=-1+(2*p+1)/NP,h=1/NP;for(let q=0;q<QG;q++){X[p*QG+q]=c+h*g.x[q];Wq[p*QG+q]=h*g.w[q]}}
+ const U0=[],U1=[],U2=[],o=new Float64Array(3);for(let m=0;m<N;m++){const a=new Float64Array(M),b=new Float64Array(M),d=new Float64Array(M);
+  for(let q=0;q<M;q++){beam(m,ks[m],X[q],o);a[q]=o[0];b[q]=o[1];d[q]=o[2]}U0.push(a);U1.push(b);U2.push(d)}
+ const mk=(P,R)=>{const A=new Float64Array(N*N);for(let m=0;m<N;m++)for(let p=0;p<N;p++){let s=0;const u=P[m],v=R[p];for(let q=0;q<M;q++)s=s+Wq[q]*u[q]*v[q];A[m*N+p]=s}return A};
+ return{N,ks,A:mk(U0,U0),B:mk(U2,U2),C:mk(U0,U2),E:mk(U1,U1)}}
+/* Jacobi eigenvalue algorithm (cyclic, Numerical Recipes "jacobi"); a is n*n row-major, destroyed above the diagonal */
+function jacobi(a,n){const v=new Float64Array(n*n),d=new Float64Array(n),b=new Float64Array(n),z=new Float64Array(n);
+ for(let p=0;p<n;p++){v[p*n+p]=1;d[p]=a[p*n+p];b[p]=d[p]}let sweeps=0;
+ for(let sw=1;sw<=60;sw++){let sm=0;for(let p=0;p<n-1;p++)for(let q=p+1;q<n;q++)sm=sm+Math.abs(a[p*n+q]);if(sm===0)break;sweeps=sw;
+  const tr=sw<4?0.2*sm/(n*n):0;
+  for(let p=0;p<n-1;p++)for(let q=p+1;q<n;q++){const apq=a[p*n+q],g=100*Math.abs(apq);
+   if(sw>4&&Math.abs(d[p])+g===Math.abs(d[p])&&Math.abs(d[q])+g===Math.abs(d[q]))a[p*n+q]=0;
+   else if(Math.abs(apq)>tr){let h=d[q]-d[p],t;
+    if(Math.abs(h)+g===Math.abs(h))t=apq/h;else{const th=0.5*h/apq;t=1/(Math.abs(th)+Math.sqrt(1+th*th));if(th<0)t=-t}
+    const c=1/Math.sqrt(1+t*t),s=t*c,tau=s/(1+c);h=t*apq;z[p]=z[p]-h;z[q]=z[q]+h;d[p]=d[p]-h;d[q]=d[q]+h;a[p*n+q]=0;
+    for(let j=0;j<p;j++){const g1=a[j*n+p],h1=a[j*n+q];a[j*n+p]=g1-s*(h1+g1*tau);a[j*n+q]=h1+s*(g1-h1*tau)}
+    for(let j=p+1;j<q;j++){const g1=a[p*n+j],h1=a[j*n+q];a[p*n+j]=g1-s*(h1+g1*tau);a[j*n+q]=h1+s*(g1-h1*tau)}
+    for(let j=q+1;j<n;j++){const g1=a[p*n+j],h1=a[q*n+j];a[p*n+j]=g1-s*(h1+g1*tau);a[q*n+j]=h1+s*(g1-h1*tau)}
+    for(let j=0;j<n;j++){const g1=v[j*n+p],h1=v[j*n+q];v[j*n+p]=g1-s*(h1+g1*tau);v[j*n+q]=h1+s*(g1-h1*tau)}}}
+  for(let p=0;p<n;p++){b[p]=b[p]+z[p];d[p]=b[p];z[p]=0}}
+ return{d,v,sweeps}}
+/* --- the plate --- */
+const MATERIALS={glass:{name:'glass',E:72e9,rho:2500,mu:0.225},steel:{name:'steel',E:200e9,rho:7850,mu:0.29},brass:{name:'brass',E:100e9,rho:8500,mu:0.34}};
+const GEOM={a:0.1,h:0.0011}; // half-width 10 cm (a 20 cm plate), 1.1 mm thick
+const BM={};
+function plate(o){const N=o.N||16,mat=MATERIALS[o.mat||'glass'],mu=o.mu!=null?o.mu:mat.mu,beta=o.beta||1;
+ const bm=BM[N]||(BM[N]=beamMats(N)),{B,C,E}=bm,ib2=1/(beta*beta),ib4=ib2*ib2,tm=2*(1-mu);
+ const modes=[];
+ for(let cls=0;cls<4;cls++){const px=cls>>1,py=cls&1,I=[];for(let m=px;m<N;m+=2)for(let n=py;n<N;n+=2)I.push([m,n]);
+  const n=I.length,K=new Float64Array(n*n);
+  for(let i=0;i<n;i++)for(let j=i;j<n;j++){const [m,nn]=I[i],[p,q]=I[j];let val=0;
+   if(nn===q)val=val+B[m*N+p];
+   if(m===p)val=val+B[nn*N+q]*ib4;
+   val=val+mu*(C[p*N+m]*C[nn*N+q]+C[m*N+p]*C[q*N+nn])*ib2;
+   val=val+tm*E[m*N+p]*E[nn*N+q]*ib2;
+   K[i*n+j]=val;K[j*n+i]=val}
+  const r=jacobi(K,n);
+  for(let j=0;j<n;j++){const vec=new Float64Array(n);let big=0,bi=0;for(let i=0;i<n;i++){vec[i]=r.v[i*n+j];if(Math.abs(vec[i])>big){big=Math.abs(vec[i]);bi=i}}
+   if(vec[bi]<0)for(let i=0;i<n;i++)vec[i]=-vec[i];
+   modes.push({lam:r.d[j],cls,j,idx:I,vec,sweeps:r.sweeps})}}
+ modes.sort((a,b)=>(a.lam-b.lam)||(a.cls-b.cls)||(a.j-b.j));
+ const c0=GEOM.h*Math.sqrt(mat.E/(12*mat.rho*(1-mu*mu)))/(GEOM.a*GEOM.a),fs=c0/(2*PI);
+ modes.forEach((md,i)=>{md.i=i;md.rigid=md.lam<1e-6;md.f=md.rigid?0:fs*Math.sqrt(md.lam);md.label=label(md,N,beta)});
+ return{N,mu,beta,mat:mat.name,ks:bm.ks,modes,fs,bm}}
+function label(md,N,beta){let big=-1,bm=0,bn=0;const c=new Float64Array(N*N);md.idx.forEach(([m,n],i)=>{c[m*N+n]=md.vec[i];if(Math.abs(md.vec[i])>big){big=Math.abs(md.vec[i]);bm=m;bn=n}});
+ const m=Math.min(bm,bn),n=Math.max(bm,bn);if(beta!==1||m===n)return{m:bm,n:bn,s:''};
+ if((m+n)%2===1)return{m,n,s:'±'};return{m,n,s:c[m*N+n]*c[n*N+m]<0?'-':'+'}}
+/* basis values at a point: ux[m] = u_m(x), uy[n] = u_n(y/beta)/sqrt(beta) */
+function basisAt(P,x,y){const N=P.N,o=new Float64Array(3),ux=new Float64Array(N),uy=new Float64Array(N),sb=Math.sqrt(P.beta);
+ for(let m=0;m<N;m++){ux[m]=beam(m,P.ks[m],x,o)[0];uy[m]=beam(m,P.ks[m],y/P.beta,o)[0]/sb}return{ux,uy}}
+function phiAt(md,b){let s=0;const I=md.idx,v=md.vec;for(let i=0;i<I.length;i++)s=s+v[i]*b.ux[I[i][0]]*b.uy[I[i][1]];return s}
+const GX=257;
+function gridBasis(P){if(P.grid)return P.grid;const N=P.N,G=GX,Gy=Math.round((GX-1)*P.beta)+1,o=new Float64Array(3),sb=Math.sqrt(P.beta);
+ const UX=new Float64Array(G*N),UY=new Float64Array(Gy*N);
+ for(let i=0;i<G;i++){const x=-1+2*i/(G-1);for(let m=0;m<N;m++)UX[i*N+m]=beam(m,P.ks[m],x,o)[0]}
+ for(let j=0;j<Gy;j++){const y=-1+2*j/(Gy-1);for(let m=0;m<N;m++)UY[j*N+m]=beam(m,P.ks[m],y,o)[0]/sb}
+ return P.grid={G,Gy,UX,UY}}
+/* modal amplitudes q_i (complex) for a unit force at the bow, fingers pinned (Woodbury, exact pin) */
+function modal(P,cfg,Om,bb,fb){const ms=P.modes,n=ms.length,Om2=Om*Om,z=cfg.zeta,qr=new Float64Array(n),qi=new Float64Array(n),dr=new Float64Array(n),di=new Float64Array(n);
+ for(let i=0;i<n;i++){const md=ms[i];if(md.rigid)continue;const a=md.lam-Om2,b=2*z*Math.sqrt(md.lam)*Om,den=a*a+b*b,f=bb[i];
+  dr[i]=a/den;di[i]=-b/den;qr[i]=f*dr[i];qi[i]=f*di[i]} // 1/d = (a - ib)/den
+ const k=fb.length;if(k===0)return{qr,qi};
+ // S_ab = sum psi_a psi_b / d ; r_a = sum psi_a q
+ const Sr=[0,0,0,0],Si=[0,0,0,0],rr=[0,0],ri=[0,0];
+ for(let a=0;a<k;a++){for(let b=0;b<k;b++){let sr=0,si=0;for(let i=0;i<n;i++){if(ms[i].rigid)continue;const pp=fb[a][i]*fb[b][i];sr=sr+pp*dr[i];si=si+pp*di[i]}Sr[a*2+b]=sr;Si[a*2+b]=si}
+  let sr=0,si=0;for(let i=0;i<n;i++){if(ms[i].rigid)continue;sr=sr+fb[a][i]*qr[i];si=si+fb[a][i]*qi[i]}rr[a]=sr;ri[a]=si}
+ let yr,yi;
+ if(k===1){const den=Sr[0]*Sr[0]+Si[0]*Si[0];yr=[(rr[0]*Sr[0]+ri[0]*Si[0])/den];yi=[(ri[0]*Sr[0]-rr[0]*Si[0])/den]}
+ else{// 2x2 complex solve by Cramer
+  const detr=(Sr[0]*Sr[3]-Si[0]*Si[3])-(Sr[1]*Sr[2]-Si[1]*Si[2]),deti=(Sr[0]*Si[3]+Si[0]*Sr[3])-(Sr[1]*Si[2]+Si[1]*Sr[2]);
+  const n0r=(rr[0]*Sr[3]-ri[0]*Si[3])-(Sr[1]*rr[1]-Si[1]*ri[1]),n0i=(rr[0]*Si[3]+ri[0]*Sr[3])-(Sr[1]*ri[1]+Si[1]*rr[1]);
+  const n1r=(Sr[0]*rr[1]-Si[0]*ri[1])-(rr[0]*Sr[2]-ri[0]*Si[2]),n1i=(Sr[0]*ri[1]+Si[0]*rr[1])-(rr[0]*Si[2]+ri[0]*Sr[2]);
+  const dd=detr*detr+deti*deti;yr=[(n0r*detr+n0i*deti)/dd,(n1r*detr+n1i*deti)/dd];yi=[(n0i*detr-n0r*deti)/dd,(n1i*detr-n1r*deti)/dd]}
+ for(let i=0;i<n;i++){if(ms[i].rigid)continue;let tr=0,ti=0;for(let a=0;a<k;a++){tr=tr+fb[a][i]*yr[a];ti=ti+fb[a][i]*yi[a]}
+  // q -= (t)/d  with 1/d = dr + i di
+  qr[i]=qr[i]-(tr*dr[i]-ti*di[i]);qi[i]=qi[i]-(tr*di[i]+ti*dr[i])}
+ return{qr,qi}}
+function pointVals(P,pts){return pts.map(([x,y])=>{const b=basisAt(P,x,y);return P.modes.map(md=>phiAt(md,b))})}
+/* the full response on the grid: W = sum_i q_i phi_i, as complex G x Gy arrays (x-major) */
+function drive(P,cfg){const g=gridBasis(P),N=P.N,G=g.G,Gy=g.Gy,Om=cfg.f/P.fs,Om2=Om*Om;
+ const bb=pointVals(P,[cfg.bow])[0],fb=pointVals(P,cfg.fingers||[]);
+ const {qr,qi}=modal(P,cfg,Om,bb,fb);
+ const Ar=new Float64Array(N*N),Ai=new Float64Array(N*N);
+ P.modes.forEach((md,i)=>{if(md.rigid)return;const I=md.idx,v=md.vec;for(let j=0;j<I.length;j++){const c=I[j][0]*N+I[j][1];Ar[c]=Ar[c]+qr[i]*v[j];Ai[c]=Ai[c]+qi[i]*v[j]}});
+ const Tr=new Float64Array(N*Gy),Ti=new Float64Array(N*Gy);
+ for(let m=0;m<N;m++)for(let j=0;j<Gy;j++){let sr=0,si=0;for(let n=0;n<N;n++){const u=g.UY[j*N+n];sr=sr+Ar[m*N+n]*u;si=si+Ai[m*N+n]*u}Tr[m*Gy+j]=sr;Ti[m*Gy+j]=si}
+ const Wr=new Float64Array(G*Gy),Wi=new Float64Array(G*Gy);
+ for(let i=0;i<G;i++)for(let j=0;j<Gy;j++){let sr=0,si=0;for(let m=0;m<N;m++){const u=g.UX[i*N+m];sr=sr+u*Tr[m*Gy+j];si=si+u*Ti[m*Gy+j]}Wr[i*Gy+j]=sr;Wi[i*Gy+j]=si}
+ let ms=0;for(let i=0;i<qr.length;i++)ms=ms+(qr[i]*qr[i]+qi[i]*qi[i]);
+ const sc=cfg.press*2*cfg.zeta*Om2;
+ return{G,Gy,Wr,Wi,sc,Om,qr,qi,rms:sc*Math.sqrt(ms/(4*P.beta)),cfg}}
+/* acceleration (in g) over the plate, RMS, at many frequencies: for the dial */
+function spectrum(P,cfg,f0,f1,ns){const bb=pointVals(P,[cfg.bow])[0],fb=pointVals(P,cfg.fingers||[]),out=new Float64Array(ns),fr=new Float64Array(ns),l0=Math.log(f0),l1=Math.log(f1);
+ for(let s=0;s<ns;s++){const f=Math.exp(l0+(l1-l0)*s/(ns-1)),Om=f/P.fs;fr[s]=f;const {qr,qi}=modal(P,cfg,Om,bb,fb);let ms=0;for(let i=0;i<qr.length;i++)ms=ms+(qr[i]*qr[i]+qi[i]*qi[i]);
+  out[s]=cfg.press*2*cfg.zeta*Om*Om*Math.sqrt(ms/(4*P.beta))}return{f:fr,a:out}}
+function rmsAt(P,cfg,f,bb,fb){const Om=f/P.fs,{qr,qi}=modal(P,cfg,Om,bb,fb);let ms=0;for(let i=0;i<qr.length;i++)ms=ms+(qr[i]*qr[i]+qi[i]*qi[i]);return cfg.press*2*cfg.zeta*Om*Om*Math.sqrt(ms/(4*P.beta))}
+/* nearest resonance peak of the RMS response, by golden-section search around a bracket */
+function peakNear(P,cfg,fa,fb_){const bb=pointVals(P,[cfg.bow])[0],fb=pointVals(P,cfg.fingers||[]),R=0.6180339887498949;let a=Math.log(fa),b=Math.log(fb_);
+ let c=b-R*(b-a),d=a+R*(b-a),fc=rmsAt(P,cfg,Math.exp(c),bb,fb),fd=rmsAt(P,cfg,Math.exp(d),bb,fb);
+ for(let it=0;it<44;it++){if(fc>fd){b=d;d=c;fd=fc;c=b-R*(b-a);fc=rmsAt(P,cfg,Math.exp(c),bb,fb)}else{a=c;c=d;fc=fd;d=a+R*(b-a);fd=rmsAt(P,cfg,Math.exp(d),bb,fb)}}
+ const f=Math.exp((a+b)/2);return{f,a:rmsAt(P,cfg,f,bb,fb)}}
+/* --- sand --- */
+const CAP=150000,L0=0.02;
+function sand(seed,beta){return{seed:seed|0,beta,t:0,n:0,ev:0,X:new Float64Array(CAP),Y:new Float64Array(CAP),alive:new Uint8Array(CAP),still:0,moved:0}}
+function compact(S){let k=0;for(let i=0;i<S.n;i++)if(S.alive[i]){S.X[k]=S.X[i];S.Y[k]=S.Y[i];S.alive[k]=1;k++}for(let i=k;i<S.n;i++)S.alive[i]=0;S.n=k}
+function sprinkle(S,count){compact(S);S.ev++;const sd=(S.seed+Math.imul(S.ev,0x85EBCA6B))|0,m=Math.min(count,CAP-S.n);
+ for(let j=0;j<m;j++){const i=S.n+j;S.X[i]=2*draw(sd,2*j)-1;S.Y[i]=S.beta*(2*draw(sd,2*j+1)-1);S.alive[i]=1}S.n+=m;return m}
+function brush(S){for(let i=0;i<S.n;i++)S.alive[i]=0;compact(S);S.ev++}
+function tick(S,D){const G=D.G,Gy=D.Gy,Wr=D.Wr,Wi=D.Wi,sc=D.sc,hx=(G-1)/2,hy=(Gy-1)/(2*S.beta),beta=S.beta,X=S.X,Y=S.Y,al=S.alive;
+ const sd=(S.seed+Math.imul(S.t+1,0x9E3779B9))|0;let still=0,moved=0;
+ for(let i=0;i<S.n;i++){if(!al[i])continue;const x=X[i],y=Y[i],gx=(x+1)*hx,gy=(y+beta)*hy;
+  let ix=Math.floor(gx),iy=Math.floor(gy);if(ix>G-2)ix=G-2;if(ix<0)ix=0;if(iy>Gy-2)iy=Gy-2;if(iy<0)iy=0;
+  const fx=gx-ix,fy=gy-iy,k=ix*Gy+iy,ex=1-fx,ey=1-fy;
+  const wr=(Wr[k]*ex+Wr[k+Gy]*fx)*ey+(Wr[k+1]*ex+Wr[k+Gy+1]*fx)*fy,wi=(Wi[k]*ex+Wi[k+Gy]*fx)*ey+(Wi[k+1]*ex+Wi[k+Gy+1]*fx)*fy;
+  const g=sc*Math.sqrt(wr*wr+wi*wi);
+  if(!(g>1)){still++;continue}
+  moved++;let e=g-1;if(e>4)e=4;const L=L0*(0.35+Math.sqrt(e)),b=i*6;
+  const nx=x+L*(2*(draw(sd,b)+draw(sd,b+1)+draw(sd,b+2)-1.5)),ny=y+L*(2*(draw(sd,b+3)+draw(sd,b+4)+draw(sd,b+5)-1.5));
+  X[i]=nx;Y[i]=ny;if(nx<-1||nx>1||ny<-beta||ny>beta){al[i]=0;if(S.fell)S.fell.push(nx,ny)}}
+ S.t++;S.still=still;S.moved=moved;return moved}
+function aliveCount(S){let k=0;for(let i=0;i<S.n;i++)k+=S.alive[i];return k}
+/* polynomial hash of 32-bit words (count, then x,y of every grain on the plate) */
+function hashSand(S){let h=0,pw=1;const M=0x01000193,f=new Float64Array(1),u=new Uint32Array(f.buffer);
+ const add=x=>{f[0]=x;for(let w=0;w<2;w++){h=(h+Math.imul(u[w],pw))>>>0;pw=Math.imul(pw,M)>>>0}};
+ add(aliveCount(S));for(let i=0;i<S.n;i++)if(S.alive[i]){add(S.X[i]);add(S.Y[i])}return h>>>0}
+function hashArr(arrs){let h=0,pw=1;const M=0x01000193,f=new Float64Array(1),u=new Uint32Array(f.buffer);
+ for(const A of arrs)for(let i=0;i<A.length;i++){f[0]=A[i];for(let w=0;w<2;w++){h=(h+Math.imul(u[w],pw))>>>0;pw=Math.imul(pw,M)>>>0}}return h>>>0}
+return{exp,sincos,draw,roots,beam,gauleg,beamMats,jacobi,plate,basisAt,phiAt,gridBasis,pointVals,modal,drive,spectrum,peakNear,rmsAt,sand,sprinkle,brush,compact,tick,aliveCount,hashSand,hashArr,MATERIALS,GEOM,CAP,L0,GX}})();
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=(RM||STILL)&&!FIXED;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const OG=Q.has('og')?(+Q.get('og')||1):0;if(OG)document.documentElement.classList.add('og');
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<.5?2*t*t:1-2*(1-t)*(1-t);
+const comma=n=>Math.round(n).toLocaleString('en-US'),pc=x=>(x*100).toFixed(x<.1?1:0)+'%';
+const EMBED=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const cv=$('#c'),cx0=cv.getContext('2d'),dialC=$('#dial'),dx=dialC.getContext('2d');
+
+/* ---------- settings ---------- */
+const DEF={mat:'glass',shape:'1',press:25,speed:'normal'};
+const S={...DEF,seed:7};
+const ZETA=0.0005,NB=16;
+const SHAPES={'1':1,'3:2':2/3,'2:1':0.5};
+const TICKS={slow:1,normal:3,fast:6};
+const RITZ=[ // Ritz 1909, "Tabelle der Tonhöhen (μ = 0,225)": leading terms, his λ, his computed pitch, Chladni's observed pitch
+ [1,1,'',12.43,'G*','G'],[0,2,'-',26.40,'d*','d'],[0,2,'+',35.73,'e*','e'],[1,2,'±',80.8,'h*','h'],[0,3,'±',237.1,'gis1*+','gis1+'],
+ [2,2,'',266.0,'ais1*-','ais1*-'],[1,3,'-',316.1,'h1*','h1'],[1,3,'+',378,'cis2*','cis2'],[2,3,'±',746,'fis2*+','fis2'],[0,4,'-',886,'gis2','gis2'],
+ [0,4,'+',941,'gis2+','gis2+'],[1,4,'±',1131,'ais2','ais2-'],[3,3,'',1554,'c3+','c3'],[2,4,'-',1702,'d3-','cis3'],[2,4,'+',2020,'dis3','d3'],
+ [0,5,'±',2500,'f3-','f3-'],[1,5,'-',2713,'fis3','fis3-'],[1,5,'+',2945,'fis3+','fis3'],[3,4,'±',3240,'g3+','fis3'],[2,5,'±',3927,'a3+','gis3+'],
+ [4,4,'',5480,'ais3+','ais3'],[0,6,'-',5500,'c4-',null],[3,5,'-',5570,'c4-','ais3-'],[0,6,'+',5640,'c4-',null],[1,6,'±',6036,'c4+','c4-'],
+ [3,5,'+',6303,'cis4','c4-'],[2,6,'-',7310,'d4+','cis4+'],[2,6,'+',7840,'dis4-','d4-'],[4,5,'±',9030,'e4','dis4'],[3,6,'±',10380,'f4','e4'],
+ [5,5,'',13670,'g4+','fis4+'],[4,6,'-',13840,'g4+','g4+'],[4,6,'+',15120,'gis4+','g4+'],[5,6,'±',20400,'h4','ais4-'],[6,6,'',28740,'d5',null]];
+
+/* ---------- notes ---------- */
+const PCN=['c','cis','d','dis','e','f','fis','g','gis','a','ais','h'],SCI=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const midiOf=f=>69+12*Math.log2(f/440);
+function helm(mi){const n=Math.round(mi),p=((n%12)+12)%12,o=Math.floor(n/12)-1;if(o<=2)return PCN[p][0].toUpperCase()+PCN[p].slice(1);return PCN[p]+(o>=4?'<sub>'+(o-3)+'</sub>':'')}
+function helmTxt(mi){return helm(mi).replace(/<sub>(\d)<\/sub>/,'$1')}
+function sci(mi){const n=Math.round(mi);return SCI[((n%12)+12)%12]+(Math.floor(n/12)-1)}
+function cents(mi){const c=Math.round((mi-Math.round(mi))*100);return(c>=0?'+':'−')+Math.abs(c)+'¢'}
+function parseHelm(s){if(!s)return null;s=s.replace('*','');const adj=s.endsWith('+')?.25:s.endsWith('-')?-.25:0;s=s.replace(/[+-]$/,'');const m=s.match(/^([A-Za-z]+?)(\d?)$/),nm=m[1],o=m[2];
+ const base=nm[0]===nm[0].toUpperCase()?36:48+12*(+o||0);return base+PCN.indexOf(nm.toLowerCase())+adj}
+const helmHTML=s=>s?s.replace('*','').replace(/(\D+)(\d)/,'$1<sub>$2</sub>').replace(/-$/,'−'):'—';
+const lab=(l,html=true)=>{const u=(c,a)=>html?`${c}<sub>${a}</sub>`:c+a;if(!l)return'–';
+ if(PL&&PL.beta!==1)return u('u',l.m)+u('v',l.n);
+ if(l.s==='')return u('u',l.m)+u('v',l.n);const sg=l.s==='-'?' − ':l.s==='+'?' + ':' ± ';return u('u',l.m)+u('v',l.n)+sg+u('u',l.n)+u('v',l.m)};
+
+/* ---------- plate, drive, sand, log ---------- */
+let PL=null,cfg=null,D=null,SA=null,sess=null,sessions=[],pend=0,sandDirty=true,specDirty=true,spec=null,peaks=[],nextSess=1,fell=[],fellDirty=true;
+function newPlate(){PL=CH.plate({N:NB,mat:S.mat,beta:SHAPES[S.shape]});PL.per=perimeter(PL);PL.rows=ritzRows(PL);
+ const nr=PL.modes.filter(m=>!m.rigid);PL.fMin=nr[0].f*0.72;const top=PL.rows?PL.modes[PL.rows[PL.rows.length-1].i].f:nr[Math.min(nr.length-1,44)].f;PL.fMax=Math.min(6000,top*1.05);
+ atlasDirty=true;specDirty=true}
+function ritzRows(P){if(P.beta!==1||P.mat!=='glass')return null;const used=new Set();
+ return RITZ.map(([m,n,s,lr,ber,beob])=>{let best=-1,bd=1e9;P.modes.forEach(md=>{if(md.rigid||used.has(md.i))return;const l=md.label,mm=Math.min(l.m,l.n),nn=Math.max(l.m,l.n);
+   if(mm===m&&nn===n&&l.s===s){const d=Math.abs(Math.log(md.lam/lr));if(d<bd){bd=d;best=md.i}}});used.add(best);return{m,n,s,lr,ber,beob,i:best}})}
+/* points round the edge, counter-clockwise from the bottom right: s in [0,4) */
+function perim(s,beta){s=((s%4)+4)%4;const k=Math.floor(s),u=s-k;return k===0?[1,-beta+2*beta*u]:k===1?[1-2*u,beta]:k===2?[-1,beta-2*beta*u]:[-1+2*u,-beta]}
+function perimS(x,y,beta){const c=[[0,Math.abs(x-1),(y+beta)/(2*beta)],[1,Math.abs(y-beta),(1-x)/2],[2,Math.abs(x+1),(beta-y)/(2*beta)],[3,Math.abs(y+beta),(x+1)/2]];c.sort((a,b)=>a[1]-b[1]);return c[0][0]+clamp(c[0][2],0,.9999)}
+function perimeter(P){const n=160,pts=[],vals=[];for(let k=0;k<n;k++){const s=4*(k+.5)/n,p=perim(s,P.beta);pts.push({s,p});vals.push(CH.pointVals(P,[p])[0])}return{pts,vals}}
+/* where to bow so that mode i rings cleanly: big at the bow, its near neighbours small there */
+function bestBow(i){const md=PL.modes[i],L=md.lam,{pts,vals}=PL.per;let best=0,bv=-1,mx=0;for(const v of vals)mx=Math.max(mx,Math.abs(v[i]));
+ pts.forEach((pt,k)=>{const v=vals[k];let bg=0;PL.modes.forEach((m,j)=>{if(j===i||m.rigid)return;const w=2*ZETA*L/Math.max(Math.abs(m.lam-L),2*ZETA*L);bg+=(v[j]*w)**2});
+  const pur=Math.abs(v[i])/(Math.sqrt(bg)+.02*mx);if(pur>bv){bv=pur;best=k}});return pts[best].s}
+function newSession(){if(sess){flush();sessions.push(sess);if(sessions.length>16)sessions.shift()}
+ SA=CH.sand((S.seed+Math.imul(nextSess,0x27D4EB2F))|0,PL.beta);SA.fell=[];sess={id:nextSess++,seed:SA.seed,beta:PL.beta,ev:[['plate',{N:NB,mat:S.mat,beta:PL.beta}]]};fell=[];fellDirty=true;fellFull=true;sandDirty=true}
+function flush(){if(pend>0){sess.ev.push(['run',pend,CH.hashSand(SA)]);pend=0}}
+function logCfg(c){flush();const e=sess.ev[sess.ev.length-1];const cp={f:c.f,bow:c.bow.slice(),fingers:c.fingers.map(p=>p.slice()),zeta:c.zeta,press:c.press};if(e&&e[0]==='cfg')e[1]=cp;else sess.ev.push(['cfg',cp])}
+function applyCfg(o){const old=cfg;cfg=Object.assign({f:PL.modes[3].f,bow:perim(.5,PL.beta),fingers:[],zeta:ZETA,press:S.press},cfg||{},o||{});
+ if(!old||old.bow!==cfg.bow||old.fingers!==cfg.fingers||old.press!==cfg.press)specDirty=true;D=CH.drive(PL,cfg);D.peak=peakG(D);D.stillFrac=stillFrac(D);logCfg(cfg);panelDirty=true;audio()}
+function peakG(D){let m=0;for(let i=0;i<D.Wr.length;i++){const v=D.Wr[i]*D.Wr[i]+D.Wi[i]*D.Wi[i];if(v>m)m=v}return D.sc*Math.sqrt(m)}
+function stillFrac(D){let k=0;const s2=1/(D.sc*D.sc);for(let i=0;i<D.Wr.length;i++)if(D.Wr[i]*D.Wr[i]+D.Wi[i]*D.Wi[i]<s2)k++;return k/D.Wr.length}
+function sprinkle(n){flush();const m=CH.sprinkle(SA,n);sess.ev.push(['sp',n]);sandDirty=true;panelDirty=true;return m}
+function brush(){flush();for(let i=0;i<SA.n;i++)if(SA.alive[i])fallAt(SA.X[i],SA.Y[i],true);CH.brush(SA);sess.ev.push(['br']);sandDirty=true;panelDirty=true}
+function sandTick(){CH.tick(SA,D);pend++;sandDirty=true;if(SA.fell.length){for(let k=0;k<SA.fell.length;k+=2)fallAt(SA.fell[k],SA.fell[k+1]);SA.fell.length=0}}
+let fallSeq=0;
+function fallAt(x,y,brushed){const h=CH.draw(0x51ED27,fallSeq++),h2=CH.draw(0x2B79F5,fallSeq),b=PL.beta;let px=x,py=y;
+ if(brushed){px=x<0?-1-.03-h*.12:1+.03+h*.12;py=y*.9}else{const ox=x>1?1:x<-1?-1:0,oy=y>b?1:y<-b?-1:0;px=clamp(x,-1,1)+ox*(.012+h*.07)+(oy?(h2-.5)*.05:0);py=clamp(y,-b,b)+oy*(.012+h2*.07)+(ox?(h-.5)*.05:0)}
+ fell.push(px,py);if(fell.length>2*90000){fell.splice(0,2*10000);fellFull=true}fellDirty=true}
+/* ---------- spectrum (the dial) ---------- */
+let specT=-1e9;
+function makeSpec(force){if(!specDirty&&spec)return;if(spec&&!force&&!FIXED&&!STATIC&&(bowGlide||drag)&&performance.now()-specT<250)return;specDirty=false;specT=performance.now();spec=CH.spectrum(PL,cfg,PL.fMin,PL.fMax,700);peaks=[];const a=spec.a,f=spec.f;
+ for(let i=1;i<a.length-1;i++)if(a[i]>a[i-1]&&a[i]>=a[i+1]&&a[i]>.05){const p=CH.peakNear(PL,cfg,f[i-1],f[i+1]);peaks.push(p)}dialDirty=true}
+function nearestMode(f){let best=null,bd=1e9;for(const md of PL.modes){if(md.rigid)continue;const d=Math.abs(Math.log(f/md.f));if(d<bd){bd=d;best=md}}return{md:best,c:bd*1200/Math.LN2}}
+
+/* ---------- caption ---------- */
+let capT=null,capText='';
+function cap(html){const el=$('#caption'),sp=el.firstElementChild;capText=html.replace(/<[^>]+>/g,'');if(capT){clearTimeout(capT);capT=null}
+ if(STATIC||FIXED||!sp.innerHTML){sp.innerHTML=html;el.classList.remove('fade');return}
+ el.classList.add('fade');capT=setTimeout(()=>{sp.innerHTML=html;el.classList.remove('fade')},240)}
+const m=x=>`<span class="m">${x}</span>`;
+const hz=f=>f<1000?f.toFixed(1)+' Hz':comma(f)+' Hz';
+const CAP={
+ intro:()=>`Chladni's experiment: a ${m('20 cm')} square of glass, strewn with sand, a violin bow on its edge. The dial sweeps the pitch upward. Away from a resonance the glass hardly moves and the sand lies still…`,
+ g:()=>`${m(hz(cfg.f))}, a ${helm(midiOf(cfg.f))}: the plate's lowest mode. The sand hops wherever the glass accelerates faster than gravity and comes to rest on the two lines that stand still.`,
+ d:()=>`${m(hz(cfg.f))}: the diagonals (Chladni heard a ${m('d')}). Ritz built this figure from two beam shapes, ${lab({m:0,n:2,s:'-'})}, and got ${m('λ = 26.40')} by hand. This page gets ${m('λ = '+PL.modes[iOf(0,2,'-')].lam.toFixed(2))}.`,
+ e:()=>`The same two shapes <b>added</b> instead of subtracted: a ring, at ${m(hz(cfg.f))}, an ${helm(midiOf(cfg.f))}. Chladni heard ${m('d')} and then ${m('e')}; Ritz's numbers said the same.`,
+ h1:()=>`${m(hz(cfg.f))}: two figures ring at <b>exactly</b> this pitch, the same shape turned 90° (${lab({m:1,n:2,s:'±'})}). Which one you get depends on where you bow…`,
+ h2:()=>`…so slide the bow toward the corner and the figure turns, at the same note. Ritz wrote these with a ${m('±')}: any mixture of the pair is a mode.`,
+ finger:()=>`Chladni's other trick: touch the glass. A fingertip pins one point, so of all the figures at this pitch the plate must pick one with a line <b>through the finger</b>: a third shape, same note.`,
+ pressLo:()=>`A higher note, ${m(hz(cfg.f))}, bowed gently (pressure ${m(cfg.press)}): ${m(pc(D.stillFrac))} of the glass moves less than gravity can hold, so the sand lies in broad bands.`,
+ pressHi:()=>`Bow harder (pressure ${m(cfg.press)}) and the still glass shrinks to ${m(pc(D.stillFrac))}: the lines get thinner. They are not where the glass is perfectly still, only where it moves less than 1 g.`,
+ final:()=>{const r=PL.rows&&PL.rows.find(r=>r.i===modeNow());return`${m(hz(cfg.f))}: Ritz's row ${lab(r||{m:2,n:6,s:'-'})}. He solved it by hand in 1909 (${m('λ = '+(r?r.lr:'7310'))}); here, ${m('λ = '+PL.modes[modeNow()].lam.toFixed(0))}. Chladni heard ${m(r?helmHTML(r.beob):'—')}. Pick any of his ${m('35')} figures in the panel.`},
+ you:()=>`Your turn. Drag the dial or press ◀ ▶ to find a resonance, drag the bow round the edge, rest a fingertip on the glass, or pick one of Ritz's figures.`,
+ still:()=>`Reduced motion: the sand has already settled. The dial, the bow, fingertips and Ritz's figures all work, and each change settles at once. Press Play to watch the sand move.`,
+ mode:(i)=>{const md=PL.modes[i],r=PL.rows&&PL.rows.find(r=>r.i===i);return`${m(hz(md.f))}, ${lab(md.label)}`+(r?`: Ritz's ${m('λ = '+r.lr)} by hand, ${m(md.lam.toFixed(r.lr<100?2:0))} here; Chladni heard ${m(helmHTML(r.beob))}.`:`, ${m('λ = '+md.lam.toFixed(md.lam<100?2:0))}.`)},
+ plate:()=>`A ${S.mat} plate${PL.beta!==1?', '+(S.shape)+' rectangle':''}: Poisson's ratio ${m(PL.mu)}, lowest note ${m(hz(PL.modes.find(x=>!x.rigid).f))}. The modes are recomputed from scratch.`,
+ sound:on=>on?`Sound on: a sine at the dial's pitch, as loud as the glass is shaking.`:`Sound off.`};
+function iOf(mm,nn,s){const r=PL.rows&&PL.rows.find(r=>r.m===mm&&r.n===nn&&r.s===s);if(r)return r.i;return PL.modes.findIndex(md=>!md.rigid&&Math.min(md.label.m,md.label.n)===mm&&Math.max(md.label.m,md.label.n)===nn&&md.label.s===s)}
+function modeNow(){return nearestMode(cfg.f).md.i}
+
+/* ---------- script runner (tour) ---------- */
+let script=null,swait=0,swaitFn=null,tourOn=false,tourDone=false,tourMark='',simT=0,live=true,glide=null,bowGlide=null;
+function run(gen){script=gen;swait=0;swaitFn=null}
+function tickScript(dt){if(!script)return;if(swait>0){swait-=dt;if(swait>0)return}if(swaitFn){if(!swaitFn())return;swaitFn=null}
+ for(let guard=0;guard<50;guard++){const r=script.next();if(r.done){script=null;return}if(typeof r.value==='function'){if(!r.value()){swaitFn=r.value;return}}else{swait=r.value||0;if(swait>0)return}}}
+const PRERUN=420;
+function setF(f){applyCfg({f})}
+function setBowS(s){applyCfg({bow:perim(s,PL.beta)})}
+function glideF(f,dur){if(!live||!dur){glide=null;setF(f)}else glide={a:Math.log(cfg.f),b:Math.log(f),t:0,dur}}
+function glideBow(s,dur){const s0=perimS(cfg.bow[0],cfg.bow[1],PL.beta);let d=s-s0;if(d>2)d-=4;if(d<-2)d+=4;if(!live||!dur){bowGlide=null;setBowS(s)}else bowGlide={a:s0,b:s0+d,t:0,dur}}
+function* tour(start){
+ tourOn=true;tourDone=false;live=!start;glide=bowGlide=null;Object.assign(S,DEF);syncControls();playing=true;
+ const mark=k=>{tourMark=k;if(!live&&k===start){live=true;for(let i=0;i<PRERUN;i++)sandTick()}};
+ newPlate();if(L&&L.b!==PL.beta)fit();else if(L){drawTable();drawPlateSurface()}if(ready)buildAtlas();newSession();cfg=null;
+ const iG=iOf(1,1,''),id=iOf(0,2,'-'),ie=iOf(0,2,'+'),ih=iOf(1,2,'±'),il=iOf(0,4,'-'),iF=iOf(2,6,'-');
+ applyCfg({f:PL.modes[iG].f*0.88,bow:perim(bestBow(iG),PL.beta),fingers:[],press:25});sprinkle(60000);
+ mark('intro');cap(CAP.intro());glideF(PL.modes[iG].f,4.5);if(live)yield 4.5;
+ setF(PL.modes[iG].f);mark('g');cap(CAP.g());if(live)yield 6.5;
+ tourMark='→';sprinkle(15000);glideBow(bestBow(id),1.2);glideF(PL.modes[id].f,1.2);if(live)yield 1.2;setF(PL.modes[id].f);mark('d');cap(CAP.d());if(live)yield 6.5;
+ tourMark='→';sprinkle(15000);glideBow(bestBow(ie),1.2);glideF(PL.modes[ie].f,1.2);if(live)yield 1.2;setF(PL.modes[ie].f);mark('e');cap(CAP.e());if(live)yield 6.5;
+ tourMark='→';sprinkle(15000);glideBow(0.5,1.2);glideF(PL.modes[ih].f,1.2);if(live)yield 1.2;setF(PL.modes[ih].f);setBowS(0.5);mark('h1');cap(CAP.h1());if(live)yield 5;
+ glideBow(0.94,6);mark('h2');cap(CAP.h2());if(live)yield 8;setBowS(0.94);
+ applyCfg({fingers:[[-0.6,-0.3]]});mark('finger');cap(CAP.finger());if(live)yield 7.5;
+ tourMark='→';sprinkle(15000);applyCfg({fingers:[],press:10});glideBow(bestBow(il),1.2);glideF(PL.modes[il].f,1.2);if(live)yield 1.2;setF(PL.modes[il].f);mark('pressLo');cap(CAP.pressLo());if(live)yield 6;
+ applyCfg({press:50});syncControls();mark('pressHi');cap(CAP.pressHi());if(live)yield 6.5;
+ tourMark='→';sprinkle(20000);applyCfg({press:25});syncControls();glideBow(bestBow(iF),1.2);glideF(PL.modes[iF].f,1.2);if(live)yield 1.2;setF(PL.modes[iF].f);mark('final');cap(CAP.final());selRow=PL.rows.findIndex(r=>r.i===iF);atlasSel();if(live)yield 8;
+ tourOn=false;tourDone=true}
+function poke(){if(tourOn){script=null;tourOn=false;tourDone=true;glide=bowGlide=null;cap(CAP.you());return true}return false}
+
+/* ---------- layout ---------- */
+let W=0,H=0,DPR=1,L=null,LITE=Q.has('lite'),ftAvg=16,ftN=0,panelDirty=true,dialDirty=true,atlasDirty=true,lastPanel=-9,selRow=-1;
+if(LITE)document.documentElement.classList.add('lite');
+const tableC=document.createElement('canvas'),sandC=document.createElement('canvas'),fellC=document.createElement('canvas');
+let sx=null,img=null,bgPix=null,dens=null,hgt=null,RX=0,RY=0;
+function fit(){const mob=innerWidth<=820;DPR=Math.min(devicePixelRatio||1,2);
+ if(mob){const sh=Math.round(Math.min(innerWidth*1.02,520));document.documentElement.style.setProperty('--sh',sh+'px')}
+ const r=cv.getBoundingClientRect();W=Math.max(10,Math.round(r.width));H=Math.max(10,Math.round(r.height));cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+ const pw=mob||OG?0:($('#panel').getBoundingClientRect().width+32),top=mob?14:(OG?118:96),bot=mob?14:(OG?40:112),left=mob?14:(OG?36:24);
+ const aw=W-pw-left-(mob?14:24),ah=H-top-bot,b=PL?PL.beta:1;
+ let s=Math.min(aw/2,ah/(2*b))*(mob?0.9:0.86);if(OG)s=Math.min((W*0.62)/2,ah/(2*b))*0.92;
+ const cxp=OG?left+aw*0.36+16:left+aw/2,cyp=top+ah/2+(mob?0:6);
+ L={cx:cxp,cy:cyp,s,b};
+ const q=LITE?1:Math.min(DPR,1.5);RX=Math.max(64,Math.min(1000,Math.round(2*s*q)));RY=Math.max(32,Math.round(RX*b));
+ sandC.width=RX;sandC.height=RY;sx=sandC.getContext('2d');img=sx.createImageData(RX,RY);dens=new Float32Array(RX*RY);hgt=new Float32Array(RX*RY);
+ drawTable();drawPlateSurface();fellDirty=true;sandDirty=true;dialDirty=true}
+const px=x=>L.cx+x*L.s,py=y=>L.cy-y*L.s;
+/* a dark walnut table */
+function drawTable(){tableC.width=cv.width;tableC.height=cv.height;if(fellC.width!==cv.width||fellC.height!==cv.height){fellC.width=cv.width;fellC.height=cv.height}fellFull=true;fellDirty=true;const t=tableC.getContext('2d');t.setTransform(DPR,0,0,DPR,0,0);
+ const g=t.createRadialGradient(L.cx,L.cy,L.s*.3,L.cx,L.cy,Math.max(W,H)*.8);g.addColorStop(0,'#2a1d13');g.addColorStop(.55,'#1a120c');g.addColorStop(1,'#0b0806');t.fillStyle=g;t.fillRect(0,0,W,H);
+ let r=987654;const rnd=()=>(r=(r*16807)%2147483647)/2147483647;
+ t.globalAlpha=.07;for(let k=0;k<70;k++){const y0=rnd()*H,a=6+rnd()*18,ph=rnd()*6;t.strokeStyle=rnd()<.5?'#6b4a2e':'#000';t.lineWidth=.6+rnd()*1.8;t.beginPath();for(let x=0;x<=W;x+=24){const y=y0+Math.sin(x/(180+a*9)+ph)*a+Math.sin(x/53+ph*2)*2;x?t.lineTo(x,y):t.moveTo(x,y)}t.stroke()}
+ t.globalAlpha=1;const w=2*L.s,h=2*L.s*L.b,x0=L.cx-L.s,y0=L.cy-L.s*L.b;
+ // the plate's shadow and its stand
+ t.save();t.shadowColor='rgba(0,0,0,.75)';t.shadowBlur=L.s*.12;t.shadowOffsetX=L.s*.03;t.shadowOffsetY=L.s*.06;t.fillStyle='#000';t.fillRect(x0,y0,w,h);t.restore();
+ // engraved label
+ t.font=`500 ${Math.max(9,Math.round(L.s*.032))}px "DM Mono",monospace`;t.fillStyle='rgba(239,226,200,.32)';t.textAlign='center';t.textBaseline='top';
+ const nm={glass:'glass',steel:'steel',brass:'brass'}[S.mat];t.fillText(`${nm} · 20 × ${(20*L.b).toFixed(L.b===1||L.b===.5?0:1)} cm · 1.1 mm`.toUpperCase(),L.cx,y0+h+L.s*.15)}
+/* the plate surface at sand-buffer resolution */
+function drawPlateSurface(){bgPix=new Uint8ClampedArray(RX*RY*4);const M=S.mat;let r=24680;const rnd=()=>(r=(r*16807)%2147483647)/2147483647;
+ const base=M==='glass'?[10,15,18]:M==='steel'?[30,32,36]:[78,58,26],refl=M==='glass'?[30,40,44]:M==='steel'?[60,62,66]:[120,92,44];
+ const rowN=new Float32Array(RY);for(let y=0;y<RY;y++)rowN[y]=rnd();
+ for(let y=0;y<RY;y++)for(let x=0;x<RX;x++){const u=x/RX,v=y/RY,k=(y*RX+x)*4;
+  // a soft window reflection running diagonally, and a darker corner
+  const d=(u*.8+v)*1-.62,band=Math.exp(-d*d*28)*.55+Math.exp(-((u-v*.4-.72)**2)*90)*.18,vig=1-.35*((u-.5)**2+(v-.5)**2);
+  let n=M==='steel'?(rowN[y]-.5)*.10+(rnd()-.5)*.05:M==='brass'?(rnd()-.5)*.06:(rnd()-.5)*.03;
+  for(let c=0;c<3;c++)bgPix[k+c]=(base[c]+(refl[c]-base[c])*band)*vig*(1+n);bgPix[k+3]=255}}
+/* ---------- sand rendering ---------- */
+let wavePh=0,waveOn=false;
+const SC=[239,226,200];
+function renderSand(){const X=SA.X,Y=SA.Y,al=SA.alive,n=SA.n,b=SA.beta,R=RX,Rv=RY,sxs=R/2,sys=Rv/(2*b);dens.fill(0);
+ for(let i=0;i<n;i++){if(!al[i])continue;const fx=(X[i]+1)*sxs-.5,fy=(b-Y[i])*sys-.5;const ix=fx|0,iy=fy|0;if(ix<0||iy<0||ix>=R-1||iy>=Rv-1)continue;const ax=fx-ix,ay=fy-iy,k=iy*R+ix;
+  dens[k]+=(1-ax)*(1-ay);dens[k+1]+=ax*(1-ay);dens[k+R]+=(1-ax)*ay;dens[k+R+1]+=ax*ay}
+ // height: a 1-2-1 blur
+ for(let y=0;y<Rv;y++){const o=y*R;hgt[o]=dens[o];hgt[o+R-1]=dens[o+R-1];for(let x=1;x<R-1;x++)hgt[o+x]=(dens[o+x-1]+2*dens[o+x]+dens[o+x+1])*.25}
+ for(let x=0;x<R;x++){let p=hgt[x];for(let y=1;y<Rv-1;y++){const k=y*R+x,c=hgt[k];hgt[k]=(p+2*c+hgt[k+R])*.25;p=c}}
+ const out=img.data,bg=bgPix,sc=Math.max(1,R/640),ka=1.15/sc/sc,sh=Math.max(1,Math.round(1.6*sc)),so=sh*R+sh;
+ let wr=null,wi=null,G=0,Gy=0,cph=0,sph=0,wn=0;
+ if(waveOn&&D){wr=D.Wr;wi=D.Wi;G=D.G;Gy=D.Gy;cph=Math.cos(wavePh);sph=Math.sin(wavePh);let mx=0;for(let i=0;i<wr.length;i+=7){const v=wr[i]*wr[i]+wi[i]*wi[i];if(v>mx)mx=v}wn=1/Math.sqrt(mx||1)}
+ for(let y=0;y<Rv;y++){let wrow=0;if(wr)wrow=clamp(Math.round((Rv-1-y)/(Rv-1)*(Gy-1)),0,Gy-1);
+  for(let x=0;x<R;x++){const k=y*R+x,k4=k*4,d=hgt[k];let r0=bg[k4],g0=bg[k4+1],b0=bg[k4+2];
+   if(wr){const gi=clamp(Math.round(x/(R-1)*(G-1)),0,G-1)*Gy+wrow,v=(wr[gi]*cph-wi[gi]*sph)*wn,a=Math.min(1,Math.abs(v))*.55;
+    if(v>0){r0+=(232-r0)*a;g0+=(150-g0)*a;b0+=(70-b0)*a}else{r0+=(60-r0)*a;g0+=(150-g0)*a;b0+=(190-b0)*a}}
+   // shadow cast by sand up and to the left
+   const ds=k>=so?hgt[k-so]:0;if(ds>0){const s=1-.55*ds*ka/(ds*ka+.6);r0*=s;g0*=s;b0*=s}
+   if(d>0.002){const a=d*ka/(d*ka+.45),nx=(x>0&&x<R-1)?hgt[k-1]-hgt[k+1]:0,ny=(y>0&&y<Rv-1)?hgt[k-R]-hgt[k+R]:0,l=clamp(.86+(nx+ny)*.22*ka*sc,.5,1.18);
+    r0+=(SC[0]*l-r0)*a;g0+=(SC[1]*l-g0)*a;b0+=(SC[2]*l-b0)*a}
+   out[k4]=r0;out[k4+1]=g0;out[k4+2]=b0;out[k4+3]=255}}
+ sx.putImageData(img,0,0);sandDirty=false}
+let fellDrawn=0,fellFull=true;
+function renderFell(){const t=fellC.getContext('2d');if(fellFull||fellDrawn>fell.length){t.setTransform(1,0,0,1,0,0);t.clearRect(0,0,fellC.width,fellC.height);fellDrawn=0;fellFull=false}
+ t.setTransform(DPR,0,0,DPR,0,0);t.fillStyle='rgba(225,210,182,.55)';const r=Math.max(.6,L.s/700);t.beginPath();for(let k=fellDrawn;k<fell.length;k+=2)t.rect(px(fell[k])-r/2,py(fell[k+1])-r/2,r,r);t.fill();fellDrawn=fell.length;fellDirty=false}
+/* ---------- the stage ---------- */
+let hover=null,drag=null;
+function render(){const c=cx0;c.setTransform(1,0,0,1,0,0);c.drawImage(tableC,0,0);if(fellDirty)renderFell();c.drawImage(fellC,0,0);c.setTransform(DPR,0,0,DPR,0,0);
+ if(sandDirty||waveOn)renderSand();
+ const x0=L.cx-L.s,y0=L.cy-L.s*L.b,w=2*L.s,h=2*L.s*L.b;c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(sandC,x0,y0,w,h);
+ // polished edge
+ c.lineWidth=Math.max(1,L.s*.006);c.strokeStyle=S.mat==='glass'?'rgba(120,190,170,.55)':S.mat==='steel'?'rgba(200,205,215,.4)':'rgba(240,200,120,.45)';c.strokeRect(x0+c.lineWidth/2,y0+c.lineWidth/2,w-c.lineWidth,h-c.lineWidth);
+ c.lineWidth=1;c.strokeStyle='rgba(255,255,255,.08)';c.strokeRect(x0+L.s*.012,y0+L.s*.012,w-L.s*.024,h-L.s*.024);
+ cfg.fingers.forEach((p,k)=>drawFinger(px(p[0]),py(p[1]),1));
+ if(hover&&!drag){if(hover.kind==='bow'){drawBow(hover.p,.35)}else if(hover.kind==='finger'){drawFinger(px(hover.p[0]),py(hover.p[1]),.35)}}
+ drawBow(cfg.bow,1)}
+function drawFinger(X,Y,al){const c=cx0,r=L.s*.07;c.save();c.globalAlpha=al;c.translate(X,Y);c.rotate(-.55);
+ c.fillStyle='rgba(0,0,0,.45)';c.beginPath();c.ellipse(r*.35,r*.55,r*.9,r*1.6,0,0,7);c.fill();
+ const g=c.createLinearGradient(-r,0,r,0);g.addColorStop(0,'#b07a62');g.addColorStop(.5,'#e3ad8f');g.addColorStop(1,'#a8705a');c.fillStyle=g;
+ c.beginPath();c.moveTo(-r*.85,r*2.6);c.lineTo(-r*.85,0);c.ellipse(0,0,r*.85,r*1.0,0,Math.PI,0);c.lineTo(r*.85,r*2.6);c.closePath();c.fill();
+ c.fillStyle='rgba(255,236,224,.75)';c.beginPath();c.ellipse(0,-r*.05,r*.52,r*.62,0,0,7);c.fill();c.strokeStyle='rgba(120,70,55,.6)';c.lineWidth=1;c.stroke();
+ c.restore();c.save();c.globalAlpha=al;c.strokeStyle='rgba(255,226,160,.8)';c.lineWidth=1.2;c.beginPath();c.arc(X,Y,3,0,7);c.stroke();c.restore()}
+function drawBow(p,al){const c=cx0,b=PL.beta,X=px(p[0]),Y=py(p[1]);let nx=0,ny=0;if(Math.abs(Math.abs(p[0])-1)<1e-9)nx=Math.sign(p[0]);else ny=-Math.sign(p[1]);
+ const ang=Math.atan2(ny,nx)+0.62,dxv=Math.cos(ang),dyv=Math.sin(ang),Lb=L.s*.9,stroke=(tourOn||playing)&&D&&D.peak>1?Math.sin(simT*2.2)*L.s*.06:0;
+ const tx=X+dxv*(L.s*.02-stroke),ty=Y+dyv*(L.s*.02-stroke);
+ c.save();c.globalAlpha=al;c.lineCap='round';
+ // hair
+ c.strokeStyle='rgba(240,232,214,.92)';c.lineWidth=Math.max(2,L.s*.011);c.beginPath();c.moveTo(tx-dxv*L.s*.08,ty-dyv*L.s*.08);c.lineTo(tx+dxv*Lb,ty+dyv*Lb);c.stroke();
+ // stick, slightly cambered
+ const ox=-dyv*L.s*.022,oy=dxv*L.s*.022;c.strokeStyle='#4a1d0e';c.lineWidth=Math.max(2.5,L.s*.012);c.beginPath();c.moveTo(tx-dxv*L.s*.08+ox*.6,ty-dyv*L.s*.08+oy*.6);
+ c.quadraticCurveTo(tx+dxv*Lb*.5+ox*.5,ty+dyv*Lb*.5+oy*.5,tx+dxv*(Lb+L.s*.03)+ox*1.1,ty+dyv*(Lb+L.s*.03)+oy*1.1);c.stroke();
+ c.strokeStyle='rgba(255,190,140,.35)';c.lineWidth=1;c.stroke();
+ // tip and frog
+ c.fillStyle='#ece4d2';c.beginPath();c.arc(tx-dxv*L.s*.08+ox*.3,ty-dyv*L.s*.08+oy*.3,Math.max(2.5,L.s*.012),0,7);c.fill();
+ c.save();c.translate(tx+dxv*(Lb-L.s*.06)+ox*.6,ty+dyv*(Lb-L.s*.06)+oy*.6);c.rotate(ang);c.fillStyle='#111';c.fillRect(-L.s*.05,-L.s*.022,L.s*.1,L.s*.044);c.fillStyle='#d8d2c8';c.beginPath();c.arc(0,0,L.s*.008,0,7);c.fill();c.restore();
+ c.restore();
+ if(al===1&&D&&D.peak>1){c.save();c.globalCompositeOperation='lighter';const gl=c.createRadialGradient(X,Y,0,X,Y,L.s*.07);gl.addColorStop(0,'rgba(255,214,140,.55)');gl.addColorStop(1,'rgba(255,214,140,0)');c.fillStyle=gl;c.beginPath();c.arc(X,Y,L.s*.07,0,7);c.fill();c.restore()}}
+
+/* ---------- the dial ---------- */
+let dialW=0,dialH=0;
+function dialX(f){return Math.log(f/PL.fMin)/Math.log(PL.fMax/PL.fMin)*dialW}
+function dialF(x){return PL.fMin*Math.pow(PL.fMax/PL.fMin,clamp(x/dialW,0,1))}
+function drawDial(){makeSpec();const r=dialC.getBoundingClientRect();const w=Math.max(10,Math.round(r.width)),h=Math.max(10,Math.round(r.height));
+ if(dialC.width!==w*DPR||dialC.height!==h*DPR){dialC.width=w*DPR;dialC.height=h*DPR}dialW=w;dialH=h;const c=dx;c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,w,h);
+ const lo=Math.log(.05),hi=Math.log(200),Y=a=>h-6-(Math.log(Math.max(a,.05))-lo)/(hi-lo)*(h-16);
+ // octave grid
+ c.font='500 8.5px "DM Mono",monospace';c.textBaseline='top';c.fillStyle='rgba(239,231,214,.35)';c.strokeStyle='rgba(239,231,214,.07)';
+ for(let mi=Math.ceil(midiOf(PL.fMin)/12)*12;mi<=midiOf(PL.fMax);mi+=12){const f=440*Math.pow(2,(mi-69)/12),x=dialX(f);c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke();c.fillText(sci(mi),x+2,h-11)}
+ // 1 g line: glass shaking this hard (on average) throws sand
+ c.setLineDash([3,3]);c.strokeStyle='rgba(239,231,214,.22)';c.beginPath();c.moveTo(0,Y(1));c.lineTo(w,Y(1));c.stroke();c.setLineDash([]);
+ c.fillStyle='rgba(239,231,214,.35)';c.textBaseline='bottom';c.fillText('1 g',2,Y(1)-1);
+ const sp=spec;c.beginPath();for(let i=0;i<sp.f.length;i++){const x=dialX(sp.f[i]),y=Y(sp.a[i]);i?c.lineTo(x,y):c.moveTo(x,y)}
+ c.strokeStyle='rgba(217,178,95,.55)';c.lineWidth=1;c.stroke();
+ c.strokeStyle='#d9b25f';c.lineWidth=1.3;for(const p of peaks){const x=dialX(p.f);c.beginPath();c.moveTo(x,h-6);c.lineTo(x,Y(p.a));c.stroke()}
+ const x=dialX(cfg.f);c.strokeStyle='#fff3cf';c.lineWidth=2;c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke();c.fillStyle='#fff3cf';c.beginPath();c.moveTo(x-5,0);c.lineTo(x+5,0);c.lineTo(x,6);c.fill();
+ dialDirty=false}
+
+/* ---------- atlas ---------- */
+function buildAtlas(){const box=$('#atlas');box.innerHTML='';const rows=PL.rows||PL.modes.filter(m=>!m.rigid).slice(0,35).map(md=>({i:md.i}));
+ const T=64,N=PL.N,b=PL.beta,o=new Float64Array(3),ux=new Float64Array(T*N),uy=new Float64Array(T*N),sb=Math.sqrt(b);
+ for(let i=0;i<T;i++){const x=-1+2*(i+.5)/T;for(let mm=0;mm<N;mm++){ux[i*N+mm]=CH.beam(mm,PL.ks[mm],x,o)[0];uy[i*N+mm]=CH.beam(mm,PL.ks[mm],x,o)[0]/sb}}
+ rows.forEach((r,k)=>{const md=PL.modes[r.i],btn=document.createElement('button');btn.className='atl';btn.dataset.k=k;btn.setAttribute('aria-pressed','false');
+  btn.title=`${lab(md.label,false)} · ${md.f.toFixed(1)} Hz`+(r.lr?` · Ritz λ ${r.lr}`:'');btn.setAttribute('aria-label',`Play ${lab(md.label,false)}, ${md.f.toFixed(0)} hertz`);
+  const c=document.createElement('canvas'),Ty=Math.max(8,Math.round(T*b));c.width=T;c.height=Ty;const g=c.getContext('2d'),im=g.createImageData(T,Ty),phi=new Float64Array(T*Ty);let mx=0;
+  const cc=new Float64Array(N*N);md.idx.forEach(([a,bb],j)=>cc[a*N+bb]=md.vec[j]);
+  for(let j=0;j<Ty;j++){const yy=-1+2*(j+.5)/Ty,uyy=new Float64Array(N);for(let nn=0;nn<N;nn++)uyy[nn]=CH.beam(nn,PL.ks[nn],yy,o)[0];
+   for(let i=0;i<T;i++){let s=0;for(let a=0;a<N;a++){const u=ux[i*N+a];if(!u)continue;let t=0;for(let bb=0;bb<N;bb++)t+=cc[a*N+bb]*uyy[bb];s+=u*t}phi[(Ty-1-j)*T+i]=s;mx=Math.max(mx,Math.abs(s))}}
+  for(let p=0;p<T*Ty;p++){const v=Math.abs(phi[p])/mx,a=Math.exp(-((v/.075)**2));im.data[4*p]=12+(SC[0]-12)*a;im.data[4*p+1]=15+(SC[1]-15)*a;im.data[4*p+2]=18+(SC[2]-18)*a;im.data[4*p+3]=255}
+  g.putImageData(im,0,0);btn.appendChild(c);if(b!==1)btn.style.aspectRatio=`1 / ${b}`;
+  const it=document.createElement('i');it.innerHTML=helm(midiOf(md.f));btn.appendChild(it);
+  btn.addEventListener('click',()=>{poke();playRow(k)});btn.addEventListener('mouseenter',()=>rowInfo(k));btn.addEventListener('focus',()=>rowInfo(k));btn.addEventListener('mouseleave',()=>rowInfo(selRow));box.appendChild(btn)});
+ PL.atlasRows=rows;$('#atlasl').textContent=PL.rows?"Ritz's table, 1909":'This plate\'s first 35 modes';$('#atlasv').textContent=rows.length+' figures';atlasDirty=false;atlasSel();rowInfo(selRow)}
+function atlasSel(){$$('#atlas .atl').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.k===selRow)))}
+function rowInfo(k){const el=$('#rowinfo');if(k<0||!PL.atlasRows||!PL.atlasRows[k]){el.innerHTML=PL&&PL.rows?'Each figure is one row of Ritz\'s table. Hover for his numbers; click to play it.':'Click a figure to play it.';return}
+ const r=PL.atlasRows[k],md=PL.modes[r.i],mi=midiOf(md.f);
+ if(!r.lr){el.innerHTML=`<b>${lab(md.label)}</b> · ${hz(md.f)} · ${sci(mi)} ${cents(mi)} · λ ${md.lam.toFixed(md.lam<100?2:0)}`;return}
+ const d=(r.lr/md.lam-1)*100,ch=parseHelm(r.beob);
+ el.innerHTML=`<b>${lab(md.label)}</b> · ${hz(md.f)}<br>Ritz 1909 λ <b>${r.lr}</b>${r.ber.includes('*')?'':' (one term)'} · here <b>${md.lam.toFixed(md.lam<100?2:0)}</b> (${d>=0?'+':'−'}${Math.abs(d).toFixed(1)}%)<br>Chladni heard <b>${helmHTML(r.beob)}</b> · here ${helm(mi)} ${cents(mi)}`+(ch!=null?` (${(mi-ch>=0?'+':'−')+Math.abs(mi-ch).toFixed(1)} st)`:'')}
+function playRow(k){const r=PL.atlasRows[k];if(!r)return;selRow=k;atlasSel();rowInfo(k);const md=PL.modes[r.i];
+ applyCfg({bow:perim(bestBow(md.i),PL.beta),fingers:[]});applyCfg({f:md.f});if(SA&&CH.aliveCount(SA)<45000)sprinkle(20000);cap(CAP.mode(md.i));settleStatic();panel()}
+
+/* ---------- panel ---------- */
+function panel(){if(!PL||!cfg)return;const mi=midiOf(cfg.f),nm=nearestMode(cfg.f),alive=CH.aliveCount(SA);
+ $('#rf').textContent=cfg.f<1000?cfg.f.toFixed(1):comma(cfg.f);$('#rnote').innerHTML=`Hz · ${helm(mi)} · ${sci(mi)} ${cents(mi)}`;
+ const near=Math.abs(nm.c)<35;$('#rmode').innerHTML=near?lab(nm.md.label):'between';$('#rmode').style.fontSize=near&&nm.md.label.s&&PL.beta===1?'13.5px':'';
+ $('#rmode2').textContent=near?`λ ${nm.md.lam.toFixed(nm.md.lam<100?2:0)}${Math.abs(nm.c)>=1?' · '+(nm.c>=0?'':'')+Math.round(nm.c)+'¢ off':''}`:'off resonance';
+ $('#rg').textContent=D.peak<10?D.peak.toFixed(1):comma(D.peak);$('#rstill').textContent=pc(D.stillFrac);
+ $('#rrest').textContent=alive?pc(SA.still/Math.max(1,alive)):'–';$('#rsand').textContent=comma(alive)+' grains';$('#rfall').textContent=comma(fell.length/2);
+ $('#platev').textContent=`${S.mat} · 20 × ${(20*PL.beta).toFixed(PL.beta===1||PL.beta===.5?0:1)} cm · ν ${PL.mu}`;
+ $('#pressv').textContent=cfg.press;$('#press').value=cfg.press;$('#playb').textContent=playing?'Pause':'Play';
+ $('#dialv').textContent=cfg.fingers.length?`${cfg.fingers.length} finger${cfg.fingers.length>1?'s':''} down`:'drag to tune';panelDirty=false}
+function syncControls(){const set=(id,v)=>$$(id+' button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)));set('#mat',S.mat);set('#shape',S.shape);set('#speed',S.speed);if(cfg){$('#press').value=cfg.press;$('#pressv').textContent=cfg.press}}
+
+/* ---------- sound ---------- */
+let AC=null,osc=null,gain=null,soundOn=false;
+function audio(){if(!soundOn||!AC||!cfg)return;const t=AC.currentTime;osc.frequency.setTargetAtTime(cfg.f,t,.015);gain.gain.setTargetAtTime(Math.min(1,(D?D.rms:0)/40)*.22,t,.05)}
+function toggleSound(){soundOn=!soundOn;if(soundOn){try{if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();osc=AC.createOscillator();gain=AC.createGain();osc.type='sine';gain.gain.value=0;osc.connect(gain);gain.connect(AC.destination);osc.start()}AC.resume&&AC.resume()}catch(e){soundOn=false}}
+ else if(gain)gain.gain.setTargetAtTime(0,AC.currentTime,.03);$('#soundb').setAttribute('aria-pressed',String(soundOn));$('#soundb').textContent=soundOn?'Sound on':'Sound off';audio()}
+
+/* ---------- frame loop ---------- */
+let playing=true,userPlay=false,last=0,tickAcc=0;window.__frame=0;
+function update(dt){simT+=dt;
+ if(glide){glide.t+=dt;const u=Math.min(1,glide.t/glide.dur);setF(Math.exp(lerp(glide.a,glide.b,ease(u))));if(u>=1)glide=null}
+ if(bowGlide){bowGlide.t+=dt;const u=Math.min(1,bowGlide.t/bowGlide.dur);setBowS(lerp(bowGlide.a,bowGlide.b,ease(u)));if(u>=1)bowGlide=null}
+ tickScript(dt);
+ if(playing){tickAcc+=FIXED?TICKS[S.speed]:Math.min(dt*60*TICKS[S.speed],(LITE?2:3)*TICKS[S.speed]);let n=Math.floor(tickAcc);tickAcc-=n;for(let i=0;i<n;i++)sandTick();if(n)panelDirty=true}
+ if(waveOn)wavePh+=dt*2*Math.PI*.55}
+function frame(ts,skipDraw){
+ if(!FIXED&&(!STATIC||userPlay))requestAnimationFrame(frame); // first, so one bad frame can't stop the show
+ const now=FIXED?last+1000/60:(ts||performance.now()),raw=now-last,dt=FIXED?1/60:clamp(raw/1000,0,.1);last=now;window.__frame++;
+ if(!STATIC||userPlay)update(dt);
+ if(!skipDraw){render();if(dialDirty||specDirty)drawDial();else drawDialCursor();if(panelDirty&&(FIXED||STATIC||simT-lastPanel>.12||simT<lastPanel)){lastPanel=simT;panel()}}
+ if(!FIXED&&!STATIC&&!LITE&&raw>0&&raw<1000){ftN++;if(ftN>20){ftAvg+=(raw-ftAvg)*.08;if(ftN>60&&ftAvg>45){LITE=true;document.documentElement.classList.add('lite');fit()}}}
+ window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tourOn,mark:tourMark,f:cfg?cfg.f:0,ticks:SA?SA.t:0}}
+let lastCursorF=-1;function drawDialCursor(){if(cfg&&cfg.f!==lastCursorF){lastCursorF=cfg.f;drawDial()}}
+/* static (reduced motion): every change settles at once */
+function settleStatic(){if(!STATIC||userPlay)return;for(let i=0;i<PRERUN;i++)sandTick();render();drawDial();panel()}
+function kick(){if(STATIC||FIXED){render();drawDial();panel()}}
+
+/* ---------- input ---------- */
+function evPlate(e){const r=cv.getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top;return{X,Y,x:(X-L.cx)/L.s,y:(L.cy-Y)/L.s}}
+function classify(p){const b=PL.beta,inX=Math.abs(p.x)<=1,inY=Math.abs(p.y)<=b,edge=L.s*.07/L.s;
+ const dEdge=Math.min(Math.abs(Math.abs(p.x)-1),Math.abs(Math.abs(p.y)-b));
+ if(Math.abs(p.x)<=1+.16&&Math.abs(p.y)<=b+.16&&(!(inX&&inY)||dEdge<edge)){const s=perimS(clamp(p.x,-1,1),clamp(p.y,-b,b),b);return{kind:'bow',s,p:perim(s,b)}}
+ if(inX&&inY)return{kind:'finger',p:[p.x,p.y]};return null}
+function hook(){
+ cv.addEventListener('pointerdown',e=>{if(!L)return;const p=evPlate(e),k=classify(p);if(!k)return;poke();
+  if(k.kind==='bow'){drag='bow';cv.setPointerCapture(e.pointerId);applyCfg({bow:k.p});settleStatic();kick()}
+  else{const fs=cfg.fingers.slice(),hit=fs.findIndex(q=>Math.hypot((q[0]-k.p[0])*L.s,(q[1]-k.p[1])*L.s)<L.s*.06);
+   if(hit>=0)fs.splice(hit,1);else{fs.push(k.p);if(fs.length>2)fs.shift()}applyCfg({fingers:fs});settleStatic();kick()}});
+ cv.addEventListener('pointermove',e=>{if(!L)return;const p=evPlate(e);if(drag==='bow'){const s=perimS(clamp(p.x,-1,1),clamp(p.y,-PL.beta,PL.beta),PL.beta);applyCfg({bow:perim(s,PL.beta)});kick();return}
+  hover=e.pointerType==='mouse'?classify(p):null;cv.style.cursor=hover?(hover.kind==='bow'?'grab':'crosshair'):'default';if(STATIC||FIXED)render()});
+ const end=()=>{if(drag==='bow'){drag=null;settleStatic()}};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+ cv.addEventListener('pointerleave',()=>{hover=null;if(STATIC||FIXED)render()});
+ let dd=false;const dialSet=e=>{const r=dialC.getBoundingClientRect();let f=dialF(e.clientX-r.left);
+   for(const p of peaks){if(Math.abs(1200*Math.log2(f/p.f))<14){f=p.f;break}}setF(f);kick()};
+ dialC.addEventListener('pointerdown',e=>{poke();dd=true;dialC.setPointerCapture(e.pointerId);dialSet(e)});dialC.addEventListener('pointermove',e=>{if(dd)dialSet(e)});
+ const dend=()=>{if(dd){dd=false;settleStatic()}};dialC.addEventListener('pointerup',dend);dialC.addEventListener('pointercancel',dend);
+ $('#nextr').addEventListener('click',()=>{poke();makeSpec(true);const p=peaks.find(p=>p.f>cfg.f*1.0006);if(p){setF(p.f);cap(CAP.mode(nearestMode(p.f).md.i))}settleStatic();kick()});
+ $('#prevr').addEventListener('click',()=>{poke();makeSpec(true);const p=[...peaks].reverse().find(p=>p.f<cfg.f/1.0006);if(p){setF(p.f);cap(CAP.mode(nearestMode(p.f).md.i))}settleStatic();kick()});
+ $('#playb').addEventListener('click',()=>{poke();playing=!playing;if(STATIC){const was=userPlay;userPlay=playing;if(playing&&!was){last=performance.now();requestAnimationFrame(frame)}}panel()});
+ $('#soundb').addEventListener('click',()=>{poke();toggleSound();cap(CAP.sound(soundOn))});
+ $('#waveb').addEventListener('click',()=>{poke();waveOn=!waveOn;$('#waveb').setAttribute('aria-pressed',String(waveOn));sandDirty=true;if(STATIC||FIXED){render()}});
+ $('#press').addEventListener('input',e=>{const v=+e.target.value;poke();S.press=v;applyCfg({press:v});$('#pressv').textContent=v;kick()});
+ $('#press').addEventListener('change',()=>settleStatic());
+ const segH=(id,fn)=>$$(id+' button').forEach(b=>b.addEventListener('click',()=>{fn(b.dataset.v);syncControls()}));
+ segH('#mat',v=>{poke();if(v===S.mat)return;S.mat=v;changePlate(false)});
+ segH('#shape',v=>{poke();if(v===S.shape)return;S.shape=v;changePlate(true)});
+ segH('#speed',v=>{poke();S.speed=v});
+ $('#sprb').addEventListener('click',()=>{poke();sprinkle(20000);settleStatic();kick()});
+ $('#brb').addEventListener('click',()=>{poke();brush();kick()});
+ $('#liftb').addEventListener('click',()=>{poke();applyCfg({fingers:[]});settleStatic();kick()});
+ const rep=()=>{if(STATIC){startStatic();return}poke();selRow=-1;run(tour())};$('#tourb').addEventListener('click',rep);
+ addEventListener('resize',()=>{fit();render();drawDial()})}
+function changePlate(shape){const keep=cfg?{press:cfg.press}:{};newPlate();if(shape){newSession();sprinkle(60000)}else{flush();sess.ev.push(['plate',{N:NB,mat:S.mat,beta:PL.beta}])}
+ const i=PL.modes.findIndex(m=>!m.rigid);cfg=null;applyCfg(Object.assign({f:PL.modes[i].f,bow:perim(bestBow(i),PL.beta),fingers:[]},keep));selRow=-1;
+ if(shape)fit();else{drawTable();drawPlateSurface();sandDirty=true}buildAtlas();cap(CAP.plate());settleStatic();kick()}
+
+/* ---------- start ---------- */
+let ready=false;
+function startStatic(){selRow=-1;userPlay=false;script=null;run(tour('final'));tickScript(0);script=null;tourOn=false;tourDone=true;buildAtlas();atlasSel();rowInfo(selRow);playing=false;cap(CAP.still());render();drawDial();panel()}
+async function start(){
+ try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,EMBED?0:600))])}catch(e){}
+ newPlate();hook();fit();
+ const qs=Q.get('seed');if(qs&&isFinite(+qs))S.seed=Math.round(+qs)|0;
+ if(STATIC){startStatic()}
+ else{const target=FIXED?(Q.get('mark')||'final'):EMBED?'g':null;run(tour(target));tickScript(0)}
+ buildAtlas();syncControls();fit();render();drawDial();panel();ready=true;
+ if(OG){const r=PL.rows&&PL.rows.find(r=>r.i===modeNow());$('#ogchips').innerHTML=`${hz(cfg.f)} · ${lab(PL.modes[modeNow()].label)}<br>Ritz 1909: λ ${r?r.lr:'–'} · here ${PL.modes[modeNow()].lam.toFixed(0)}`}
+ document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>{drawTable();dialDirty=true;render();drawDial()})}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+window.chladni={state:()=>{if(!ready||!PL||!cfg||!SA)return{ready:false};flush();const nm=nearestMode(cfg.f);
+ return{ready:true,fixed:FIXED,static:STATIC,lite:LITE,embed:EMBED,seed:S.seed,mat:S.mat,shape:S.shape,beta:PL.beta,mu:PL.mu,N:PL.N,fs:PL.fs,
+  cfg:JSON.parse(JSON.stringify(cfg)),mode:{i:nm.md.i,label:nm.md.label,lam:nm.md.lam,f:nm.md.f,cents:nm.c},peakG:D.peak,rms:D.rms,stillFrac:D.stillFrac,
+  modes:PL.modes.map(md=>({lam:md.lam,f:md.f,rigid:md.rigid,label:md.label,cls:md.cls})),rows:PL.rows?PL.rows.map(r=>({...r})):null,
+  alive:CH.aliveCount(SA),still:SA.still,moved:SA.moved,ticks:SA.t,fallen:fell.length/2,hash:CH.hashSand(SA),
+  peaks:peaks.map(p=>p.f),tour:tourOn,tourDone,mark:tourMark,caption:capText,speed:S.speed,playing,press:cfg.press,sound:soundOn,wave:waveOn,selRow,
+  session:JSON.parse(JSON.stringify(sess)),sessions:JSON.parse(JSON.stringify(sessions.concat([sess]))),
+  layout:L?{cx:L.cx,cy:L.cy,s:L.s,b:L.b,W,H}:null}},
+ toPx:(x,y)=>[px(x),py(y)],perim:s=>perim(s,PL.beta)};
+(async()=>{await start();if(FIXED||STATIC){if(FIXED)frame()}else{last=performance.now();requestAnimationFrame(frame)}})();
+</script>
+</body>
+</html>

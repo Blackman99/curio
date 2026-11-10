@@ -1,0 +1,11 @@
+{
+ "slug": "chladni-plate",
+ "title": "Chladni Plate",
+ "no": "042",
+ "date": "2026-11-10",
+ "kind": "Plate vibration · Canvas sand",
+ "blurb": "Chladni's experiment, computed the way Walther Ritz first did it in 1909: bow a glass plate and the sand runs to the lines that stand still. The modes are solved live from beam functions and set beside Ritz's hand-worked table and the notes Chladni heard. Slide the bow, rest a fingertip, bow harder.",
+ "color": "#f4f8fc",
+ "exhibit": "chladniPlate",
+ "lane": "science"
+}
