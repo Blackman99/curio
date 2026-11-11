@@ -1,0 +1,11 @@
+{
+ "slug": "beam-lighthouse",
+ "title": "Beam Lighthouse",
+ "no": "043",
+ "date": "2026-11-11",
+ "kind": "Beam search · SVG lighthouse",
+ "blurb": "Beam search, live, on a word-by-word model of Virginia Woolf's To the Lighthouse. One beam loops for ever; each extra beam finds a more probable sentence, and a shorter one, until exact search shows the single most probable continuation is usually to stop at once. Roll dice, or read what Woolf wrote, to compare.",
+ "color": "#b8c2f8",
+ "exhibit": "beamLighthouse",
+ "lane": "ml"
+}
