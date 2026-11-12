@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reading Stone — a medieval magnifier on the 1835 Moon Hoax, refracted live by the browser</title>
+<meta name="description" content="A dome of rock crystal lies on a newspaper: The Sun, New York, 25 August 1835, the first instalment of the Great Moon Hoax. The page under it is ordinary live text. The browser bends it through the glass with an SVG displacement map traced pixel by pixel from Snell's law, so you can still select it, search it and read it through the stone.">
+<meta property="og:title" content="Reading Stone">
+<meta property="og:description" content="A reading stone on the 1835 Moon Hoax. The page under it is live text, refracted by the browser through a displacement map traced from Snell's law: a hemisphere magnifies by its refractive index, a sphere by n/(2−n), and a diamond marble turns the words upside down.">
+<meta property="og:image" content="https://blackman99.github.io/curio/reading-stone/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Reading Stone">
+<meta name="twitter:description" content="A medieval reading stone on a live newspaper page. The browser refracts the real text through a displacement map traced from Snell's law; you can still select and search it through the glass.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/reading-stone/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--pw:404px;--wood:#1a120c;--brass:#e7c27d;--brass2:#fff0cf;--ui:#ece4d4;--ui2:#a99c88;--line:rgba(236,220,190,.14);--panel:rgba(20,14,10,.94);--paper:#efe6d1;--ink:#231a12;--seen:#ffd36e;--hit:#ff7a5c}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--wood);color:var(--ui);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#desk{position:fixed;left:0;top:0;bottom:0;right:var(--pw);overflow:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#4a3a2a transparent;
+  background:radial-gradient(ellipse 70% 60% at 22% 8%,rgba(255,214,150,.13),transparent 70%),repeating-linear-gradient(94deg,rgba(255,255,255,.012) 0 3px,rgba(0,0,0,.025) 3px 7px),linear-gradient(180deg,#24180f,#150e09)}
+#wrap{padding:112px 34px 150px}
+#sheet{position:relative;width:min(960px,100%);margin:0 auto;background-color:var(--paper);color:var(--ink);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 20px 60px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4)}
+#ink,.lens .copy{position:relative;padding:22px 28px 30px;font:400 10.7px/1.32 'Old Standard TT',Georgia,serif;font-variant-numeric:oldstyle-nums;text-rendering:optimizeLegibility;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .24 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}
+#ink ::selection{background:rgba(70,120,230,.42);color:#10162a}
+::highlight(found){background-color:rgba(255,196,64,.55);color:#2a1800}
+::highlight(seen){background-color:rgba(255,211,110,.85);color:#1f1300}
+::highlight(hit){background-color:rgba(255,110,80,.55);color:#2a0800}
+.mast{border-top:3px double var(--ink);border-bottom:3px double var(--ink);margin:0 0 9px;padding:5px 0 4px}
+.mrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font:italic 400 12px/1 'Old Standard TT',serif}
+.mrow .nm{font:700 56px/1 'Old Standard TT',serif;letter-spacing:.06em;font-style:normal;padding:4px 0 2px}
+.cols{columns:5 150px;column-gap:17px;column-rule:1px solid rgba(35,26,18,.45);text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+.cols p{margin:0;text-indent:1.1em}
+.cols p.first{text-indent:0}
+.cols p.first::first-letter{font-size:2.6em;line-height:.9;float:left;padding:2px 3px 0 0;font-weight:700}
+.cols p.tbc{text-align:right;font-style:italic;margin-top:3px}
+.hd{margin:0 0 7px;text-align:center;font-weight:400;break-inside:avoid;border-bottom:1px solid rgba(35,26,18,.5);padding-bottom:6px}
+.hd span{display:block}
+.hd .h1{font:700 17.5px/1.08 'Old Standard TT',serif;text-transform:uppercase;letter-spacing:.02em;margin:2px 0 3px}
+.hd .h2{font:400 10px/1.3 'Old Standard TT',serif;text-transform:uppercase;letter-spacing:.2em}
+.hd .h3{font:700 11.5px/1.25 'Old Standard TT',serif;text-transform:uppercase;letter-spacing:.04em;margin:2px 0}
+.hd .h4{font:italic 400 10px/1.3 'Old Standard TT',serif;margin-top:3px}
+.lens{position:absolute;left:0;top:0;border-radius:50%;cursor:grab;touch-action:none;z-index:3;outline:none;
+  box-shadow:0 0 0 .6px rgba(30,20,10,.55),inset 0 0 0 1px rgba(255,250,235,.22)}
+.lens.drag{cursor:grabbing}
+.lens.sel{cursor:text}
+.lens:focus-visible{box-shadow:0 0 0 2px var(--brass),inset 0 0 0 1px rgba(255,250,235,.22)}
+.lens canvas{position:absolute;left:0;top:0;width:100%;height:100%;border-radius:50%;pointer-events:none}
+.lens .copy{position:absolute!important;left:0;top:0;transform-origin:0 0;pointer-events:none;background-color:var(--paper);color:var(--ink)}
+.copyclip{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
+.shade,.light{position:absolute;left:0;top:0;pointer-events:none;z-index:2}
+.probing .lens{pointer-events:none}
+#title{position:fixed;left:18px;top:14px;z-index:5;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(20,13,8,.72)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(20,13,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--brass);color:#1d1406;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);text-shadow:0 1px 4px #000}
+h1{margin:9px 0 0;font:400 clamp(32px,3.2vw,46px)/1 'DM Serif Display',Georgia,serif;letter-spacing:.005em;color:#fbf2e0;text-shadow:0 2px 0 #2a1b10,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - var(--pw) - 36px);max-width:900px;z-index:5;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(20,13,8,.86);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#caption{margin:0;font:400 17.5px/1.36 'Newsreader',serif;color:#f6efe0;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--brass)}
+#caption q{font-style:italic;color:var(--brass2);quotes:'‘' '’'}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:6;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.05)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--ui);text-transform:none}
+.sec{margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:rgba(231,194,125,.04);border-radius:999px;padding:5px 9px;font:400 13px/1.1 'Newsreader',serif;color:var(--ui)}
+.chip small{font:400 10px 'DM Mono',monospace;color:var(--ui2);margin-left:4px}
+.chip:hover,.chip:focus-visible{border-color:var(--brass);outline:none;background:rgba(231,194,125,.12)}
+.chip[aria-pressed=true]{background:var(--brass);color:#1d1406;border-color:var(--brass)}
+.chip[aria-pressed=true] small{color:#5a4320}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 3px;font:400 11px/1.1 'DM Mono',monospace;color:var(--ui2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(231,194,125,.14);outline:none;color:var(--ui)}
+.seg button[aria-pressed=true]{background:var(--brass);color:#1d1406;font-weight:500}
+.btn{border:1px solid var(--line);background:rgba(231,194,125,.05);border-radius:8px;padding:7px 9px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--ui)}
+.btn:hover,.btn:focus-visible{background:rgba(231,194,125,.18);border-color:var(--brass);outline:none}
+.btn[aria-pressed=true]{background:var(--brass);color:#1d1406;border-color:var(--brass)}
+input[type=range]{width:100%;accent-color:var(--brass);margin:2px 0 0}
+input[type=range]:disabled{opacity:.35}
+.hint{font:400 10.5px/1.4 'DM Mono',monospace;color:var(--ui2);margin-top:5px}
+.read{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:9px 8px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ui2)}
+.rd b{font:500 18px/1 'DM Mono',monospace;color:var(--ui);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{color:#ffe0a0;font-size:21px}
+.rd small{font:400 10px/1.2 'DM Mono',monospace;color:var(--ui2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thru{display:grid;grid-template-columns:auto 1fr;gap:4px 9px;align-items:baseline;font:400 14px/1.25 'Newsreader',serif;margin-top:8px}
+.thru span{font:500 9px/1.2 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ui2)}
+.thru i{font-style:normal;padding:0 4px;border-radius:3px;min-height:1.1em}
+#wseen{background:rgba(255,211,110,.22);color:#ffe2a0}
+#whit{background:rgba(255,110,80,.2);color:#ffb8a4}
+.frow{display:grid;grid-template-columns:1fr auto auto;gap:6px}
+#fq{width:100%;background:#0f0a06;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:italic 400 15px/1.2 'Old Standard TT',serif;color:var(--brass2)}
+#fq:focus{outline:none;border-color:var(--brass)}
+.path{font:400 10.5px/1.45 'DM Mono',monospace;color:var(--ui2);border:1px dashed var(--line);border-radius:8px;padding:6px 8px}
+.path b{color:var(--ui);font-weight:500}
+sub,sup{font-size:.7em;line-height:0}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--ui2);margin:9px 0 0}
+details p b{color:var(--ui);font-weight:600}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(236,228,212,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+#ogtext{display:none}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16px}h1{font-size:clamp(28px,2.8vw,40px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:16px}#wrap{padding-top:100px}}
+@media (max-width:1180px) and (min-width:821px){:root{--pw:372px}#panel{width:340px}#caption{font-size:15.5px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden;height:auto}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:34px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 4px;background:none;box-shadow:none}
+  #caption{font-size:16px;min-height:6.9em;align-items:flex-start}
+  #desk{position:relative;inset:auto;height:var(--dh,62vh);min-height:420px;margin:4px 0 12px;border-top:1px solid #3a2a1c;border-bottom:1px solid #3a2a1c}
+  #wrap{padding:14px 10px 40px}
+  #ink,.lens .copy{padding:14px 12px 20px;font-size:10.2px}
+  .mrow{font-size:9.5px}.mrow .nm{font-size:30px}
+  .cols{columns:2 140px;column-gap:12px}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(20,14,10,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story,.og #title{display:none}
+.og #desk{right:0;overflow:hidden}
+.og #wrap{padding:0}
+.og #sheet{width:70vw;margin:0;box-shadow:none}.og #ink{padding-top:18px}
+.og #ogtext{display:block;position:fixed;right:0;top:0;bottom:0;width:31vw;z-index:7;padding:44px 36px 0 30px;background:linear-gradient(90deg,rgba(20,13,8,.0),rgba(20,13,8,.93) 9%,rgba(20,13,8,.97));color:#f3eadb}
+.og #ogtext .k{font:500 15px/1.3 'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--brass)}
+.og #ogtext h2{font:400 66px/1 'DM Serif Display',serif;margin:14px 0 18px;color:#fff6e4}
+.og #ogtext p{font:400 25px/1.32 'Newsreader',serif;margin:0 0 16px;color:#e9dfcd}
+.og #ogtext p b{color:#ffe0a0;font-weight:600}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 045 · SVG displacement</span>
+  <h1>Reading Stone</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="ogtext" aria-hidden="true"><div class="k">Curio · No. 045</div><h2>Reading Stone</h2><p>A dome of rock crystal on the 1835 Moon Hoax. The page under it is <b>live text</b>.</p><p>The browser refracts it through a displacement map traced from <b>Snell’s law</b>, pixel by pixel.</p><p>A hemisphere of rock crystal magnifies by exactly its <b>refractive index</b>, 1.54×; a diamond marble turns the words <b>upside down</b>.</p></div>
+<main id="desk" aria-label="A newspaper on a desk, with a reading stone lying on it">
+  <div id="wrap"><article id="sheet"><div id="ink" lang="en"><header class="mast"><div class="mrow"><span>New-York,</span><span class="nm">THE SUN.</span><span>Tuesday, August 25, 1835.</span></div></header>
+<div class="cols">
+<h2 class="hd"><span class="h1">Great Astronomical Discoveries</span><span class="h2">lately made</span><span class="h3">by Sir John Herschel, L.L.D. F.R.S. &amp;c.</span><span class="h2">At the Cape of Good Hope.</span><span class="h4">[From Supplement to the Edinburgh Journal of Science.]</span></h2>
+<p class="first">In this unusual addition to our Journal, we have the happiness of making known to the British publick, and thence to the whole civilized world, recent discoveries in Astronomy which will build an imperishable monument to the age in which we live, and confer upon the present generation of the human race a proud distinction through all future time. It has been poetically said, that the stars of heaven are the hereditary regalia of man, as the intellectual sovereign of the animal creation. He may now fold the Zodiack around him with a loftier consciousness of his mental supremacy.</p>
+<p>It is impossible to contemplate any great Astronomical discovery without feelings closely allied to a sensation of awe, and nearly akin to those with which a departed spirit may be supposed to discover the realities of a future state. Bound by the irrevocable laws of nature to the globe on which we live, creatures close shut up in infinite expanse, it seems like acquiring a fearful supernatural power when any remote mysterious works of the Creator yield tribute to our curiosity. It seems almost a presumptious assumption of powers denied to us by divine will, when man, in the pride and confidence of his skill, steps forth, far beyond the apparently natural boundary of his privileges, and demands the secrets and familiar fellowship of other worlds. We are assured that when the immortal philosopher to whom mankind is indebted for the thrilling wonders now first made known, had at length adjusted his new and stupendous apparatus with the certainty of success, he solemnly paused several hours before he commenced his observations, that he might prepare his own mind for discoveries which he knew would fill the minds of myriads of his fellow-men with astonishment, and secure his name a bright, if not transcendent conjunction with that of his venerable father to all posterity. And well he might pause! From the hour the first human pair opened their eyes to the glories of the blue firmament above them, there has been no accession to human knowledge at all comparable in sublime interest to that which he has been the honored agent in supplying; and we are taught to believe that, when a work, already preparing for the press, in which his discoveries are embodied in detail, shall be laid before the public, they will be found of incomparable importance to some of the grandest operations of civilized life. Well might he pause! He was about to become the sole depository of wondrous secrets which had been hid from the eyes of all men that had lived since the birth of time. He was about to crown himself with a diadem of knowledge which would give him a conscious pre-eminence above every individual of his species who then lived, or who had lived in the generations that are passed away. He paused ere he broke the seal of the casket which contained it.</p>
+<p>To render our enthusiasm intelligible, we will state at once, that by means of a telescope of vast dimensions and an entirely new principle, the younger Herschel, at his observatory in the Southern Hemisphere, has already made the most extraordinary discoveries in every planet of our solar system; has discovered planets in other solar systems; has obtained a distinct view of objects in the moon, fully equal to that which the naked eye commands of terrestrial objects at the distance of a hundred yards; has affirmatively settled the question whether this satellite be inhabited, and by what order of things; has firmly established a new theory of cometary phenomena; and has solved or corrected nearly every leading problem of mathematical astronomy.</p>
+<p>For our early and almost exclusive information concerning these facts, we are indebted to the devoted friendship of Dr. Andrew Grant, the pupil of the elder, and for several years past the inseparable coadjutor of the younger Herschel. The amanuensis of the latter at the Cape of Good Hope, and the indefatigable superintendent of his telescope during the whole period of its construction and operation, Dr. Grant has been enabled to supply us with intelligence equal, in general interest at least, to that which Dr. Herschel himself has transmitted to the Royal Society. Indeed our correspondent assures us that the voluminous documents now before a committee of that institution contain little more than details and mathematical illustrations of the facts communicated to us in his own ample correspondence. For permission to indulge his friendship in communicating this invaluable information to us, Dr. Grant and ourselves are indebted to the magnanimity of Dr. Herschel, who, far above all mercenary considerations, has thus signally honored and rewarded his fellow-laborer in the field of science. The engravings of lunar animals and other objects, and of the phases of the several planets, are accurate copies of drawings taken in the observatory by Herbert Home, Esq., who accompanied the last powerful series of reflectors from London to the Cape, and superintended their erection; and he has thus recorded the proofs of their triumphant success. The engravings of the belts of Jupiter is a reduced copy of the imperial folio drawing by Dr. Herschel himself, and contains the results of his latest observation of that planet. The segment of the inner ring of Saturn is from a large drawing by Dr. Grant.</p>
+<p>We first avail ourselves of the documents which contain a description and history of the instrument by which these stupendous discoveries have been made. A knowledge of the one is essential to the credibility of the other.</p>
+<p>It is well known that the great reflecting telescope of the late elder Herschel, with an object-glass four feet in diameter, and a tube forty feet in length, possesses a magnifying power of more than six thousand times. But a small portion of this power was ever advantageously applied to the nearer astronomical objects; for the deficiency of light from objects so highly magnified, rendered them less distinct than when viewed with a power of a third or a fourth of this extent. Accordingly the powers which he generally applied when observing the moon or planets, and with which he made his most interesting discoveries, ranged from 220, 460, 750 and 900 times; although, when inspecting the double and treble fixed stars, and the more distant nebulae, he frequently applied the full capacity of his instrument. The law of optics, that an object becomes dim in proportion as it is magnified, seemed, from its exemplification in this powerful telescope, to form an insuperable boundary to further discoveries in our solar system. Several years, however, prior to the death of this venerable astronomer, he conceived it practicable to construct an improved series of parabolic and spherical reflectors, which, by uniting all the meritorious points in the Gregorian and Newtonian instruments, with the highly interesting achromatic discovery of Dolland, would, to a great degree, remove the formidable obstruction. His plan evinced the most profound research in optical science, and the most dexterous ingenuity in mechanical contrivance; but accumulating infirmities, and eventual death, prevented its experimental application. His son, the present Sir John Herschel, who had been nursed and cradled in the observatory, and a practical astronomer from his boyhood, was so fully convinced of the value of the theory, that he determined upon testing it, at whatever cost. Within two years of his father's death he completed his new apparatus, and adapted it to the old telescope with nearly perfect success. He found that the magnifying power of 6,000 times, when applied to the moon, which was the severest criterion that could be selected, produced, under these new reflectors, a focal object of exquisite distinctness, free from every achromatic obscurity, and containing the highest degree of light which the great speculum could collect from that luminary.</p>
+<p>The enlargement of the angle of vision which was thus acquired, is ascertained by dividing the moon's distance from the observatory by the magnifying power of the instrument; and the former being 240,000 miles, and the latter 6,000 times, leaves a quotient of 40 miles as the apparent distance of that planet from the eye of the observer. Now it is well known that no terrestrial objects can be seen at a greater distance than this, with the naked eye, even from the most favorable elevations. The rotundity of the earth prevents a more distant view than this with the most acute natural vision, and from the highest eminences; and, generally, objects seen at this distance are themselves elevated on mountainous ridges. It is not pretended, moreover, that this forty miles telescopic view of the moon presented its objects with equal distinctness, though it did in equal size to those of this earth, so remotely stationed.</p>
+<p>The elder Herschel had nevertheless demonstrated, that with a power of 1,000 times, he could discern objects in this satellite of not more than 122 yards in diameter. If therefore the full capability of the instrument had been elicited by the new apparatus of reflectors constructed by his son, it would follow, in mathematical ratio, that objects could be discerned of not more than 22 yards in diameter. Yet in either case they would be seen as mere feeble, shapeless points, with no greater conspicuity than they would exhibit upon earth to the unaided eye at the distance of forty miles. But although the rotundity of the earth presented no obstruction to a view of these astronomical objects, we believe Sir John Herschel never insisted that he had carried out these extreme powers of the telescope in so full a ratio. The deficiency of light, though greatly economized and concentrated, still maintained some inverse proportion to the magnitude of the focal image. The advance he had made in the knowledge of this planet, though magnificent and sublime, was thus but partial and unsatisfactory. He was, it is true, enabled to confirm some discoveries of former observers, and to confute those of others. The existence of volcanoes discovered by his father and by Schroeter of Berlin, and the changes observed by the latter in the volcano in the Mare Crisium or Lucid Lake, were corroborated and illustrated, as was also the prevalence of far more extensive volcanic phenomena. The disproportionate height attributed to the lunar mountains was corrected from careful admeasurement; whilst the celebrated conical hills, encircling valleys of vast diameter, and surrounding the lofty central hills, were distinctly perceived.  The formation which Professor Frauenhofer uncharitably conjectured to be lunar fortifications, he ascertained to be a tubular buttress of a remarkably pyramidical mountain; lines which had been whimsically pronounced roads and canals, he found to be keen ridges of singularly regular rows of hills; and that which Schroeter imagined to be a great city in the neighborhood of Marius, he determined to be a valley of disjointed rocks scattered in fragments, which averaged at least a thousand yards in diameter. Thus the general geography of the planet, in its grand outlines of cape, continent, mountain, ocean, and island, was surveyed with greater particularity and accuracy than by any previous observer; and the striking dissimilarity of many of its local features to any existing on our own globe, was clearly demonstrated. The best enlarged maps of that luminary which have been published were constructed from this survey; and neither the astronomer nor the public ventured to hope for any greater accession to their developments. The utmost power of the largest telescope in the world had been exerted in a new and felicitous manner to obtain them, and there was no reasonable expectation that a larger one would ever be constructed, or that it could be advantageously used if it were. A law of nature, and the finitude of human skill, seemed united in inflexible opposition to any further improvement in telescopic science, as applicable to the known planets and satellites of the solar system. For unless the sun could be prevailed upon to extend a more liberal allowance of light to these bodies, and they be induced to transfer it, for the generous gratification of our curiosity, what adequate substitute could be obtained?  Telescopes do not create light, they cannot even transmit unimpaired that which they receive. That anything further could be derived from human skill in the construction of instruments, the labors of his illustrious predecessors, and his own, left the son of Herschel no reason to hope. Huygens, Fontana, Gregory, Newton, Hadley, Bird, Short, Dolland, Herschel, and many others, all practical opticians, had resorted to every material in any wise adapted to the composition either of lenses or reflectors, and had exhausted every law of vision which study had developed and demonstrated. In the construction of his last amazing specula. Sir John Herschel had selected the most approved amalgams that the advanced stage of metallic chemistry had combined; and had watched their growing brightness under the hands of the artificer with more anxious hope than ever lover watched the eye of his mistress; and he had nothing further to expect than they had accomplished. He had the satisfaction to know that if he could leap astride a cannon ball, and travel upon its wings of fury for the respectable period of several millions of years, he would not obtain a more enlarged view of the distant stars than he could now possess in a few minutes of time; and that it would require an ultra-railroad speed of fifty miles an hour, for nearly the live-long year, to secure him a more favorable inspection of the gentle luminary of night. The interesting question, however, whether this light of the solemn forest, of the treeless desert, and of the deep blue ocean as it rolls; whether this object of the lonely turret, of the uplifted eye on the deserted battle-field, and all of the pilgrims of love and hope, of misery and despair, that have journeyed over the hills and valleys of this earth, through all the eras of its unwritten history to those of its present voluminous record; the exciting question, whether this observed of all the sons of men, from the days of Eden to those of Edinburgh, be inhabited by beings like ourselves, of consciousness and curiosity, was left for solution to the benevolent index of natural analogy, or to the severe tradition that it is tenanted only by the hoary solitaire whom the criminal code of the nursery had banished thither for collecting fuel on the sabbath day.</p>
+<p>The limits of discovery in the planetary bodies, and in this one especially, thus seemed to be immutably fixed; and no expectation was elevated for a period of several years. But, about three years ago, in the course of a conversational discussion with Sir David Brewster upon the merits of some ingenious suggestions by the latter, in his article on optics in the Edinburgh Encyclopedia (p. 644), for improvements in the Newtonian Reflectors, Sir John Herschel adverted to the convenient simplicity of the old astronomical telescopes that were without tubes, and the object-glass of which, placed upon a high pole, threw its focal image to a distance of 150, and even 200 feet. Dr. Brewster readily admitted that a tube was not necessary, provided the focal image were conveyed into a dark apartment, and there properly received by reflectors. Sir John then said that, if his father's great telescope, the tube alone of which, though formed of the lightest suitable materials, weighed 3,000 pounds, possessed an easy and steady mobility with its heavy observatory attached, an observatory moveable without the incumbrance of such a tube, was obviously practical. This also was admitted, and the conversation became directed to that all-invincible enemy. The paucity of light in powerful magnifiers. After a few moments silent thought, Sir John diffidently inquired whether it would not be possible to effect a transfusion of artificial light through the focal object of vision! Sir David somewhat startled at the originality of the idea, paused awhile, and then hesitatingly referred to the refrangibility of rays, and the angle of incidence. Sir John, grown more confident, adduced the example of the Newtonian Reflector, in which the refrangibility was corrected by the second speculum, and the angle of incidence restored by the third. And, continued he, why cannot the illuminated microscope, say the hydro-oxygen, be applied to render distinct, and, if necessary, even to magnify the focal object? Sir David sprang from his chair in the ecstasy of conviction, and leaping half-way to the ceiling, exclaimed, Thou art the man! Each philosopher anticipated the other in presenting the prompt illustration that if the rays of the hydro-oxygen microscope, passed through a drop of water containing the larvae of a gnat and other objects invisible to the naked eye, rendered them not only keenly but firmly magnified to dimensions of many feet; so could the same artificial light, passed through the faintest focal object of a telescope, both distinctify (to coin a new word for an extraordinary occasion) and magnify its feeblest component members. The only apparent desideratum was a recipient for the focal image which should transfer it, without refranging it, to the surface on which it was to be viewed under the revivifying light of the microscopic reflectors. In the various experiments made during the few following weeks, the co-operative philosophers decided that a medium of the purest plate glass (which it is said they obtained, by consent, be it observed, from the shop window of Mons. Desanges, the jeweller to his ex-majesty Charles X, in High street) was the most eligible they could discover. It answered perfectly with a telescope which magnified 100 times, and a microscope of about thrice that power.</p>
+<p>Sir John Herschel then conceived the stupendous fabric of his present telescope. The power of his father's instrument would still leave him distant from his favorite planet nearly forty miles, and he resolved to attempt a greater magnifier. Money, the wings of science as the sinews of war, seemed the only requisite, and even the acquisition of this, which is often more difficult than the task of Sisyphus, he determined to achieve. Fully sanctioned by the high optical authority of Sir David Brewster, he laid his plan before the Royal Society, and particularly directed it to the attention of His Royal Highness the Duke of Sussex, the ever munificent patron of science and the arts.  It was immediately and enthusiastically approved by the committee chosen to investigate it, and the chairman, who was the Royal President, subscribed his name for a contribution of £10,000, with a promise that he would zealously submit the proposed instrument as a fit object for the patronage of the privy purse. He did so without delay, and his Majesty, on being informed that the estimated cost was £70,000, naively inquired if the costly instrument would conduce to any improvement in navigation? On being informed that it undoubtedly would, the sailor King promised a carte blanch for the amount which might be required.</p>
+<p>Sir John Herschel had submitted his plans and calculations in adaptation to an object-glass of twenty-four feet in diameter: just six times the size of his venerable father's. For casting this ponderous mass, he selected the large glass-house of Messrs. Hartly and Grant, (the brother of our invaluable friend Dr. Grant) at Dumbarton. The material chosen was an amalgamation of two parts of the best crown with one of flint glass, the use of which, in separate lenses, constituted the great achromatic discovery of Dolland.  It had been found, however, by accurate experiments, that the amalgam would as completely triumph over every impediment, both from refrangibility and discoloration, as the separate lenses. Five furnaces of the metal, carefully collected from productions of the manufactory, in both the kinds of glass, and known to be respectively of nearly perfect homogenous quality, were united, by one grand conductor, to the mould; and on the third of January, 1833, the first cast was effected. After cooling eight days, the mould was opened, and the glass found to be greatly flawed within eighteen inches of the centre. Notwithstanding this failure, a new glass was more carefully cast on the 27th of the same month, which upon being opened during the first week of February, was found to be immaculately perfect, with the exception of two slight flaws so near the line of its circumference that they would be covered by the copper ring in which it was designed to be enclosed.</p>
+<p>The weight of this ponderous lens was 14,826 lbs. or nearly seven tons after being polished; and its estimated magnifying power 42,000 times. It was therefore presumed to be capable of representing objects in our lunar satellite of little more than eighteen inches in diameter, providing its focal image of them could be rendered distinct by the transfusion of artificial light. It was not, however, upon the mere illuminating power of the hydro-oxygen microscope, as applied to the focal pictures of this lens, that the younger Herschel depended for the realization of his ambitious theories and hopes. He calculated largely upon the almost unlimited applicability of this instrument as a second magnifier, which would supersede the use, and infinitely transcend the powers of the highest magnifiers in reflecting telescopes.</p>
+<p>So sanguinely, indeed, did he calculate upon the advantages of this splendid alliance, that he expressed confidence in his ultimate ability to study even the entomology of the moon, in case she contained insects upon her surface. Having witnessed the completion of this great lens, and its safe transportation to the metropolis, his next care was the construction of a suitable microscope, and of the mechanical frame-work for the horizontal and vertical action of the whole. His plans in every branch of his undertaking having been intensely studied, even to their minutest details, were easily and rapidly executed. He awaited only the appointed period at which he was to convey his magnificent apparatus to its destination.</p>
+<p class="tbc">[To be continued.]</p>
+</div></div></article></div>
+</main>
+<aside id="panel" aria-label="The glass, the light and the text">
+  <div class="sec">
+    <div class="lab"><span>The glass</span><b id="shapev">reading stone</b></div>
+    <div class="seg" id="shapes"><button data-v="stone" aria-pressed="true" title="A plano-convex dome lying flat on the page">Reading stone</button><button data-v="drops" aria-pressed="false" title="Water drops on the page">Drops</button><button data-v="marble" aria-pressed="false" title="A sphere resting on the page">Marble</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Made of</span><b id="nv">n = 1.544</b></div>
+    <div class="chips" id="mats"></div>
+    <input type="range" id="nr" min="1.01" max="2.6" step="0.001" value="1.544" aria-label="Refractive index n (at 587.6 nm)">
+  </div>
+  <div class="sec">
+    <div class="lab"><span id="hlab">Dome height t / R</span><b id="hv">1.00</b></div>
+    <input type="range" id="hr" min="0.15" max="1" step="0.01" value="1" aria-label="Dome height: thickness divided by the sphere's radius">
+    <div class="seg" id="disp" style="margin-top:8px"><button data-v="1" aria-pressed="true" title="Red, green and blue each refracted with their own index">Colour fringes: on</button><button data-v="0" aria-pressed="false" title="One index for all colours">off</button></div>
+  </div>
+  <div class="sec">
+    <div class="read">
+      <div class="rd big"><span>Magnifies</span><b id="rm">–</b><small id="rm2">at the centre, traced</small></div>
+      <div class="rd"><span>Lens formula</span><b id="rf">–</b><small id="rf2">–</small></div>
+      <div class="rd"><span>Lamplight</span><b id="re">–</b><small id="re2">under the centre</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Through the glass</span><b id="handv">drag to move</b></div>
+    <div class="seg" id="hand"><button data-v="move" aria-pressed="true" title="Drag the glass around the page">Move the glass</button><button data-v="select" aria-pressed="false" title="Drag across the glass to select the words you see through it">Select through it</button></div>
+    <div class="thru"><span>You see</span><i id="wseen">–</i><span>Browser hits</span><i id="whit">–</i></div>
+    <div class="hint" id="thruhint">Point inside the glass. Hit-testing ignores filters: the browser finds the word under the glass, not the one you see.</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Search the paper</span><b id="fv">–</b></div>
+    <div class="frow"><input id="fq" type="search" spellcheck="false" autocomplete="off" placeholder="lens" aria-label="Find a word in the newspaper"><button class="btn" id="fgo">Find</button><button class="btn" id="fnext" title="Next match">Next</button></div>
+  </div>
+  <div class="sec path" id="path">–</div>
+  <details>
+    <summary>What is this?</summary>
+<p><b>The page is live text.</b> The newspaper is the first instalment of the Great Moon Hoax, <i>The Sun</i> (New York), 25 August 1835: 3,648 words claiming that Sir John Herschel had seen the Moon through a lens of “14,826 lbs.” with an “estimated magnifying power 42,000 times”. It is re-set here in Old Standard TT, not a facsimile. The text follows the <a href="http://hoaxes.org/text/display/the_great_moon_hoax_of_1835_text/">Museum of Hoaxes transcription</a>, with 21 slips and one dropped line corrected from the 1859 Gowans reprint (<a href="https://en.wikisource.org/wiki/The_Moon_Hoax_(1859)">Wikisource</a>). Nothing on the page is a picture of text: you can select it, copy it and search it, and the browser’s own find highlights are refracted with everything else.</p>
+    <p><b>How the glass is drawn.</b> For every pixel of the glass the page follows the ray from a viewer far above, straight down: Snell’s law in vector form at the curved surface (for the marble, again at its far side), until the ray meets the page. How far it lands from where it entered is that pixel’s displacement. The displacements go into 8-bit images (red = x, green = y) and an SVG <code>feDisplacementMap</code> moves the pixels; Chromium applies it to whatever lies under the glass through <code>backdrop-filter: url(#…)</code>, so the newspaper itself is never touched. With colour fringes on, red, green and blue each get their own map, using the material’s index at 612, 549 and 465 nm (the dominant wavelengths of the sRGB primaries), and are added back together. Fresnel’s equations decide how much light gets through and how much of the room the glass reflects; the reflection is a separate canvas laid over the glass.</p>
+    <p><b>The numbers.</b> A dome with its flat face on the page has one refracting surface, so its centre magnifies by m = nR / (nR − (n−1)t). For a hemisphere (t = R) that is exactly n: water 1.33×, crown glass 1.52×, rock crystal 1.55×, dense flint 1.79×, diamond 2.42× (green channel). Flatter is weaker: rock crystal at t/R = 0.5 gives 1.16×, at 0.35 1.08×. A ball touching the page magnifies n / (2 − n): water 2.0×, crown glass 3.2×, rock crystal 3.4×, dense flint 8.6×. At n = 2 a ball focuses exactly on its own back surface; beyond it the image turns over, and a diamond marble shows the page upside down, −5.7×. The readout “traced” is measured on the page’s own ray map (a central difference at the middle) and agrees with the formula to within 1e-10 for every shape and material. Under a hemisphere the outer quarter of the page’s radius is squeezed into the outermost 5% of the glass: the hairline ring at the rim.</p>
+    <p><b>Measured on screen.</b> In Chrome 147 on an Apple M4 Pro, screenshots of the glass match what Python predicts by applying the page’s own maps to a screenshot of the bare page: a mean difference of 0.02/255 for the rock-crystal stone, 0.01/255 for dense flint with three colour maps, and 0.00/255 for a crown-glass marble (Chrome takes the nearest pixel to each displaced pixel centre). A fine grating slipped under the middle of the stone comes out 1.542× wider on screen; Python predicts 1.545× over the same stretch, and the formula gives 1.546× at the very centre. Under the marble it is 3.175× (predicted 3.186×, formula 3.154×).</p>
+    <p><b>Lamplight.</b> A lamp 55° up, to the upper left, shines through the glass onto the page: 250,880 rays per stone are traced through the dome to the paper and counted. The light taken from the direct beam equals the light delivered plus what the surface reflects, to the last bit. Under the middle of a rock-crystal hemisphere the page gets 2.15× the light of the bare page (with the lamp straight overhead it would be n² less the reflection, about 2.28×), which is why reading stones were also prized for brightening the letters. A glass marble gathers its light into a burning spot.</p>
+    <p><b>Pointing through glass.</b> A filter moves pixels, not the page: the browser still hit-tests the text underneath, so the word you point at through the glass is not the word the browser finds (both are shown, gold and red). “Select through it” runs your pointer through the same ray trace before asking the browser for the caret, so the selection follows what you see.</p>
+    <p><b>Two witnesses.</b> Seneca, <i>Naturales quaestiones</i> I.6.5 (c. AD 62): <i>litterae quamvis minutae et obscurae per vitream pilam aqua plenam maiores clarioresque cernuntur</i>, “letters, however small and dim, are seen larger and clearer through a glass ball full of water” (<a href="https://www.thelatinlibrary.com/sen/sen.qn1.shtml">Latin text</a>; translation ours). Roger Bacon, <i>Opus Majus</i> V (1267): “If a man looks at letters or other small objects through the medium of a crystal or of glass or of some other transparent body placed above the letters, and it is the smaller part of a sphere whose convexity is toward the eye, and the eye is in the air, he will see the letters much better and they will appear larger to him … Therefore this instrument is useful to the aged and to those with weak eyes” (trans. R. B. Burke, 1928, <a href="https://archive.org/details/opusmajustransla02baco">vol. II</a>, pp. 573–4).</p>
+    <p><b>Materials.</b> Indices from the Sellmeier fits in the <a href="https://refractiveindex.info">refractiveindex.info</a> database: water at 20 °C (Daimon &amp; Masumura 2007), SCHOTT N-BK7 crown and SF11 dense flint, quartz ordinary ray for rock crystal (Ghosh 1999), diamond (Peter 1923). At 587.6 nm: 1.333, 1.517, 1.544, 1.785, 2.417; Abbe numbers 55.8, 64.2, 69.7, 25.8, 55.3. Moving the n slider keeps the material’s relative dispersion.</p>
+    <p><b>Browsers.</b> Chromium draws SVG filters in <code>backdrop-filter</code>. Firefox (148, as tested) and WebKit (26.4, Playwright’s build) accept <code>backdrop-filter: url(…)</code>, and <code>CSS.supports</code> says yes, but they draw nothing, so the page chooses by engine. Firefox gets the same displacement filter on the newspaper itself, with each glass’s map placed where the glass lies; there the lamplight is not refracted. WebKit also draws a blank page for a displacement filter on HTML, so Safari gets a copy of the page scaled by the centre magnification, without the rim. Not tried on a real Safari or a real phone.</p>
+    <p><b>What is real, what is modelled.</b> Real: the ray tracing, Fresnel’s equations, the dispersion data, and the browser refracting the live page through the maps. A separate Python implementation reproduces every map the page builds byte for byte, and the lamplight to the last bit. Modelled: the viewer is far above (parallel rays), so the picture under the glass does not change as you move it; one lamp and a plain room; no light bouncing inside the glass. The maps are 8-bit, so each displacement is rounded to steps of 1/255 of its range (0.29 px for the stone, 0.71 px for the crown-glass marble, whose rays at the far rim, which land more than 1.25 radii away, are pulled in); Chrome samples the page at the nearest pixel.</p>
+  </details>
+  <div class="foot"><button id="replay">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<svg id="defs" width="0" height="0" style="position:absolute;left:0;top:0" aria-hidden="true" focusable="false"></svg>
+<script>
+// Reading Stone optics engine. Exact ray tracing with Snell's law and Fresnel's equations,
+// for a viewer far above the page (parallel viewing rays, straight down). Units: CSS px.
+// The page is the plane z = 0; shapes rest on it. Only + - * / and sqrt are used, so a
+// Python port with the same operation order reproduces every number bit for bit.
+const RS = (() => {
+  // ---- materials: Sellmeier fits (refractiveindex.info database) -------------------------
+  // type 2: n^2 = 1 + c0 + sum c_i l^2/(l^2 - c_{i+1});  type 1: same with c_{i+1}^2
+  const MAT = {
+    water:   { name: 'Water', t: 2, c: [0, 5.684027565E-1, 5.101829712E-3, 1.726177391E-1, 1.821153936E-2, 2.086189578E-2, 2.620722293E-2, 1.130748688E-1, 1.069792721E1] },
+    crown:   { name: 'Crown glass', t: 2, c: [0, 1.03961212, 0.00600069867, 0.231792344, 0.0200179144, 1.01046945, 103.560653] },
+    crystal: { name: 'Rock crystal', t: 2, c: [0.28604141, 1.07044083, 1.00585997e-2, 1.10202242, 100] },
+    flint:   { name: 'Dense flint', t: 2, c: [0, 1.73848403, 0.0136068604, 0.311168974, 0.0615960463, 1.17490871, 121.922711] },
+    diamond: { name: 'Diamond', t: 1, c: [0, 0.3306, 0.1750, 4.3356, 0.1060] }
+  };
+  // channel wavelengths (um): dominant wavelengths of the sRGB primaries; d line for the label
+  const LAM = { R: 0.612, G: 0.549, B: 0.465, d: 0.5875618 };
+  function sellmeier(m, l) {
+    const c = m.c, l2 = l * l; let s = 1 + c[0];
+    for (let i = 1; i + 1 < c.length; i += 2) { const C = m.t === 1 ? c[i + 1] * c[i + 1] : c[i + 1]; s += c[i] * l2 / (l2 - C); }
+    return Math.sqrt(s);
+  }
+  // indices for the three channels. n (optional) overrides n_d, keeping the material's
+  // relative dispersion: n_ch = 1 + (n-1)(n_ch0-1)/(n_d0-1). disp=false: all channels n_d.
+  function channels(key, n, disp) {
+    const m = MAT[key], nd0 = sellmeier(m, LAM.d), nd = n == null ? nd0 : n;
+    const f = (l) => disp ? 1 + (nd - 1) * ((sellmeier(m, l) - 1) / (nd0 - 1)) : nd;
+    return { R: f(LAM.R), G: f(LAM.G), B: f(LAM.B), d: nd, d0: nd0 };
+  }
+  // ---- refraction & Fresnel ----------------------------------------------------------------
+  // refract unit dir I through the surface with unit normal N facing the incoming ray, eta = n1/n2
+  function refract(Ix, Iy, Iz, Nx, Ny, Nz, eta, o) {
+    const ci = -(Nx * Ix + Ny * Iy + Nz * Iz);
+    const k = 1 - eta * eta * (1 - ci * ci);
+    if (k < 0) return false;
+    const ct = Math.sqrt(k), c2 = eta * ci - ct;
+    o[0] = eta * Ix + c2 * Nx; o[1] = eta * Iy + c2 * Ny; o[2] = eta * Iz + c2 * Nz; o[3] = ci; o[4] = ct;
+    return true;
+  }
+  function fresnel(ci, ct, eta) {     // unpolarised reflectance
+    const rs = (eta * ci - ct) / (eta * ci + ct), rp = (eta * ct - ci) / (eta * ct + ci);
+    return 0.5 * (rs * rs + rp * rp);
+  }
+  // ---- shapes ----------------------------------------------------------------------------------
+  // cap: plano-convex spherical cap, flat face on the page, base radius a, height t = h*a (0<h<=1)
+  // ball: sphere of radius a touching the page at its lowest point
+  function geom(sh) {
+    if (sh.kind === 'cap') {
+      const a = sh.a, t = sh.h * a, Rs = (a * a + t * t) / (2 * t);
+      return { kind: 'cap', a, h: sh.h, t, Rs, zc: t - Rs, ext: a, top: t };
+    }
+    if (sh.kind === 'ball') return { kind: 'ball', a: sh.a, ext: sh.a, top: 2 * sh.a, zc: sh.a, Rs: sh.a };
+    throw new Error('shape ' + sh.kind);
+  }
+  // first (entering) intersection of a ray with the shape's curved surface; returns distance or -1
+  function enter(g, ox, oy, oz, dx, dy, dz) {
+    const px = ox, py = oy, pz = oz - g.zc;
+    const b = px * dx + py * dy + pz * dz, c = px * px + py * py + pz * pz - g.Rs * g.Rs;
+    const D = b * b - c; if (D <= 0) return -1;
+    const s = -b - Math.sqrt(D); if (s <= 0) return -1;
+    if (g.kind === 'cap' && oz + s * dz < 0) return -1;   // below the page: misses the cap
+    return s;
+  }
+  // Trace one ray (origin o, unit dir d, heading down) through the shape to the page.
+  // out: [hit, x, y, T, rx, ry, rz, F1]; hit 0 = misses the glass, 1 = reaches the page at (x,y)
+  // (relative to the shape centre), 2 = leaves the glass upwards / is trapped.
+  // T = transmitted fraction, r = mirror direction off the first surface, F1 = its reflectance.
+  const tmp = new Float64Array(5), tmp2 = new Float64Array(5);
+  function traceRay(g, n, ox, oy, oz, dx, dy, dz, out) {
+    out[0] = 0; out[3] = 1; out[4] = dx; out[5] = dy; out[6] = dz; out[7] = 0;
+    const s = enter(g, ox, oy, oz, dx, dy, dz);
+    if (s < 0) { const u = -oz / dz; out[1] = ox + u * dx; out[2] = oy + u * dy; return out; }
+    let px = ox + s * dx, py = oy + s * dy, pz = oz + s * dz;
+    let Nx = px / g.Rs, Ny = py / g.Rs, Nz = (pz - g.zc) / g.Rs;
+    refract(dx, dy, dz, Nx, Ny, Nz, 1 / n, tmp);
+    const F1 = fresnel(tmp[3], tmp[4], 1 / n);
+    out[7] = F1; out[3] = 1 - F1;
+    const cr = tmp[3] + tmp[3];
+    out[4] = dx + cr * Nx; out[5] = dy + cr * Ny; out[6] = dz + cr * Nz;
+    let Tx = tmp[0], Ty = tmp[1], Tz = tmp[2];
+    // inside: the far side of the sphere, or (cap) the flat base on the page
+    const qx = px, qy = py, qz = pz - g.zc;
+    const s2 = -2 * (Tx * qx + Ty * qy + Tz * qz);
+    if (g.kind === 'cap') {
+      const sb = Tz < 0 ? pz / -Tz : Infinity;
+      if (sb <= s2) { out[0] = 1; out[1] = px + sb * Tx; out[2] = py + sb * Ty; return out; }
+    }
+    px += s2 * Tx; py += s2 * Ty; pz += s2 * Tz;
+    Nx = -(px / g.Rs); Ny = -(py / g.Rs); Nz = -((pz - g.zc) / g.Rs);       // inward: faces the ray
+    if (!refract(Tx, Ty, Tz, Nx, Ny, Nz, n, tmp2)) { out[0] = 2; out[3] = 0; return out; }   // trapped (TIR)
+    out[3] = (1 - F1) * (1 - fresnel(tmp2[3], tmp2[4], n));
+    if (tmp2[2] >= 0) { out[0] = 2; return out; }
+    const u = pz / -tmp2[2];
+    out[0] = 1; out[1] = px + u * tmp2[0]; out[2] = py + u * tmp2[1];
+    return out;
+  }
+  // viewing ray straight down at (x,y)
+  const o7 = new Float64Array(8);
+  function trace(g, n, x, y, out) { return traceRay(g, n, x, y, g.top + 1, 0, 0, -1, out || o7); }
+  // paraxial magnification at the centre: lens formula
+  function m0(g, n) { return g.kind === 'cap' ? n * g.Rs / (n * g.Rs - (n - 1) * g.t) : n / (2 - n); }
+  // magnification measured on the traced map: central difference at the centre
+  function mNum(g, n, e) {
+    e = e || 1e-3; const a = new Float64Array(8), b = new Float64Array(8);
+    trace(g, n, e, 0, a); trace(g, n, -e, 0, b); return 2 * e / (a[1] - b[1]);
+  }
+  // ---- displacement maps -----------------------------------------------------------------------
+  // pixel (i,j) of an N x N map has its centre at x = (i+.5)/px - ext. dmax caps the displacement
+  // (rays that land very far, at the rim of a sphere); capped pixels are flagged.
+  function field(g, n, px, dmax) {
+    const N = Math.ceil(2 * g.ext * px), dx = new Float64Array(N * N), dy = new Float64Array(N * N);
+    const T = new Float64Array(N * N), F = new Float64Array(N * N), hit = new Uint8Array(N * N);
+    const rx = new Float32Array(N * N), ry = new Float32Array(N * N), rz = new Float32Array(N * N);
+    const o = new Float64Array(8); let maxd = 0, capped = 0;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = (i + 0.5) / px - g.ext, y = (j + 0.5) / px - g.ext, k = j * N + i;
+      trace(g, n, x, y, o);
+      hit[k] = o[0]; T[k] = o[3]; F[k] = o[7]; rx[k] = o[4]; ry[k] = o[5]; rz[k] = o[6];
+      if (o[0] !== 1) continue;
+      let ux = o[1] - x, uy = o[2] - y;
+      const L2 = ux * ux + uy * uy;
+      if (L2 > dmax * dmax) { const f = dmax / Math.sqrt(L2); ux *= f; uy *= f; hit[k] = 3; capped++; }
+      dx[k] = ux; dy[k] = uy;
+      const m = Math.abs(ux) > Math.abs(uy) ? Math.abs(ux) : Math.abs(uy); if (m > maxd) maxd = m;
+    }
+    return { N, px, dx, dy, T, F, hit, rx, ry, rz, maxd, capped };
+  }
+  // feDisplacementMap: P'(x) = P(x + sc*(C/255 - 1/2)). Encode C = floor(d*255/sc + 128), clamped.
+  function scaleFor(maxd) { return Math.ceil(2 * maxd * 1.004 + 1); }
+  function quant(f, sc) {
+    const N = f.N, q = new Uint8ClampedArray(N * N * 4);
+    for (let k = 0; k < N * N; k++) {
+      let a = Math.floor(f.dx[k] * 255 / sc + 128), b = Math.floor(f.dy[k] * 255 / sc + 128);
+      q[4 * k] = a < 0 ? 0 : a > 255 ? 255 : a; q[4 * k + 1] = b < 0 ? 0 : b > 255 ? 255 : b; q[4 * k + 2] = 0; q[4 * k + 3] = 255;
+    }
+    return q;
+  }
+  // FNV-1a over bytes (maps are small enough)
+  function fnv(bytes) { let h = 0x811c9dc5; for (let i = 0; i < bytes.length; i++) { h ^= bytes[i]; h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(16).padStart(8, '0'); }
+  // ---- the room: what the glass reflects ------------------------------------------------------------
+  // lamp/window towards the upper left of the screen (y grows downwards), 55 deg up
+  const LAMP = [-0.35565, -0.44741, 0.82055];         // unit vector towards the lamp
+  function env(rx, ry, rz) {
+    if (rz < 0) return 0.42;                          // looking down: the page itself, in shade
+    const c = rx * LAMP[0] + ry * LAMP[1] + rz * LAMP[2];
+    let w = (c - 0.94) / 0.06; w = w < 0 ? 0 : w > 1 ? 1 : w; w = w * w * (3 - 2 * w);       // window, ~20 deg
+    let l = (c - 0.9975) / 0.0025; l = l < 0 ? 0 : l > 1 ? 1 : l; l = l * l * (3 - 2 * l);   // lamp core, ~4 deg
+    return 0.30 + 0.15 * rz + 0.75 * w + 6 * l;
+  }
+  // overlay painted over the refracted page: result = (1-alpha) page + alpha col, so that the eye gets
+  // T * page + F1 * room. alpha = 1 - T, col = F1*room/(1-T). Rays that never reach the page: alpha 1.
+  function overlay(f, outside) {
+    const N = f.N, o = new Uint8ClampedArray(N * N * 4);
+    for (let k = 0; k < N * N; k++) {
+      if (f.hit[k] === 0) { o[4 * k + 3] = 0; continue; }
+      const room = env(f.rx[k], f.ry[k], f.rz[k]);
+      let al, v;
+      if (f.hit[k] === 1) { al = 1 - f.T[k]; v = al > 1e-6 ? f.F[k] * room / al : 0; }
+      else { al = 1; v = f.F[k] * room + (1 - f.F[k]) * (f.hit[k] === 3 ? 0.30 : 0.18); }
+      if (v > 1) { al = al * v > 1 ? 1 : al * v; v = 1; }
+      o[4 * k] = 255 * v * 1.0; o[4 * k + 1] = 255 * v * 0.95; o[4 * k + 2] = 255 * v * 0.86; o[4 * k + 3] = 255 * al;
+    }
+    return o;
+  }
+  // ---- the lamp's light on the page under and around the shape ------------------------------------
+  // Parallel light from LAMP. Irradiance relative to the bare page, on an M x M grid of `cell` px
+  // covering [-E, E]^2 around the shape's centre. Rays are spawned on a horizontal plane above the
+  // shape, `per` x `per` per cell; each carries the flux of one cell/per^2 of bare page.
+  function caustic(g, n, cell, E, per) {
+    const M = Math.round(2 * E / cell), grid = new Float64Array(M * M);
+    const dx = -LAMP[0], dy = -LAMP[1], dz = -LAMP[2], H = g.top + 1;
+    const sx = H * dx / -dz, sy = H * dy / -dz;       // shift of a ray from the plane z=H to the page
+    const step = cell / per, w = 1 / (per * per), o = new Float64Array(8);
+    // rays that can meet the shape start inside the shape's footprint shifted back by 0..(H)
+    const x0 = Math.min(-g.ext - sx, -g.ext) - step, x1 = Math.max(g.ext - sx, g.ext) + step;
+    const y0 = Math.min(-g.ext - sy, -g.ext) - step, y1 = Math.max(g.ext - sy, g.ext) + step;
+    let rays = 0, hits = 0, lost = 0;
+    const add = (x, y, v) => { const i = Math.floor((x + E) / cell), j = Math.floor((y + E) / cell); if (i >= 0 && j >= 0 && i < M && j < M) grid[j * M + i] += v; };
+    const nu = Math.ceil((x1 - x0) / step), nv = Math.ceil((y1 - y0) / step);
+    for (let jv = 0; jv < nv; jv++) for (let iu = 0; iu < nu; iu++) {
+      const u = x0 + (iu + 0.5) * step, v = y0 + (jv + 0.5) * step;
+      rays++;
+      traceRay(g, n, u, v, H, dx, dy, dz, o);
+      if (o[0] === 0) continue;
+      hits++;
+      add(u + sx, v + sy, -w);                         // light that no longer arrives directly
+      if (o[0] === 1) add(o[1], o[2], w * o[3]); else lost += w;
+    }
+    for (let k = 0; k < M * M; k++) grid[k] += 1;
+    return { M, cell, E, grid, rays, hits, lost };
+  }
+  return { MAT, LAM, sellmeier, channels, refract, fresnel, geom, enter, traceRay, trace, m0, mNum, field, scaleFor, quant, fnv, LAMP, env, overlay, caustic };
+})();
+
+/* ========================================================================== Reading Stone app */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=(RM||STILL)&&!FIXED;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const OG=Q.has('og')?(+Q.get('og')||1):0;if(OG)document.documentElement.classList.add('og');
+const EMBED=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<.5?2*t*t:1-2*(1-t)*(1-t);
+const NS='http://www.w3.org/2000/svg';
+function E(tag,at,par){const e=document.createElementNS(NS,tag);if(at)for(const k in at)e.setAttribute(k,at[k]);if(par)par.appendChild(e);return e}
+const f2=x=>x.toFixed(2),f3=x=>x.toFixed(3);
+const mfmt=m=>!isFinite(m)||Math.abs(m)>999?'∞':(m<0?'−':'')+Math.abs(m).toFixed(Math.abs(m)>=10?1:2)+'×';
+
+/* ---------- which path the browser gets ---------- */
+const UA=navigator.userAgent;
+const IS_CHROMIUM=/Chrome\/|Chromium\//.test(UA)||!!navigator.userAgentData;
+const IS_FIREFOX=/Firefox\//.test(UA)&&!IS_CHROMIUM;
+const MODE=['backdrop','page','copy'].includes(Q.get('mode'))?Q.get('mode'):IS_CHROMIUM?'backdrop':IS_FIREFOX?'page':'copy';
+const PXR=Math.min(2,Math.max(1,Math.round((window.devicePixelRatio||1)*2)/2));
+const HL=typeof Highlight!=='undefined'&&window.CSS&&CSS.highlights;
+
+/* ---------- settings ---------- */
+const MATS=['water','crown','crystal','flint','diamond'];
+const MAT_V={};for(const k of MATS){const c=RS.channels(k,null,true),m=RS.MAT[k];const nF=RS.sellmeier(m,0.4861327),nC=RS.sellmeier(m,0.6562725);MAT_V[k]=(c.d0-1)/(nF-nC)}
+const DEF={shape:'stone',mat:'crystal',n:null,h:1,disp:true,hand:'move'};
+const S={...DEF};
+const DROPS=[[-0.75,-0.35,0.30],[0.25,-0.70,0.19],[0.10,0.15,0.36],[-0.55,0.62,0.16],[0.78,0.38,0.25],[-0.18,-1.05,0.13],[1.0,-0.35,0.10]];
+let A_STONE=150,A_MARBLE=64,K=1;
+let lenses=[],GP={x:0,y:0},cache=new Map(),LOG=[],ready=false,simT=0,frameN=0,dirty=0,lastBuild=-1,draft=false,tweening=0;
+let probe={seen:'',hit:'',inside:false},findS={q:'',ranges:[],i:-1};
+const desk=$('#desk'),ink=$('#ink'),sheet=$('#sheet'),defs=$('#defs');
+const nEff=()=>S.n==null?RS.channels(S.mat,null,false).d0:S.n;
+const chans=()=>RS.channels(S.mat,S.n,S.disp);
+
+/* ---------- sizes ---------- */
+function sizes(){const w=ink.clientWidth;K=clamp(w/904,.55,1);A_STONE=Math.round(150*K);A_MARBLE=Math.round(72*K)}
+
+/* ---------- lenses ---------- */
+function lensSpecs(){
+  if(S.shape==='stone')return[{kind:'cap',a:A_STONE,h:S.h,dx:0,dy:0}];
+  if(S.shape==='marble')return[{kind:'ball',a:A_MARBLE,h:1,dx:0,dy:0}];
+  return DROPS.map(([u,v,r])=>({kind:'cap',a:Math.max(9,Math.round(r*A_STONE)),h:S.h,dx:Math.round(u*A_STONE),dy:Math.round(v*A_STONE)}));
+}
+function makeLenses(){
+  for(const L of lenses){L.el.remove();L.shade.remove();L.light.remove();if(L.filter)L.filter.remove()}
+  lenses=[];defs.textContent='';
+  lensSpecs().forEach((sp,i)=>{
+    const g=RS.geom(sp.kind==='cap'?{kind:'cap',a:sp.a,h:sp.h}:{kind:'ball',a:sp.a});
+    const L={i,kind:sp.kind,a:sp.a,h:sp.h,g,ext:g.ext,x:GP.x+sp.dx,y:GP.y+sp.dy,dx:sp.dx,dy:sp.dy};
+    L.shade=document.createElement('canvas');L.shade.className='shade';
+    L.light=document.createElement('canvas');L.light.className='light';
+    const host=MODE==='page'?sheet:ink;host.appendChild(L.shade);host.appendChild(L.light);
+    L.el=document.createElement('div');L.el.className='lens';L.el.tabIndex=0;L.el.setAttribute('role','img');
+    L.el.setAttribute('aria-label',sp.kind==='ball'?'A glass marble on the page':S.shape==='drops'?'A water drop on the page':'A reading stone: a glass dome lying on the page. Drag it, or use the arrow keys.');
+    L.el.style.width=L.el.style.height=2*L.ext+'px';
+    L.glint=document.createElement('canvas');L.el.appendChild(L.glint);
+    if(MODE==='copy'){const c=document.createElement('div');c.className='copyclip';L.copy=document.createElement('div');L.copy.className='copy';L.copy.setAttribute('aria-hidden','true');L.copy.inert=true;L.copy.innerHTML=ink.querySelector('.mast').outerHTML+ink.querySelector('.cols').outerHTML;c.appendChild(L.copy);L.el.insertBefore(c,L.glint)}
+    sheet.appendChild(L.el);
+    if(MODE==='backdrop'){L.fid='rs-f'+i;L.el.style.backdropFilter=L.el.style.webkitBackdropFilter=`url(#${L.fid})`}
+    bindLens(L);lenses.push(L);
+  });
+  if(MODE==='page')ink.style.filter='url(#rs-page)';
+  build(true);place();
+}
+
+/* ---------- optics: maps, glint, caustic ---------- */
+function canvasURL(N,bytes){const c=document.createElement('canvas');c.width=c.height=N;c.getContext('2d').putImageData(new ImageData(bytes,N,N),0,0);return c.toDataURL()}
+function optics(L,ch,px){
+  const key=[L.kind,L.a,L.h,ch.R,ch.G,ch.B,px].join('|');
+  if(cache.has(key))return cache.get(key);
+  const dmax=L.kind==='ball'?1.25*L.a:1e9;
+  const fs={},maps={};
+  for(const c of['R','G','B']){
+    const prev=c!=='R'&&(c==='G'?ch.G===ch.R&&fs.R:ch.B===ch.G&&fs.G);
+    fs[c]=prev||RS.field(L.g,ch[c],px,dmax);
+  }
+  for(const c of['R','G','B']){const f=fs[c];const sc=RS.scaleFor(f.maxd);const q=RS.quant(f,sc);maps[c]={sc,q,N:f.N,hash:RS.fnv(q),maxd:f.maxd,capped:f.capped}}
+  const ov=RS.overlay(fs.G);
+  // caustic: the lamp's light on the page around the glass
+  const cell=L.a>60?1.5:1,Ec=L.kind==='ball'?2.3*L.a:1.75*L.a;
+  const ca=RS.caustic(L.g,ch.G,cell,Ec,2);
+  const o={key,px,dmax,maps,ovURL:canvasURL(fs.G.N,ov),N:fs.G.N,ca,fG:fs.G};
+  for(const c of['R','G','B'])maps[c].url=c!=='R'&&maps[c].hash===maps[c==='G'?'R':'G'].hash?maps[c==='G'?'R':'G'].url:canvasURL(maps[c].N,maps[c].q);
+  o.E0=centreLight(ca);o.peak=peakLight(ca);
+  if(cache.size>40)cache.delete(cache.keys().next().value);
+  cache.set(key,o);return o;
+}
+function peakLight(ca){const M=ca.M;let p=0;for(let j=1;j<M-1;j++)for(let i=1;i<M-1;i++){let s=0;for(let v=-1;v<=1;v++)for(let u=-1;u<=1;u++)s+=ca.grid[(j+v)*M+i+u];if(s>p)p=s}return p/9}
+function centreLight(ca){const M=ca.M,c=M>>1;let s=0,n=0;for(let j=c-2;j<=c+1;j++)for(let i=c-2;i<=c+1;i++){s+=ca.grid[j*M+i];n++}return s/n}
+function paintCaustic(L,o){
+  const ca=o.ca,M=ca.M;
+  // soften: two passes of a 3x3 box (the lamp is not a point)
+  let g=ca.grid;for(let p=0;p<2;p++){const h=new Float64Array(M*M);for(let j=0;j<M;j++)for(let i=0;i<M;i++){let s=0,n=0;for(let v=-1;v<=1;v++)for(let u=-1;u<=1;u++){const x=i+u,y=j+v;if(x>=0&&y>=0&&x<M&&y<M){s+=g[y*M+x];n++}}h[j*M+i]=s/n}g=h}
+  const sh=new Uint8ClampedArray(M*M*4),li=new Uint8ClampedArray(M*M*4);
+  for(let k=0;k<M*M;k++){const e=g[k];const d=e<1?e:1;sh[4*k+3]=255*0.45*(1-d);
+    const b=e>1?Math.min(1,(e-1)*0.16):0;li[4*k]=255;li[4*k+1]=244;li[4*k+2]=222;li[4*k+3]=255*b}
+  for(const [cv,b] of[[L.shade,sh],[L.light,li]]){cv.width=cv.height=M;cv.getContext('2d').putImageData(new ImageData(b,M,M),0,0);cv.style.width=cv.style.height=2*ca.E+'px'}
+  L.E=ca.E;
+}
+function filterFor(L,o){
+  let f=document.getElementById(L.fid);if(f)f.remove();
+  const W=2*L.ext;
+  f=E('filter',{id:L.fid,x:0,y:0,width:W,height:W,filterUnits:'userSpaceOnUse',primitiveUnits:'userSpaceOnUse','color-interpolation-filters':'sRGB'},defs);
+  const one=o.maps.R.hash===o.maps.B.hash;
+  const chs=one?['G']:['R','G','B'];
+  for(const c of chs){
+    E('feImage',{href:o.maps[c].url,x:0,y:0,width:W,height:W,preserveAspectRatio:'none',result:'m'+c},f);
+    E('feDisplacementMap',{in:'SourceGraphic',in2:'m'+c,scale:o.maps[c].sc,xChannelSelector:'R',yChannelSelector:'G',result:one?'out':'d'+c},f);
+  }
+  if(!one){
+    const iso={R:'1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',G:'0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0',B:'0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0'};
+    for(const c of chs)E('feColorMatrix',{in:'d'+c,type:'matrix',values:iso[c],result:'c'+c},f);
+    E('feComposite',{in:'cR',in2:'cG',operator:'arithmetic',k2:1,k3:1,result:'cRG'},f);
+    E('feComposite',{in:'cRG',in2:'cB',operator:'arithmetic',k2:1,k3:1},f);
+  }
+  L.filter=f;
+}
+// Firefox: one filter on the page itself; every lens drops its map onto a neutral page-sized map
+let PAGEF=null;
+function pageFilter(os,ch){
+  if(PAGEF)PAGEF.remove();
+  const f=PAGEF=E('filter',{id:'rs-page',x:0,y:0,width:ink.offsetWidth,height:ink.offsetHeight,filterUnits:'userSpaceOnUse',primitiveUnits:'userSpaceOnUse','color-interpolation-filters':'sRGB'},defs);
+  const one=os[0].maps.R.hash===os[0].maps.B.hash,chs=one?['G']:['R','G','B'];
+  for(const c of chs){
+    let md=0;for(const o of os)md=Math.max(md,o.maps[c].maxd);const sc=RS.scaleFor(md);
+    E('feFlood',{'flood-color':'rgb(128,128,0)',x:0,y:0,width:ink.offsetWidth,height:ink.offsetHeight,result:'z'+c},f);
+    const merge=E('feMerge',{result:'m'+c});
+    E('feMergeNode',{in:'z'+c},merge);
+    lenses.forEach((L,i)=>{const o=os[i],fl=o.fG;const fc=c==='G'?fl:RS.field(L.g,ch[c],o.px,o.dmax);const q=RS.quant(fc,sc);
+      const W=2*L.ext;const im=E('feImage',{href:canvasURL(fc.N,q),x:L.x-L.ext,y:L.y-L.ext,width:W,height:W,preserveAspectRatio:'none',result:'i'+c+i},f);
+      (L.pimg=L.pimg||{})[c]=im;E('feMergeNode',{in:'i'+c+i},merge)});
+    f.appendChild(merge);
+    E('feDisplacementMap',{in:'SourceGraphic',in2:'m'+c,scale:sc,xChannelSelector:'R',yChannelSelector:'G',result:one?'out':'d'+c},f);
+  }
+  if(!one){const iso={R:'1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',G:'0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0',B:'0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0'};
+    for(const c of chs)E('feColorMatrix',{in:'d'+c,type:'matrix',values:iso[c],result:'c'+c},f);
+    E('feComposite',{in:'cR',in2:'cG',operator:'arithmetic',k2:1,k3:1,result:'cRG'},f);E('feComposite',{in:'cRG',in2:'cB',operator:'arithmetic',k2:1,k3:1},f)}
+}
+function build(force){
+  const ch=chans();const px=draft&&!FIXED?1:PXR;
+  const os=lenses.map(L=>optics(L,ch,px));
+  lenses.forEach((L,i)=>{const o=os[i];L.o=o;
+    if(MODE==='backdrop')filterFor(L,o);
+    L.glint.width=L.glint.height=o.N;const im=new Image();im.src=o.ovURL;L.glint.getContext('2d').clearRect(0,0,o.N,o.N);
+    if(im.complete)L.glint.getContext('2d').drawImage(im,0,0);else im.onload=()=>{if(L.o===o)L.glint.getContext('2d').drawImage(im,0,0)};
+    paintCaustic(L,o);
+    LOG.push({ev:'build',lens:i,kind:L.kind,a:L.a,h:L.h,n:[ch.R,ch.G,ch.B],px,dmax:o.dmax,sc:['R','G','B'].map(c=>o.maps[c].sc),hash:['R','G','B'].map(c=>o.maps[c].hash),E0:o.E0,peak:o.peak,draft});
+  });
+  if(MODE==='page')pageFilter(os,ch);
+  if(LOG.length>400)LOG.splice(0,LOG.length-400);
+  lastBuild=simT;dirty=0;readouts();place();
+}
+function want(){dirty=1}
+
+/* ---------- placing ---------- */
+function place(){
+  for(const L of lenses){
+    L.el.style.transform=`translate(${L.x-L.ext}px,${L.y-L.ext}px)`;
+    if(L.E!=null){const t=`translate(${L.x-L.E}px,${L.y-L.E}px)`;L.shade.style.transform=t;L.light.style.transform=t}
+    if(MODE==='page'&&L.pimg)for(const c in L.pimg){L.pimg[c].setAttribute('x',L.x-L.ext);L.pimg[c].setAttribute('y',L.y-L.ext)}
+    if(MODE==='copy'&&L.copy){const m=RS.m0(L.g,chans().G);L.copy.style.width=ink.offsetWidth+'px';L.copy.style.transform=`translate(${L.ext-L.x*m}px,${L.ext-L.y*m}px) scale(${m})`}
+  }
+}
+function setGroup(x,y){const W=ink.clientWidth,H=ink.clientHeight,m=S.shape==='drops'?20:(lenses[0]?lenses[0].ext:20)+4;GP.x=clamp(x,m,W-m);GP.y=clamp(y,m,H-m);for(const L of lenses){L.x=GP.x+L.dx;L.y=GP.y+L.dy}place()}
+
+/* ---------- readouts ---------- */
+function readouts(){
+  const L=lenses[0];if(!L)return;const ch=chans();
+  const mt=RS.mNum(L.g,ch.G),mf=RS.m0(L.g,ch.G);
+  $('#rm').textContent=mfmt(mt);$('#rm2').textContent=mt<0?'upside down':'traced, centre';
+  $('#rf').textContent=mfmt(mf);
+  $('#rf2').textContent=L.kind==='ball'?'n/(2−n)':S.h>=0.999?'= n (hemisphere)':'nR/(nR−(n−1)t)';
+  $('#re').textContent=L.o?'×'+(L.kind==='ball'?L.o.peak:L.o.E0).toFixed(L.kind==='ball'&&L.o.peak>=10?0:2):'–';$('#re2').textContent=L.kind==='ball'?'at its focus':'under the centre';
+  $('#nv').textContent='n = '+f3(nEff())+(S.disp?'':'');
+  $('#hv').textContent=S.shape==='marble'?'sphere':f2(S.h);
+  $('#shapev').textContent={stone:'reading stone',drops:'drops',marble:'marble'}[S.shape];
+  const o=L.o;if(o){const one=o.maps.R.hash===o.maps.B.hash;
+    $('#path').innerHTML=MODE==='backdrop'?`<b>Chromium:</b> backdrop-filter: url(#${L.fid}) → ${one?'1':'3'} feDisplacementMap${one?'':'s'}, ${o.N}×${o.N} map${one?'':'s'} (±${Math.round(o.maps.G.maxd)} px${L.kind==='ball'?', far rays capped':''}). The newspaper itself is untouched.`
+      :MODE==='page'?`<b>Firefox:</b> it draws no SVG filter in backdrop-filter, so filter: url(#rs-page) is on the newspaper itself, with this glass’s ${o.N}×${o.N} map placed where the glass lies.`
+      :`<b>Safari:</b> it draws neither backdrop-filter: url() nor a displacement filter on HTML, so the glass shows a copy of the page scaled ${mfmt(RS.m0(L.g,ch.G))} (the centre only, no rim).`}
+}
+
+/* ---------- text under a point ---------- */
+const WCH=/[A-Za-z0-9æœÆŒ'’\-]/;
+function caretAt(cx,cy){
+  document.body.classList.add('probing');let r=null;
+  try{if(document.caretPositionFromPoint){const p=document.caretPositionFromPoint(cx,cy);if(p)r={node:p.offsetNode,off:p.offset}}
+      else if(document.caretRangeFromPoint){const p=document.caretRangeFromPoint(cx,cy);if(p)r={node:p.startContainer,off:p.startOffset}}}catch(e){}
+  document.body.classList.remove('probing');
+  if(!r||!r.node||r.node.nodeType!==3||!ink.contains(r.node)||(r.node.parentElement&&r.node.parentElement.closest('.lens')))return null;return r}
+function wordAt(cx,cy){
+  const r=caretAt(cx,cy);if(!r)return null;const t=r.node.data;let a=r.off,b=r.off;
+  const ok=i=>i>=0&&i<t.length&&(WCH.test(t[i])||(/[,.]/.test(t[i])&&/\d/.test(t[i-1]||'')&&/\d/.test(t[i+1]||'')));
+  if(!ok(a)&&ok(a-1)){a--;b--}
+  if(!ok(a))return null;
+  while(ok(a-1))a--;while(ok(b))b++;
+  const rg=document.createRange();rg.setStart(r.node,a);rg.setEnd(r.node,b);return{text:t.slice(a,b),range:rg}}
+const inkRect=()=>ink.getBoundingClientRect();
+function lensAt(cx,cy){const R=inkRect();const x=cx-R.left,y=cy-R.top;for(let i=lenses.length-1;i>=0;i--){const L=lenses[i];const u=x-L.x,v=y-L.y;if(u*u+v*v<L.a*L.a*0.995)return{L,u,v}}return null}
+// where the eye-ray through client point (cx,cy) meets the page, in client coordinates
+function seenPoint(cx,cy){const h=lensAt(cx,cy);if(!h)return null;const o=RS.trace(h.L.g,chans().G,h.u,h.v,new Float64Array(8));if(o[0]!==1)return{L:h.L,miss:true};const R=inkRect();return{L:h.L,x:R.left+h.L.x+o[1],y:R.top+h.L.y+o[2]}}
+function setProbe(cx,cy){
+  const sp=seenPoint(cx,cy);
+  if(!sp){if(probe.inside){probe={seen:'',hit:'',inside:false};showProbe()}return}
+  const seen=sp.miss?null:wordAt(sp.x,sp.y),hit=wordAt(cx,cy);
+  probe={seen:seen?seen.text:'',hit:hit?hit.text:'',inside:true,sr:seen&&seen.range,hr:hit&&hit.range};showProbe();
+}
+function showProbe(){
+  $('#wseen').textContent=probe.seen||(probe.inside?'(the room, reflected)':'–');$('#whit').textContent=probe.hit||'–';
+  if(HL){if(probe.sr)CSS.highlights.set('seen',new Highlight(probe.sr));else CSS.highlights.delete('seen');if(probe.hr&&probe.hit!==probe.seen)CSS.highlights.set('hit',new Highlight(probe.hr));else CSS.highlights.delete('hit')}
+}
+
+/* ---------- interaction ---------- */
+let userTouched=false;
+function you(){if(tourOn||!userTouched){userTouched=true;stopTour()}}
+function bindLens(L){
+  let drag=null;
+  L.el.addEventListener('pointerdown',e=>{
+    if(e.button>0)return;you();e.preventDefault();L.el.focus({preventScroll:true});
+    if(S.hand==='select'){const sp=seenPoint(e.clientX,e.clientY);const c=sp&&!sp.miss?caretAt(sp.x,sp.y):caretAt(e.clientX,e.clientY);if(!c)return;
+      drag={sel:true,anchor:c};L.el.setPointerCapture(e.pointerId);getSelection().setBaseAndExtent(c.node,c.off,c.node,c.off);return}
+    const R=inkRect();drag={ox:e.clientX-R.left-L.x,oy:e.clientY-R.top-L.y};L.el.setPointerCapture(e.pointerId);L.el.classList.add('drag');
+  });
+  L.el.addEventListener('pointermove',e=>{
+    if(!drag){setProbe(e.clientX,e.clientY);return}
+    if(drag.sel){const sp=seenPoint(e.clientX,e.clientY);const c=sp&&!sp.miss?caretAt(sp.x,sp.y):caretAt(e.clientX,e.clientY);if(c)getSelection().setBaseAndExtent(drag.anchor.node,drag.anchor.off,c.node,c.off);setProbe(e.clientX,e.clientY);return}
+    const R=inkRect();const x=e.clientX-R.left-drag.ox,y=e.clientY-R.top-drag.oy;
+    if(S.shape==='drops'&&lenses.length>1){L.x=clamp(x,10,ink.clientWidth-10);L.y=clamp(y,10,ink.clientHeight-10);L.dx=L.x-GP.x;L.dy=L.y-GP.y;place()}else setGroup(x-L.dx,y-L.dy);
+    const D=desk.getBoundingClientRect();if(desk.scrollHeight>desk.clientHeight){if(e.clientY>D.bottom-36)desk.scrollTop+=10;else if(e.clientY<D.top+36)desk.scrollTop-=10}
+    setProbe(e.clientX,e.clientY);LOGmove();
+  });
+  const end=e=>{if(drag){drag=null;L.el.classList.remove('drag')}};
+  L.el.addEventListener('pointerup',end);L.el.addEventListener('pointercancel',end);
+  L.el.addEventListener('pointerleave',()=>{if(!drag){probe={seen:'',hit:'',inside:false};showProbe()}});
+  L.el.addEventListener('dblclick',e=>{const sp=seenPoint(e.clientX,e.clientY);if(!sp||sp.miss)return;const w=wordAt(sp.x,sp.y);if(w){const s=getSelection();s.removeAllRanges();s.addRange(w.range)}});
+  L.el.addEventListener('keydown',e=>{const st=e.shiftKey?30:6;const k={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,-st],ArrowDown:[0,st]}[e.key];if(!k)return;e.preventDefault();you();
+    if(S.shape==='drops'&&lenses.length>1){L.x+=k[0];L.y+=k[1];L.dx=L.x-GP.x;L.dy=L.y-GP.y;place()}else setGroup(GP.x+k[0],GP.y+k[1]);LOGmove()});
+}
+let lastMoveLog=0;function LOGmove(){if(simT-lastMoveLog>0.25||FIXED){lastMoveLog=simT;LOG.push({ev:'move',x:GP.x,y:GP.y})}}
+
+function syncControls(){
+  for(const b of $$('#shapes button'))b.setAttribute('aria-pressed',b.dataset.v===S.shape);
+  for(const b of $$('#mats .chip'))b.setAttribute('aria-pressed',S.n==null&&b.dataset.v===S.mat);
+  for(const b of $$('#disp button'))b.setAttribute('aria-pressed',(b.dataset.v==='1')===S.disp);
+  for(const b of $$('#hand button'))b.setAttribute('aria-pressed',b.dataset.v===S.hand);
+  $('#nr').value=nEff();$('#hr').value=S.h;$('#hr').disabled=S.shape==='marble';
+  $('#hlab').textContent=S.shape==='drops'?'Drop height t / R':'Dome height t / R';
+  $('#handv').textContent=S.hand==='select'?'drag to select':'drag to move';
+  for(const L of lenses)L.el.classList.toggle('sel',S.hand==='select');
+  readouts();
+}
+function setShape(v){if(S.shape===v)return;S.shape=v;if(v==='drops')S.h=0.8;if(v==='stone'&&S.h<0.5)S.h=1;makeLenses();syncControls();LOG.push({ev:'shape',v})}
+function setMat(k){S.mat=k;S.n=null;want();syncControls();LOG.push({ev:'mat',v:k})}
+function setN(n){S.n=+n;want();syncControls()}
+function setH(h){S.h=+h;for(const L of lenses)if(L.kind==='cap'){L.h=S.h;L.g=RS.geom({kind:'cap',a:L.a,h:L.h})}want();syncControls()}
+function setDisp(on){S.disp=on;want();syncControls();LOG.push({ev:'disp',v:on})}
+function initControls(){
+  const mats=$('#mats');
+  for(const k of MATS){const b=document.createElement('button');b.className='chip';b.dataset.v=k;b.innerHTML=`${RS.MAT[k].name}<small>${RS.channels(k,null,false).d0.toFixed(3)}</small>`;b.title=`n = ${RS.channels(k,null,false).d0.toFixed(4)} at 587.6 nm, Abbe number ${MAT_V[k].toFixed(1)}`;b.onclick=()=>{you();setMat(k)};mats.appendChild(b)}
+  for(const b of $$('#shapes button'))b.onclick=()=>{you();setShape(b.dataset.v)};
+  for(const b of $$('#disp button'))b.onclick=()=>{you();setDisp(b.dataset.v==='1')};
+  for(const b of $$('#hand button'))b.onclick=()=>{you();S.hand=b.dataset.v;syncControls()};
+  let nT=null,hT=null;
+  $('#nr').addEventListener('input',e=>{const v=e.target.value;you();draft=true;setN(v);clearTimeout(nT);nT=setTimeout(()=>{draft=false;want()},260);LOG.push({ev:'n',v:+v})});
+  $('#hr').addEventListener('input',e=>{const v=e.target.value;you();draft=true;setH(v);clearTimeout(hT);hT=setTimeout(()=>{draft=false;want()},260);LOG.push({ev:'h',v:+v})});
+  $('#fgo').onclick=()=>{you();doFind($('#fq').value,0,false)};
+  $('#fnext').onclick=()=>{you();if(findS.ranges.length)gotoFind((findS.i+1)%findS.ranges.length,false);else doFind($('#fq').value,0,false)};
+  $('#fq').addEventListener('keydown',e=>{if(e.key==='Enter'){you();if(findS.q===$('#fq').value.trim().toLowerCase()&&findS.ranges.length)gotoFind((findS.i+1)%findS.ranges.length,false);else doFind($('#fq').value,0,false)}});
+  $('#replay').onclick=()=>{startTour()};
+  desk.addEventListener('pointermove',e=>{if(!e.target.closest||!e.target.closest('.lens')){if(probe.inside){probe={seen:'',hit:'',inside:false};showProbe()}}});
+  addEventListener('resize',()=>{const oldK=K;sizes();if(Math.abs(oldK-K)>0.02){makeLenses();syncControls()}place()});
+}
+
+/* ---------- find ---------- */
+function doFind(q,i,quiet){
+  q=(q||'').trim().toLowerCase();findS={q,ranges:[],i:-1};
+  if(q){const tw=document.createTreeWalker(ink,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest('.lens')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});let n;
+    while((n=tw.nextNode())){const t=n.data.toLowerCase();let k=t.indexOf(q);while(k>=0){const r=document.createRange();r.setStart(n,k);r.setEnd(n,k+q.length);findS.ranges.push(r);k=t.indexOf(q,k+q.length)}}}
+  if(HL){if(findS.ranges.length)CSS.highlights.set('found',new Highlight(...findS.ranges));else CSS.highlights.delete('found')}
+  $('#fv').textContent=q?findS.ranges.length+(findS.ranges.length===1?' match':' matches'):'–';
+  LOG.push({ev:'find',q,count:findS.ranges.length});
+  if(findS.ranges.length)return gotoFind(i||0,quiet);return null;
+}
+function rangeCentre(r){const b=r.getBoundingClientRect(),R=inkRect();return{x:b.left+b.width/2-R.left,y:b.top+b.height/2-R.top}}
+function gotoFind(i,quiet){findS.i=i;const c=rangeCentre(findS.ranges[i]);$('#fv').textContent=`${i+1} of ${findS.ranges.length}`;
+  if(quiet)return c;setGroup(c.x,c.y);scrollToY(c.y,false);LOGmove();return c}
+function deskYFor(y){const top=sheet.offsetTop+ink.offsetTop;return clamp(top+y-desk.clientHeight*0.45,0,desk.scrollHeight-desk.clientHeight)}
+function scrollToY(y,smooth){desk.scrollTop=deskYFor(y)}
+
+/* ---------- captions ---------- */
+let capKey='',capTimer=null;
+function cap(html,key){key=key||html;if(key===capKey)return;capKey=key;const c=$('#caption');
+  if(FIXED||STATIC){c.innerHTML='<span>'+html+'</span>';return}
+  c.classList.add('fade');clearTimeout(capTimer);capTimer=setTimeout(()=>{c.innerHTML='<span>'+html+'</span>';c.classList.remove('fade')},300)}
+const N3=()=>f3(chans().G);
+const CAP={
+  open:()=>`A <b>reading stone</b>: a dome of rock crystal lying on a newspaper, <i>The Sun</i> of 25 August 1835. The page under it is ordinary text. Your browser bends it through the glass, pixel by pixel.`,
+  glide:()=>`Every pixel looks straight down into the dome. <b>Snell’s law</b> sends its ray to another spot on the page, and an SVG <span class="m">feDisplacementMap</span> draws that spot there. At the rim the ray grazes the glass, and a ring of text crowds into a hairline.`,
+  lens:()=>`<i>The Sun</i> promised a telescope lens with an <q>estimated magnifying power 42,000 times</q>. This stone manages <b>${mfmt(RS.mNum(lenses[0].g,chans().G))}</b>. A hemisphere lying on the page magnifies by exactly its refractive index, n.`,
+  dome:()=>`A flatter dome is a weaker stone: m = nR / (nR − (n−1)t). Now t/R = ${f2(S.h)}: <b>${mfmt(RS.m0(lenses[0].g,chans().G))}</b>.`,
+  select:(s,h)=>`It is still text. Drag across the glass and the words you see are selected, the highlight refracted with them. The browser hit-tests the page, not the picture: you see <b>${s||'…'}</b> there, but the page under that point says <b>${h||'…'}</b>.`,
+  fire:()=>`Glass bends blue more than red. Dense flint (n = 1.785, Abbe number ${MAT_V.flint.toFixed(1)}) gets a separate map for red, green and blue, and near the rim the letters split into colours.`,
+  drops:()=>`Water drops are reading stones too (n = 1.333). A drop t/R = ${f2(S.h)} high magnifies ${mfmt(RS.m0(lenses[0].g,chans().G))}.`,
+  marble:()=>`Seneca: <q>letters, however small and dim, are seen larger and clearer through a glass ball full of water.</q> A ball on the page magnifies n/(2−n): water <b>${mfmt(RS.mNum(lenses[0].g,chans().G))}</b>.`,
+  marble2:()=>`Glass does better: crown glass, <b>${mfmt(RS.mNum(lenses[0].g,chans().G))}</b>. The higher the index, the stronger the ball…`,
+  flip:()=>`…until n = 2, where a ball focuses exactly on its own back surface and the magnification is infinite. Past it the image turns over. A diamond marble (n = 2.417) shows the page <b>upside down, ${mfmt(Math.abs(RS.mNum(lenses[0].g,chans().G)))}</b>.`,
+  you:()=>`Your turn. Drag the glass, change what it is made of, search the paper, or select words through the glass. Ctrl-F works too: the browser’s own highlights are refracted with everything else.`,
+  still:()=>`Reduced motion: no tour. Drag the stone, change the glass, search the paper or select through it; every change is applied at once.`
+};
+
+/* ---------- tour ---------- */
+let tourIt=null,tourOn=false,tourMark='',tw=0,live=true;
+function* wait(s){if(live)yield s}
+function* anim(dur,f){if(!live){f(1);return}const t0=simT;f(0);while(simT-t0<dur){yield 0;f(ease(clamp((simT-t0)/dur,0,1)))}f(1)}
+function* glideTo(x,y,dur,scroll){const x0=GP.x,y0=GP.y,s0=desk.scrollTop,s1=scroll?deskYFor(y):s0;yield* anim(dur,t=>{setGroup(lerp(x0,x,t),lerp(y0,y,t));if(scroll)desk.scrollTop=lerp(s0,s1,t)})}
+function* tweenN(n1,dur){const n0=nEff();draft=true;tweening++;yield* anim(dur,t=>{S.n=lerp(n0,n1,t);want();syncControls()});tweening--;draft=false;want()}
+function* tweenH(h1,dur){const h0=S.h;draft=true;tweening++;yield* anim(dur,t=>setH(lerp(h0,h1,t)));tweening--;draft=false;want()}
+function anchorOf(re){const tw=document.createTreeWalker(ink,NodeFilter.SHOW_TEXT);let n;while((n=tw.nextNode())){if(n.parentElement.closest('.lens'))continue;const k=n.data.search(re);if(k>=0){const r=document.createRange();r.setStart(n,k);r.setEnd(n,k+n.data.slice(k).match(re)[0].length);return rangeCentre(r)}}return{x:200,y:200}}
+function* tour(start){
+  tourOn=true;live=!start;Object.assign(S,DEF);S.hand='move';getSelection().removeAllRanges();doFind('',0,true);$('#fq').value='';makeLenses();syncControls();
+  const mark=k=>{tourMark=k;if(!live&&k===start){live=true;flush()}};
+  const head=anchorOf(/Great Astronomical/i),p1=anchorOf(/hereditary regalia/),lensP=anchorOf(/magnifying power 42,000/);
+  setGroup(head.x+18,head.y+70);desk.scrollTop=0;flush();
+  mark('open');cap(CAP.open());yield* wait(1.2);
+  yield* glideTo(head.x+30,p1.y+40,3.6,false);
+  mark('glide');cap(CAP.glide());
+  const c2=anchorOf(/Bound by the irrevocable/);yield* glideTo(c2.x+150,c2.y+20,5.2,false);yield* wait(1.0);
+  mark('lens');doFind('42,000 times',0,true);
+  yield* glideTo(lensP.x+20,lensP.y,3.4,true);cap(CAP.lens());yield* wait(5.0);
+  mark('dome');cap(CAP.dome());yield* tweenH(0.35,2.6);cap(CAP.dome());yield* wait(1.6);yield* tweenH(1,1.6);cap(CAP.dome());yield* wait(1.2);
+  mark('select');{
+    const L=lenses[0],R=inkRect(),cx=R.left+L.x+0.62*L.a,cy=R.top+L.y+0.06*L.a;
+    const sp=seenPoint(cx,cy),w=sp&&!sp.miss?wordAt(sp.x,sp.y):null,h=wordAt(cx,cy);
+    if(w){const s=getSelection();s.removeAllRanges();s.addRange(w.range)}
+    probe={seen:w?w.text:'',hit:h?h.text:'',inside:true,sr:null,hr:h&&h.range};showProbe();
+    cap(CAP.select(w&&w.text,h&&h.text));yield* wait(6.2);getSelection().removeAllRanges();probe={seen:'',hit:'',inside:false};showProbe();
+  }
+  mark('fire');doFind('',0,true);S.mat='flint';S.n=null;want();syncControls();cap(CAP.fire());
+  yield* glideTo(lensP.x-60,lensP.y-40,3.0,true);yield* wait(1.8);
+  mark('drops');S.mat='water';S.n=null;setShape('drops');want();syncControls();cap(CAP.drops());
+  yield* glideTo(GP.x+40,GP.y-70,3.4,true);yield* wait(1.4);
+  mark('marble');S.mat='water';S.n=null;setShape('marble');want();syncControls();const mp=anchorOf(/ponderous lens/);setGroup(mp.x-40,mp.y);desk.scrollTop=deskYFor(mp.y);cap(CAP.marble());yield* wait(4.6);
+  S.mat='crown';S.n=null;want();syncControls();cap(CAP.marble2());yield* wait(3.2);
+  mark('flip');yield* tweenN(2.417,4.0);S.mat='diamond';S.n=null;want();syncControls();cap(CAP.flip());yield* wait(5.0);
+  mark('end');S.mat='crystal';S.n=null;S.h=1;setShape('stone');want();syncControls();setGroup(lensP.x+20,lensP.y);desk.scrollTop=deskYFor(lensP.y);cap(CAP.you());
+  tourOn=false;tourMark='done';
+}
+function flush(){if(dirty)build()}
+function startTour(start){userTouched=false;tourIt=tour(start||null);tw=0;runTour(0)}
+function stopTour(){if(tourOn){tourIt=null;tourOn=false;tourMark='stopped';tweening=0;draft=false;want();cap(CAP.you())}else if(!capKey.startsWith('Your turn'))cap(CAP.you())}
+function runTour(dt){if(!tourIt)return;if(tw>0){tw-=dt;if(tw>0)return}
+  for(let g=0;g<200;g++){const r=tourIt.next();if(r.done){tourIt=null;break}if(r.value>0){tw+=r.value;break}if(r.value===0)break}}
+
+/* ---------- frame loop ---------- */
+function frame(dt){
+  simT+=dt;frameN++;runTour(dt);
+  if(dirty&&!FIXED&&(!tweening||simT-lastBuild>=0.09))build();
+  window.__frame=frameN;window.__state={t:simT,frame:frameN,mark:tourMark,shape:S.shape,mat:S.mat,n:nEff()};
+}
+let lastT=0;
+function loop(now){requestAnimationFrame(loop);const dt=lastT?Math.min(0.05,(now-lastT)/1000):1/60;lastT=now;frame(dt)}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(1/60);if(dirty)build()};
+
+/* ---------- state for tests ---------- */
+window.stone={
+  state:()=>{if(!ready)return{ready:false};const L=lenses[0],ch=chans();
+    return{ready:true,mode:MODE,pxr:PXR,S:{...S},n:nEff(),ch,lenses:lenses.map(L=>({kind:L.kind,a:L.a,h:L.h,x:L.x,y:L.y,ext:L.ext,E:L.E,N:L.o&&L.o.N,px:L.o&&L.o.px,sc:L.o&&['R','G','B'].map(c=>L.o.maps[c].sc),hash:L.o&&['R','G','B'].map(c=>L.o.maps[c].hash),E0:L.o&&L.o.E0})),
+      m:{traced:RS.mNum(L.g,ch.G),formula:RS.m0(L.g,ch.G)},GP:{...GP},scroll:desk.scrollTop,probe:{seen:probe.seen,hit:probe.hit,inside:probe.inside},
+      sel:getSelection().toString(),find:{q:findS.q,count:findS.ranges.length,i:findS.i},tour:{on:tourOn,mark:tourMark},caption:$('#caption').textContent,
+      t:simT,frame:frameN,draft,dirty,log:LOG.slice(),words:ink.querySelector('.cols').textContent.trim().split(/\s+/).length,highlights:!!HL}},
+  map:(i,c)=>{const L=lenses[i||0];const m=L.o.maps[c||'G'];return{url:m.url,sc:m.sc,N:m.N,px:L.o.px,ext:L.ext,x:L.x,y:L.y}},
+  rect:()=>{const R=inkRect();return{left:R.left,top:R.top,width:R.width,height:R.height}},
+  seen:(cx,cy)=>{const sp=seenPoint(cx,cy);if(!sp||sp.miss)return null;const w=wordAt(sp.x,sp.y),h=wordAt(cx,cy);return{seen:w&&w.text,hit:h&&h.text,x:sp.x,y:sp.y}},
+  set:(o)=>{you();if(o.shape)setShape(o.shape);if(o.mat)setMat(o.mat);if(o.n!=null)setN(o.n);if(o.h!=null)setH(o.h);if(o.disp!=null)setDisp(!!o.disp);if(o.x!=null)setGroup(o.x,o.y);if(o.scroll!=null)desk.scrollTop=o.scroll;flush();return true},
+  find:(q)=>{you();doFind(q,0,false);return findS.ranges.length}
+};
+
+/* ---------- start ---------- */
+function start(){
+  sizes();initControls();
+  const head=anchorOf(/Great Astronomical/i);GP={x:head.x+18,y:head.y+70};
+  makeLenses();syncControls();ready=true;
+  if(STATIC||OG){cap(STATIC?CAP.still():CAP.open());}
+  else{const m=Q.get('mark');startTour(m&&['open','glide','lens','dome','select','fire','drops','marble','flip','end'].includes(m)?m:null)}
+  if(OG){const h=anchorOf(/Great Astronomical/i);setGroup(Math.max(h.x+40,A_STONE+18),h.y+52);flush()}
+  if(!FIXED)requestAnimationFrame(loop);else frame(0);
+}
+let started=false;const go=()=>{if(started)return;started=true;start()};
+const fontsReady=document.fonts&&document.fonts.ready?Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]):Promise.resolve();
+fontsReady.then(go);
+if(document.fonts)document.fonts.addEventListener('loadingdone',()=>{if(!started)return;place();readouts()});
+
+</script>
+</body>
+</html>

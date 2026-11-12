@@ -1,0 +1,11 @@
+{
+ "slug": "reading-stone",
+ "title": "Reading Stone",
+ "no": "045",
+ "date": "2026-11-13",
+ "kind": "Refraction · SVG displacement",
+ "blurb": "A medieval reading stone on the 1835 Moon Hoax. The newspaper is live text: the browser bends it through the glass with SVG displacement maps traced from Snell’s law, so you can still select and search it. A hemisphere magnifies by its refractive index; a diamond marble turns the words upside down.",
+ "color": "#1400ff",
+ "exhibit": "readingStone",
+ "lane": "web"
+}
