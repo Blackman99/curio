@@ -1,0 +1,11 @@
+{
+ "slug": "enigma-rotors",
+ "title": "Enigma I",
+ "no": "044",
+ "date": "2026-11-12",
+ "kind": "Rotor cipher · three.js",
+ "blurb": "A working Enigma I: type, and follow the current through the plugboard, three glass rotors and the reflector to a lamp. The levers double-step the middle rotor as Hamer described, and a real message of 7 July 1941 decrypts on that day’s key to WO BLEIBT ZAHLENMELDUNG FRAGE.",
+ "color": "#281004",
+ "exhibit": "enigma",
+ "lane": "3d"
+}
