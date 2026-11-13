@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cornell Box — the measured box from Cornell's lab, path traced in your browser</title>
+<meta name="description" content="The Cornell box, built from the geometry and paint spectra Cornell measured on the real box, path traced live on your GPU. Watch the noise fall as one over the square root of the number of paths, cut the light to one bounce, move the blocks, repaint the walls with measured colour-chart spectra, and run the white furnace test.">
+<meta property="og:title" content="Cornell Box">
+<meta property="og:description" content="Cornell's measured box, path traced live: spectral light, colour bleeding, noise falling as 1/√N, and a white furnace test the blocks vanish in.">
+<meta property="og:image" content="https://blackman99.github.io/curio/cornell-box/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cornell Box">
+<meta name="twitter:description" content="The box Cornell measured in 1984, path traced live on your GPU from its published geometry and paint spectra. Move the blocks, repaint the walls, cut the light to one bounce.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/cornell-box/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0c0b0a;--paper:#efe7d6;--paper2:#aca591;--brass:#e0b45c;--hot:#ffe2a0;--line:rgba(239,226,200,.14);--panel:rgba(14,13,12,.94)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at 38% 45%,#1d1a16 0,#100f0d 55%,#0a0908 100%)}
+#view{position:absolute;left:0;top:0;width:400px;height:400px}
+#gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+#gl{background:#000;box-shadow:0 0 0 1px rgba(255,240,210,.09),0 30px 90px rgba(0,0,0,.65)}
+#ov{touch-action:none;cursor:crosshair}
+#ov.grab{cursor:grab}#ov.grabbing{cursor:grabbing}
+.tick{position:absolute;width:14px;height:14px;border:1px solid rgba(224,180,92,.55);pointer-events:none}
+.tick.a{left:-9px;top:-9px;border-right:0;border-bottom:0}.tick.b{right:-9px;top:-9px;border-left:0;border-bottom:0}
+.tick.c{left:-9px;bottom:-9px;border-right:0;border-top:0}.tick.d{right:-9px;bottom:-9px;border-left:0;border-top:0}
+#plate{position:absolute;left:0;right:0;top:calc(100% + 9px);font:400 10.5px/1.3 'DM Mono',monospace;letter-spacing:.05em;color:rgba(239,231,214,.5);display:flex;justify-content:space-between;gap:10px;pointer-events:none;white-space:nowrap}
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font:400 17px/1.4 'Newsreader',serif;color:var(--paper2)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,8,.55)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(10,9,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--brass);color:#1d1406;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);text-shadow:0 1px 4px #000}
+h1{margin:9px 0 0;font:400 clamp(32px,3.2vw,48px)/1 'DM Serif Display',Georgia,serif;letter-spacing:.005em;color:#fbf3e2;text-shadow:0 2px 0 #3a2a12,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:900px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,8,.74)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#fbf5e8;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--brass)}
+#caption sub,details sub{font-size:.7em}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+.read{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:9px 6px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 19px/1 'DM Mono',monospace;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{font-size:24px;color:var(--hot)}
+.rd small{font:400 10.5px/1.15 'DM Mono',monospace;color:var(--paper2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chart{display:block;width:100%;height:118px;border-radius:9px;background:#0a0a09;border:1px solid rgba(255,255,255,.07)}
+.btn{border:1px solid var(--line);background:rgba(224,180,92,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(224,180,92,.18);border-color:var(--brass);outline:none}
+.btn.go{background:var(--brass);border-color:var(--brass);color:#1d1406;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd789}
+.btn[aria-pressed=true]{background:rgba(224,180,92,.28);border-color:var(--brass)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(224,180,92,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--brass);color:#1d1406;font-weight:500}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.hint{font:400 10.5px/1.4 'DM Mono',monospace;color:var(--paper2);margin-top:6px}
+#sw{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:7px}
+.sw{position:relative;aspect-ratio:1/1;border-radius:5px;border:1px solid rgba(255,255,255,.12);padding:0}
+.sw:hover,.sw:focus-visible{outline:none;border-color:var(--hot);transform:translateY(-1px)}
+.sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink),0 0 0 3px var(--hot)}
+.sw.c::after{content:'';position:absolute;right:2px;bottom:2px;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.75);box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+#spec{display:block;width:100%;height:46px;margin-top:7px;border-radius:7px;background:#0a0a09;border:1px solid rgba(255,255,255,.07)}
+#insp{font:400 11px/1.45 'DM Mono',monospace;color:var(--paper2);border:1px dashed var(--line);border-radius:9px;padding:8px 9px;min-height:4.4em}
+#insp b{color:var(--paper);font-weight:500}
+#insp .ok{color:#9fdc9a}#insp .bad{color:#ff9a7a}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(239,231,214,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(28px,2.8vw,40px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:17px}.rd.big b{font-size:21px}#chart{height:96px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:34px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:6.9em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,420px);margin-top:4px}
+  #ov{touch-action:pan-y}
+  #plate{font-size:9px}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(15,14,13,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story,.og #plate{display:none}
+#ogtext{display:none}
+.og #ogtext{display:block;position:fixed;right:40px;top:112px;width:31vw;z-index:2;font:400 27px/1.32 'Newsreader',serif;color:#f6ecd8;text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.og #ogtext p{margin:0 0 18px}.og #ogtext b{color:var(--hot);font-weight:600}
+.og #ogtext .chips{font:500 17px/1.6 'DM Mono',monospace;color:var(--brass);letter-spacing:.02em}
+.og #title{background:none}
+.lite #title,.lite #story{background:rgba(10,9,8,.86)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 046 · Path tracing</span>
+  <h1>Cornell Box</h1>
+</header>
+<div id="ogtext" aria-hidden="true"><p>The box Cornell built and <b>measured</b>, path traced live in your browser from its published geometry and paint spectra.</p><p>Nothing is painted on: the pink on the tall block and the light on the ceiling are <b>light bouncing</b>, path by path.</p><p class="chips" id="ogchips"></p></div>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <div id="view">
+    <canvas id="gl" aria-label="The Cornell box: a square room open towards you, with a red wall on the left, a green wall on the right, white floor, ceiling and back wall, a square lamp in the ceiling, and two white blocks on the floor, a tall one at the back left and a short one at the front right. The picture is computed by tracing random paths of light; it starts grainy and clears as more paths are averaged. Light bouncing off the red wall tints the tall block pink; the green wall tints the short block's right side."></canvas>
+    <canvas id="ov" aria-hidden="true"></canvas>
+    <i class="tick a"></i><i class="tick b"></i><i class="tick c"></i><i class="tick d"></i>
+    <div id="plate"><span>camera 278, 273, −800 mm · f 35 mm · film 25 mm</span><span id="platev">–</span></div>
+    <div id="msg"></div>
+  </div>
+</div>
+<aside id="panel" aria-label="Readings and controls">
+  <div class="sec">
+    <div class="lab"><span>Exposure</span><b id="modev">full light</b></div>
+    <div class="read">
+      <div class="rd big"><span>Paths / pixel</span><b id="rn">–</b><small id="rps">–</small></div>
+      <div class="rd"><span>Noise left</span><b id="rerr">–</b><small id="rerrs">rms, of mean</small></div>
+      <div class="rd"><span>Paths so far</span><b id="rtot">–</b><small id="rres">–</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Noise vs paths</span><b id="slopev">slope –</b></div>
+    <canvas id="chart"></canvas>
+    <div class="hint">Measured from two independent halves of the paths. The dashed line falls as 1/√N.</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Bounces</span><b id="bncv">∞</b></div>
+    <div class="seg" id="bnc"><button data-v="1" aria-pressed="false" title="Direct light only">1</button><button data-v="2" aria-pressed="false">2</button><button data-v="3" aria-pressed="false">3</button><button data-v="4" aria-pressed="false">4</button><button data-v="8" aria-pressed="false">8</button><button data-v="0" aria-pressed="true" title="Until Russian roulette ends the path">∞</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Paint</span><b id="paintv">Cornell red</b></div>
+    <div class="seg" id="tgt"><button data-v="4" aria-pressed="true">left wall</button><button data-v="3" aria-pressed="false">right wall</button><button data-v="6" aria-pressed="false">tall block</button><button data-v="5" aria-pressed="false">short block</button></div>
+    <div id="sw"></div>
+    <canvas id="spec" aria-hidden="true"></canvas>
+    <div class="hint" id="paintsrc">Each paint is a measured reflectance spectrum: Cornell's three (dotted) and the 24 patches of a ColorChecker chart (Ohta 1997).</div>
+  </div>
+  <div class="sec row3"><button class="btn go" id="playb">Pause</button><button class="btn" id="furnb" aria-pressed="false" title="Every surface glows equally and reflects 80%">White furnace</button><button class="btn" id="wbb" aria-pressed="true" title="Balance the camera to the lamp's colour">White bal. on</button></div>
+  <div class="sec row3"><button class="btn" id="resetb" title="Cornell's layout and paints">Original box</button><button class="btn" id="turnl" title="Turn the last block you touched">Turn −15°</button><button class="btn" id="turnr" title="Turn the last block you touched">Turn +15°</button></div>
+  <div class="sec">
+    <div class="lab"><span>Check a pixel</span><b id="inspv">click the picture</b></div>
+    <div id="insp">Drag a block to move it. Click anywhere else in the picture to see a few of the paths through that pixel, and to re-estimate it on the CPU in double precision.</div>
+  </div>
+  <details id="what"><summary>What is this?</summary><p><b>The box.</b> Cornell's Program of Computer Graphics first rendered a box like this for Goral, Torrance, Greenberg and Battaile's 1984 radiosity paper, <i>Modeling the interaction of light between diffuse surfaces</i>: an empty box, with a blue right wall. Occluding blocks came with Cohen and Greenberg's hemi-cube in 1985. Cornell later built the box and published <a href="https://web.archive.org/web/2019/http://www.graphics.cornell.edu/online/box/data.html">its measurements</a>: every corner in millimetres ("measured from the physical Cornell Box", so the walls are not quite square), the reflectance of the white, red and green paint every 4 nm from 400 to 700 nm, the lamp's emission spectrum at four wavelengths, and the camera (a 35 mm lens and 25 mm film at 278, 273, −800 mm). This page uses exactly those numbers, and nothing else, for the box.</p>
+<p><b>How the picture is made.</b> Monte Carlo path tracing, which estimates Kajiya's 1986 rendering equation. Every frame, each pixel sends one or more new paths into the box from the camera, on your GPU (a WebGL2 fragment shader, 32-bit floats). At every surface the path picks a random point on the lamp and adds its light if nothing is in the way (next-event estimation), then leaves in a random direction weighted by the cosine to the surface, as a matte surface scatters light. A path ends at the bounce limit, or, with “∞”, by Russian roulette from the fifth bounce on, which keeps the average exact. The picture is the average of all paths so far, so it starts as grain and settles.</p>
+<p><b>Colour.</b> Each path carries four wavelengths spread across 400–700 nm (hero-wavelength sampling, Wilkie et al. 2014), so every bounce multiplies measured spectra, not RGB triples. The result is turned into CIE 1931 XYZ, white-balanced to the lamp like a camera (Bradford), and shown in sRGB through a filmic tone curve (Narkowicz's ACES fit). “White bal. off” shows the lamp's real, warmer colour, as in Cornell's own picture. The lamp spectrum between Cornell's four values is a straight line, and wavelengths outside 400–700 nm, where Cornell gives no data, are left out. The other paints are the 24 measured patches of a ColorChecker chart (Ohta 1997).</p>
+<p><b>Noise.</b> The paths are split into two independent halves; half their difference is an honest estimate of the error left in the full average, with no reference picture needed. On the machine this page was built on, the error fell from 16 to 16,384 paths per pixel with a fitted slope of <b>−0.500</b> on log–log axes, against −0.5 for 1/√N; at 16,384 paths it was <b>0.71%</b>. Halving the noise always costs four times the paths.</p>
+<p><b>The white furnace.</b> Make every surface glow with the same brightness E and reflect 80% of what lands on it, and close the box with a front wall that only bounced light can see. Then every path, whatever it hits, collects exactly E(1 + 0.8 + 0.8² + …), so after k reflections every pixel must read E(1 − 0.8<sup>k+1</sup>)/(1 − 0.8), the blocks disappear, and there is no noise at all. The GPU gives that for all <b>380,104</b> pixels inside the box (in a 640 × 640 picture) at 1, 2, 4, 8 and 64 bounces (the furnace's “∞”), the worst one off by <b>3×10<sup>−5</sup></b> (single-precision rounding over 1,024 paths). Building this page, the test caught two bugs: paths slipping out through the seams between walls when rounding put a hit point a ten-thousandth of a millimetre outside the box, and a tour layout that pushed the short block through the red wall.</p>
+<p><b>Cross-checks.</b> A separate path tracer written in Python with 64-bit floats, sharing only the data, was compared with the GPU over 44 patches of 8 × 8 pixels in four set-ups (all bounces, one, three, and the tour's moved block with a blue wall), in X, Y, Z and the mean over wavelengths: 176 comparisons, the largest difference <b>1.78</b> standard errors, root-mean-square 0.92, as chance predicts. With one bounce the answer is exact: Lambert's 1760 formula for the light a polygon throws on a point gives the lit red, green and back walls to within 0.08% of the GPU, and the ceiling is exactly 0. Click any pixel to rerun this check on the CPU in double precision.</p>
+<p><b>How much is bounced light?</b> Of the light the walls and blocks send to the camera, about <b>54%</b> arrives after one bounce, 78% within two and 89% within three; the rest needs more.</p>
+<p><b>What is simulated.</b> The surfaces are perfectly matte (Lambertian), as Cornell's data assumes, the lamp is a flat diffuse emitter of reflectance 0.78, and the camera is an ideal pinhole with no lens fall-off. Cornell also photographed the real box through seven narrow-band filters with a cooled CCD; those photographs are not shown here.</p></details>
+  <div class="foot"><button id="tourb">Replay the tour</button> · computed in your browser · <a href="../">back to Curio</a></div>
+</aside>
+<script type="module">
+const STATS={"share1": 0.543, "share2": 0.776};
+/* ================= Cornell Box engine: data, scene, CPU tracer (float64), colour, analytic checks ================= */
+const CB=(()=>{
+const DATA={"source":"Cornell PCG box data (graphics.cornell.edu/online/box/data.html, last updated 2005-02-02); CIE 1931 2deg CMF 1 nm (CVRL); ColorChecker spectra Ohta 1997 (via colour-science)","cornell":{"lam0":400,"dlam":4,"white":[0.343,0.445,0.551,0.624,0.665,0.687,0.708,0.723,0.715,0.71,0.745,0.758,0.739,0.767,0.777,0.765,0.751,0.745,0.748,0.729,0.745,0.757,0.753,0.75,0.746,0.747,0.735,0.732,0.739,0.734,0.725,0.721,0.733,0.725,0.732,0.743,0.744,0.748,0.728,0.716,0.733,0.726,0.713,0.74,0.754,0.764,0.752,0.736,0.734,0.741,0.74,0.732,0.745,0.755,0.751,0.744,0.731,0.733,0.744,0.731,0.712,0.708,0.729,0.73,0.727,0.707,0.703,0.729,0.75,0.76,0.751,0.739,0.724,0.73,0.74,0.737],"green":[0.092,0.096,0.098,0.097,0.098,0.095,0.095,0.097,0.095,0.094,0.097,0.098,0.096,0.101,0.103,0.104,0.107,0.109,0.112,0.115,0.125,0.14,0.16,0.187,0.229,0.285,0.343,0.39,0.435,0.464,0.472,0.476,0.481,0.462,0.447,0.441,0.426,0.406,0.373,0.347,0.337,0.314,0.285,0.277,0.266,0.25,0.23,0.207,0.186,0.171,0.16,0.148,0.141,0.136,0.13,0.126,0.123,0.121,0.122,0.119,0.114,0.115,0.117,0.117,0.118,0.12,0.122,0.128,0.132,0.139,0.144,0.146,0.15,0.152,0.157,0.159],"red":[0.04,0.046,0.048,0.053,0.049,0.05,0.053,0.055,0.057,0.056,0.059,0.057,0.061,0.061,0.06,0.062,0.062,0.062,0.061,0.062,0.06,0.059,0.057,0.058,0.058,0.058,0.056,0.055,0.056,0.059,0.057,0.055,0.059,0.059,0.058,0.059,0.061,0.061,0.063,0.063,0.067,0.068,0.072,0.08,0.09,0.099,0.124,0.154,0.192,0.255,0.287,0.349,0.402,0.443,0.487,0.513,0.558,0.584,0.62,0.606,0.609,0.651,0.612,0.61,0.65,0.638,0.627,0.62,0.63,0.628,0.642,0.639,0.657,0.639,0.635,0.642],"lightRefl":0.78,"light":[[400,0.0],[500,8.0],[600,15.6],[700,18.4]]},"cc":{"lam0":400,"dlam":5,"patches":[{"name":"dark skin","r":[0.065,0.068,0.068,0.067,0.064,0.062,0.059,0.057,0.055,0.054,0.053,0.053,0.052,0.052,0.052,0.053,0.054,0.055,0.057,0.059,0.061,0.062,0.065,0.067,0.07,0.072,0.074,0.075,0.076,0.078,0.079,0.082,0.087,0.092,0.1,0.107,0.115,0.122,0.129,0.134,0.138,0.142,0.146,0.15,0.154,0.158,0.163,0.167,0.173,0.18,0.188,0.196,0.204,0.213,0.222,0.231,0.242,0.251,0.261,0.271,0.282]},{"name":"light skin","r":[0.182,0.192,0.197,0.199,0.201,0.203,0.205,0.208,0.212,0.217,0.224,0.231,0.24,0.251,0.262,0.273,0.282,0.289,0.293,0.296,0.301,0.31,0.321,0.326,0.322,0.31,0.298,0.291,0.292,0.297,0.3,0.298,0.295,0.295,0.305,0.326,0.358,0.397,0.435,0.468,0.494,0.514,0.53,0.541,0.55,0.557,0.564,0.569,0.574,0.582,0.59,0.597,0.605,0.614,0.624,0.637,0.652,0.668,0.682,0.697,0.713]},{"name":"blue sky","r":[0.266,0.3,0.32,0.33,0.336,0.337,0.337,0.337,0.335,0.334,0.331,0.327,0.322,0.316,0.31,0.302,0.293,0.285,0.276,0.268,0.26,0.251,0.243,0.234,0.225,0.215,0.208,0.203,0.198,0.195,0.191,0.188,0.183,0.177,0.172,0.167,0.163,0.16,0.157,0.153,0.15,0.147,0.144,0.141,0.137,0.133,0.13,0.126,0.123,0.12,0.118,0.115,0.112,0.11,0.108,0.106,0.105,0.104,0.104,0.103,0.103]},{"name":"foliage","r":[0.05,0.049,0.049,0.05,0.05,0.051,0.052,0.053,0.054,0.056,0.058,0.06,0.061,0.063,0.064,0.065,0.067,0.068,0.07,0.072,0.078,0.088,0.106,0.13,0.155,0.173,0.181,0.182,0.177,0.168,0.157,0.147,0.137,0.129,0.126,0.125,0.122,0.119,0.115,0.109,0.104,0.1,0.098,0.097,0.098,0.1,0.1,0.099,0.097,0.096,0.095,0.095,0.095,0.097,0.101,0.11,0.125,0.147,0.174,0.21,0.247]},{"name":"blue flower","r":[0.328,0.385,0.418,0.437,0.446,0.448,0.448,0.447,0.444,0.44,0.434,0.428,0.421,0.413,0.405,0.394,0.381,0.372,0.362,0.352,0.342,0.33,0.314,0.294,0.271,0.249,0.231,0.219,0.211,0.209,0.209,0.207,0.201,0.196,0.196,0.199,0.206,0.215,0.223,0.229,0.235,0.241,0.245,0.245,0.243,0.243,0.247,0.254,0.269,0.291,0.318,0.351,0.384,0.417,0.446,0.47,0.49,0.504,0.511,0.517,0.52]},{"name":"bluish green","r":[0.252,0.284,0.303,0.314,0.322,0.329,0.336,0.344,0.353,0.363,0.375,0.39,0.408,0.433,0.46,0.492,0.523,0.548,0.566,0.577,0.582,0.583,0.58,0.576,0.569,0.56,0.549,0.535,0.519,0.501,0.48,0.458,0.436,0.414,0.392,0.369,0.346,0.324,0.302,0.279,0.26,0.245,0.234,0.226,0.221,0.217,0.215,0.212,0.21,0.209,0.208,0.209,0.211,0.215,0.22,0.227,0.233,0.239,0.244,0.249,0.252]},{"name":"orange","r":[0.054,0.054,0.053,0.053,0.052,0.052,0.052,0.052,0.052,0.052,0.052,0.052,0.052,0.052,0.053,0.054,0.055,0.056,0.057,0.059,0.061,0.064,0.068,0.076,0.086,0.101,0.12,0.143,0.17,0.198,0.228,0.26,0.297,0.338,0.38,0.418,0.452,0.481,0.503,0.52,0.532,0.543,0.552,0.56,0.566,0.572,0.578,0.583,0.587,0.593,0.599,0.602,0.604,0.606,0.608,0.611,0.615,0.619,0.622,0.625,0.628]},{"name":"purplish blue","r":[0.231,0.268,0.293,0.311,0.324,0.335,0.348,0.361,0.373,0.383,0.387,0.383,0.374,0.361,0.345,0.325,0.301,0.275,0.247,0.223,0.202,0.184,0.167,0.152,0.137,0.125,0.116,0.11,0.106,0.103,0.099,0.094,0.09,0.086,0.083,0.083,0.083,0.085,0.086,0.087,0.087,0.086,0.085,0.084,0.084,0.085,0.088,0.092,0.098,0.105,0.111,0.118,0.123,0.126,0.126,0.124,0.12,0.117,0.115,0.115,0.116]},{"name":"moderate red","r":[0.144,0.145,0.144,0.141,0.138,0.134,0.132,0.132,0.131,0.131,0.129,0.128,0.126,0.126,0.125,0.123,0.119,0.114,0.109,0.105,0.103,0.102,0.1,0.097,0.094,0.091,0.089,0.09,0.092,0.096,0.102,0.106,0.108,0.109,0.112,0.126,0.157,0.208,0.274,0.346,0.415,0.473,0.517,0.547,0.567,0.582,0.591,0.597,0.601,0.604,0.607,0.608,0.607,0.606,0.605,0.605,0.605,0.604,0.605,0.606,0.606]},{"name":"purple","r":[0.177,0.191,0.199,0.203,0.206,0.198,0.19,0.179,0.168,0.156,0.144,0.132,0.12,0.11,0.101,0.093,0.086,0.08,0.075,0.07,0.067,0.063,0.061,0.059,0.058,0.056,0.054,0.053,0.052,0.052,0.053,0.054,0.055,0.055,0.054,0.053,0.052,0.052,0.053,0.055,0.059,0.065,0.074,0.086,0.099,0.113,0.126,0.138,0.149,0.161,0.172,0.182,0.193,0.205,0.217,0.232,0.248,0.266,0.282,0.301,0.319]},{"name":"yellow green","r":[0.06,0.061,0.061,0.061,0.062,0.063,0.064,0.066,0.068,0.071,0.075,0.079,0.085,0.093,0.104,0.118,0.135,0.157,0.185,0.221,0.269,0.326,0.384,0.44,0.484,0.516,0.534,0.542,0.545,0.541,0.533,0.524,0.513,0.501,0.487,0.472,0.454,0.436,0.416,0.394,0.374,0.358,0.346,0.337,0.331,0.328,0.325,0.322,0.32,0.319,0.319,0.32,0.324,0.33,0.337,0.345,0.354,0.362,0.368,0.375,0.379]},{"name":"orange yellow","r":[0.065,0.065,0.064,0.064,0.064,0.064,0.064,0.065,0.065,0.066,0.067,0.068,0.069,0.073,0.077,0.084,0.092,0.1,0.107,0.115,0.123,0.133,0.146,0.166,0.193,0.229,0.273,0.323,0.374,0.418,0.456,0.487,0.512,0.534,0.554,0.57,0.584,0.598,0.609,0.617,0.624,0.63,0.635,0.64,0.645,0.65,0.654,0.658,0.662,0.667,0.672,0.675,0.676,0.677,0.678,0.681,0.685,0.688,0.69,0.693,0.696]},{"name":"blue","r":[0.136,0.156,0.175,0.193,0.208,0.224,0.244,0.265,0.29,0.316,0.335,0.342,0.338,0.324,0.302,0.273,0.239,0.205,0.172,0.144,0.12,0.101,0.086,0.074,0.066,0.059,0.054,0.051,0.048,0.046,0.045,0.044,0.043,0.042,0.041,0.041,0.04,0.04,0.04,0.04,0.039,0.039,0.04,0.04,0.04,0.04,0.041,0.041,0.042,0.042,0.042,0.043,0.043,0.043,0.044,0.044,0.044,0.044,0.045,0.046,0.048]},{"name":"green","r":[0.058,0.058,0.059,0.059,0.059,0.06,0.062,0.063,0.065,0.067,0.07,0.074,0.078,0.084,0.091,0.101,0.113,0.125,0.14,0.157,0.18,0.208,0.244,0.286,0.324,0.351,0.363,0.363,0.355,0.342,0.323,0.303,0.281,0.26,0.238,0.217,0.196,0.177,0.158,0.14,0.124,0.111,0.101,0.094,0.089,0.086,0.084,0.082,0.08,0.078,0.077,0.076,0.075,0.075,0.075,0.077,0.078,0.08,0.082,0.085,0.088]},{"name":"red","r":[0.051,0.051,0.05,0.05,0.049,0.049,0.049,0.049,0.049,0.049,0.049,0.048,0.048,0.047,0.047,0.046,0.045,0.045,0.044,0.044,0.044,0.044,0.044,0.044,0.044,0.044,0.044,0.044,0.045,0.046,0.047,0.048,0.05,0.053,0.057,0.063,0.072,0.086,0.109,0.143,0.192,0.256,0.332,0.413,0.486,0.55,0.598,0.631,0.654,0.672,0.686,0.694,0.7,0.704,0.707,0.712,0.718,0.721,0.724,0.727,0.729]},{"name":"yellow","r":[0.053,0.053,0.053,0.052,0.052,0.052,0.053,0.053,0.053,0.054,0.055,0.056,0.059,0.065,0.075,0.093,0.121,0.157,0.202,0.252,0.303,0.351,0.394,0.436,0.475,0.512,0.544,0.572,0.597,0.615,0.63,0.645,0.66,0.673,0.686,0.698,0.708,0.718,0.726,0.732,0.737,0.742,0.746,0.749,0.753,0.757,0.761,0.765,0.768,0.772,0.777,0.779,0.78,0.78,0.781,0.782,0.785,0.785,0.787,0.789,0.792]},{"name":"magenta","r":[0.283,0.322,0.343,0.354,0.359,0.357,0.35,0.339,0.327,0.313,0.298,0.282,0.267,0.253,0.239,0.225,0.209,0.195,0.182,0.172,0.163,0.155,0.146,0.135,0.124,0.113,0.106,0.102,0.102,0.105,0.107,0.107,0.106,0.107,0.112,0.123,0.141,0.166,0.198,0.235,0.279,0.333,0.394,0.46,0.522,0.58,0.628,0.666,0.696,0.722,0.742,0.756,0.766,0.774,0.78,0.785,0.791,0.794,0.798,0.801,0.804]},{"name":"cyan","r":[0.195,0.22,0.238,0.249,0.258,0.27,0.281,0.296,0.315,0.334,0.352,0.37,0.391,0.414,0.434,0.449,0.458,0.461,0.457,0.447,0.433,0.414,0.392,0.366,0.339,0.31,0.282,0.255,0.228,0.204,0.18,0.159,0.141,0.126,0.114,0.104,0.097,0.092,0.088,0.083,0.08,0.077,0.075,0.074,0.073,0.073,0.073,0.073,0.073,0.073,0.074,0.075,0.076,0.076,0.077,0.076,0.075,0.074,0.074,0.073,0.072]},{"name":"white 9.5 (.05 D)","r":[0.409,0.536,0.671,0.772,0.84,0.868,0.878,0.882,0.883,0.885,0.886,0.886,0.887,0.888,0.888,0.888,0.888,0.888,0.888,0.888,0.887,0.887,0.887,0.887,0.887,0.887,0.887,0.887,0.887,0.886,0.886,0.887,0.887,0.887,0.888,0.888,0.887,0.886,0.886,0.886,0.887,0.888,0.889,0.89,0.891,0.891,0.891,0.891,0.89,0.889,0.889,0.889,0.889,0.889,0.888,0.888,0.888,0.888,0.888,0.888,0.888]},{"name":"neutral 8 (.23 D)","r":[0.372,0.459,0.529,0.564,0.58,0.584,0.585,0.587,0.587,0.588,0.588,0.587,0.586,0.585,0.583,0.582,0.581,0.58,0.58,0.58,0.58,0.58,0.58,0.581,0.581,0.582,0.582,0.582,0.583,0.583,0.583,0.584,0.584,0.585,0.586,0.587,0.588,0.588,0.588,0.588,0.588,0.587,0.586,0.586,0.585,0.584,0.583,0.581,0.58,0.579,0.578,0.577,0.576,0.575,0.574,0.573,0.572,0.571,0.57,0.569,0.568]},{"name":"neutral 6.5 (.44 D)","r":[0.289,0.324,0.346,0.354,0.357,0.358,0.359,0.36,0.361,0.362,0.362,0.361,0.361,0.359,0.358,0.358,0.357,0.356,0.356,0.356,0.356,0.356,0.356,0.356,0.357,0.357,0.357,0.358,0.358,0.358,0.358,0.358,0.359,0.359,0.36,0.361,0.361,0.361,0.361,0.361,0.36,0.36,0.359,0.358,0.357,0.356,0.355,0.354,0.353,0.352,0.351,0.35,0.349,0.348,0.346,0.346,0.345,0.344,0.343,0.342,0.341]},{"name":"neutral 5 (.70 D)","r":[0.183,0.193,0.199,0.201,0.202,0.203,0.203,0.204,0.205,0.205,0.205,0.205,0.204,0.204,0.203,0.203,0.202,0.202,0.202,0.202,0.202,0.202,0.202,0.202,0.202,0.202,0.203,0.203,0.203,0.203,0.203,0.203,0.203,0.203,0.204,0.204,0.205,0.205,0.205,0.205,0.204,0.204,0.204,0.203,0.203,0.202,0.201,0.201,0.2,0.199,0.198,0.198,0.197,0.197,0.196,0.195,0.195,0.194,0.194,0.193,0.192]},{"name":"neutral 3.5 (1.05 D)","r":[0.091,0.093,0.094,0.094,0.094,0.094,0.094,0.095,0.095,0.095,0.095,0.094,0.094,0.094,0.094,0.093,0.093,0.093,0.093,0.092,0.092,0.093,0.093,0.093,0.093,0.093,0.093,0.093,0.093,0.093,0.093,0.092,0.093,0.093,0.093,0.093,0.093,0.093,0.093,0.092,0.092,0.092,0.092,0.091,0.091,0.091,0.09,0.09,0.09,0.09,0.089,0.089,0.089,0.088,0.088,0.088,0.087,0.087,0.087,0.087,0.086]},{"name":"black 2 (1.5 D)","r":[0.035,0.035,0.036,0.036,0.036,0.036,0.036,0.036,0.035,0.035,0.035,0.035,0.035,0.035,0.035,0.035,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.034,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.033,0.032,0.032,0.032]}]},"cmf":{"lam0":400,"dlam":1,"xyz":[[0.01431,0.000396,0.06785001],[0.01570443,0.0004337147,0.07448632],[0.01714744,0.000473024,0.08136156],[0.01878122,0.000517876,0.08915364],[0.02074801,0.0005722187,0.09854048],[0.02319,0.00064,0.1102],[0.02620736,0.00072456,0.1246133],[0.02978248,0.0008255,0.1417017],[0.03388092,0.00094116,0.1613035],[0.03846824,0.00106988,0.1832568],[0.04351,0.00121,0.2074],[0.0489956,0.001362091,0.2336921],[0.0550226,0.001530752,0.2626114],[0.0617188,0.001720368,0.2947746],[0.069212,0.001935323,0.3307985],[0.07763,0.00218,0.3713],[0.08695811,0.0024548,0.4162091],[0.09717672,0.002764,0.4654642],[0.1084063,0.0031178,0.5196948],[0.1207672,0.0035264,0.5795303],[0.13438,0.004,0.6456],[0.1493582,0.00454624,0.7184838],[0.1653957,0.00515932,0.7967133],[0.1819831,0.00582928,0.8778459],[0.198611,0.00654616,0.959439],[0.21477,0.0073,1.0390501],[0.2301868,0.008086507,1.1153673],[0.2448797,0.00890872,1.1884971],[0.2587773,0.00976768,1.2581233],[0.2718079,0.01066443,1.3239296],[0.2839,0.0116,1.3856],[0.2949438,0.01257317,1.4426352],[0.3048965,0.01358272,1.4948035],[0.3137873,0.01462968,1.5421903],[0.3216454,0.01571509,1.5848807],[0.3285,0.01684,1.62296],[0.3343513,0.01800736,1.6564048],[0.3392101,0.01921448,1.6852959],[0.3431213,0.02045392,1.7098745],[0.3461296,0.02171824,1.7303821],[0.34828,0.023,1.74706],[0.3495999,0.02429461,1.7600446],[0.3501474,0.02561024,1.7696233],[0.350013,0.02695857,1.7762637],[0.349287,0.02835125,1.7804334],[0.34806,0.0298,1.7826],[0.3463733,0.03131083,1.7829682],[0.3442624,0.03288368,1.7816998],[0.3418088,0.03452112,1.7791982],[0.3390941,0.03622571,1.7758671],[0.3362,0.038,1.77211],[0.3331977,0.03984667,1.7682589],[0.3300411,0.041768,1.764039],[0.3266357,0.043766,1.7589438],[0.3228868,0.04584267,1.7524663],[0.3187,0.048,1.7441],[0.3140251,0.05024368,1.7335595],[0.308884,0.05257304,1.7208581],[0.3032904,0.05498056,1.7059369],[0.2972579,0.05745872,1.6887372],[0.2908,0.06,1.6692],[0.2839701,0.06260197,1.6475287],[0.2767214,0.06527752,1.6234127],[0.2689178,0.06804208,1.5960223],[0.2604227,0.07091109,1.564528],[0.2511,0.0739,1.5281],[0.2408475,0.077016,1.4861114],[0.2298512,0.0802664,1.4395215],[0.2184072,0.0836668,1.3898799],[0.2068115,0.0872328,1.3387362],[0.19536,0.09098,1.28764],[0.1842136,0.09491755,1.2374223],[0.1733273,0.09904584,1.1878243],[0.1626881,0.1033674,1.1387611],[0.1522833,0.1078846,1.090148],[0.1421,0.1126,1.0419],[0.1321786,0.117532,0.9941976],[0.1225696,0.1226744,0.9473473],[0.1132752,0.1279928,0.9014531],[0.1042979,0.1334528,0.8566193],[0.09564,0.13902,0.8129501],[0.08729955,0.1446764,0.7705173],[0.07930804,0.1504693,0.7294448],[0.07171776,0.1564619,0.6899136],[0.06458099,0.1627177,0.6521049],[0.05795001,0.1693,0.6162],[0.05186211,0.1762431,0.5823286],[0.04628152,0.1835581,0.5504162],[0.04115088,0.1912735,0.5203376],[0.03641283,0.199418,0.4919673],[0.03201,0.20802,0.46518],[0.0279172,0.2171199,0.4399246],[0.0241444,0.2267345,0.4161836],[0.020687,0.2368571,0.3938822],[0.0175404,0.2474812,0.3729459],[0.0147,0.2586,0.3533],[0.01216179,0.2701849,0.3348578],[0.00991996,0.2822939,0.3175521],[0.00796724,0.2950505,0.3013375],[0.006296346,0.308578,0.2861686],[0.0049,0.323,0.272],[0.003777173,0.3384021,0.2588171],[0.00294532,0.3546858,0.2464838],[0.00242488,0.3716986,0.2347718],[0.002236293,0.3892875,0.2234533],[0.0024,0.4073,0.2123],[0.00292552,0.4256299,0.2011692],[0.00383656,0.4443096,0.1901196],[0.00517484,0.4633944,0.1792254],[0.00698208,0.4829395,0.1685608],[0.0093,0.503,0.1582],[0.01214949,0.5235693,0.1481383],[0.01553588,0.544512,0.1383758],[0.01947752,0.56569,0.1289942],[0.02399277,0.5869653,0.1200751],[0.0291,0.6082,0.1117],[0.03481485,0.6293456,0.1039048],[0.04112016,0.6503068,0.09666748],[0.04798504,0.6708752,0.08998272],[0.05537861,0.6908424,0.08384531],[0.06327,0.71,0.07824999],[0.07163501,0.7281852,0.07320899],[0.08046224,0.7454636,0.06867816],[0.08973996,0.7619694,0.06456784],[0.09945645,0.7778368,0.06078835],[0.1096,0.7932,0.05725001],[0.1201674,0.8081104,0.05390435],[0.1311145,0.8224962,0.05074664],[0.1423679,0.8363068,0.04775276],[0.1538542,0.8494916,0.04489859],[0.1655,0.862,0.04216],[0.1772571,0.8738108,0.03950728],[0.18914,0.8849624,0.03693564],[0.2011694,0.8954936,0.03445836],[0.2133658,0.9054432,0.03208872],[0.2257499,0.9148501,0.02984],[0.2383209,0.9237348,0.02771181],[0.2510668,0.9320924,0.02569444],[0.2639922,0.9399226,0.02378716],[0.2771017,0.9472252,0.02198925],[0.2904,0.954,0.0203],[0.3038912,0.9602561,0.01871805],[0.3175726,0.9660074,0.01724036],[0.3314384,0.9712606,0.01586364],[0.3454828,0.9760225,0.01458461],[0.3597,0.9803,0.0134],[0.3740839,0.9840924,0.01230723],[0.3886396,0.9874182,0.01130188],[0.4033784,0.9903128,0.01037792],[0.4183115,0.9928116,0.009529306],[0.4334499,0.9949501,0.008749999],[0.4487953,0.9967108,0.0080352],[0.464336,0.9980983,0.0073816],[0.480064,0.999112,0.0067854],[0.4959713,0.9997482,0.0062428],[0.5120501,1.0,0.005749999],[0.5282959,0.9998567,0.0053036],[0.5446916,0.9993046,0.0048998],[0.5612094,0.9983255,0.0045342],[0.5778215,0.9968987,0.0042024],[0.5945,0.995,0.0039],[0.6112209,0.9926005,0.0036232],[0.6279758,0.9897426,0.0033706],[0.6447602,0.9864444,0.0031414],[0.6615697,0.9827241,0.0029348],[0.6784,0.9786,0.002749999],[0.6952392,0.9740837,0.0025852],[0.7120586,0.9691712,0.0024386],[0.7288284,0.9638568,0.0023094],[0.7455188,0.9581349,0.0021968],[0.7621,0.952,0.0021],[0.7785432,0.9454504,0.002017733],[0.7948256,0.9384992,0.0019482],[0.8109264,0.9311628,0.0018898],[0.8268248,0.9234576,0.001840933],[0.8425,0.9154,0.0018],[0.8579325,0.9070064,0.001766267],[0.8730816,0.8982772,0.0017378],[0.8878944,0.8892048,0.0017112],[0.9023181,0.8797816,0.001683067],[0.9163,0.87,0.001650001],[0.9297995,0.8598613,0.001610133],[0.9427984,0.849392,0.0015644],[0.9552776,0.838622,0.0015136],[0.9672179,0.8275813,0.001458533],[0.9786,0.8163,0.0014],[0.9893856,0.8047947,0.001336667],[0.9995488,0.793082,0.00127],[1.0090892,0.781192,0.001205],[1.0180064,0.7691547,0.001146667],[1.0263,0.757,0.0011],[1.0339827,0.7447541,0.0010688],[1.040986,0.7324224,0.0010494],[1.047188,0.7200036,0.0010356],[1.0524667,0.7074965,0.0010212],[1.0567,0.6949,0.001],[1.0597944,0.6822192,0.00096864],[1.0617992,0.6694716,0.00092992],[1.0628068,0.6566744,0.00088688],[1.0629096,0.6438448,0.00084256],[1.0622,0.631,0.0008],[1.0607352,0.6181555,0.00076096],[1.0584436,0.6053144,0.00072368],[1.0552244,0.5924756,0.00068592],[1.0509768,0.5796379,0.00064544],[1.0456,0.5668,0.0006],[1.0390369,0.5539611,0.0005478667],[1.0313608,0.5411372,0.0004916],[1.0226662,0.5283528,0.0004354],[1.0130477,0.5156323,0.0003834667],[1.0026,0.503,0.00034],[0.9913675,0.4904688,0.0003072533],[0.9793314,0.4780304,0.00028316],[0.9664916,0.4656776,0.00026544],[0.9528479,0.4534032,0.0002518133],[0.9384,0.4412,0.00024],[0.923194,0.42908,0.0002295467],[0.907244,0.417036,0.00022064],[0.890502,0.405032,0.00021196],[0.87292,0.393032,0.0002021867],[0.8544499,0.381,0.00019],[0.835084,0.3689184,0.0001742133],[0.814946,0.3568272,0.00015564],[0.794186,0.3447768,0.00013596],[0.772954,0.3328176,0.0001168533],[0.7514,0.321,0.0001],[0.7295836,0.3093381,8.613333e-05],[0.7075888,0.2978504,7.46e-05],[0.6856022,0.2865936,6.5e-05],[0.6638104,0.2756245,5.693333e-05],[0.6424,0.265,4.999999e-05],[0.6215149,0.2547632,4.416e-05],[0.6011138,0.2448896,3.948e-05],[0.5811052,0.2353344,3.572e-05],[0.5613977,0.2260528,3.264e-05],[0.5419,0.217,3e-05],[0.5225995,0.2081616,2.765333e-05],[0.5035464,0.1995488,2.556e-05],[0.4847436,0.1911552,2.364e-05],[0.4661939,0.1829744,2.181333e-05],[0.4479,0.175,2e-05],[0.4298613,0.1672235,1.813333e-05],[0.412098,0.1596464,1.62e-05],[0.394644,0.1522776,1.42e-05],[0.3775333,0.1451259,1.213333e-05],[0.3608,0.1382,1e-05],[0.3444563,0.1315003,7.733333e-06],[0.3285168,0.1250248,5.4e-06],[0.3130192,0.1187792,3.2e-06],[0.2980011,0.1127691,1.333333e-06],[0.2835,0.107,0.0],[0.2695448,0.1014762,0.0],[0.2561184,0.09618864,0.0],[0.2431896,0.09112296,0.0],[0.2307272,0.08626485,0.0],[0.2187,0.0816,0.0],[0.2070971,0.07712064,0.0],[0.1959232,0.07282552,0.0],[0.1851708,0.06871008,0.0],[0.1748323,0.06476976,0.0],[0.1649,0.061,0.0],[0.1553667,0.05739621,0.0],[0.14623,0.05395504,0.0],[0.13749,0.05067376,0.0],[0.1291467,0.04754965,0.0],[0.1212,0.04458,0.0],[0.1136397,0.04175872,0.0],[0.106465,0.03908496,0.0],[0.09969044,0.03656384,0.0],[0.09333061,0.03420048,0.0],[0.0874,0.032,0.0],[0.08190096,0.02996261,0.0],[0.07680428,0.02807664,0.0],[0.07207712,0.02632936,0.0],[0.06768664,0.02470805,0.0],[0.0636,0.0232,0.0],[0.05980685,0.02180077,0.0],[0.05628216,0.02050112,0.0],[0.05297104,0.01928108,0.0],[0.04981861,0.01812069,0.0],[0.04677,0.017,0.0],[0.04378405,0.01590379,0.0],[0.04087536,0.01483718,0.0],[0.03807264,0.01381068,0.0],[0.03540461,0.01283478,0.0],[0.0329,0.01192,0.0],[0.03056419,0.01106831,0.0],[0.02838056,0.01027339,0.0],[0.02634484,0.009533311,0.0],[0.02445275,0.008846157,0.0],[0.0227,0.00821,0.0],[0.02108429,0.007623781,0.0],[0.01959988,0.007085424,0.0],[0.01823732,0.006591476,0.0],[0.01698717,0.006138485,0.0],[0.01584,0.005723,0.0],[0.01479064,0.005343059,0.0],[0.01383132,0.004995796,0.0],[0.01294868,0.004676404,0.0],[0.0121292,0.004380075,0.0],[0.01135916,0.004102,0.0]]},"geo":{"Floor":{"mat":"white","quads":[[[552.8,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,559.2],[549.6,0.0,559.2]]]},"Light":{"mat":"light","quads":[[[343.0,548.8,227.0],[343.0,548.8,332.0],[213.0,548.8,332.0],[213.0,548.8,227.0]]]},"Ceiling":{"mat":"white","quads":[[[556.0,548.8,0.0],[556.0,548.8,559.2],[0.0,548.8,559.2],[0.0,548.8,0.0]]]},"Back wall":{"mat":"white","quads":[[[549.6,0.0,559.2],[0.0,0.0,559.2],[0.0,548.8,559.2],[556.0,548.8,559.2]]]},"Right wall":{"mat":"green","quads":[[[0.0,0.0,559.2],[0.0,0.0,0.0],[0.0,548.8,0.0],[0.0,548.8,559.2]]]},"Left wall":{"mat":"red","quads":[[[552.8,0.0,0.0],[549.6,0.0,559.2],[556.0,548.8,559.2],[556.0,548.8,0.0]]]},"Short block":{"mat":"white","quads":[[[130.0,165.0,65.0],[82.0,165.0,225.0],[240.0,165.0,272.0],[290.0,165.0,114.0]],[[290.0,0.0,114.0],[290.0,165.0,114.0],[240.0,165.0,272.0],[240.0,0.0,272.0]],[[130.0,0.0,65.0],[130.0,165.0,65.0],[290.0,165.0,114.0],[290.0,0.0,114.0]],[[82.0,0.0,225.0],[82.0,165.0,225.0],[130.0,165.0,65.0],[130.0,0.0,65.0]],[[240.0,0.0,272.0],[240.0,165.0,272.0],[82.0,165.0,225.0],[82.0,0.0,225.0]]]},"Tall block":{"mat":"white","quads":[[[423.0,330.0,247.0],[265.0,330.0,296.0],[314.0,330.0,456.0],[472.0,330.0,406.0]],[[423.0,0.0,247.0],[423.0,330.0,247.0],[472.0,330.0,406.0],[472.0,0.0,406.0]],[[472.0,0.0,406.0],[472.0,330.0,406.0],[314.0,330.0,456.0],[314.0,0.0,456.0]],[[314.0,0.0,456.0],[314.0,330.0,456.0],[265.0,330.0,296.0],[265.0,0.0,296.0]],[[265.0,0.0,296.0],[265.0,330.0,296.0],[423.0,330.0,247.0],[423.0,0.0,247.0]]]}},"cam":{"pos":[278,273,-800],"dir":[0,0,1],"up":[0,1,0],"focal":0.035,"film":0.025}};
+const NL=301;                      // 1 nm table, 400..700
+const LIGHT={x0:213,x1:343,z0:227,z1:332,y:548.8},LA=(343-213)*(332-227);
+const SURF=['floor','ceiling','back','right','left','short','tall','front'];
+function grid(vals,lam0,dl){const o=new Float64Array(NL);for(let k=0;k<NL;k++){const x=(400+k-lam0)/dl;let i=Math.floor(x);if(i<0)i=0;if(i>vals.length-2)i=vals.length-2;const f=x-i;o[k]=vals[i]*(1-f)+vals[i+1]*f}return o}
+const C=DATA.cornell;
+const EMIT=new Float64Array(NL);{const L=C.light;for(let k=0;k<NL;k++){const w=400+k;let j=0;while(j<L.length-2&&w>L[j+1][0])j++;const f=(w-L[j][0])/(L[j+1][0]-L[j][0]);EMIT[k]=L[j][1]*(1-f)+L[j+1][1]*f}}
+const CMF=[0,1,2].map(c=>{const o=new Float64Array(NL);for(let k=0;k<NL;k++)o[k]=DATA.cmf.xyz[k][c];return o});
+// paints: Cornell's three measured paints, then Ohta's 24 ColorChecker patches
+const PAINTS=[{id:'white',name:'Cornell white',r:grid(C.white,400,4),src:'cornell'},{id:'red',name:'Cornell red',r:grid(C.red,400,4),src:'cornell'},{id:'green',name:'Cornell green',r:grid(C.green,400,4),src:'cornell'}]
+ .concat(DATA.cc.patches.map((p,i)=>({id:'cc'+(i+1),name:p.name.replace(/ \(.*\)/,''),r:grid(p.r,400,5),src:'cc',n:i+1})));
+const PID={};PAINTS.forEach((p,i)=>PID[p.id]=i);
+function lut(tab,lam){const x=lam-400;let i=Math.floor(x);if(i<0)i=0;if(i>NL-2)i=NL-2;const f=x-i;return tab[i]*(1-f)+tab[i+1]*f}
+/* ---------- colour ---------- */
+const M_XYZ2RGB=[[3.2404542,-1.5371385,-0.4985314],[-0.9692660,1.8760108,0.0415560],[0.0556434,-0.2040259,1.0572252]];
+const BRAD=[[0.8951,0.2664,-0.1614],[-0.7502,1.7135,0.0367],[0.0389,-0.0685,1.0296]];
+const D65=[0.95047,1,1.08883];
+const mm=(A,B)=>A.map(r=>B[0].map((_,j)=>r.reduce((s,a,k)=>s+a*B[k][j],0)));
+const mv=(A,v)=>A.map(r=>r[0]*v[0]+r[1]*v[1]+r[2]*v[2]);
+function inv3(m){const[a,b,c]=m[0],[d,e,f]=m[1],[g,h,i]=m[2];const A=e*i-f*h,B=-(d*i-f*g),Cc=d*h-e*g,det=a*A+b*B+c*Cc;
+ return[[A/det,-(b*i-c*h)/det,(b*f-c*e)/det],[B/det,(a*i-c*g)/det,-(a*f-c*d)/det],[Cc/det,-(a*h-b*g)/det,(a*e-b*d)/det]]}
+function xyzOf(spd){const o=[0,0,0];for(let k=0;k<NL;k++)for(let c=0;c<3;c++)o[c]+=spd[k]*CMF[c][k];return o}
+const WHITE_XYZ=xyzOf(EMIT);
+function wbMatrix(on){if(!on)return[[1,0,0],[0,1,0],[0,0,1]];const w=WHITE_XYZ.map(v=>v/WHITE_XYZ[1]);const s=mv(BRAD,w),d=mv(BRAD,D65);
+ return mm(inv3(BRAD),mm([[d[0]/s[0],0,0],[0,d[1]/s[1],0],[0,0,d[2]/s[2]]],BRAD))}
+function displayMatrix(wb){return mm(M_XYZ2RGB,wbMatrix(wb))}
+const aces=x=>Math.min(1,Math.max(0,(x*(2.51*x+.03))/(x*(2.43*x+.59)+.14)));
+const srgb=x=>x<=.0031308?12.92*x:1.055*Math.pow(Math.max(x,0),1/2.4)-.055;
+const EXPO=1/22.7;   // back wall at full GI ~ 1.0 before the tone curve (chosen from the numpy reference)
+function toRGB(xyz,wb,expo){const M=displayMatrix(wb);return mv(M,xyz).map(v=>Math.round(255*Math.min(1,Math.max(0,srgb(aces(Math.max(0,v)*(expo||EXPO)))))))}
+// swatch colour of a paint: a white-balanced flat card lit by the lamp at "back wall" brightness
+function swatch(i){const r=PAINTS[i].r,s=new Float64Array(NL);for(let k=0;k<NL;k++)s[k]=r[k]*EMIT[k];const x=xyzOf(s),k=22.7/(0.74*WHITE_XYZ[1])*0.85;return toRGB(x.map(v=>v*k),true)}
+/* ---------- scene ---------- */
+const G=DATA.geo;
+function blockQuads(which,tr){const Q=G[which==='short'?'Short block':'Tall block'].quads;let cx=0,cz=0;for(const q of Q)for(const v of q){cx+=v[0];cz+=v[2]}cx/=20;cz/=20;
+ const[dx,dz,a]=tr||[0,0,0],ca=Math.cos(a),sa=Math.sin(a);
+ return Q.map(q=>q.map(v=>{const x=v[0]-cx,z=v[2]-cz;return[cx+ca*x+sa*z+dx,v[1],cz-sa*x+ca*z+dz]}))}
+function blockCentre(which,tr){const Q=G[which==='short'?'Short block':'Tall block'].quads;let cx=0,cz=0;for(const q of Q)for(const v of q){cx+=v[0];cz+=v[2]}return[cx/20+(tr?tr[0]:0),cz/20+(tr?tr[1]:0)]}
+function blockBase(which,tr){return blockQuads(which,tr)[0].map(v=>[v[0],v[2]])}  // top quad, seen from above
+function triangles(cfg){const T=[];const add=(quads,s)=>{for(const q of quads){T.push(tri(q[0],q[1],q[2],s));T.push(tri(q[0],q[2],q[3],s))}};
+ add(G['Floor'].quads,0);add(G['Ceiling'].quads,1);add(G['Back wall'].quads,2);add(G['Right wall'].quads,3);add(G['Left wall'].quads,4);
+ add(blockQuads('short',cfg&&cfg.short),5);add(blockQuads('tall',cfg&&cfg.tall),6);
+ add([[[552.8,0,0],[0,0,0],[0,548.8,0],[556,548.8,0]]],7);return T}
+function tri(a,b,c,s){const e1=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],e2=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];const n=cross(e1,e2),l=Math.hypot(n[0],n[1],n[2]);return{v0:a,e1,e2,s,n:[n[0]/l,n[1]/l,n[2]/l]}}
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const EPSB=2e-5;   // same barycentric slack as the shader
+function intersect(T,o,d,skipFront,tmax){let best=tmax||Infinity,bi=-1,bu=0,bv=0;
+ for(let k=0;k<T.length;k++){const t=T[k];if(skipFront&&t.s===7)continue;const p=cross(d,t.e2),det=dot(p,t.e1);if(Math.abs(det)<1e-12)continue;const inv=1/det;
+  const s=[o[0]-t.v0[0],o[1]-t.v0[1],o[2]-t.v0[2]],u=dot(s,p)*inv;if(u<-EPSB||u>1+EPSB)continue;const q=cross(s,t.e1),v=dot(d,q)*inv;if(v<-EPSB||u+v>1+EPSB)continue;const tt=dot(t.e2,q)*inv;
+  if(tt>1e-6&&tt<best){best=tt;bi=k}}
+ return{t:best,i:bi}}
+/* ---------- camera ---------- */
+const CAM=DATA.cam;
+function camRay(u,v){const f=CAM.focal,h=CAM.film;const d=[-u*h,v*h,f],l=Math.hypot(d[0],d[1],d[2]);return{o:CAM.pos.slice(),d:[d[0]/l,d[1]/l,d[2]/l]}}
+function project(p){const q=[p[0]-CAM.pos[0],p[1]-CAM.pos[1],p[2]-CAM.pos[2]];if(q[2]<=1)return null;return[(-q[0]/q[2]*CAM.focal)/CAM.film,(q[1]/q[2]*CAM.focal)/CAM.film]}
+/* ---------- RNG ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+/* ---------- CPU path tracer (float64): same estimator as the shader ---------- */
+const BC=[278,274,280],off=(x,n)=>[0,1,2].map(i=>x[i]+n[i]*1e-3+(BC[i]-x[i])*1e-6);   // same start offset as the shader
+function inLight(x){return x[0]>=LIGHT.x0&&x[0]<=LIGHT.x1&&x[2]>=LIGHT.z0&&x[2]<=LIGHT.z1}
+function onb(n){const s=n[2]>=0?1:-1,a=-1/(s+n[2]),b=n[0]*n[1]*a;return[[1+s*n[0]*n[0]*a,s*b,-s*n[0]],[b,s+n[1]*n[1]*a,-n[1]]]}
+// opts: {T, paint:[8 paint indices], bounces (0 = infinity), furnace:{E,rho}|null}; returns {L:[4 lanes], lam:[4], xyz, verts, nee}
+function tracePath(u,v,opts,rnd,record){const T=opts.T,K=opts.bounces||0,F=opts.furnace,maxd=(K||64)+(F?1:0);   // furnace: emission after k reflections needs k+1 hits
+ const r0=rnd(),lam=[0,1,2,3].map(i=>400+((r0+i/4)%1)*300);
+ let{o,d}=camRay(u,v);const L=[0,0,0,0],thr=[1,1,1,1];const verts=record?[]:null,nee=record?[]:null;let first=true,depth=0,escaped=null;
+ for(;;){const h=intersect(T,o,d,first?true:!F);if(h.i<0){if(record)escaped={o,d};break}
+  const t=T[h.i],x=[o[0]+d[0]*h.t,o[1]+d[1]*h.t,o[2]+d[2]*h.t];let n=t.n;if(dot(n,d)>0)n=[-n[0],-n[1],-n[2]];
+  const lit=t.s===1&&inLight(x);const rho=[0,0,0,0];
+  if(F){for(let i=0;i<4;i++){L[i]+=thr[i]*F.E;rho[i]=F.rho}}
+  else{const P=PAINTS[opts.paint[t.s]];for(let i=0;i<4;i++)rho[i]=lit?C.lightRefl:lut(P.r,lam[i]);
+   if(first&&lit&&d[1]>0)for(let i=0;i<4;i++)L[i]+=lut(EMIT,lam[i])}
+  depth++;if(record)verts.push({x,s:t.s,lit});
+  if(!F){const p=[LIGHT.x0+(LIGHT.x1-LIGHT.x0)*rnd(),LIGHT.y,LIGHT.z0+(LIGHT.z1-LIGHT.z0)*rnd()];const dl=[p[0]-x[0],p[1]-x[1],p[2]-x[2]],d2=dot(dl,dl),dist=Math.sqrt(d2);dl[0]/=dist;dl[1]/=dist;dl[2]/=dist;
+   const cx=dot(n,dl),cl=dl[1];let vis=false,g=0;
+   if(cx>0&&cl>0&&!lit){const oo=off(x,n);vis=intersect(T,oo,dl,true,dist-2e-3).i<0;if(vis)g=cx*cl/d2*LA/Math.PI}
+   if(g>0)for(let i=0;i<4;i++)L[i]+=thr[i]*rho[i]*lut(EMIT,lam[i])*g;
+   if(record&&cx>0&&cl>0&&!lit)nee.push({from:x,to:p,vis})}
+  if(depth>=maxd)break;
+  for(let i=0;i<4;i++)thr[i]*=rho[i];
+  if(!K&&!F&&depth>=5){const q=Math.min(.95,Math.max(thr[0],thr[1],thr[2],thr[3]));if(rnd()>=q)break;for(let i=0;i<4;i++)thr[i]/=q}
+  const r1=rnd(),r2=rnd(),rr=Math.sqrt(r1),ph=2*Math.PI*r2,[tx,ty]=onb(n),cz=Math.sqrt(Math.max(0,1-r1)),a=rr*Math.cos(ph),b=rr*Math.sin(ph);
+  d=[tx[0]*a+ty[0]*b+n[0]*cz,tx[1]*a+ty[1]*b+n[1]*cz,tx[2]*a+ty[2]*b+n[2]*cz];o=off(x,n);first=false}
+ const xyz=[0,0,0];for(let i=0;i<4;i++)for(let c=0;c<3;c++)xyz[c]+=L[i]*lut(CMF[c],lam[i])*75;
+ return{L,lam,xyz,A:(L[0]+L[1]+L[2]+L[3])/4,verts,nee,escaped}}
+// mean over n paths through the footprint of pixel (px,py) of an R x R image (py from the top)
+function estimatePixel(px,py,R,opts,n,seed){const rnd=mulberry32(seed||1);const s=[0,0,0,0],s2=[0,0,0,0];
+ for(let k=0;k<n;k++){const u=(px+rnd())/R-.5,v=.5-(py+rnd())/R;const r=tracePath(u,v,opts,rnd,false);const w=[r.xyz[0],r.xyz[1],r.xyz[2],r.A];for(let c=0;c<4;c++){s[c]+=w[c];s2[c]+=w[c]*w[c]}}
+ const m=s.map(v=>v/n);return{mean:m,se:s2.map((v,c)=>Math.sqrt(Math.max(0,v/n-m[c]*m[c])/n)),n}}
+/* ---------- analytic checks ---------- */
+// white furnace: every surface emits E and reflects rho; after k reflections L = E (1 - rho^(k+1)) / (1 - rho)
+const furnaceTheory=(E,rho,k)=>E*(1-Math.pow(rho,k+1))/(1-rho);
+// Lambert (1760): irradiance at x (normal n) from a uniform polygon of unit radiance = 1/2 sum beta_i n.gamma_i
+function lambertPhi(x,n,poly){let s=0;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];
+ const ra=[a[0]-x[0],a[1]-x[1],a[2]-x[2]],rb=[b[0]-x[0],b[1]-x[1],b[2]-x[2]],la=Math.hypot(...ra),lb=Math.hypot(...rb);
+ const c=cross(ra,rb),lc=Math.hypot(...c),beta=Math.acos(Math.max(-1,Math.min(1,dot(ra,rb)/(la*lb))));s+=beta*dot(n,c)/lc}return s/2}
+const LIGHT_POLY=[[LIGHT.x0,LIGHT.y,LIGHT.z0],[LIGHT.x1,LIGHT.y,LIGHT.z0],[LIGHT.x1,LIGHT.y,LIGHT.z1],[LIGHT.x0,LIGHT.y,LIGHT.z1]];
+/* ---------- block placement ---------- */
+function polyInside(p,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])ins=!ins}return ins}
+function overlap(P,Q){for(const S of[P,Q])for(let i=0;i<S.length;i++){const a=S[i],b=S[(i+1)%S.length],ax=[b[1]-a[1],a[0]-b[0]];let p0=Infinity,p1=-Infinity,q0=Infinity,q1=-Infinity;
+ for(const v of P){const t=v[0]*ax[0]+v[1]*ax[1];p0=Math.min(p0,t);p1=Math.max(p1,t)}for(const v of Q){const t=v[0]*ax[0]+v[1]*ax[1];q0=Math.min(q0,t);q1=Math.max(q1,t)}if(p1<q0||q1<p0)return false}return true}
+const FLOOR=[[550.8,2],[2,2],[2,557.2],[547.6,557.2]];
+function placeOK(cfg){const a=blockBase('short',cfg.short),b=blockBase('tall',cfg.tall);if(![...a,...b].every(v=>polyInside(v,FLOOR)))return false;return!overlap(a,b)}
+return{DATA,NL,LIGHT,LA,SURF,EMIT,CMF,PAINTS,PID,lut,xyzOf,WHITE_XYZ,wbMatrix,displayMatrix,aces,srgb,EXPO,toRGB,swatch,blockQuads,blockCentre,blockBase,triangles,intersect,camRay,project,mulberry32,tracePath,estimatePixel,furnaceTheory,lambertPhi,LIGHT_POLY,placeOK,inLight,CAM}})();
+
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=(RM||STILL)&&!FIXED;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const OG=Q.has('og')?(+Q.get('og')||1):0;if(OG)document.documentElement.classList.add('og');
+const EMBED=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<.5?2*t*t:1-2*(1-t)*(1-t);
+const comma=n=>Math.round(n).toLocaleString('en-US');
+const big=n=>n>=1e9?(n/1e9).toFixed(n>=1e10?1:2)+' bn':n>=1e6?(n/1e6).toFixed(n>=1e7?0:1)+' M':comma(n);
+const cv=$('#gl'),ov=$('#ov'),oc=ov.getContext('2d');
+const m=x=>`<span class="m">${x}</span>`;
+
+/* ---------- settings ---------- */
+const SNAME=['floor','ceiling','back wall','right wall','left wall','short block','tall block','front'];
+const PAINT0=[0,0,0,2,1,0,0,0];
+const DEF={bounces:0,paint:PAINT0,short:[0,0,0],tall:[0,0,0],wb:true,furnace:false};
+const S={...JSON.parse(JSON.stringify(DEF)),seed:7};
+const FURN={E:1,rho:.8};
+let tgt=4,lastBlock='tall',playing=true,T=CB.triangles(S);
+const LOG=[];   // every change that restarts the picture: {ev, at N, cfg}
+function snap(){return{bounces:S.bounces,paint:S.paint.slice(),short:S.short.slice(),tall:S.tall.slice(),furnace:S.furnace,seed:S.seed}}
+
+/* ---------- WebGL2 ---------- */
+let gl=null,P={},FB=[],cur=0,R=0,N=0,RMAX=FIXED?1536:1024,LITE=Q.has('lite'),SOFT=false,glErr='';
+const VS=`#version 300 es
+layout(location=0) in vec2 aP;
+void main(){gl_Position=vec4(aP,0.,1.);}`;
+const PT=`#version 300 es
+precision highp float;precision highp int;precision highp sampler2D;
+uniform sampler2D uA,uB,uSpec;
+uniform vec4 uTri[96];
+uniform int uRow[8];
+uniform int uN,uK,uFurn;
+uniform uint uSeed;
+uniform float uRes,uFE,uFR,uLR;
+layout(location=0) out vec4 oA;layout(location=1) out vec4 oB;
+const float PI=3.141592653589793,EPSB=2e-5;
+// new rays start 1 um off the surface and 1e-6 of the way toward the box centre: a hit point that rounding put
+// a hair outside a neighbouring wall (float32 is ~0.03 um at 500 mm) is pulled back in, so paths don't leak at seams
+const vec3 BC=vec3(278.,274.,280.);   // barycentric slack: neighbouring triangles overlap by ~0.01 mm, no cracks
+uint st;
+uint hs(uint x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;x^=x>>16;return x;}
+float rnd(){st=st*747796405u+2891336453u;uint w=((st>>((st>>28u)+4u))^st)*277803737u;w=(w>>22u)^w;return float(w>>8)*(1./16777216.);}
+float hit(vec3 o,vec3 d,bool skipF,float tmax,out int idx){float best=tmax;idx=-1;
+ for(int k=0;k<32;k++){vec4 A=uTri[3*k];if(skipF&&A.w>6.5)continue;vec3 e1=uTri[3*k+1].xyz,e2=uTri[3*k+2].xyz;
+  vec3 p=cross(d,e2);float det=dot(p,e1);if(abs(det)<1e-12)continue;float inv=1./det;vec3 s=o-A.xyz;float u=dot(s,p)*inv;if(u<-EPSB||u>1.+EPSB)continue;
+  vec3 q=cross(s,e1);float v=dot(d,q)*inv;if(v<-EPSB||u+v>1.+EPSB)continue;float t=dot(e2,q)*inv;if(t>1e-6&&t<best){best=t;idx=k;}}
+ return best;}
+vec4 tab(int row,vec4 lam,int ch){vec4 r;for(int i=0;i<4;i++){float x=lam[i]-400.;int k=clamp(int(floor(x)),0,299);float f=x-float(k);
+ r[i]=mix(texelFetch(uSpec,ivec2(k,row),0)[ch],texelFetch(uSpec,ivec2(k+1,row),0)[ch],f);}return r;}
+void main(){
+ ivec2 p=ivec2(gl_FragCoord.xy);
+ st=hs(uint(p.x)+hs(uint(p.y)+hs(uint(uN)+hs(uSeed))));
+ float u=(float(p.x)+rnd())/uRes-.5,v=(float(p.y)+rnd())/uRes-.5;
+ vec3 o=vec3(278.,273.,-800.),d=normalize(vec3(-u*.025,v*.025,.035));
+ vec4 lam=400.+fract(rnd()+vec4(0.,.25,.5,.75))*300.;
+ vec4 Le=tab(0,lam,3);
+ vec4 L=vec4(0.),thr=vec4(1.);
+ int maxd=(uK>0?uK:64)+(uFurn==1?1:0);
+ bool first=true;
+ for(int depth=1;depth<=65;depth++){
+  int ti;float t=hit(o,d,first||uFurn==0,1e30,ti);
+  if(ti<0)break;
+  vec3 x=o+d*t;vec4 A=uTri[3*ti];int s=int(A.w+.5);
+  vec3 n=normalize(cross(uTri[3*ti+1].xyz,uTri[3*ti+2].xyz));if(dot(n,d)>0.)n=-n;
+  bool lit=s==1&&x.x>=213.&&x.x<=343.&&x.z>=227.&&x.z<=332.;
+  vec4 rho;
+  if(uFurn==1){L+=thr*uFE;rho=vec4(uFR);}
+  else{
+   rho=lit?vec4(uLR):tab(uRow[s],lam,0);
+   if(first&&lit&&d.y>0.)L+=Le;
+   vec3 pl=vec3(213.+130.*rnd(),548.8,227.+105.*rnd());vec3 dl=pl-x;float d2=dot(dl,dl),dist=sqrt(d2);dl/=dist;
+   float cx=dot(n,dl),cl=dl.y;
+   if(cx>0.&&cl>0.&&!lit){int tj;hit(x+n*1e-3+(BC-x)*1e-6,dl,true,dist-2e-3,tj);if(tj<0)L+=thr*rho*Le*(cx*cl/d2*13650./PI);}
+  }
+  if(depth>=maxd)break;
+  thr*=rho;
+  if(uK==0&&uFurn==0&&depth>=5){float q=min(.95,max(max(thr.x,thr.y),max(thr.z,thr.w)));if(rnd()>=q)break;thr/=q;}
+  float r1=rnd(),r2=rnd(),rr=sqrt(r1),ph=2.*PI*r2;
+  float sg=n.z>=0.?1.:-1.,a=-1./(sg+n.z),b=n.x*n.y*a;
+  vec3 tx=vec3(1.+sg*n.x*n.x*a,sg*b,-sg*n.x),ty=vec3(b,sg+n.y*n.y*a,-n.y);
+  d=normalize(tx*(rr*cos(ph))+ty*(rr*sin(ph))+n*sqrt(max(0.,1.-r1)));o=x+n*1e-3+(BC-x)*1e-6;first=false;
+ }
+ vec4 cx=tab(0,lam,0),cy=tab(0,lam,1),cz=tab(0,lam,2);
+ vec4 smp=vec4(dot(L,cx),dot(L,cy),dot(L,cz),0.)*75.;smp.w=(L.x+L.y+L.z+L.w)*.25;
+ if(any(isnan(smp))||any(isinf(smp)))smp=vec4(0.);
+ vec4 a=uN==0?vec4(0.):texelFetch(uA,p,0),b=uN==0?vec4(0.):texelFetch(uB,p,0);
+ if((uN&1)==0){oA=a+smp;oB=b;}else{oA=a;oB=b+smp;}
+}`;
+const DISP=`#version 300 es
+precision highp float;precision highp int;precision highp sampler2D;
+uniform sampler2D uA,uB;uniform float uN,uExpo,uRes,uFurnRef;uniform vec2 uView;uniform mat3 uM;uniform int uFurn;
+out vec4 col;
+vec4 at(ivec2 i){i=clamp(i,ivec2(0),ivec2(int(uRes)-1));return texelFetch(uA,i,0)+texelFetch(uB,i,0);}
+vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
+vec3 srgb(vec3 x){return mix(12.92*x,1.055*pow(max(x,vec3(0.)),vec3(1./2.4))-.055,step(vec3(.0031308),x));}
+void main(){vec2 q=gl_FragCoord.xy/uView*uRes-.5;ivec2 i=ivec2(floor(q));vec2 f=q-vec2(i);
+ vec4 m=mix(mix(at(i),at(i+ivec2(1,0)),f.x),mix(at(i+ivec2(0,1)),at(i+ivec2(1,1)),f.x),f.y)/max(uN,1.);
+ vec3 c;if(uFurn==1){c=vec3(m.w/uFurnRef*.55);}else{c=uM*m.rgb*uExpo;}
+ col=vec4(srgb(aces(max(c,vec3(0.)))),1.);}`;
+const RED=`#version 300 es
+precision highp float;precision highp int;precision highp sampler2D;
+uniform sampler2D uA,uB;uniform float uNA,uNB,uClip;uniform int uBlk;
+out vec4 o;
+void main(){ivec2 b=ivec2(gl_FragCoord.xy)*uBlk;vec4 s=vec4(0.);
+ for(int y=0;y<128;y++){if(y>=uBlk)break;for(int x=0;x<128;x++){if(x>=uBlk)break;ivec2 p=b+ivec2(x,y);
+  vec4 a=texelFetch(uA,p,0),c=texelFetch(uB,p,0);float ya=a.y/uNA,yb=c.y/max(uNB,1.);float e=(min(ya,uClip)-min(yb,uClip))*.5;
+  float mY=(a.y+c.y)/(uNA+uNB);float ew=(a.w/uNA-c.w/max(uNB,1.))*.5;s+=vec4(e*e,min(mY,uClip),ew*ew,(a.w+c.w)/(uNA+uNB));}}
+ o=s;}`;
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error('shader: '+gl.getShaderInfoLog(s));return s}
+function prog(fs,names){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,VS));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);
+ if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error('link: '+gl.getProgramInfoLog(p));const u={};for(const n of names)u[n]=gl.getUniformLocation(p,n);return{p,u}}
+function tex(w,h,data){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,data||null);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t}
+let specTex,redFB,redTex,vao,renderer='';
+function initGL(){
+ gl=cv.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,preserveDrawingBuffer:!!(FIXED||STATIC||OG),powerPreference:'high-performance'});
+ if(!gl)throw new Error('This exhibit needs WebGL2.');
+ if(!gl.getExtension('EXT_color_buffer_float'))throw new Error('This exhibit needs WebGL2 with float render targets (EXT_color_buffer_float).');
+ try{renderer=String(gl.getParameter(gl.RENDERER)||'');if(/^webkit|^mozilla|^$/i.test(renderer)){const x=gl.getExtension('WEBGL_debug_renderer_info');if(x)renderer=gl.getParameter(x.UNMASKED_RENDERER_WEBGL)}}catch(e){}
+ SOFT=/swiftshader|llvmpipe|software|basic render/i.test(renderer);if(SOFT){RMAX=FIXED?512:256;LITE=true}
+ P.pt=prog(PT,['uA','uB','uSpec','uTri','uRow','uN','uK','uFurn','uSeed','uRes','uFE','uFR','uLR']);
+ P.disp=prog(DISP,['uA','uB','uN','uExpo','uRes','uFurnRef','uView','uM','uFurn']);
+ P.red=prog(RED,['uA','uB','uNA','uNB','uClip','uBlk']);
+ vao=gl.createVertexArray();gl.bindVertexArray(vao);const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+ gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.bindVertexArray(null);
+ // spectral table: row 0 = CIE x,y,z + lamp emission; row 1+i = paint i (red channel)
+ const W=CB.NL,H=1+CB.PAINTS.length,d=new Float32Array(W*H*4);
+ for(let k=0;k<W;k++){d[4*k]=CB.CMF[0][k];d[4*k+1]=CB.CMF[1][k];d[4*k+2]=CB.CMF[2][k];d[4*k+3]=CB.EMIT[k]}
+ CB.PAINTS.forEach((p,i)=>{for(let k=0;k<W;k++)d[4*((i+1)*W+k)]=p.r[k]});
+ specTex=tex(W,H,d);
+ redTex=tex(16,16);redFB=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,redFB);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,redTex,0);
+ gl.bindFramebuffer(gl.FRAMEBUFFER,null)}
+function makeTargets(r){for(const f of FB){gl.deleteTexture(f.a);gl.deleteTexture(f.b);gl.deleteFramebuffer(f.fb)}FB=[];
+ for(let i=0;i<2;i++){const a=tex(r,r),b=tex(r,r),fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,a,0);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,b,0);
+  if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw new Error('float framebuffer incomplete');FB.push({a,b,fb})}
+ gl.bindFramebuffer(gl.FRAMEBUFFER,null);R=r;cur=0;restart('resize')}
+const triBuf=new Float32Array(96*4);
+function uploadScene(){T=CB.triangles(S);T.forEach((t,k)=>{triBuf.set([t.v0[0],t.v0[1],t.v0[2],t.s],12*k);triBuf.set([t.e1[0],t.e1[1],t.e1[2],0],12*k+4);triBuf.set([t.e2[0],t.e2[1],t.e2[2],0],12*k+8)})}
+function tracePass(){const src=FB[cur],dst=FB[1-cur];gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);gl.viewport(0,0,R,R);
+ const p=P.pt;gl.useProgram(p.p);gl.bindVertexArray(vao);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,src.a);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,src.b);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,specTex);
+ gl.uniform1i(p.u.uA,0);gl.uniform1i(p.u.uB,1);gl.uniform1i(p.u.uSpec,2);gl.uniform4fv(p.u.uTri,triBuf);gl.uniform1iv(p.u.uRow,S.paint.map(i=>i+1));
+ gl.uniform1i(p.u.uN,N);gl.uniform1i(p.u.uK,S.bounces);gl.uniform1i(p.u.uFurn,S.furnace?1:0);gl.uniform1ui(p.u.uSeed,S.seed>>>0);gl.uniform1f(p.u.uRes,R);
+ gl.uniform1f(p.u.uFE,FURN.E);gl.uniform1f(p.u.uFR,FURN.rho);gl.uniform1f(p.u.uLR,CB.DATA.cornell.lightRefl);
+ gl.drawArrays(gl.TRIANGLES,0,3);cur=1-cur;N++;pathsTotal+=R*R;checkpoint()}
+let Mdisp=null;
+function display(){const p=P.disp,src=FB[cur];gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.useProgram(p.p);gl.bindVertexArray(vao);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,src.a);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,src.b);gl.uniform1i(p.u.uA,0);gl.uniform1i(p.u.uB,1);
+ if(!Mdisp)Mdisp=CB.displayMatrix(S.wb);gl.uniformMatrix3fv(p.u.uM,false,new Float32Array([Mdisp[0][0],Mdisp[1][0],Mdisp[2][0],Mdisp[0][1],Mdisp[1][1],Mdisp[2][1],Mdisp[0][2],Mdisp[1][2],Mdisp[2][2]]));
+ gl.uniform1f(p.u.uN,Math.max(N,1));gl.uniform1f(p.u.uExpo,CB.EXPO);gl.uniform1f(p.u.uRes,R);gl.uniform2f(p.u.uView,cv.width,cv.height);gl.uniform1i(p.u.uFurn,S.furnace?1:0);
+ gl.uniform1f(p.u.uFurnRef,CB.furnaceTheory(FURN.E,FURN.rho,S.bounces||64));gl.drawArrays(gl.TRIANGLES,0,3)}
+// read the two accumulation halves over a rectangle (y from the top, in render pixels)
+function readAcc(x,y,w,h){const src=FB[cur],out={};gl.bindFramebuffer(gl.READ_FRAMEBUFFER,src.fb);
+ for(const[k,att]of[['A',gl.COLOR_ATTACHMENT0],['B',gl.COLOR_ATTACHMENT1]]){gl.readBuffer(att);const b=new Float32Array(w*h*4);gl.readPixels(x,R-y-h,w,h,gl.RGBA,gl.FLOAT,b);
+  const f=new Float32Array(w*h*4);for(let r=0;r<h;r++)f.set(b.subarray((h-1-r)*w*4,(h-r)*w*4),r*w*4);out[k]=f}
+ gl.readBuffer(gl.COLOR_ATTACHMENT0);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null);out.nA=(N+1)>>1;out.nB=N>>1;out.N=N;out.w=w;out.h=h;return out}
+const YCLIP=3/CB.EXPO;
+function reduceDraw(){const p=P.red,src=FB[cur];gl.bindFramebuffer(gl.FRAMEBUFFER,redFB);gl.drawBuffers([gl.COLOR_ATTACHMENT0]);gl.viewport(0,0,16,16);gl.useProgram(p.p);gl.bindVertexArray(vao);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,src.a);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,src.b);gl.uniform1i(p.u.uA,0);gl.uniform1i(p.u.uB,1);
+ gl.uniform1f(p.u.uNA,(N+1)>>1);gl.uniform1f(p.u.uNB,N>>1);gl.uniform1f(p.u.uClip,YCLIP);gl.uniform1i(p.u.uBlk,R/16);gl.drawArrays(gl.TRIANGLES,0,3);gl.readBuffer(gl.COLOR_ATTACHMENT0)}
+function reduceSum(b,n0,fur){let e=0,y=0,ew=0,w=0;for(let i=0;i<256;i++){e+=b[4*i];y+=b[4*i+1];ew+=b[4*i+2];w+=b[4*i+3]}const n=R*R;
+ const errY=Math.sqrt(e/n)/(y/n),errW=Math.sqrt(ew/n)/(w/n);
+ return{N:n0,err:fur?errW:errY,errY,meanY:y/n,errW,meanW:w/n}}   // furnace shows the grey channel, so its noise is what you see
+// synchronous (tests, ?fixed): waits for the GPU
+function reduce(){if(N<2)return null;reduceDraw();const b=new Float32Array(16*16*4);gl.readPixels(0,0,16,16,gl.RGBA,gl.FLOAT,b);gl.bindFramebuffer(gl.FRAMEBUFFER,null);return reduceSum(b,N,S.furnace)}
+// live: read into a pixel-pack buffer and pick it up a frame or two later, so the noise chart never stalls the GPU
+let pend=null;
+function reduceAsync(){if(N<2||pend)return;reduceDraw();const buf=gl.createBuffer();gl.bindBuffer(gl.PIXEL_PACK_BUFFER,buf);gl.bufferData(gl.PIXEL_PACK_BUFFER,16*16*16,gl.STREAM_READ);
+ gl.readPixels(0,0,16,16,gl.RGBA,gl.FLOAT,0);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);gl.bindFramebuffer(gl.FRAMEBUFFER,null);pend={buf,fence:gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0),N,fur:S.furnace,gen};gl.flush()}
+function pollReduce(){if(!pend)return;const s=gl.clientWaitSync(pend.fence,0,0);if(s===gl.TIMEOUT_EXPIRED)return;const b=new Float32Array(16*16*4);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,pend.buf);gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,b);gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+ gl.deleteBuffer(pend.buf);gl.deleteSync(pend.fence);const q=pend;pend=null;if(q.gen!==gen)return;const r=reduceSum(b,q.N,q.fur);curve.push(r);lastRed=r;fitSlope();panelDirty=true}
+
+/* ---------- accumulation bookkeeping ---------- */
+let pathsTotal=0,curve=[],nextCk=0,slope=null,lastRed=null,furnCheck=null;
+const CK=(()=>{const a=new Set();for(let k=3;k<=46;k++){let v=Math.round(Math.pow(2,k/3)/2)*2;a.add(Math.max(2,v))}return[...a].sort((x,y)=>x-y)})();
+const MAXN=STATIC?1024:32768;
+let gen=0;
+function restart(ev){gen++;N=0;curve=[];nextCk=0;slope=null;lastRed=null;furnCheck=null;inspect=null;if(ev&&ev!=='resize')LOG.push({ev,cfg:snap()});panelDirty=true;if(STATIC&&gl&&R)pump()}
+function checkpoint(){if(S.furnace&&(N===8||N===128)){furnCheck=furnaceCheck();panelDirty=true}
+ while(nextCk<CK.length&&N>=CK[nextCk]){if(N===CK[nextCk]){if(liveRed)reduceAsync();else{const r=reduce();if(r){curve.push(r);lastRed=r;fitSlope()}}}nextCk++}}
+let liveRed=false;
+function fitSlope(){const pts=curve.filter(c=>c.N>=16&&c.err>0);if(pts.length<3){slope=null;return}let sx=0,sy=0,sxx=0,sxy=0;
+ for(const c of pts){const x=Math.log10(c.N),y=Math.log10(c.err);sx+=x;sy+=y;sxx+=x*x;sxy+=x*y}const n=pts.length;slope=(n*sxy-sx*sy)/(n*sxx-sx*sx)}
+function furnaceCheck(){if(!S.furnace||N<1)return null;const s=R,a=readAcc(0,0,s,s);
+ const th=CB.furnaceTheory(FURN.E,FURN.rho,S.bounces||64);const poly=[[552.8,0,0],[0,0,0],[0,548.8,0],[556,548.8,0]].map(p=>{const q=CB.project(p);return[(q[0]+.5)*s,(.5-q[1])*s]});
+ const inside=(x,y)=>{for(let i=0;i<4;i++){const a=poly[i],b=poly[(i+1)%4];if((b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0])>0)return false}return true};
+ let mx=0,sum=0,n=0,off=0,out=0,worst=-1;for(let i=0;i<s*s;i++){const x=i%s,y=Math.floor(i/s);const v=(a.A[4*i+3]+a.B[4*i+3])/N;
+  if(!(inside(x,y)&&inside(x+1,y)&&inside(x,y+1)&&inside(x+1,y+1))){out++;continue}sum+=v;n++;const e=Math.abs(v-th);if(e>mx){mx=e;worst=i}if(e>1e-4)off++}
+ return{N,theory:th,mean:sum/n,maxDev:mx,px:n,off,outside:out,worst:worst<0?null:[worst%s,Math.floor(worst/s)]}}
+
+/* ---------- layout ---------- */
+let VS_=400,DPR=1;
+function fit(){const W=innerWidth,H=innerHeight,phone=W<=820,view=$('#view');DPR=Math.min(window.devicePixelRatio||1,2);
+ let s,left,top;
+ if(phone){s=Math.min(W-24,560);left=(W-s)/2;top=8;document.documentElement.style.setProperty('--sh',(s+34)+'px')}
+ else if(OG){s=Math.min(H-150,W*.5);left=W*.05+8;top=(H-s)/2+30}
+ else{const pw=($('#panel').offsetWidth||372)+32,aw=W-pw,tb=$('#title').getBoundingClientRect().bottom+14,bb=$('#story').offsetHeight+44;
+  s=Math.max(200,Math.min(aw-56,H-tb-bb));left=Math.max(12,(aw-s)/2);top=tb+Math.max(0,(H-tb-bb-s)/2)}
+ s=Math.floor(s);view.style.width=view.style.height=s+'px';view.style.left=Math.round(left)+'px';view.style.top=Math.round(top)+'px';VS_=s;
+ const px=Math.round(s*DPR);if(cv.width!==px){cv.width=cv.height=px}ov.width=ov.height=px;
+ if(gl){let r=Math.floor(Math.min(px,RMAX)/16)*16;r=Math.max(r,128);if(r!==R){makeTargets(r)}}
+ ovDirty=true}
+
+/* ---------- captions ---------- */
+let capT=null,capText='';
+function cap(html){const el=$('#caption'),sp=el.firstElementChild;capText=html.replace(/<[^>]+>/g,'');if(capT){clearTimeout(capT);capT=null}
+ if(STATIC||FIXED||!sp.innerHTML){sp.innerHTML=html;el.classList.remove('fade');return}
+ el.classList.add('fade');capT=setTimeout(()=>{sp.innerHTML=html;el.classList.remove('fade')},240)}
+const pct=x=>(x*100).toFixed(x<.01?2:x<.1?1:0)+'%';
+const CAP={
+ noise:()=>`The Cornell box, from the geometry and paint spectra Cornell <b>measured</b> on the real one. Each pixel starts as <b>one random path of light</b>: from the camera, bouncing off walls, until it reaches the lamp. The lines are a few of them.`,
+ bleed:()=>`${m(comma(N)+' paths per pixel')} later the grain has averaged away. Nothing was painted on: the <b>pink</b> on the tall block is light that bounced off the red wall, and the short block's right side is <b>green</b> from the green wall.`,
+ direct:()=>`<b>One bounce only</b>: light that goes lamp → surface → camera. The ceiling turns black, because nothing lights it directly, and so does every shadow. Renderers before 1984 stopped here and added a flat “ambient” guess for the rest.`,
+ two:()=>`<b>Two bounces</b>: light from the lit floor reaches the ceiling, and the shadows fill in. In this box ${m(pct(STATS.share1))} of the light the walls send to the camera arrives in one bounce; the rest needs two or more.`,
+ inf:()=>`All bounces again, ended at random by <b>Russian roulette</b> so the average stays exact. The grain fades as ${m('1/√N')}: the panel's chart measures it, slope ${m(slope!=null?slope.toFixed(2):'…')}. Halving the noise costs four times the paths.`,
+ move:()=>`Push the short block against the red wall and turn it: the face that looks at the wall turns <b>red</b>, and the face that looks at you is faintly <b>green</b>, lit from across the room. Drag either block yourself; every move restarts the picture.`,
+ paint:()=>`Repaint the left wall with the <b>blue</b> patch of a colour chart. Paints here are measured <b>spectra</b>, 400–700 nm, so the bounced light is computed wavelength by wavelength, not as RGB.`,
+ furnace:()=>{const f=furnCheck;return`The <b>white furnace</b> test: every surface glows the same and reflects ${m('80%')}. Theory says every pixel must read ${m('1/(1 − 0.8) = 5')}, so the blocks vanish. Here: ${m(f?f.mean.toFixed(5):'…')}, worst pixel off by ${m(f?f.maxDev.toExponential(1):'…')}.`},
+ you:()=>`Your turn. Drag a block, repaint a wall, change the bounces, or click the picture to see paths through a pixel and check it on the CPU.`,
+ still:()=>`Reduced motion: the picture refines quietly in place. Drag a block, repaint a wall, change the bounces, or click the picture to see paths through a pixel.`,
+ err:e=>`This exhibit needs WebGL2 with float render targets, which this browser did not provide (${e}).`};
+
+/* ---------- script runner (tour) ---------- */
+let script=null,swait=0,swaitFn=null,tourOn=false,tourDone=false,tourMark='',simT=0,live=true,glide=null;
+function run(gen){script=gen;swait=0;swaitFn=null}
+function tickScript(dt){if(!script)return;if(swait>0){swait-=dt;if(swait>0)return}if(swaitFn){if(!swaitFn())return;swaitFn=null}
+ for(let guard=0;guard<50;guard++){const r=script.next();if(r.done){script=null;return}if(typeof r.value==='function'){if(!r.value()){swaitFn=r.value;return}}else{swait=r.value||0;if(swait>0)return}}}
+const PRERUN=+(Q.get('spp')||(SOFT?96:512));
+function applyCfg(o,ev){let ch=false;for(const k in o){const v=o[k];if(JSON.stringify(S[k])!==JSON.stringify(v)){S[k]=Array.isArray(v)?v.slice():v;ch=true}}
+ if(!ch)return;if('wb'in o)Mdisp=null;if('short'in o||'tall'in o)uploadScene();
+ const restartKeys=['bounces','paint','short','tall','furnace'];if(Object.keys(o).some(k=>restartKeys.includes(k)))restart(ev||'set');syncControls();ovDirty=true}
+function glideBlock(which,to,dur){const from=S[which].slice();if(!live||!dur){glide=null;applyCfg({[which]:to},'tour-move');return}glide={which,from,to,t:0,dur}}
+const SHOW_PX=[-0.21,-0.06];   // tour's first pixel: the tall block's red-lit side
+function* tour(start){
+ tourOn=true;tourDone=false;live=!start;glide=null;paths=null;
+ const mark=k=>{tourMark=k;if(!live&&k===start){live=true;for(let i=0;i<PRERUN;i++)tracePass()}};
+ applyCfg({...JSON.parse(JSON.stringify(DEF))},'tour');
+ mark('noise');cap(CAP.noise());showPaths(SHOW_PX[0],SHOW_PX[1],4,11,3);if(live)yield 7.5;
+ mark('bleed');paths=null;ovDirty=true;cap(CAP.bleed());if(live)yield 7;
+ applyCfg({bounces:1},'tour');mark('direct');cap(CAP.direct());if(live)yield 6.5;
+ applyCfg({bounces:2},'tour');mark('two');cap(CAP.two());if(live)yield 6.5;
+ applyCfg({bounces:0},'tour');mark('inf');cap(CAP.inf());if(live){for(let i=0;i<16;i++){yield .5;if(slope!=null)cap(CAP.inf())}}
+ tourMark='→';lastBlock='short';glideBlock('short',MOVE_TO,1.6);if(live)yield 1.7;applyCfg({short:MOVE_TO},'tour');mark('move');cap(CAP.move());if(live)yield 7;
+ const tp=S.paint.slice();tp[4]=CB.PID.cc13;applyCfg({paint:tp},'tour');mark('paint');cap(CAP.paint());if(live)yield 7;
+ applyCfg({furnace:true},'tour');mark('furnace');cap(CAP.furnace());if(live){yield ()=>N>=8;furnCheck=furnaceCheck();cap(CAP.furnace());yield 7}else{furnCheck=furnaceCheck();cap(CAP.furnace())}
+ applyCfg({...JSON.parse(JSON.stringify(DEF))},'tour');mark('final');cap(CAP.bleed());if(live)yield 3;
+ tourOn=false;tourDone=true;cap(CAP.you())}
+const MOVE_TO=[247,-36,-0.62];   // placeOK at every step of the glide (checked in node)
+function poke(){if(tourOn){script=null;tourOn=false;tourDone=true;glide=null;paths=null;ovDirty=true;cap(CAP.you());return true}return false}
+
+/* ---------- path overlay & pixel check ---------- */
+let paths=null,inspect=null,ovDirty=true,hover=null,drag=null;
+function uvAt(e){const r=ov.getBoundingClientRect();return[(e.clientX-r.left)/r.width-.5,.5-(e.clientY-r.top)/r.height]}
+// minLen: the tour shows the first n paths that bounce at least that often (paths that leave through the open front at once are common but say little)
+function showPaths(u,v,n,seed,minLen){const rnd=CB.mulberry32(seed||((Math.random()*1e9)|0)),opts={T,paint:S.paint,bounces:S.bounces,furnace:S.furnace?FURN:null};
+ const list=[];for(let k=0;k<40*n&&list.length<n;k++){const r=CB.tracePath(u,v,opts,rnd,true);if(!minLen||r.verts.length>=minLen)list.push(r)}paths={u,v,list,t0:simT};ovDirty=true}
+function toScr(p){const q=CB.project(p);return q?[(q[0]+.5)*ov.width,(.5-q[1])*ov.height]:null}
+function pixelCheck(u,v){if(!gl||N<1)return;const px=clamp(Math.floor((u+.5)*R),0,R-1),py=clamp(Math.floor((.5-v)*R),0,R-1);
+ const a=readAcc(px,py,1,1),g=[0,1,2,3].map(c=>(a.A[c]+a.B[c])/N);
+ const t0=performance.now(),cpu=CB.estimatePixel(px,py,R,{T,paint:S.paint,bounces:S.bounces,furnace:S.furnace?FURN:null},S.furnace?200:4000,(px*7919+py*104729+N)|0),ms=performance.now()-t0;
+ const c=S.furnace?3:1,sd=cpu.se[c]*Math.sqrt(cpu.n),seG=sd/Math.sqrt(N),z=sd>0?(g[c]-cpu.mean[c])/Math.sqrt(seG*seG+cpu.se[c]*cpu.se[c]):0;
+ inspect={px,py,R,N,gpu:g,cpu:cpu.mean,cpuSe:cpu.se,n:cpu.n,z,ms,furnace:S.furnace,exact:S.furnace?CB.furnaceTheory(FURN.E,FURN.rho,S.bounces||64):null};panelDirty=true}
+function drawOverlay(){ovDirty=false;const w=ov.width,h=ov.height,k=w/600;oc.clearRect(0,0,w,h);
+ // furnace: the blocks are still there, drawn as dashed outlines
+ if(S.furnace){oc.setLineDash([5*k,6*k]);oc.lineWidth=1.1*k;oc.strokeStyle='rgba(40,34,26,.55)';
+  for(const b of['short','tall'])for(const q of CB.blockQuads(b,S[b])){oc.beginPath();q.forEach((p,i)=>{const s=toScr(p);i?oc.lineTo(s[0],s[1]):oc.moveTo(s[0],s[1])});oc.closePath();oc.stroke()}
+  for(const q of[[[549.6,0,559.2],[0,0,559.2],[0,548.8,559.2],[556,548.8,559.2]]]){oc.beginPath();q.forEach((p,i)=>{const s=toScr(p);i?oc.lineTo(s[0],s[1]):oc.moveTo(s[0],s[1])});oc.closePath();oc.stroke()}
+  for(const[a0,b0]of[[[552.8,0,0],[549.6,0,559.2]],[[0,0,0],[0,0,559.2]],[[0,548.8,0],[0,548.8,559.2]],[[556,548.8,0],[556,548.8,559.2]]]){const s=toScr(a0),t=toScr(b0);oc.beginPath();oc.moveTo(s[0],s[1]);oc.lineTo(t[0],t[1]);oc.stroke()}
+  oc.setLineDash([])}
+ // hovered or dragged block outline
+ const hb=drag?drag.which:hover;
+ if(hb){const Qs=CB.blockQuads(hb,S[hb]);oc.lineWidth=1.6*k;oc.strokeStyle='rgba(255,226,160,.85)';oc.setLineDash([]);
+  for(const q of Qs){oc.beginPath();q.forEach((p,i)=>{const s=toScr(p);i?oc.lineTo(s[0],s[1]):oc.moveTo(s[0],s[1])});oc.closePath();oc.stroke()}}
+ if(paths){const age=STATIC||FIXED?99:simT-paths.t0;const sp=toScr([0,0,0]);const P0=[(paths.u+.5)*w,(.5-paths.v)*h];
+  paths.list.forEach((r,j)=>{const pts=[P0].concat(r.verts.map(v=>toScr(v.x)));if(r.escaped&&pts.length>1){const last=r.verts[r.verts.length-1].x,d=r.escaped.d;const e=[last[0]+d[0]*260,last[1]+d[1]*260,last[2]+d[2]*260];const s=toScr(e);if(s)pts.push(s)}
+   const show=clamp(age*3.2-j*.55,0,pts.length-1);if(show<=0)return;
+   const hue=[255,236,200];oc.setLineDash([]);oc.lineWidth=1.7*k;oc.lineCap='round';oc.lineJoin='round';
+   for(let i=0;i<Math.ceil(show)&&i<pts.length-1;i++){const f=Math.min(1,show-i),a=pts[i],b=pts[i+1],bx=a[0]+(b[0]-a[0])*f,by=a[1]+(b[1]-a[1])*f;
+    oc.strokeStyle=`rgba(${hue},${(.95-i*.13).toFixed(2)})`;oc.beginPath();oc.moveTo(a[0],a[1]);oc.lineTo(bx,by);oc.stroke()}
+   // next-event rays to the lamp
+   r.nee.forEach((ne,i)=>{if(i+1>show)return;const a=toScr(ne.from),b=toScr(ne.to);oc.setLineDash([3*k,4*k]);oc.lineWidth=1.1*k;oc.strokeStyle=ne.vis?'rgba(255,214,110,.85)':'rgba(150,150,160,.45)';oc.beginPath();oc.moveTo(a[0],a[1]);oc.lineTo(b[0],b[1]);oc.stroke()});
+   oc.setLineDash([]);for(let i=1;i<=Math.floor(show)&&i<pts.length;i++){if(i>r.verts.length)break;const p=pts[i];oc.fillStyle='#fff3d6';oc.beginPath();oc.arc(p[0],p[1],2.6*k,0,7);oc.fill()}});
+  oc.strokeStyle='rgba(255,243,214,.95)';oc.lineWidth=1.5*k;oc.beginPath();oc.arc(P0[0],P0[1],6*k,0,7);oc.stroke();
+  if(age<6&&!STATIC&&!FIXED)ovDirty=true}}
+
+/* ---------- panel ---------- */
+let panelDirty=true,lastPanel=-9,ppsN=0,ppsT=0,pps=0;
+const chartC=$('#chart'),cx2=chartC.getContext('2d'),specC=$('#spec'),sx2=specC.getContext('2d');
+function bLabel(k){return k?String(k):'∞'}
+function panel(){panelDirty=false;
+ $('#rn').textContent=comma(N);$('#rps').textContent=pps?big(pps)+' paths/s':(playing?'—':'paused');$('#rtot').textContent=big(pathsTotal);$('#rres').textContent=R+' × '+R+' px';
+ if(S.furnace){$('#rerr').textContent=furnCheck?furnCheck.maxDev.toExponential(0).replace('e-','e−'):'–';$('#rerrs').textContent='worst pixel vs theory'}
+ else{$('#rerr').textContent=lastRed?(lastRed.err*100).toFixed(lastRed.err<.1?2:1)+'%':'–';$('#rerrs').textContent='rms, of mean'}
+ $('#slopev').textContent=slope!=null&&!S.furnace?'slope '+slope.toFixed(2):'slope –';
+ $('#modev').textContent=S.furnace?'white furnace':S.bounces===1?'direct light only':S.bounces?S.bounces+' bounces':'full light';
+ $('#bncv').textContent=bLabel(S.bounces)+(S.bounces?'':' (roulette)');
+ $('#platev').textContent=(S.furnace?'furnace · ':'')+'N = '+comma(N);
+ $('#playb').textContent=playing?'Pause':'Resume';
+ const I=inspect,el=$('#insp');
+ if(I){const fmt=v=>v.toFixed(v<10?3:1),c=I.furnace?3:1,ok=Math.abs(I.z)<3;
+  el.innerHTML=I.furnace?`Pixel <b>${I.px}, ${I.py}</b> · furnace radiance<br>GPU (float32, ${comma(I.N)} paths): <b>${I.gpu[3].toFixed(6)}</b><br>CPU (float64, ${comma(I.n)} paths): <b>${I.cpu[3].toFixed(6)}</b><br>Theory: <b>${I.exact.toFixed(6)}</b>`
+  :`Pixel <b>${I.px}, ${I.py}</b> · luminance Y<br>GPU (float32): <b>${fmt(I.gpu[1])}</b> from ${comma(I.N)} paths<br>CPU (float64): <b>${fmt(I.cpu[1])} ± ${fmt(I.cpuSe[1])}</b> from ${comma(I.n)} paths (${Math.round(I.ms)} ms)<br><span class="${ok?'ok':'bad'}">${ok?'agree':'differ'}: ${Math.abs(I.z).toFixed(1)} σ apart</span>`;
+  $('#inspv').textContent=I.furnace?'exact':'two independent tracers'}
+ drawChart()}
+function drawChart(){const w=chartC.clientWidth,h=chartC.clientHeight,d=DPR;if(!w)return;if(chartC.width!==Math.round(w*d)){chartC.width=Math.round(w*d);chartC.height=Math.round(h*d)}
+ const c=cx2;c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,w,h);const L=34,Rm=8,Tm=8,B=20,x0=Math.log10(2),x1=Math.log10(32768),y0=-3,y1=0;
+ const X=v=>L+(Math.log10(v)-x0)/(x1-x0)*(w-L-Rm),Y=v=>Tm+(y1-Math.log10(v))/(y1-y0)*(h-Tm-B);
+ c.font='9.5px "DM Mono",monospace';c.fillStyle='rgba(239,231,214,.45)';c.strokeStyle='rgba(239,231,214,.08)';c.lineWidth=1;
+ for(const v of[1,.1,.01,.001]){const y=Y(v);c.beginPath();c.moveTo(L,y);c.lineTo(w-Rm,y);c.stroke();c.fillText(v>=.01?(v*100)+'%':'0.1%',2,y+3)}
+ for(const v of[2,16,128,1024,8192]){const x=X(v);c.beginPath();c.moveTo(x,Tm);c.lineTo(x,h-B);c.stroke();c.fillText(v>=1024?(v/1024)+'k':String(v),x-7,h-6)}
+ if(curve.length){const a=curve[0];c.setLineDash([4,4]);c.strokeStyle='rgba(224,180,92,.55)';c.beginPath();c.moveTo(X(a.N),Y(a.err));const n2=32768;c.lineTo(X(n2),Y(a.err*Math.sqrt(a.N/n2)));c.stroke();c.setLineDash([]);
+  c.strokeStyle='#ffe2a0';c.lineWidth=1.6;c.beginPath();curve.forEach((p,i)=>{const x=X(p.N),y=Y(Math.max(p.err,1e-3));i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke();
+  c.fillStyle='#ffe2a0';for(const p of curve){c.beginPath();c.arc(X(p.N),Y(Math.max(p.err,1e-3)),1.8,0,7);c.fill()}}
+ if(S.furnace){c.fillStyle='rgba(10,10,9,.7)';c.fillRect(L,Tm,w-L-Rm,h-Tm-B);c.fillStyle='rgba(255,226,160,.8)';c.fillText('furnace: inside the box every path',L+8,h/2-10);c.fillText('returns the same value',L+8,h/2+3);c.fillText(furnCheck?comma(furnCheck.px)+' pixels, worst off by '+furnCheck.maxDev.toExponential(0):'',L+8,h/2+16)}
+ else if(!curve.length){c.fillStyle='rgba(239,231,214,.35)';c.fillText('collecting paths…',L+8,h/2)}}
+function drawSpec(){const w=specC.clientWidth,h=specC.clientHeight,d=DPR;if(!w)return;specC.width=Math.round(w*d);specC.height=Math.round(h*d);const c=sx2;c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,w,h);
+ const r=CB.PAINTS[S.paint[tgt]].r,X=k=>4+k/300*(w-8),Y=v=>h-4-v*(h-10);
+ // lamp emission, scaled
+ c.fillStyle='rgba(255,214,110,.10)';c.beginPath();c.moveTo(X(0),Y(0));for(let k=0;k<=300;k+=5)c.lineTo(X(k),Y(CB.EMIT[k]/18.4*.98));c.lineTo(X(300),Y(0));c.fill();
+ for(let k=0;k<300;k+=3){const lam=400+k,rgb=lamRGB(lam);c.fillStyle=`rgba(${rgb},.85)`;c.fillRect(X(k),Y(r[k]),X(k+3)-X(k)+.3,Y(0)-Y(r[k]))}
+ c.fillStyle='rgba(239,231,214,.5)';c.font='9px "DM Mono",monospace';c.fillText('400',4,10);c.fillText('700 nm',w-38,10);c.fillText('lamp',w*.7,h-6)}
+function lamRGB(l){const x=CB.lut(CB.CMF[0],l),y=CB.lut(CB.CMF[1],l),z=CB.lut(CB.CMF[2],l),M=CB.displayMatrix(false);let v=[0,1,2].map(i=>M[i][0]*x+M[i][1]*y+M[i][2]*z);const mx=Math.max(...v,1e-6);v=v.map(t=>Math.round(255*CB.srgb(Math.max(0,t/mx))));return v.join(',')}
+function syncControls(){$$('#bnc button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===S.bounces)));$$('#tgt button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===tgt)));
+ $$('#sw .sw').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.i===S.paint[tgt])));const pn=CB.PAINTS[S.paint[tgt]];$('#paintv').textContent=pn.name+(pn.src==='cc'?' · patch '+pn.n:'');
+ $('#furnb').setAttribute('aria-pressed',String(S.furnace));$('#wbb').setAttribute('aria-pressed',String(S.wb));$('#wbb').textContent=S.wb?'White bal. on':'White bal. off';drawSpec();panelDirty=true}
+function buildSwatches(){const box=$('#sw');box.innerHTML='';CB.PAINTS.forEach((p,i)=>{const b=document.createElement('button');b.className='sw'+(p.src==='cornell'?' c':'');b.dataset.i=i;
+ b.style.background=`rgb(${CB.swatch(i)})`;b.title=p.name+(p.src==='cc'?' (ColorChecker patch '+p.n+', Ohta 1997)':' (measured on the box)');b.setAttribute('aria-label','Paint '+b.title);
+ b.addEventListener('click',()=>{poke();const pa=S.paint.slice();pa[tgt]=i;applyCfg({paint:pa},'paint')});box.appendChild(b)})}
+
+/* ---------- input ---------- */
+function blockAt(u,v){const{o,d}=CB.camRay(u,v),h=CB.intersect(T,o,d,true);if(h.i<0)return null;const s=T[h.i].s;return s===5?'short':s===6?'tall':null}
+function floorPt(u,v,y){const{o,d}=CB.camRay(u,v);if(Math.abs(d[1])<1e-9)return null;const t=(y-o[1])/d[1];if(t<=0)return null;return[o[0]+d[0]*t,o[2]+d[2]*t]}
+function tryMove(which,tr){const c={short:S.short,tall:S.tall};c[which]=tr;if(CB.placeOK(c))return tr;return null}
+function hook(){
+ ov.addEventListener('pointerdown',e=>{const[u,v]=uvAt(e);const b=blockAt(u,v);poke();
+  if(b){const{o,d}=CB.camRay(u,v),h=CB.intersect(T,o,d,true);const y=o[1]+d[1]*h.t,fp=floorPt(u,v,y);if(!fp)return;drag={which:b,y,start:fp,tr0:S[b].slice(),id:e.pointerId};lastBlock=b;ov.setPointerCapture(e.pointerId);ov.classList.add('grabbing');e.preventDefault();ovDirty=true}
+  else{showPaths(u,v,6);pixelCheck(u,v)}});
+ ov.addEventListener('pointermove',e=>{const[u,v]=uvAt(e);
+  if(drag&&e.pointerId===drag.id){const fp=floorPt(u,v,drag.y);if(!fp)return;const dx=fp[0]-drag.start[0],dz=fp[1]-drag.start[1],t0=drag.tr0;
+   let tr=tryMove(drag.which,[t0[0]+dx,t0[1]+dz,t0[2]])||tryMove(drag.which,[t0[0]+dx,S[drag.which][1],t0[2]])||tryMove(drag.which,[S[drag.which][0],t0[1]+dz,t0[2]]);
+   if(tr)applyCfg({[drag.which]:tr},'drag');return}
+  if(e.pointerType==='mouse'){const b=blockAt(u,v);if(b!==hover){hover=b;ovDirty=true;ov.classList.toggle('grab',!!b)}}});
+ const end=e=>{if(drag&&e.pointerId===drag.id){drag=null;ov.classList.remove('grabbing');ovDirty=true}};ov.addEventListener('pointerup',end);ov.addEventListener('pointercancel',end);
+ ov.addEventListener('pointerleave',()=>{if(hover){hover=null;ovDirty=true;ov.classList.remove('grab')}});
+ ov.addEventListener('wheel',e=>{const[u,v]=uvAt(e);const b=blockAt(u,v);if(!b)return;e.preventDefault();poke();lastBlock=b;turn(b,(e.deltaY>0?1:-1)*0.05)},{passive:false});
+ $$('#bnc button').forEach(b=>b.addEventListener('click',()=>{poke();applyCfg({bounces:+b.dataset.v},'bounces')}));
+ $$('#tgt button').forEach(b=>b.addEventListener('click',()=>{poke();tgt=+b.dataset.v;syncControls()}));
+ $('#playb').addEventListener('click',()=>{poke();playing=!playing;if(STATIC&&playing)pump();panelDirty=true});
+ $('#furnb').addEventListener('click',()=>{poke();applyCfg({furnace:!S.furnace},'furnace')});
+ $('#wbb').addEventListener('click',()=>{poke();applyCfg({wb:!S.wb},'wb');kick()});
+ $('#resetb').addEventListener('click',()=>{poke();applyCfg(JSON.parse(JSON.stringify(DEF)),'reset')});
+ $('#turnl').addEventListener('click',()=>{poke();turn(lastBlock,-Math.PI/12)});$('#turnr').addEventListener('click',()=>{poke();turn(lastBlock,Math.PI/12)});
+ $('#tourb').addEventListener('click',()=>{if(STATIC){startStatic();return}poke();playing=true;run(tour())});
+ addEventListener('resize',()=>{fit();kick()})}
+function turn(b,da){const t=S[b].slice();t[2]+=da;const ok=tryMove(b,t);if(ok)applyCfg({[b]:ok},'turn');else cap(`The ${b} block would hit a wall or the other block there.`)}
+
+/* ---------- frame loop ---------- */
+let last=0,passes=1,base=0,ivs=[],fails=0,frameErr='';window.__frame=0;
+function adapt(raw){if(FIXED||STATIC||!raw||raw>500)return;ivs.push(raw);if(ivs.length<24)return;const s=ivs.slice().sort((a,b)=>a-b),med=s[s.length>>1];ivs=[];
+ if(!base)base=med;else base=Math.min(base,med);
+ if(med>base*1.3&&passes>1){passes=Math.max(1,passes>>1);return}           // back off fast when frames start to drop
+ if(med>45&&passes===1&&R>256){RMAX=Math.max(256,Math.floor(R*.7/16)*16);LITE=true;document.documentElement.classList.add('lite');fit();return}   // a slow GPU: fewer pixels
+ if(med<=base*1.06&&passes<8&&!drag)passes++}
+function frame(ts,skipDraw){
+ if(!FIXED&&!STATIC)requestAnimationFrame(frame);
+ const now=FIXED?last+1000/60:(ts||performance.now()),raw=now-last,dt=FIXED?1/60:clamp(raw/1000,0,.1);last=now;window.__frame++;simT+=dt;
+ try{
+  tickScript(dt);
+  if(glide){glide.t+=dt;const f=ease(clamp(glide.t/glide.dur,0,1)),tr=glide.from.map((a,i)=>lerp(a,glide.to[i],f));applyCfg({[glide.which]:tr},'tour-move');if(glide.t>=glide.dur)glide=null}
+  if(gl&&R&&playing&&N<MAXN){const n=FIXED?1:passes;for(let i=0;i<n&&N<MAXN;i++)tracePass();checkpoint()}
+  if(gl){pollReduce()}adapt(raw);
+  if(!FIXED&&raw>0&&raw<1000){ppsN+=passes*R*R;ppsT+=raw;if(ppsT>600){pps=playing&&N<MAXN?ppsN/ppsT*1000:0;ppsN=0;ppsT=0;panelDirty=true}}
+  if(!skipDraw&&gl&&R){display();if(ovDirty||paths)drawOverlay();if(panelDirty||FIXED||simT-lastPanel>.15){lastPanel=simT;panel()}}
+ }catch(e){fails++;frameErr=String(e&&e.message||e);if(fails<4)console.warn(e)}
+ window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tourOn,mark:tourMark,N,R,passes}}
+// reduced motion: refine with a timer, show twice a second
+let pumpT=null,lastShow=0;
+function pump(){if(pumpT)return;const go=()=>{pumpT=null;if(!playing||N>=MAXN){display();panel();return}const t0=performance.now();while(performance.now()-t0<30&&N<MAXN)tracePass();checkpoint();gl.flush();
+ if(performance.now()-lastShow>500){lastShow=performance.now();display();drawOverlay();panel()}pumpT=setTimeout(go,8)};pumpT=setTimeout(go,0)}
+function kick(){if(STATIC){display();drawOverlay();panel();pump()}else if(FIXED){display();drawOverlay();panel()}}
+
+
+/* ---------- start ---------- */
+let ready=false;
+function startStatic(){script=null;applyCfg(JSON.parse(JSON.stringify(DEF)),'static');tourOn=false;tourDone=true;tourMark='final';cap(CAP.still());playing=true;pump()}
+async function start(){
+ try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,EMBED?0:600))])}catch(e){}
+ const qs=Q.get('seed');if(qs&&isFinite(+qs))S.seed=Math.round(+qs)|0;
+ buildSwatches();hook();
+ try{initGL()}catch(e){glErr=String(e.message||e);gl=null;$('#msg').style.display='flex';$('#msg').textContent=CAP.err(glErr);cap(CAP.err(glErr));syncControls();ready=true;return}
+ uploadScene();fit();syncControls();
+ if(STATIC){startStatic()}
+ else{const target=FIXED?(Q.get('mark')||'bleed'):null;run(tour(target));tickScript(0);if(FIXED&&target==='bleed'){script=null;tourOn=false}}
+ if(OG){$('#ogchips').innerHTML=`${comma(N)} paths per pixel · ${R} × ${R} px<br>4 wavelengths a path, 400–700 nm<br>noise ∝ 1/√N · measured slope ${slope!=null?slope.toFixed(2).replace('-','−'):'–'}`}
+ ready=true;panel();
+ document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>{fit();drawSpec();panelDirty=true;kick()})}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+window.cornell={state:()=>{if(!ready)return{ready:false};return{ready:true,gl:!!gl,glErr,renderer,soft:SOFT,lite:LITE,fixed:FIXED,static:STATIC,embed:EMBED,seed:S.seed,
+  cfg:snap(),wb:S.wb,R,N,passes,maxN:MAXN,pathsTotal,curve:curve.map(c=>({...c})),slope,lastRed,furnCheck,inspect:inspect?JSON.parse(JSON.stringify(inspect)):null,
+  tour:tourOn,tourDone,mark:tourMark,caption:capText,playing,tgt,lastBlock,log:JSON.parse(JSON.stringify(LOG)),frameErr,fails,
+  view:{size:VS_,dpr:DPR,canvas:cv.width},paths:paths?paths.list.map(r=>({n:r.verts.length,nee:r.nee.length,esc:!!r.escaped})):null}},
+ readAcc:(x,y,w,h)=>{const a=readAcc(x,y,w,h);return{A:Array.from(a.A),B:Array.from(a.B),nA:a.nA,nB:a.nB,N:a.N,w,h}},
+ reduce:()=>reduce(),furnaceCheck:()=>furnaceCheck(),
+ regions:boxes=>boxes.map(([x,y,w,h])=>{const a=readAcc(x,y,w,h),n=w*h,mean=[0,0,0,0],v=[0,0,0,0];for(let i=0;i<n;i++)for(let c=0;c<4;c++){const A=a.A[4*i+c],B=a.B[4*i+c];mean[c]+=(A+B)/a.N;const e=(A/a.nA-B/Math.max(a.nB,1))/2;v[c]+=e*e}
+  return{box:[x,y,w,h],mean:mean.map(m=>m/n),se:v.map(s=>Math.sqrt(s)/n),N:a.N}}),
+ set:(o)=>{poke();applyCfg(o,'api');kick();return snap()},
+ trace:(k)=>{const lr=liveRed;liveRed=false;for(let i=0;i<k;i++)tracePass();liveRed=lr;gl.finish();return N},
+ pixelCheck:(u,v)=>{pixelCheck(u,v);return inspect},
+ project:p=>{const s=toScr(p);if(!s)return null;const r=ov.getBoundingClientRect();return[r.left+s[0]/ov.width*r.width,r.top+s[1]/ov.height*r.height]},
+ blockCentre:b=>CB.blockCentre(b,S[b])};
+(async()=>{await start();if(!gl)return;if(FIXED){frame()}else if(!STATIC){liveRed=true;last=performance.now();requestAnimationFrame(frame)}})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+ "slug": "cornell-box",
+ "title": "Cornell Box",
+ "no": "046",
+ "date": "2026-11-14",
+ "kind": "Path tracing · WebGL2 spectral",
+ "blurb": "Cornell's measured box, path traced live on your GPU from its published geometry and paint spectra. Watch the grain fall as 1/√N, cut the light to one bounce and see the ceiling go black, slide the blocks, repaint the walls with measured colour-chart spectra, and run the white furnace test the blocks vanish in.",
+ "color": "#00bc7c",
+ "exhibit": "cornellBox",
+ "lane": "science"
+}
