@@ -1,0 +1,11 @@
+{
+ "slug": "contrastive-magnets",
+ "title": "Contrastive Magnets",
+ "no": "047",
+ "date": "2026-11-15",
+ "kind": "Contrastive learning · Canvas 2D",
+ "blurb": "921 paint chips and their names from the xkcd colour survey are magnets on one globe, trained live with CLIP's contrastive loss: each chip is pulled to its own name and pushed from the rest. Turn the temperature and the globe clumps or stalls; held-out names still find their chips; ask for colours nobody named.",
+ "color": "#a8b504",
+ "exhibit": "contrastiveMagnets",
+ "lane": "ml"
+}

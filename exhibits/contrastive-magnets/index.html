@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Contrastive Magnets — CLIP's InfoNCE loss, trained live on a globe of paint chips and colour names</title>
+<meta name="description" content="921 paint chips and their names from the xkcd colour survey are magnets on one steel globe. Two small encoders are trained in your browser with CLIP's contrastive loss: every chip is pulled toward its own name and pushed away from the others. Change the temperature and watch the globe clump or stall, test names it never saw, and name colours it has never heard of.">
+<meta property="og:title" content="Contrastive Magnets">
+<meta property="og:description" content="CLIP's contrastive loss, trained live: 921 paint chips and their names pull together and push apart on one globe. Turn the temperature and the globe clumps or stalls.">
+<meta property="og:image" content="https://blackman99.github.io/curio/contrastive-magnets/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Contrastive Magnets">
+<meta name="twitter:description" content="Paint chips and colour names as magnets on a globe, trained live with CLIP's InfoNCE loss. Change the temperature, test held-out names, ask for colours it never saw.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/contrastive-magnets/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0d0c0b;--paper:#efe7d6;--paper2:#aca591;--brass:#e0b45c;--hot:#ffe2a0;--red:#ff6b52;--line:rgba(239,226,200,.14);--panel:rgba(14,13,12,.94)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at 40% 46%,#22201c 0,#121110 52%,#0a0908 100%)}
+#view{position:absolute;left:0;top:0;width:400px;height:400px}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv.grabbing{cursor:grabbing}#cv.pt{cursor:pointer}
+#tip{position:absolute;pointer-events:none;z-index:2;display:none;padding:5px 8px 6px;border-radius:7px;background:rgba(12,11,10,.92);border:1px solid var(--line);font:400 11.5px/1.3 'DM Mono',monospace;color:var(--paper);white-space:nowrap;transform:translate(14px,-50%)}
+#tip i{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:6px;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,8,.5)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(10,9,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--brass);color:#1d1406;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);text-shadow:0 1px 4px #000}
+h1{margin:9px 0 0;font:400 clamp(32px,3.2vw,48px)/1 'DM Serif Display',Georgia,serif;letter-spacing:.005em;color:#fbf3e2;text-shadow:0 2px 0 #3a2a12,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:900px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,8,.74)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#fbf5e8;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--brass)}
+#caption .w{font:500 .84em 'DM Mono',monospace;color:#1a1712;background:#f3ecd9;border-radius:3px;padding:0 4px;white-space:nowrap}
+#caption sub,details sub{font-size:.7em}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+.read{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:9px 6px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 19px/1 'DM Mono',monospace;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{font-size:22px;color:var(--hot)}
+.rd small{font:400 10.5px/1.15 'DM Mono',monospace;color:var(--paper2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chart{display:block;width:100%;height:112px;border-radius:9px;background:#0a0a09;border:1px solid rgba(255,255,255,.07)}
+.btn{border:1px solid var(--line);background:rgba(224,180,92,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(224,180,92,.18);border-color:var(--brass);outline:none}
+.btn.go{background:var(--brass);border-color:var(--brass);color:#1d1406;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd789}
+.btn[aria-pressed=true]{background:rgba(224,180,92,.28);border-color:var(--brass)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(224,180,92,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--brass);color:#1d1406;font-weight:500}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.hint{font:400 10.5px/1.4 'DM Mono',monospace;color:var(--paper2);margin-top:6px}
+input[type=range]{width:100%;margin:2px 0 8px;accent-color:var(--brass)}
+.ask{display:grid;grid-template-columns:1fr auto 40px;gap:6px}
+.ask input[type=text]{min-width:0;border:1px solid var(--line);background:#0a0a09;border-radius:8px;padding:7px 9px;font:400 12px/1.1 'DM Mono',monospace;color:var(--paper)}
+.ask input[type=text]:focus{outline:none;border-color:var(--brass)}
+.ask input[type=color]{width:40px;height:100%;min-height:31px;border:1px solid var(--line);border-radius:8px;background:#0a0a09;padding:2px;cursor:pointer}
+#res{margin-top:7px;font:400 11px/1.35 'DM Mono',monospace;color:var(--paper2);min-height:1.4em}
+#res .r{display:flex;align-items:center;gap:7px;padding:2px 0}
+#res .r i{flex:none;width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.22)}
+#res .r b{color:var(--paper);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#res .r em{margin-left:auto;font-style:normal;color:var(--paper2)}
+#res .bad{color:#ff9a7a}
+#insp{font:400 11px/1.45 'DM Mono',monospace;color:var(--paper2);border:1px dashed var(--line);border-radius:9px;padding:8px 9px;min-height:4.4em}
+#insp b{color:var(--paper);font-weight:500}
+#insp .sw{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(239,231,214,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(28px,2.8vw,40px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:17px}.rd.big b{font-size:20px}#chart{height:92px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:34px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:8.2em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,420px);margin-top:4px}
+  #cv{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(15,14,13,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+#ogtext{display:none}
+.og #ogtext{display:block;position:fixed;right:44px;top:120px;width:34vw;z-index:2;font:400 27px/1.32 'Newsreader',serif;color:#f6ecd8;text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.og #ogtext p{margin:0 0 18px}.og #ogtext b{color:var(--hot);font-weight:600}
+.og #ogtext .chips{font:500 17px/1.6 'DM Mono',monospace;color:var(--brass);letter-spacing:.02em}
+.og #title{background:none}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 047 · Contrastive learning</span>
+  <h1>Contrastive Magnets</h1>
+</header>
+<div id="ogtext" aria-hidden="true"><p>921 paint chips and their <b>names</b>, trained live in your browser with CLIP's contrastive loss.</p><p>Each chip is <b>pulled</b> toward its own name and <b>pushed</b> from the others. Too hot, the globe clumps; too cold, it barely spreads.</p><p class="chips" id="ogchips"></p></div>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <div id="view">
+    <canvas id="cv" aria-label="A dark steel globe on a brass stand, covered in small round paint-chip magnets of every colour and small cream word magnets, each word being the name of a colour. A thin thread joins each chip to its own name. Training pulls each chip and its name together and pushes it away from the other names, so the colours spread over the globe."></canvas>
+    <div id="tip"></div>
+  </div>
+</div>
+<aside id="panel" aria-label="Readings and controls">
+  <div class="sec">
+    <div class="lab"><span>Training</span><b id="runv">seed 7</b></div>
+    <div class="read">
+      <div class="rd big"><span>Step</span><b id="rstep">0</b><small id="rloss">loss –</small></div>
+      <div class="rd"><span>Chip ↔ name</span><b id="rpair">–</b><small>median angle</small></div>
+      <div class="rd"><span>Own name 1st</span><b id="rtop">–</b><small>of 783 trained</small></div>
+      <div class="rd"><span>Bare patch</span><b id="rhole">–</b><small>widest empty cap</small></div>
+      <div class="rd"><span>Rivals</span><b id="rriv">–</b><small>pushing a chip</small></div>
+      <div class="rd"><span>Never seen</span><b id="rzs">–</b><small>own name, of 921</small></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Temperature τ</span><b id="tauv">0.07</b></div>
+    <input type="range" id="taus" min="0" max="1000" step="1" aria-label="Temperature, from 0.002 to 10 on a log scale">
+    <div class="seg" id="tpre"><button data-v="0.002">0.002 cold</button><button data-v="0.07">0.07 CLIP</button><button data-v="10">10 hot</button></div>
+    <canvas id="chart" aria-label="Chart: widest bare patch on the globe after 3,000 steps, against temperature, over 30 seeds" style="margin-top:8px"></canvas>
+    <div class="hint" id="charth">Widest bare patch after 3,000 steps, 30 seeds (median and range). The dot is this globe.</div>
+  </div>
+  <div class="sec row3"><button class="btn go" id="playb">Pause</button><button class="btn" id="moreb" title="Train 3,000 more steps at this temperature">+3,000 steps</button><button class="btn" id="seedb" title="New random encoders, same temperature">Rescramble</button></div>
+  <div class="sec">
+    <div class="lab"><span>Ask the globe</span><b id="askv">386 words</b></div>
+    <div class="ask"><input type="text" id="askt" placeholder="name a colour, e.g. grey rose" aria-label="Name a colour" autocomplete="off" spellcheck="false"><button class="btn" id="askb">Ask</button><input type="color" id="pick" value="#7a4f2a" aria-label="Pick a colour to name"></div>
+    <div id="res"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>One magnet</span><b id="inspv">click a magnet</b></div>
+    <div id="insp">Drag to turn the globe. Click a chip or a word to see the pull from its partner and the push from the other names in the last batch.</div>
+  </div>
+  <div class="sec row3"><button class="btn" id="spinb" aria-pressed="true">Spin on</button><button class="btn" id="threadb" aria-pressed="true">Threads on</button><button class="btn" id="heldb" aria-pressed="false" title="Highlight the 138 pairs never used in training">Held-out</button></div>
+  <details id="what"><summary>What is this?</summary><p><b>The magnets.</b> Paint chips and their names from the <a href="https://xkcd.com/color/rgb/">xkcd colour survey</a> (Randall Munroe, 2010; more than five million colour names typed in 222,500 sessions, summarised as its most common names, each with a representative RGB; public domain, CC0). The file has 949 names; 28 crude ones are left out, so there are 921 pairs. A chip encoder sees only the RGB: three numbers through a 32→32 ReLU network to a point on the sphere. A name encoder sees only the words: each of the 386 words is a learned arrow, and a name points along the sum of its words' arrows. The globe is the embedding space itself: three dimensions, nothing projected.</p>
+  <p><b>The loss.</b> CLIP's (Radford et al. 2021) symmetric InfoNCE (van den Oord et al. 2018): in each batch of 128 pairs, every chip's similarity to every name is a cosine divided by the temperature τ, and a softmax over the names should pick its own; the same for every name over the chips. Its gradient on a chip is a <b>pull</b> toward its own name and a <b>push</b> away from each other name in the batch, weighted by that softmax. Adam, learning rate 0.01, 3,000 steps, all in float64 in your browser.</p>
+  <p><b>Temperature.</b> Hot, the softmax is flat and every rival pushes equally (a median of 127.6 effective rivals out of the batch's 128 names at τ = 10), so the push is just the crowd's average, which is zero once the crowd is centred: nothing spreads the magnets evenly. Cold, it is almost a max: 2.0 effective rivals at τ = 0.002, so only near neighbours separate and the crowd spreads slowly from where it began. The widest bare patch (the largest empty cap, measured against 2,000 directions) over 30 seeds: median 121° (115–128°) at τ = 0.002 (median 91° (75–97°) after 12,000 steps), median 13° (10–15°) at 0.07, median 48° (35–57°) at 10 (median 54° (41–58°) after 12,000 steps). In all 30 seeds the τ = 0.07 globe had a smaller bare patch than both extremes. This is the alignment-and-uniformity picture of Wang &amp; Isola (2020) and the hardness-aware temperature of Wang &amp; Liu (2021). CLIP learns τ, starting at 0.07, clipped at 0.01; here you set it.</p>
+  <p><b>Never seen.</b> 138 names (15%) are held out of training, chosen at random among names whose every word also occurs in a training name. Ranking all 921 names by closeness to a held-out chip, its own name comes 18th (median over 30 seeds at τ = 0.07; in the top ten 35% of the time); by chance it would be about 461st. Trained chips find their own name first 30% of the time and sit 4.8° from it. With only three numbers, plenty of phrases land badly: at seed 7, ‘pastel navy’ lands among apple greens.</p>
+  <p><b>Words.</b> Over 30 seeds the arrows for ‘dark’ and ‘light’ end up median 148° (79–171°) apart, ‘light’ and ‘pale’ median 14° (2–36°), ‘dark’ and ‘deep’ median 21° (6–88°). The five chips nearest the ‘dark’ arrow average a CIE lightness of 33, those nearest ‘light’ 74 (0–100 scale, medians over seeds).</p>
+  <p><b>What is real.</b> The data, the loss, every gradient and every reading are computed, not animated. The engine uses its own exp and ln series and a fixed summation order, and an independent numpy implementation reproduces it bit for bit: parameters, Adam moments and every loss over 10 runs of up to 6,000 steps, plus all 1,842 positions; a finite-difference check agrees with the analytic gradient to 6×10<sup>−5</sup>. The simplifications: CLIP embeds images and captions with large networks into 512 or more dimensions and uses batches of 32,768; here the “images” are single colours, the batch is 128, word order is ignored (‘blue green’ = ‘green blue’) and the embedding has three dimensions so you can see all of it.</p></details>
+  <div class="foot"><button id="tourb">Replay the tour</button> · trained in your browser · <a href="../">back to Curio</a></div>
+</aside>
+<script type="module">
+const STATS={"curve": [{"tau": 0.002, "med": 120.71, "lo": 114.96, "hi": 127.62}, {"tau": 0.005, "med": 86.7, "lo": 75.04, "hi": 96.69}, {"tau": 0.01, "med": 54.84, "lo": 37.23, "hi": 68.31}, {"tau": 0.02, "med": 24.41, "lo": 13.5, "hi": 38.68}, {"tau": 0.05, "med": 12.73, "lo": 10.49, "hi": 16.08}, {"tau": 0.07, "med": 12.75, "lo": 10.43, "hi": 14.81}, {"tau": 0.1, "med": 13.92, "lo": 11.6, "hi": 15.99}, {"tau": 0.2, "med": 14.17, "lo": 11.75, "hi": 19.0}, {"tau": 0.5, "med": 18.18, "lo": 13.29, "hi": 25.52}, {"tau": 1, "med": 22.11, "lo": 15.17, "hi": 36.96}, {"tau": 2, "med": 34.18, "lo": 19.52, "hi": 41.37}, {"tau": 5, "med": 46.48, "lo": 28.77, "hi": 54.06}, {"tau": 10, "med": 48.03, "lo": 35.13, "hi": 57.29}], "fmt": {"dropped": 28, "ntest": 138, "hot3": "median 48\u00b0 (35\u201357\u00b0)", "hot12": "median 54\u00b0 (41\u201358\u00b0)", "cold3": "median 121\u00b0 (115\u2013128\u00b0)", "cold12": "median 91\u00b0 (75\u201397\u00b0)", "mid07": "median 13\u00b0 (10\u201315\u00b0)", "mid": "13\u201314\u00b0 (medians)", "allSeeds": "all 30", "effHot": "127.6", "effCold": "2.0", "eff07": "9.1", "zsRank": "18th", "zsTop10": "35%", "top1": "30%", "pair": "4.8\u00b0", "dl": "median 148\u00b0 (79\u2013171\u00b0)", "lp": "median 14\u00b0 (2\u201336\u00b0)", "dd": "median 21\u00b0 (6\u201388\u00b0)", "Ldark": "33", "Llight": "74", "ncases": 10, "gradchk": "6\u00d710<sup>\u22125</sup>", "dlS": "148\u00b0", "lpS": "14\u00b0", "hot3S": "48\u00b0", "hot12S": "54\u00b0", "cold3S": "121\u00b0", "cold12S": "91\u00b0"}};
+/* ================= Contrastive Magnets engine: CLIP-style InfoNCE on S², float64, bit-for-bit reproducible in numpy =================
+   Two encoders put paint chips (an RGB colour) and colour names (a bag of words) on the same unit sphere.
+   No Math.exp / Math.log in training: exp and ln are fixed-order series; everything else is + − × ÷ and sqrt. */
+const CM=(()=>{
+'use strict';
+const RAW={"names": "cloudy blue;dark pastel green;dust;electric lime;fresh green;light eggplant;nasty green;really light blue;tea;warm purple;yellowish tan;cement;dark grass green;dusty teal;grey teal;macaroni and cheese;pinkish tan;spruce;strong blue;toxic green;windows blue;blue blue;blue with a hint of purple;bright sea green;dark green blue;deep turquoise;green teal;strong pink;bland;deep aqua;lavender pink;light moss green;light seafoam green;olive yellow;pig pink;deep lilac;desert;dusty lavender;purpley grey;purply;candy pink;light pastel green;boring green;kiwi green;light grey green;orange pink;tea green;very light brown;egg shell;eggplant purple;powder pink;reddish grey;liliac;stormy blue;ugly brown;custard;darkish pink;deep brown;greenish beige;manilla;off blue;battleship grey;browny green;bruise;kelley green;sickly yellow;sunny yellow;azul;darkgreen;green/yellow;lichen;light light green;pale gold;sun yellow;tan green;burple;butterscotch;toupe;dark cream;indian red;light lavendar;poison green;bright yellow green;charcoal grey;squash;cinnamon;light pea green;radioactive green;raw sienna;baby purple;cocoa;light royal blue;orangeish;rust brown;sand brown;swamp;tealish green;burnt siena;camo;dusk blue;fern;old rose;pale light green;peachy pink;rosy pink;light bluish green;light bright green;light neon green;light seafoam;tiffany blue;washed out green;browny orange;nice blue;sapphire;greyish teal;orangey yellow;parchment;straw;very dark brown;terracota;ugly blue;clear blue;creme;foam green;grey/green;light gold;seafoam blue;topaz;violet pink;wintergreen;yellow tan;dark fuchsia;indigo blue;light yellowish green;pale magenta;rich purple;sunflower yellow;green/blue;leather;racing green;vivid purple;dark royal blue;hazel;muted pink;canary;cool grey;dark taupe;darkish purple;true green;coral pink;dark sage;dark slate blue;flat blue;mushroom;rich blue;dirty purple;greenblue;icky green;light khaki;warm blue;dark hot pink;deep sea blue;carmine;dark yellow green;pale peach;plum purple;golden rod;neon red;old pink;very pale blue;blood orange;grapefruit;sand yellow;clay brown;dark blue grey;flat green;light green blue;warm pink;dodger blue;gross green;ice;metallic blue;pale salmon;sap green;algae;bluey grey;greeny grey;highlighter green;light light blue;light mint;raw umber;vivid blue;deep lavender;dull teal;light greenish blue;mud green;pinky;red wine;tan brown;darkblue;rosa;lipstick;pale mauve;claret;dandelion;orangered;ruby;dark;greenish turquoise;pastel red;bright cyan;dark coral;algae green;darkish red;reddy brown;blush pink;camouflage green;lawn green;putty;vibrant blue;dark sand;purple/blue;saffron;twilight;warm brown;bluegrey;bubble gum pink;duck egg blue;greenish cyan;petrol;royal;butter;dusty orange;off yellow;pale olive green;orangish;leaf;light blue grey;dried blood;lightish purple;rusty red;lavender blue;light grass green;light mint green;sunflower;velvet;brick orange;lightish red;pure blue;twilight blue;violet red;yellowy brown;carnation;muddy yellow;dark seafoam green;deep rose;dusty red;grey/blue;lemon lime;purple/pink;brown yellow;purple brown;wisteria;banana yellow;lipstick red;water blue;brown grey;vibrant purple;baby green;eggshell blue;sandy yellow;cool green;pale;blue/grey;hot magenta;greyblue;purpley;brownish pink;dark aquamarine;light mustard;pale sky blue;turtle green;bright olive;dark grey blue;greeny brown;lemon green;light periwinkle;seaweed green;sunshine yellow;ugly purple;medium pink;very light pink;viridian;bile;faded yellow;very pale green;vibrant green;bright lime;spearmint;light aquamarine;light sage;yellowgreen;dark seafoam;deep teal;heather;rust orange;dirty blue;fern green;bright lilac;weird green;peacock blue;avocado green;faded orange;grape purple;hot green;lime yellow;mango;shamrock;bubblegum;purplish brown;pale cyan;key lime;tomato red;lightgreen;merlot;night blue;purpleish pink;apple;green apple;heliotrope;yellow/green;almost black;cool blue;leafy green;mustard brown;dusk;dull brown;frog green;vivid green;bright light green;fluro green;kiwi;seaweed;navy green;ultramarine blue;iris;pastel orange;yellowish orange;perrywinkle;tealish;dark plum;pear;pinkish orange;midnight purple;light urple;dark mint;greenish tan;light burgundy;turquoise blue;ugly pink;sandy;electric pink;muted purple;mid green;greyish;neon yellow;banana;carnation pink;tomato;sea;muddy brown;turquoise green;buff;fawn;muted blue;pale rose;dark mint green;amethyst;blue/green;chestnut;sick green;pea;rusty orange;stone;rose red;pale aqua;deep orange;earth;mossy green;grassy green;pale lime green;light grey blue;pale grey;asparagus;blueberry;purple red;pale lime;greenish teal;caramel;deep magenta;light peach;milk chocolate;ocher;off green;purply pink;lightblue;dusky blue;golden;light beige;butter yellow;dusky purple;french blue;ugly yellow;greeny yellow;orangish red;shamrock green;orangish brown;tree green;deep violet;gunmetal;blue/purple;cherry;sandy brown;warm grey;dark indigo;midnight;bluey green;grey pink;soft purple;blood;brown red;medium grey;berry;purpley pink;light salmon;easter purple;light yellow green;dark navy blue;drab;light rose;rouge;purplish red;slime green;irish green;pink/purple;dark navy;greeny blue;light plum;pinkish grey;dirty orange;rust red;pale lilac;orangey red;primary blue;kermit green;brownish purple;murky green;wheat;very dark purple;bottle green;watermelon;deep sky blue;fire engine red;yellow ochre;pumpkin orange;pale olive;light lilac;lightish green;carolina blue;mulberry;shocking pink;auburn;bright lime green;celadon;pinkish brown;bright sky blue;celery;dirt brown;strawberry;dark lime;copper;medium brown;muted green;robin's egg;bright aqua;bright lavender;ivory;very light purple;light navy;pink red;olive brown;mustard green;ocean green;very dark blue;dusty green;light navy blue;minty green;adobe;barney;jade green;bright light blue;light lime;dark khaki;orange yellow;ocre;maize;faded pink;british racing green;sandstone;mud brown;light sea green;robin egg blue;aqua marine;dark sea green;soft pink;orangey brown;cherry red;burnt yellow;brownish grey;camel;purplish grey;marine;greyish pink;pale turquoise;pastel yellow;bluey purple;canary yellow;faded red;sepia;coffee;bright magenta;mocha;ecru;purpleish;cranberry;darkish green;brown orange;dusky rose;melon;sickly green;silver;purply blue;purpleish blue;hospital green;mid blue;amber;easter green;soft blue;cerulean blue;golden brown;bright turquoise;red pink;red purple;greyish brown;vermillion;russet;steel grey;lighter purple;bright violet;prussian blue;slate green;dirty pink;dark blue green;pine;yellowy green;dark gold;bluish;darkish blue;dull red;pinky red;bronze;pale teal;military green;barbie pink;bubblegum pink;pea soup green;dark mustard;medium purple;very dark green;dirt;dusky pink;red violet;lemon yellow;pistachio;dull yellow;dark lime green;denim blue;teal blue;lightish blue;purpley blue;light indigo;swamp green;brown green;dark maroon;hot purple;dark forest green;faded blue;drab green;light lime green;yellowish;light blue green;bordeaux;light mauve;ocean;marigold;muddy green;dull orange;steel;electric purple;fluorescent green;yellowish brown;blush;soft green;bright orange;lemon;purple grey;acid green;pale lavender;violet blue;light forest green;burnt red;khaki green;cerise;faded purple;apricot;dark olive green;grey brown;green grey;true blue;pale violet;periwinkle blue;light sky blue;blurple;green brown;bluegreen;bright teal;brownish yellow;pea soup;forest;barney purple;ultramarine;purplish;bluish grey;dark periwinkle;dark lilac;reddish;light maroon;dusty purple;terra cotta;avocado;marine blue;teal green;slate grey;lighter green;electric green;dusty blue;golden yellow;bright yellow;light lavender;umber;dark peach;jungle green;eggshell;denim;yellow brown;dull purple;chocolate brown;wine red;neon blue;dirty green;light tan;ice blue;cadet blue;dark mauve;very light blue;grey purple;pastel pink;very light green;dark sky blue;evergreen;dull pink;aubergine;mahogany;reddish orange;deep green;purple pink;dusty pink;faded green;camo green;pinky purple;pink purple;brownish red;dark rose;mud;brownish;emerald green;pale brown;dull blue;burnt umber;medium green;clay;light aqua;light olive green;brownish orange;dark aqua;purplish pink;dark salmon;greenish grey;jade;ugly green;dark beige;emerald;pale red;light magenta;sky;light cyan;yellow orange;reddish purple;reddish pink;orchid;dirty yellow;orange red;deep red;orange brown;cobalt blue;neon pink;rose pink;greyish purple;raspberry;aqua green;salmon pink;tangerine;brownish green;red brown;greenish brown;pumpkin;pine green;charcoal;baby pink;cornflower;blue violet;chocolate;greyish green;scarlet;green yellow;dark olive;sienna;pastel purple;terracotta;aqua blue;sage green;blood red;deep pink;grass;moss;pastel blue;bluish green;green blue;dark tan;greenish blue;pale orange;forrest green;dark lavender;dark violet;purple blue;dark cyan;olive drab;pinkish;cobalt;neon purple;light turquoise;apple green;dull green;wine;powder blue;off white;electric blue;dark turquoise;blue purple;azure;bright red;pinkish red;cornflower blue;light olive;grape;greyish blue;purplish blue;yellowish green;greenish yellow;medium blue;dusty rose;light violet;midnight blue;bluish purple;red orange;dark magenta;greenish;ocean blue;coral;cream;reddish brown;burnt sienna;brick;sage;grey green;white;robin's egg blue;moss green;steel blue;eggplant;light yellow;leaf green;light grey;pinkish purple;sea blue;pale purple;slate blue;blue grey;hunter green;fuchsia;crimson;pale yellow;ochre;mustard yellow;light red;cerulean;pale pink;deep blue;rust;light teal;slate;goldenrod;dark yellow;dark grey;army green;grey blue;seafoam;puce;spring green;dark orange;sand;pastel green;mint;light orange;bright pink;chartreuse;deep purple;dark brown;taupe;pea green;kelly green;seafoam green;blue green;khaki;burgundy;dark teal;brick red;royal purple;plum;mint green;gold;baby blue;yellow green;bright purple;dark red;pale blue;grass green;navy;aquamarine;burnt orange;neon green;bright blue;rose;light pink;mustard;indigo;lime;sea green;periwinkle;dark pink;olive green;peach;pale green;light brown;hot pink;black;lilac;navy blue;royal blue;beige;salmon;olive;maroon;bright green;dark purple;mauve;forest green;aqua;cyan;tan;dark blue;lavender;turquoise;dark green;violet;light purple;lime green;grey;sky blue;yellow;magenta;light green;orange;teal;light blue;red;brown;pink;blue;green;purple", "hex": "acc2d956ae57b2996ea8ff0469d84f89458570b23fd4ffff65ab7c952e8ffcfc81a5a3913880044c90855e9b8aefb435d99b820a5f380c06f761de2a3778bf2242c7533cc605ffa61f63570173740cb577ff0789afa88b08787fdd85d7a6c875a7ffb5c2b709e78ea5966ebdccad60ac86a8947e94983fb2ff63e9b2fba563b3658ee53fb7e1a1ff6f52bdf8a3d3b683fffcc4430541ffb2d0997570c48efd507b9c7d7103fffd78da467d410200c9d179fffa865684ae6b7c856f6c0a7e4071009337d0e429fff9171d5dec054907b5ce088fb67bc8ffb0fdde6cffdf22a9be706832e3fdb147c7ac7dfff39a850e04efc0fe40fd149dff003c4142f2ab15ac4f06c4fe822cfa1f9a6200ca9bf7875f423a2efefd8d498b3103cba5606983390cdc73b752037f8f4e26538d63a950c87f89b1fc99ff9a8af6688e76fda853fe5c4efd54a0febf7bf2dabcf5a6ca6b02107ab02138ab719f91fdb915fefcaffcf6791d0200cb684331668a247afdffffb690fda986a17dfddc5c78d1b613bbaffb5ffc20f986ffe36e9d07593a18b1c2ff89d767ad720058ffda0301c08dac74340146009900fa02066f8e7618d1768ffdff6395a3a67f684e751973089404ff61635985562147613c73a8ba9e88021bf9734a6523c48b8fae22e6f2a24b57dbd901660154829d0216728f02ffe5ad4e0550f9bc08ff073ac77986d6fffefe4b03fd5956fce166b2713d1f3b4d699d4c56fca2fb55813e82fca0bf16d6fffa4f738effb19a5c8b1554ac6889a0b07ea07a1bfc06cafffbb6ffbba75e09152eff8d5eb75f9e8f63f7b4606602fc86aa8c0034ab7e4c030764fe86a4d5174efed0fc680018fedf08fe420fca01471b243100fbb0db585641fdfecf524e21c36fa903086e1005fe828c4b61134da409beae8a0339f8a88f595d21d0feb2094e518b964e0285a3b2ff69afc3fbf42afeb7005f6a0c1793ffff81f0833af1f33fb1d27bfc824a71aa34b7c9e24b0101a552e6af2f0d8b88f89af764a6fbb2ffc512750851c14a09fe2f4a0203e20a437aa50055ae8b0cfd798fbfac053eaf76c74767b9484e647d8ebffe28d725deb29705673a3fa87dc2fafe4bc0022f0e87cc8d8468ad03de8cff9ec4fff7fdee7333b864fff9d0758da3f504c977a1b58756e4c27e79017371f7d560bdf6fe75b84f9cbb0429465b696006adf802c1c6fc35ad6bfffd37a442a0f36196fff4f21e9167b5c306feff7fcffdbc0add0887fd051ef8767bfdc7bcecacbbf90f1fb57a00555aa484acc455083f829d548d44c95efb3ae57f01679587a922f0944d5d145125ff29d0fe1dffa62b01b44cff6cb56b4247b7fffaaeff6eec2d0176ff7b730039040348df4ec86ecb3c5edc1fd94ff5c8fd3d070d0d4984b851b73bac7e044e5481876e4b58bc082fef102dfe540aff029cef4318d17b35530a1805db6258c4ff964fffab0f8f8ce724bca83f012ccbf85fff724c280137b36ff648c072bccb7aa8415b06b1c4cd7584f1da7aff0490805b8750a747a8a495cfff04ffff7eff7fa7ef40263c999288680604f489fef69ecfaf7b3b719ffdc1c520c0739b5fc00f9b8e7428029db92ca4bf20cd5909ada587be013cb8ffebdc4d01a2653e638b27419c03b1ff659dbcd4fdfdfe77ab56464196990147befd7332bf84af6f09a0025cffd8b17f4e1ebf9b0c6ba353f075e67bc8f6475f94f5bf03fffeb6fffd74895b7b436badd0c101c6f808f4360502c14db25f032a7e194906485362675a06efcf0234c4a661978a841f095403012d2bb179c3909ba66fb5770001922b057d7f7c990f4bc83cb9fea993c071feccfd7f00022e828344ffc5cbab1239b0054b99cc04019529ef1de700043542b3959d5783c8aca9c87606aa2704e4cbfffa42240804f95cb20076424e6c7a0efbdd7e2a0134044a05fd46590d75f8fe0002cb9d06fb7d07b9cc81edc8ff61e1608ab8fe920a4efe02a29a300165fe08befdb7b1726102ccfec1fd95836539fb294384b701b663257f51125fa0526dedfd0bf9eac760ffffffcbf6cefc155084f5054f645403a8b5043d997300013376a9732e5a880bf77dbd6c48ac1db82baf6a26f7fdaefd6c9b8f55ffad01c69c04f4d054de9dac05480dc9ae7460460f98f6b08af1fe2ee8bb11875dfdb0c0b16002f7022ad5ab0986775fc69f597a687f042e60c88d94a5fbd5fffe716241c7fffe40d3494e985e2ba6814cff08e89d7651feffca98568d9e003a287c37b96902ba6873ff785594b21cc5c9c7661aee6140ef9be5aa276ab3feb3088cfd7e6488ea056eeeb27a010ffef9fa2a558207477a6a4ff4320ca139056f828aa55af4ad0afd004577658d6dca7b800052492b5d34bff128b594102976bb014182bb3f3ffc2647a8790082cbb2667c3efe46a5fe83cc94a617a889059e43a2062e038a6e45cc7a8b9e0168fdff38c0fa8beedc5b7ebd013b5b9201889f3d7afd5f34e76d5acf748500706c113c0008cb00f5002d04658cbb749551b9ff66faee667efbb37b002cc292a1017b92fcc006657432d8863b738595aa23ff08ff089b7a01f29e8e6fc276ff5b00fdff52866f858ffe09eecffe510ac94f91539f2305728639de0c62916e99ffb16d3c4d037f705377926f010fccceaefa8f99fbc6fcff5539cc544e03017a7901f9c6c9b0039299010b5509a004982000b194568c748b97665fd19c6da5c44240a24857825f87c9643b90b13401386a25a36f59656d75fd6321fc0d5a86adfec615fffd01dfc5feb26400de7e5d048243ffffd43b638cb7940084597e4119007b032304d9ff667e2cfbeeacd7fffe4e7496874c62d5ffff826d8cffbacdd1ffbd448ee405472ad5869d3d07344a0100f8481c02590fe03fd8d58a947bb274526525c94cbedb4bda9e3623b5485d735c129c6d57028f1eb1916e49759ca0450e39ad48b66a508cffdba4be5ccb772305696bce5daec85a5396ae8d1fa7747a9703ac936201a049d9544dfa5ff782cafcacfffcfcb001910951fe2c54c875c4cdc50afd411e9a0200be6400030aa7fe019af7879a887191b0014912e193fe7b7cff94086a6e098b2e16696112e177010a481e343837ffb7ce6a79f75d06e93d1c0282a67dbe0119c9ff27373e02a9561ecaa0ffca664102d8e988b378980002cb01625cac2d769958a2bffe10a67406b48baf884a0b8b87ffa75615440685679834013f632de90a888a6f7632d46a7e1e488fbc13fe7ef4cc76cd2674a66280013fb1d1fcffffe40652ff045c5a5729ce069af3ff000df10c455170d7acbf696c34615e819d601ef9b0dd16cdfd022c6fbbc0737ad6b4fc020035703be7fd3c0696005640a36803719cfc5a50ffffc27f2b0ab04e0fa0362387ae73789b73ffffff98eff9658b385a7d9a380835fffe7a5ca904d8dcd6d648d7047495b790d45b7c99607c8e0b4008ed0dd98c000fffff84bf9005d2bd0aff474c0485d1ffcfdc040273a83c0990e4c1516572fac205d5b60a3637374b5d166b8ba480f9ada57e52a9f971c65102e2ca76b0ff9d9ffeb0fdaa48fe01b1c1f80a36013f341c02b9a2818eab1202ab2e7af9ab137e6daaa662610023014d4e8f14024b006e580f418fff9fdbb40ca2cffec0fb2dbe03fd840000d0fefe3f9b0b01153e04d8b2c04e010cff0c0165fccf6275ffd1dfceb301380282aaff3253fca18e82fecb416b677a04ffb07cc7fdb5ad8150ff028d000000cea2fd0011460504aae6daa6ff796c6e750e65002101ff0735063eae718106470c13eac900ffffd1b26f00035bc79fef06c2ac0335009a0eeabf77f689fe0592959175bbfdffff14c2007896f97bf9730602938695d0fce50000653700ff81c00343df15b01a7e1e9c", "dropped": 28, "total": 949};
+const NAMES=RAW.names.split(';'),N=NAMES.length,RGB=new Uint8Array(3*N);
+for(let i=0;i<N;i++)for(let c=0;c<3;c++)RGB[3*i+c]=parseInt(RAW.hex.substr(6*i+2*c,2),16);
+const split=s=>s.split(/[ \/\-]+/);
+const VOCAB=[...new Set(NAMES.flatMap(split))].sort(),V=VOCAB.length,WI=new Map(VOCAB.map((w,i)=>[w,i]));
+const TOK=NAMES.map(n=>split(n).map(w=>WI.get(w)));
+const H=32,B=128,STEPS=3000,LR=0.01;
+
+/* ---- numerics ---- */
+const F64=new Float64Array(1),U32=new Uint32Array(F64.buffer),LN2=0.6931471805599453,SQRT2=1.4142135623730951;
+const LC=[];for(let j=0;j<16;j++)LC.push(2/(2*j+1));
+function ln(x){if(!(x>0))return x===0?-Infinity:NaN;if(x===Infinity)return Infinity;
+ F64[0]=x;let hi=U32[1],e=(hi>>>20)&0x7ff;if(e===0){F64[0]=x*18014398509481984;hi=U32[1];e=((hi>>>20)&0x7ff)-54}e-=1023;
+ U32[1]=(hi&0x800fffff)|0x3ff00000;let m=F64[0];if(m>SQRT2){m=m/2;e+=1}
+ const z=(m-1)/(m+1),z2=z*z;let s=LC[15];for(let j=14;j>=0;j--)s=s*z2+LC[j];return e*LN2+z*s}
+const EC=[];{let f=1;for(let j=0;j<=13;j++){EC.push(1/f);f*=j+1}}   // |r| ≤ ln2/2: the 14th term is below 1e-17
+function pow2(n){F64[0]=0;U32[1]=((n+1023)&0x7ff)<<20;U32[0]=0;return F64[0]}
+function exp(x){if(x>700)return Infinity;if(x<-700)return 0;const n=Math.floor(x/LN2+0.5),r=x-n*LN2;let s=EC[13];for(let j=12;j>=0;j--)s=s*r+EC[j];return s*pow2(n)}
+/* mulberry32 as a counter: the n-th draw of stream `seed` */
+function draw(seed,n){let a=(seed+Math.imul(n+1,0x6D2B79F5))|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+
+/* ---- held-out names: shuffle with stream 2026, keep a name out if every word in it still appears in a training name ---- */
+const SPLIT=(()=>{const p=[...Array(N).keys()];for(let k=0;k<N-1;k++){const j=k+Math.floor(draw(2026,k)*(N-k));const t=p[k];p[k]=p[j];p[j]=t}
+ const cnt=new Int32Array(V);for(const t of TOK)for(const w of t)cnt[w]++;
+ const isTest=new Uint8Array(N),want=Math.floor(N*0.15);let n=0;
+ for(const i of p){if(n>=want)break;const own=new Map();for(const w of TOK[i])own.set(w,(own.get(w)||0)+1);
+  let ok=true;for(const[w,k]of own)if(cnt[w]-k<1){ok=false;break}
+  if(ok){isTest[i]=1;n++;for(const[w,k]of own)cnt[w]-=k}}
+ const test=[],train=[];for(let i=0;i<N;i++)(isTest[i]?test:train).push(i);
+ return{isTest,test:Int32Array.from(test),train:Int32Array.from(train)}})();
+const NTR=SPLIT.train.length;
+
+/* ---- parameters: one flat Float64Array ---- */
+const OFF={};{let o=0;for(const[k,n]of[['W1',3*H],['b1',H],['W2',H*H],['b2',H],['W3',H*3],['b3',3],['E',V*3]]){OFF[k]=o;o+=n}OFF.n=o}
+function create(seed,tau){
+ const R={seed:seed|0,tau,inv:1/tau,steps:0,ctr:0,th:new Float64Array(OFF.n),m:new Float64Array(OFF.n),v:new Float64Array(OFF.n),b1t:1,b2t:1,
+  perm:Int32Array.from(SPLIT.train),batch:new Int32Array(B),loss:NaN,hist:[]};
+ const g=()=>{let s=draw(R.seed,R.ctr++);for(let k=1;k<12;k++)s+=draw(R.seed,R.ctr++);return s-6};
+ const fill=(k,n,sc)=>{for(let i=0;i<n;i++)R.th[OFF[k]+i]=g()*sc};
+ fill('W1',3*H,Math.sqrt(2/3));fill('W2',H*H,Math.sqrt(2/H));fill('W3',3*H,Math.sqrt(1/H));fill('E',3*V,0.5);
+ return R}
+function clone(R){return{...R,th:R.th.slice(),m:R.m.slice(),v:R.v.slice(),perm:R.perm.slice(),batch:R.batch.slice(),hist:R.hist.slice()}}
+
+/* ---- encoders ---- */
+function imgFwd(th,x0,x1,x2,h1,h2,o,ho){   // h1,h2: Float64Array scratch at offset ho; o: [u0,u1,u2,|u|]
+ ho=ho||0;
+ const W1=OFF.W1,b1=OFF.b1,W2=OFF.W2,b2=OFF.b2,W3=OFF.W3,b3=OFF.b3;
+ for(let j=0;j<H;j++){let a=x0*th[W1+j];a+=x1*th[W1+H+j];a+=x2*th[W1+2*H+j];a+=th[b1+j];h1[ho+j]=a>0?a:0}
+ for(let j=0;j<H;j++){let a=h1[ho]*th[W2+j];for(let k=1;k<H;k++)a+=h1[ho+k]*th[W2+k*H+j];a+=th[b2+j];h2[ho+j]=a>0?a:0}
+ for(let c=0;c<3;c++){let a=h2[ho]*th[W3+c];for(let k=1;k<H;k++)a+=h2[ho+k]*th[W3+3*k+c];o[c]=a+th[b3+c]}
+ o[3]=Math.sqrt(o[0]*o[0]+o[1]*o[1]+o[2]*o[2])}
+const X=(i,c)=>RGB[3*i+c]/127.5-1;
+function txtFwd(th,toks,o){const E=OFF.E;let w=toks[0];o[0]=th[E+3*w];o[1]=th[E+3*w+1];o[2]=th[E+3*w+2];
+ for(let k=1;k<toks.length;k++){w=toks[k];o[0]+=th[E+3*w];o[1]+=th[E+3*w+1];o[2]+=th[E+3*w+2]}
+ o[3]=Math.sqrt(o[0]*o[0]+o[1]*o[1]+o[2]*o[2])}
+
+/* ---- one training step: symmetric InfoNCE over a batch of 128 pairs, Adam ---- */
+const S_=new Float64Array(B*B),Pr=new Float64Array(B*B),Pc=new Float64Array(B*B),Z_=new Float64Array(3*B),T_=new Float64Array(3*B),NU=new Float64Array(B),NV=new Float64Array(B),
+ XB=new Float64Array(3*B),H1=new Float64Array(B*H),H2=new Float64Array(B*H),DZ=new Float64Array(3*B),DT=new Float64Array(3*B),DU=new Float64Array(3*B),DV=new Float64Array(3*B),
+ DH2=new Float64Array(B*H),DH1=new Float64Array(B*H),G=new Float64Array(OFF.n),o4=[0,0,0,0];
+function step(R){
+ const th=R.th,inv=R.inv,perm=R.perm,bt=R.batch;
+ for(let k=0;k<B;k++){const j=k+Math.floor(draw(R.seed,R.ctr++)*(NTR-k));const t=perm[k];perm[k]=perm[j];perm[j]=t;bt[k]=perm[k]}
+ for(let i=0;i<B;i++){const c=bt[i],x0=X(c,0),x1=X(c,1),x2=X(c,2);XB[3*i]=x0;XB[3*i+1]=x1;XB[3*i+2]=x2;
+  imgFwd(th,x0,x1,x2,H1,H2,o4,i*H);NU[i]=o4[3];for(let q=0;q<3;q++)Z_[3*i+q]=o4[q]/o4[3];
+  txtFwd(th,TOK[c],o4);NV[i]=o4[3];for(let q=0;q<3;q++)T_[3*i+q]=o4[q]/o4[3]}
+ for(let i=0;i<B;i++)for(let j=0;j<B;j++)S_[i*B+j]=(Z_[3*i]*T_[3*j]+Z_[3*i+1]*T_[3*j+1]+Z_[3*i+2]*T_[3*j+2])*inv;
+ let la=0,lb=0;
+ for(let i=0;i<B;i++){let mx=S_[i*B];for(let j=1;j<B;j++)if(S_[i*B+j]>mx)mx=S_[i*B+j];
+  let s=0;for(let j=0;j<B;j++){const e=exp(S_[i*B+j]-mx);Pr[i*B+j]=e;s+=e}for(let j=0;j<B;j++)Pr[i*B+j]=Pr[i*B+j]/s;
+  la+=(S_[i*B+i]-mx)-ln(s)}
+ for(let j=0;j<B;j++){let mx=S_[j];for(let i=1;i<B;i++)if(S_[i*B+j]>mx)mx=S_[i*B+j];
+  let s=0;for(let i=0;i<B;i++){const e=exp(S_[i*B+j]-mx);Pc[i*B+j]=e;s+=e}for(let i=0;i<B;i++)Pc[i*B+j]=Pc[i*B+j]/s;
+  lb+=(S_[j*B+j]-mx)-ln(s)}
+ R.loss=-(la+lb)*(1/(2*B));
+ for(let i=0;i<B;i++)for(let j=0;j<B;j++){const d=i===j?1:0;S_[i*B+j]=((Pr[i*B+j]-d)+(Pc[i*B+j]-d))*(1/(2*B))}  // S_ now holds dL/dS
+ for(let i=0;i<B;i++)for(let q=0;q<3;q++){let a=S_[i*B]*T_[q];for(let j=1;j<B;j++)a+=S_[i*B+j]*T_[3*j+q];DZ[3*i+q]=a*inv}
+ for(let j=0;j<B;j++)for(let q=0;q<3;q++){let a=S_[j]*Z_[q];for(let i=1;i<B;i++)a+=S_[i*B+j]*Z_[3*i+q];DT[3*j+q]=a*inv}
+ for(let i=0;i<B;i++){const a=DZ[3*i]*Z_[3*i]+DZ[3*i+1]*Z_[3*i+1]+DZ[3*i+2]*Z_[3*i+2];for(let q=0;q<3;q++)DU[3*i+q]=(DZ[3*i+q]-Z_[3*i+q]*a)/NU[i];
+  const b=DT[3*i]*T_[3*i]+DT[3*i+1]*T_[3*i+1]+DT[3*i+2]*T_[3*i+2];for(let q=0;q<3;q++)DV[3*i+q]=(DT[3*i+q]-T_[3*i+q]*b)/NV[i]}
+ G.fill(0);
+ const W2=OFF.W2,W3=OFF.W3;
+ for(let q=0;q<3;q++){let a=DU[q];for(let i=1;i<B;i++)a+=DU[3*i+q];G[OFF.b3+q]=a}
+ for(let k=0;k<H;k++)for(let q=0;q<3;q++){let a=H2[k]*DU[q];for(let i=1;i<B;i++)a+=H2[i*H+k]*DU[3*i+q];G[W3+3*k+q]=a}
+ for(let i=0;i<B;i++)for(let k=0;k<H;k++)DH2[i*H+k]=H2[i*H+k]>0?DU[3*i]*th[W3+3*k]+DU[3*i+1]*th[W3+3*k+1]+DU[3*i+2]*th[W3+3*k+2]:0;
+ for(let k=0;k<H;k++){let a=DH2[k];for(let i=1;i<B;i++)a+=DH2[i*H+k];G[OFF.b2+k]=a}
+ for(let k=0;k<H;k++)for(let j=0;j<H;j++){let a=H1[k]*DH2[j];for(let i=1;i<B;i++)a+=H1[i*H+k]*DH2[i*H+j];G[W2+k*H+j]=a}
+ for(let i=0;i<B;i++)for(let k=0;k<H;k++){if(H1[i*H+k]>0){let a=DH2[i*H]*th[W2+k*H];for(let j=1;j<H;j++)a+=DH2[i*H+j]*th[W2+k*H+j];DH1[i*H+k]=a}else DH1[i*H+k]=0}
+ for(let k=0;k<H;k++){let a=DH1[k];for(let i=1;i<B;i++)a+=DH1[i*H+k];G[OFF.b1+k]=a}
+ for(let k=0;k<3;k++)for(let j=0;j<H;j++){let a=XB[k]*DH1[j];for(let i=1;i<B;i++)a+=XB[3*i+k]*DH1[i*H+j];G[OFF.W1+k*H+j]=a}
+ for(let i=0;i<B;i++)for(const w of TOK[bt[i]])for(let q=0;q<3;q++)G[OFF.E+3*w+q]+=DV[3*i+q];
+ R.b1t*=0.9;R.b2t*=0.999;const c1=1-R.b1t,c2=1-R.b2t,th_=R.th,m=R.m,v=R.v;
+ for(let p=0;p<OFF.n;p++){const g=G[p];m[p]=0.9*m[p]+0.1*g;v[p]=0.999*v[p]+0.001*(g*g);th_[p]-=LR*(m[p]/c1)/(Math.sqrt(v[p]/c2)+1e-8)}
+ R.steps++;R.hist.push(R.loss)}
+function train(R,n){for(let k=0;k<n;k++)step(R);return R}
+
+/* ---- embeddings of everything ---- */
+const h1s=new Float64Array(H),h2s=new Float64Array(H);
+function chips(R,out){out=out||new Float64Array(3*N);for(let i=0;i<N;i++){imgFwd(R.th,X(i,0),X(i,1),X(i,2),h1s,h2s,o4);for(let q=0;q<3;q++)out[3*i+q]=o4[q]/o4[3]}return out}
+function names(R,out){out=out||new Float64Array(3*N);for(let i=0;i<N;i++){txtFwd(R.th,TOK[i],o4);for(let q=0;q<3;q++)out[3*i+q]=o4[q]/o4[3]}return out}
+function encRGB(R,r,g,b){imgFwd(R.th,r/127.5-1,g/127.5-1,b/127.5-1,h1s,h2s,o4);return[o4[0]/o4[3],o4[1]/o4[3],o4[2]/o4[3]]}
+function encWords(R,ws){const t=ws.map(w=>WI.get(w));if(!t.length||t.some(x=>x===undefined))return null;txtFwd(R.th,t,o4);if(!(o4[3]>0))return null;return[o4[0]/o4[3],o4[1]/o4[3],o4[2]/o4[3]]}
+function wordVec(R,w){const k=WI.get(w);if(k===undefined)return null;const E=OFF.E;return[R.th[E+3*k],R.th[E+3*k+1],R.th[E+3*k+2]]}
+
+/* ---- the push and pull one chip would feel in the current batch: its own name + the batch's names ---- */
+function force(R,i,Z,T){
+ const z=[Z[3*i],Z[3*i+1],Z[3*i+2]],cand=[];let hasOwn=false;
+ for(let k=0;k<B;k++){const j=R.batch[k];if(j===i)hasOwn=true;cand.push(j)}if(!hasOwn)cand.push(i);
+ const s=cand.map(j=>(z[0]*T[3*j]+z[1]*T[3*j+1]+z[2]*T[3*j+2])*R.inv);let mx=s[0];for(const x of s)if(x>mx)mx=x;
+ const e=s.map(x=>exp(x-mx));let sum=0;for(const x of e)sum+=x;const p=e.map(x=>x/sum);
+ const pull=[0,0,0],push=[0,0,0];let pown=0,rest=0;
+ cand.forEach((j,k)=>{if(j===i){pown=p[k];for(let q=0;q<3;q++)pull[q]+=T[3*j+q]}else rest+=p[k];for(let q=0;q<3;q++)push[q]+=p[k]*T[3*j+q]});
+ const g=[0,1,2].map(q=>(pull[q]-push[q])*R.inv),gd=g[0]*z[0]+g[1]*z[1]+g[2]*z[2],gt=g.map((x,q)=>x-gd*z[q]);
+ const riv=cand.map((j,k)=>({j,p:p[k],share:j===i?0:p[k]/rest})).filter(r=>r.j!==i).sort((a,b)=>b.p-a.p);
+ let s2=0;for(const r of riv)s2+=r.share*r.share;
+ return{i,pOwn:pown,rivals:riv,effRivals:1/s2,top:riv[0]?riv[0].share:0,grad:gt,gradNorm:Math.sqrt(gt[0]*gt[0]+gt[1]*gt[1]+gt[2]*gt[2])}}
+
+/* ---- readings ---- */
+const NF=2000,FIB=new Float64Array(3*NF);{const ga=Math.PI*(3-Math.sqrt(5));for(let k=0;k<NF;k++){const y=1-2*(k+0.5)/NF,r=Math.sqrt(1-y*y),a=ga*k;FIB[3*k]=r*Math.cos(a);FIB[3*k+1]=y;FIB[3*k+2]=r*Math.sin(a)}}
+function hole(Z){let best=2,bk=0;for(let k=0;k<NF;k++){const d0=FIB[3*k],d1=FIB[3*k+1],d2=FIB[3*k+2];let mx=-2;for(let i=0;i<N;i++){const s=d0*Z[3*i]+d1*Z[3*i+1]+d2*Z[3*i+2];if(s>mx)mx=s}if(mx<best){best=mx;bk=k}}
+ return{deg:Math.acos(Math.max(-1,Math.min(1,best)))*180/Math.PI,cos:best,dir:[FIB[3*bk],FIB[3*bk+1],FIB[3*bk+2]],k:bk}}
+function rankOf(Z,T,i){const s=Z[3*i]*T[3*i]+Z[3*i+1]*T[3*i+1]+Z[3*i+2]*T[3*i+2];let r=0;for(let j=0;j<N;j++){if(j===i)continue;if(Z[3*i]*T[3*j]+Z[3*i+1]*T[3*j+1]+Z[3*i+2]*T[3*j+2]>s)r++}return r}
+const med=a=>{const s=Float64Array.from(a).sort();const n=s.length;return n%2?s[n>>1]:(s[n/2-1]+s[n/2])/2};
+function readings(Z,T){const ang=[];let top1=0;for(const i of SPLIT.train){const c=Z[3*i]*T[3*i]+Z[3*i+1]*T[3*i+1]+Z[3*i+2]*T[3*i+2];ang.push(Math.acos(Math.max(-1,Math.min(1,c)))*180/Math.PI);if(rankOf(Z,T,i)===0)top1++}
+ const zr=[];let z10=0;for(const i of SPLIT.test){const r=rankOf(Z,T,i);zr.push(r);if(r<10)z10++}
+ return{pairDeg:med(ang),top1:top1/NTR,zsMed:med(zr),zsTop10:z10/SPLIT.test.length,zsRanks:zr}}
+function uniformity(Z){let s=0,n=0;for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d0=Z[3*i]-Z[3*j],d1=Z[3*i+1]-Z[3*j+1],d2=Z[3*i+2]-Z[3*j+2];s+=exp(-2*(d0*d0+d1*d1+d2*d2));n++}return ln(s/n)}
+function nearestNames(T,v,k,skip){const s=[];for(let j=0;j<N;j++)if(!skip||!skip(j))s.push([v[0]*T[3*j]+v[1]*T[3*j+1]+v[2]*T[3*j+2],j]);s.sort((a,b)=>b[0]-a[0]||a[1]-b[1]);return s.slice(0,k).map(([c,j])=>({j,cos:c}))}
+const nearestChips=nearestNames;
+/* polynomial hash of the parameters' 32-bit words: h = Σ w_k · 0x01000193^(n−1−k) mod 2^32 */
+function hash(a){let h=0;const f=new Float64Array(1),u=new Uint32Array(f.buffer);for(let i=0;i<a.length;i++){f[0]=a[i];h=(Math.imul(h,0x01000193)+u[0])>>>0;h=(Math.imul(h,0x01000193)+u[1])>>>0}return h.toString(16).padStart(8,'0')}
+return{N,V,H,B,STEPS,LR,NAMES,RGB,VOCAB,WI,TOK,SPLIT,OFF,ln,exp,draw,create,clone,step,train,chips,names,encRGB,encWords,wordVec,force,hole,readings,uniformity,rankOf,nearestNames,nearestChips,hash,dropped:RAW.dropped,total:RAW.total}})();
+
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=(RM||STILL)&&!FIXED;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const OG=Q.has('og')?(+Q.get('og')||1):0;if(OG)document.documentElement.classList.add('og');
+const EMBED=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
+const comma=n=>Math.round(n).toLocaleString('en-US');
+const pct=x=>(x*100).toFixed(x<.1?1:0)+'%';
+const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
+const cv=$('#cv'),cx=cv.getContext('2d');
+const m=x=>`<span class="m">${x}</span>`,w_=x=>`<span class="w">${x}</span>`;
+const N=CM.N,STEPS=CM.STEPS;
+const HEX=[],RGBS=[];for(let i=0;i<N;i++){const r=CM.RGB[3*i],g=CM.RGB[3*i+1],b=CM.RGB[3*i+2];RGBS.push([r,g,b]);HEX.push('#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''))}
+const IDX=new Map(CM.NAMES.map((n,i)=>[n,i]));
+const IS_TEST=CM.SPLIT.isTest;
+const fmtTau=t=>t>=1?String(+t.toFixed(t>=10?0:1)):t>=0.1?t.toFixed(2).replace(/0$/,''):t>=0.01?t.toFixed(3).replace(/0$/,''):t.toFixed(4).replace(/0+$/,'');
+
+/* ---------- run state ---------- */
+let seed=7,tau=0.07,R=null,target=STEPS,playing=true,runGen=0;
+const qs=Q.get('seed');if(qs&&isFinite(+qs))seed=Math.round(+qs)|0;
+const qt=Q.get('tau');if(qt&&+qt>0)tau=clamp(+qt,0.002,10);
+let Z=new Float64Array(3*N),T=new Float64Array(3*N),embDirty=true,rd=null,ho=null,riv=null,rdStep=-1,rdWall=0;
+const LOG=[],CACHE=new Map();
+const key=(s,t)=>s+'|'+t;
+function newRun(t,s,ev){tau=t;seed=s;R=CM.create(seed,tau);target=STEPS;playing=true;embDirty=true;rd=null;ho=null;riv=null;rdStep=-1;runGen++;
+ LOG.push({ev,seed,tau,start:true});syncControls();dirty=true}
+function restore(s,t,ev){const c=CACHE.get(key(s,t));if(!c)return false;tau=t;seed=s;R=CM.clone(c.R);target=R.steps;playing=true;embDirty=true;rd=c.rd;ho=c.ho;riv=c.riv;rdStep=R.steps;runGen++;
+ LOG.push({ev,seed,tau,restored:true,steps:R.steps,hash:CM.hash(R.th)});syncControls();dirty=true;return true}
+function embed(){if(!embDirty)return;CM.chips(R,Z);CM.names(R,T);embDirty=false}
+function measure(){embed();rd=CM.readings(Z,T);ho=CM.hole(Z);
+ const e=[];for(let k=0;k<64;k++){const f=CM.force(R,CM.SPLIT.train[k*12],Z,T);e.push(f.effRivals)}e.sort((a,b)=>a-b);riv=(e[31]+e[32])/2;
+ rdStep=R.steps;rdWall=performance.now();panelDirty=true;forceDirty=true}
+function onRunEnd(){measure();const h=CM.hash(R.th);LOG.push({ev:'end',seed,tau,steps:R.steps,hash:h,loss:R.loss,pairDeg:rd.pairDeg,top1:rd.top1,zsMed:rd.zsMed,hole:ho.deg,riv});
+ CACHE.set(key(seed,tau),{R:CM.clone(R),rd,ho,riv});if(OG)ogText()}
+const FIXED_SPF=25;let BUDGET=Q.has('budget')?+Q.get('budget'):6;
+function trainSome(){if(!R||!playing||R.steps>=target)return 0;let n=0;
+ if(FIXED){n=Math.min(FIXED_SPF,target-R.steps);CM.train(R,n)}
+ else{const t0=performance.now(),bud=LITE?Math.max(BUDGET,18):BUDGET;while(R.steps<target&&(n<1||performance.now()-t0<bud)){CM.step(R);n++}}
+ embDirty=true;dirty=true;if(R.steps>=target)onRunEnd();
+ else if(FIXED?R.steps-rdStep>=300:performance.now()-rdWall>450)measure();
+ return n}
+function finishNow(){if(R.steps<target){CM.train(R,target-R.steps);embDirty=true;onRunEnd()}}
+
+/* ---------- view: world → camera rotation ---------- */
+let VR=[[1,0,0],[0,1,0],[0,0,1]],spin=!STATIC,aim=null;
+const mul=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j]));
+const rotAx=(ax,a)=>{const[x,y,z]=ax,c=Math.cos(a),s=Math.sin(a),t=1-c;return[[t*x*x+c,t*x*y-s*z,t*x*z+s*y],[t*x*y+s*z,t*y*y+c,t*y*z-s*x],[t*x*z-s*y,t*y*z+s*x,t*z*z+c]]};
+const nrm=v=>{const n=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/n,v[1]/n,v[2]/n]};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function ortho(M){const z=nrm(M[2]),x=nrm(cross(M[1],z)),y=cross(z,x);return[x,y,z]}
+function quat(M){const[a,b,c]=M,tr=a[0]+b[1]+c[2];let w,x,y,z;
+ if(tr>0){const s=Math.sqrt(tr+1)*2;w=.25*s;x=(c[1]-b[2])/s;y=(a[2]-c[0])/s;z=(b[0]-a[1])/s}
+ else if(a[0]>b[1]&&a[0]>c[2]){const s=Math.sqrt(1+a[0]-b[1]-c[2])*2;w=(c[1]-b[2])/s;x=.25*s;y=(a[1]+b[0])/s;z=(a[2]+c[0])/s}
+ else if(b[1]>c[2]){const s=Math.sqrt(1+b[1]-a[0]-c[2])*2;w=(a[2]-c[0])/s;x=(a[1]+b[0])/s;y=.25*s;z=(b[2]+c[1])/s}
+ else{const s=Math.sqrt(1+c[2]-a[0]-b[1])*2;w=(b[0]-a[1])/s;x=(a[2]+c[0])/s;y=(b[2]+c[1])/s;z=.25*s}return[w,x,y,z]}
+function qmat([w,x,y,z]){return[[1-2*(y*y+z*z),2*(x*y-z*w),2*(x*z+y*w)],[2*(x*y+z*w),1-2*(x*x+z*z),2*(y*z-x*w)],[2*(x*z-y*w),2*(y*z+x*w),1-2*(x*x+y*y)]]}
+function slerp(a,b,t){let d=a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];if(d<0){b=b.map(v=>-v);d=-d}if(d>.9995){const r=a.map((v,i)=>v+(b[i]-v)*t);const n=Math.hypot(...r);return r.map(v=>v/n)}
+ const th=Math.acos(d),s=Math.sin(th);return a.map((v,i)=>(Math.sin((1-t)*th)*v+Math.sin(t*th)*b[i])/s)}
+/* face world direction `front` toward the viewer, with world direction `up` pointing up the screen */
+function aimAt(front,up,dur){front=nrm(front);if(!up){up=[VR[1][0],VR[1][1],VR[1][2]]}let u=[up[0]-dot(up,front)*front[0],up[1]-dot(up,front)*front[1],up[2]-dot(up,front)*front[2]];
+ if(Math.hypot(...u)<1e-6)u=Math.abs(front[1])<.9?[0,1,0]:[1,0,0];u=nrm(u);const x=cross(u,front);const M=[x,u,front];
+ if(!dur||!live){VR=M;aim=null;dirty=true;return}aim={q0:quat(VR),q1:quat(M),t:0,dur}}
+/* the view that shows the most hues at once, with the word 'light' up */
+/* look into a small bare patch; for a huge one, look at the crowd with the patch's edge in view */
+function holeView(){const d=ho.dir;if(ho.deg<=75)return d;let c=[0,0,0];for(let i=0;i<N;i++){c[0]+=Z[3*i];c[1]+=Z[3*i+1];c[2]+=Z[3*i+2]}
+ c=Math.hypot(...c)>1e-6?nrm(c):[-d[0],-d[1],-d[2]];const k=dot(d,c);let e=[d[0]-k*c[0],d[1]-k*c[1],d[2]-k*c[2]];if(Math.hypot(...e)<1e-9)e=Math.abs(c[1])<.9?[0,1,0]:[1,0,0];e=nrm(e);
+ const a=28*Math.PI/180;return nrm([Math.cos(a)*c[0]+Math.sin(a)*e[0],Math.cos(a)*c[1]+Math.sin(a)*e[1],Math.cos(a)*c[2]+Math.sin(a)*e[2]])}
+function bestView(){embed();const n=240,ga=Math.PI*(3-Math.sqrt(5));let best=-1,bd=[0,0,1];
+ for(let k=0;k<n;k++){const y=1-2*(k+.5)/n,r=Math.sqrt(1-y*y),d=[r*Math.cos(ga*k),y,r*Math.sin(ga*k)],hb=new Float64Array(12);let tot=0;
+  for(let i=0;i<N;i++){const s=d[0]*Z[3*i]+d[1]*Z[3*i+1]+d[2]*Z[3*i+2];if(s<.45)continue;const[R_,G,B_]=RGBS[i],mx=Math.max(R_,G,B_),mn=Math.min(R_,G,B_),ch=mx-mn;if(ch<40)continue;
+   let h=mx===R_?((G-B_)/ch+6)%6:mx===G?(B_-R_)/ch+2:(R_-G)/ch+4;hb[Math.floor(h*2)%12]+=ch;tot+=ch}
+  let e=0;for(const v of hb)if(v>0){const p=v/tot;e-=p*Math.log(p)}if(e>best){best=e;bd=d}}
+ return{front:bd,up:nrm(CM.wordVec(R,'light'))}}
+const cam=p=>[VR[0][0]*p[0]+VR[0][1]*p[1]+VR[0][2]*p[2],VR[1][0]*p[0]+VR[1][1]*p[1]+VR[1][2]*p[2],VR[2][0]*p[0]+VR[2][1]*p[1]+VR[2][2]*p[2]];
+const wrd=q=>[VR[0][0]*q[0]+VR[1][0]*q[1]+VR[2][0]*q[2],VR[0][1]*q[0]+VR[1][1]*q[1]+VR[2][1]*q[2],VR[0][2]*q[0]+VR[1][2]*q[1]+VR[2][2]*q[2]];
+
+/* ---------- layout ---------- */
+let VS=400,DPR=1,GX=200,GY=200,GR=150,phone=false;
+const bg=document.createElement('canvas'),bgx=bg.getContext('2d');
+function fit(){const W=innerWidth,H=innerHeight,view=$('#view');phone=W<=820;DPR=Math.min(window.devicePixelRatio||1,2);
+ let s,left,top;
+ if(phone){s=Math.min(W-12,560);left=(W-s)/2;top=0;document.documentElement.style.setProperty('--sh',(s+6)+'px')}
+ else if(OG){s=Math.min(H-120,W*.53);left=W*.04;top=(H-s)/2+44}
+ else{const pw=($('#panel').offsetWidth||372)+32,aw=W-pw,tb=$('#title').getBoundingClientRect().bottom+4,bb=$('#story').offsetHeight+26;
+  s=Math.max(240,Math.min(aw-30,H-tb-bb));left=Math.max(8,(aw-s)/2);top=tb+Math.max(0,(H-tb-bb-s)/2)}
+ s=Math.floor(s);view.style.width=view.style.height=s+'px';view.style.left=Math.round(left)+'px';view.style.top=Math.round(top)+'px';VS=s;
+ const px=Math.round(s*DPR);if(cv.width!==px){cv.width=cv.height=px}
+ GX=px*.5;GY=px*.47;GR=px*.405;drawBg();buildAtlas();dirty=true}
+function drawBg(){const w=cv.width;bg.width=bg.height=w;const c=bgx;c.clearRect(0,0,w,w);
+ // floor shadow and stand
+ c.save();const sy=GY+GR*1.16;let g=c.createRadialGradient(GX,sy,0,GX,sy,GR*.9);g.addColorStop(0,'rgba(0,0,0,.55)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.ellipse(GX,sy,GR*.9,GR*.16,0,0,7);c.fill();
+ const brass=(x0,x1)=>{const g=c.createLinearGradient(x0,0,x1,0);g.addColorStop(0,'#5a4219');g.addColorStop(.35,'#e9c477');g.addColorStop(.55,'#a77d34');g.addColorStop(1,'#3e2c10');return g};
+ c.fillStyle=brass(GX-GR*.42,GX+GR*.42);c.beginPath();c.ellipse(GX,GY+GR*1.13,GR*.42,GR*.07,0,0,7);c.fill();
+ c.fillStyle='#2a1f0c';c.beginPath();c.ellipse(GX,GY+GR*1.11,GR*.36,GR*.05,0,0,7);c.fill();
+ c.fillStyle=brass(GX-GR*.06,GX+GR*.06);c.fillRect(GX-GR*.05,GY+GR*.98,GR*.1,GR*.14);
+ // meridian ring (behind the globe: back half)
+ c.lineWidth=GR*.045;c.strokeStyle=brass(GX-GR*1.1,GX+GR*1.1);c.beginPath();c.ellipse(GX,GY,GR*1.07,GR*1.07,0,Math.PI*.5,Math.PI*1.5,false);c.stroke();
+ c.lineWidth=GR*.012;c.strokeStyle='rgba(255,230,170,.35)';c.beginPath();c.ellipse(GX,GY,GR*1.085,GR*1.085,0,Math.PI*.55,Math.PI*1.45,false);c.stroke();
+ // the globe: dark blued steel
+ g=c.createRadialGradient(GX-GR*.38,GY-GR*.42,GR*.05,GX,GY,GR*1.02);g.addColorStop(0,'#69727d');g.addColorStop(.35,'#3a4149');g.addColorStop(.8,'#1b1f24');g.addColorStop(1,'#0e1013');
+ c.fillStyle=g;c.beginPath();c.arc(GX,GY,GR,0,7);c.fill();
+ g=c.createRadialGradient(GX,GY,GR*.82,GX,GY,GR*1.01);g.addColorStop(0,'rgba(140,170,200,0)');g.addColorStop(1,'rgba(140,170,200,.22)');c.fillStyle=g;c.beginPath();c.arc(GX,GY,GR,0,7);c.fill();
+ c.restore()}
+function drawFront(){const c=cx;c.save();
+ const g=c.createRadialGradient(GX-GR*.42,GY-GR*.48,0,GX-GR*.42,GY-GR*.48,GR*.55);g.addColorStop(0,'rgba(255,255,255,.13)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.arc(GX,GY,GR,0,7);c.fill();
+ c.lineWidth=GR*.045;const b=c.createLinearGradient(GX-GR*1.1,0,GX+GR*1.1,0);b.addColorStop(0,'#5a4219');b.addColorStop(.35,'#e9c477');b.addColorStop(.55,'#a77d34');b.addColorStop(1,'#3e2c10');
+ c.strokeStyle=b;c.beginPath();c.ellipse(GX,GY,GR*1.07,GR*1.07,0,-Math.PI*.5,Math.PI*.5,false);c.stroke();
+ c.lineWidth=GR*.012;c.strokeStyle='rgba(255,230,170,.4)';c.beginPath();c.ellipse(GX,GY,GR*1.085,GR*1.085,0,-Math.PI*.45,Math.PI*.45,false);c.stroke();
+ c.fillStyle=b;c.beginPath();c.arc(GX,GY-GR*1.07,GR*.035,0,7);c.arc(GX,GY+GR*1.07,GR*.035,0,7);c.fill();c.restore()}
+
+/* ---------- drawing ---------- */
+const LIGHT=nrm([-.45,.55,.75]);
+const DBG=Q.get('dbg')||'';let LITE=Q.has('lite');const ivs=[];
+function adapt(raw){if(LITE||FIXED||STATIC||!raw||raw>600)return;ivs.push(raw);if(ivs.length<30)return;const s=ivs.slice().sort((x,y)=>x-y),md=s[15];ivs.length=0;if(md>45){LITE=true;buildAtlas();dirty=true}}
+let threads=true,held=false,sel=-1,hover=null,query=null,pins=null,pinArc=null,focusSet=null,forceDirty=true,forceSel=null,dirty=true;
+const TW=new Float64Array(N);
+const BUCKETS=(()=>{const m=new Map();for(let i=0;i<N;i++){const[r,g,b]=RGBS[i],k=(r>>6)*16+(g>>6)*4+(b>>6);if(!m.has(k))m.set(k,[]);m.get(k).push(i)}
+ return[...m.entries()].map(([k,idx])=>{let r=0,g=0,b=0;for(const i of idx){r+=RGBS[i][0];g+=RGBS[i][1];b+=RGBS[i][2]}const n=idx.length;return[`rgb(${r/n|0},${g/n|0},${b/n|0})`,idx]})})();
+let ATL=null;
+function buildAtlas(){const rc=GR*(phone?.03:.024),tw=GR*.046,th=GR*.026,ns=Math.ceil(rc*2.6+4),cols=32,rows=Math.ceil((N+1)/cols)+0,tw2=Math.ceil(tw+6),th2=Math.ceil(th+6);
+ const cvA=document.createElement('canvas');cvA.width=cols*ns+tw2+ns;cvA.height=Math.max(rows*ns,3*th2);const c=cvA.getContext('2d');
+ const dxp=cols*ns+tw2,tx=cols*ns;
+ // chip shadow at (0,0)
+ let g=c.createRadialGradient(ns/2,ns/2,0,ns/2,ns/2,rc*1.25);g.addColorStop(0,'rgba(0,0,0,.5)');g.addColorStop(.75,'rgba(0,0,0,.32)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.fillRect(0,0,ns,ns);
+ // tile shadow, tile, tile darkener in the column at tx
+ c.save();c.translate(tx+tw2/2,th2/2);c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.roundRect(-tw/2-1,-th/2-1,tw+2,th+2,2);c.fill();c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.roundRect(-tw/2,-th/2,tw,th,1.5);c.fill();c.restore();
+ c.save();c.translate(tx+tw2/2,th2*1.5);c.fillStyle='#f3ecd9';c.fillRect(-tw/2,-th/2,tw,th);c.fillStyle='rgba(255,255,255,.35)';c.fillRect(-tw/2,-th/2,tw,Math.max(1,th*.18));c.strokeStyle='rgba(40,34,24,.35)';c.lineWidth=Math.max(.6,DPR*.5);c.strokeRect(-tw/2+.25,-th/2+.25,tw-.5,th-.5);c.restore();
+ c.save();c.translate(tx+tw2/2,th2*2.5);c.fillStyle='#000';c.fillRect(-tw/2-.5,-th/2-.5,tw+1,th+1);c.restore();
+ // chip darkener
+ c.save();c.translate(dxp+ns/2,ns/2);c.fillStyle='#000';c.beginPath();c.arc(0,0,rc+.6,0,7);c.fill();c.restore();
+ // chips
+ for(let i=0;i<N;i++){const k=i+1,cx_=(k%cols)*ns+ns/2,cy_=Math.floor(k/cols)*ns+ns/2;c.fillStyle=HEX[i];c.beginPath();c.arc(cx_,cy_,rc,0,7);c.fill();
+  c.lineWidth=Math.max(.8,DPR*.7);c.strokeStyle='rgba(8,8,10,.55)';c.stroke();c.fillStyle='rgba(255,255,255,.17)';c.beginPath();c.ellipse(cx_-rc*.25,cy_-rc*.3,rc*.42,rc*.3,0,0,7);c.fill()}
+ ATL={cv:cvA,sz:ns,cols,tx,tw2,th2,dx:dxp,rc}}
+   // label widths (device px), filled lazily
+function scr(q){return[GX+GR*q[0],GY-GR*q[1]]}
+function arcPts(a,b,maxSeg){const d=clamp(dot(a,b),-1,1),th=Math.acos(d),n=Math.max(1,Math.min(maxSeg||40,Math.ceil(th/.12)));const pts=[];
+ if(th<1e-6)return[a,b];const s=Math.sin(th);for(let k=0;k<=n;k++){const t=k/n,u=Math.sin((1-t)*th)/s,v=Math.sin(t*th)/s;pts.push([u*a[0]+v*b[0],u*a[1]+v*b[1],u*a[2]+v*b[2]])}return pts}
+function strokeArc(a,b){const P=arcPts(a,b);let pen=false;for(const p of P){const q=cam(p);if(q[2]<0){pen=false;continue}const[x,y]=scr(q);if(pen)cx.lineTo(x,y);else{cx.moveTo(x,y);pen=true}}}
+function graticule(){const c=cx;c.save();c.lineWidth=Math.max(1,DPR*.8);
+ const path=(fn,n)=>{let pen=false;for(let k=0;k<=n;k++){const q=cam(fn(k/n));if(q[2]<0){pen=false;continue}const[x,y]=scr(q);if(pen)c.lineTo(x,y);else{c.moveTo(x,y);pen=true}}};
+ c.strokeStyle='rgba(170,195,220,.075)';c.beginPath();
+ for(let la=-60;la<=60;la+=30){const p=la*Math.PI/180,cp=Math.cos(p),sp=Math.sin(p);path(t=>[cp*Math.cos(t*6.2832),sp,cp*Math.sin(t*6.2832)],72)}
+ for(let lo=0;lo<180;lo+=30){const l=lo*Math.PI/180,cl=Math.cos(l),sl=Math.sin(l);path(t=>{const a=t*6.2832;return[Math.cos(a)*cl,Math.sin(a),Math.cos(a)*sl]},72)}
+ c.stroke();c.restore()}
+function shade(rgb,q,k){const f=(k||1)*(.6+.4*clamp(dot(q,LIGHT),0,1))*(.55+.45*Math.min(1,q[2]*2.2));return`rgb(${rgb[0]*f|0},${rgb[1]*f|0},${rgb[2]*f|0})`}
+function render(){dirty=false;const c=cx,w=cv.width;c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,w,w);if(!DBG.includes('b'))c.drawImage(bg,0,0);
+ if(!R)return;const P0=performance.now();embed();if(!DBG.includes('g'))graticule();const P1=performance.now();
+ const rc=GR*(phone?.03:.024),tw=GR*.046,th=GR*.026,DIM=held||!!focusSet;
+ const isF=i=>!focusSet||focusSet.has(i);
+ // threads
+ if((threads||held)&&!DBG.includes('t')){c.save();c.lineCap='round';c.lineWidth=Math.max(1,DPR*1.05);
+  // one stroke per colour bucket (64), not per thread
+  for(const[col,idx]of BUCKETS)for(const dim of[false,true]){let any=false;c.beginPath();
+   for(const i of idx){if(held&&!IS_TEST[i])continue;const df=held?false:(DIM&&!isF(i));if(df!==dim)continue;const a=[Z[3*i],Z[3*i+1],Z[3*i+2]],b=[T[3*i],T[3*i+1],T[3*i+2]];
+    const qa=cam(a),qb=cam(b);if(qa[2]<0&&qb[2]<0)continue;if(LITE){if(qa[2]<.05||qb[2]<.05)continue;const[x0,y0]=scr(qa),[x1,y1]=scr(qb);c.moveTo(x0,y0);c.lineTo(x1,y1)}else strokeArc(a,b);any=true}
+   if(any){c.globalAlpha=held?.95:dim?.12:.55;c.strokeStyle=held?'#ffe2a0':col;c.stroke()}}
+  c.restore()}
+ const P2=performance.now();
+ // collect visible magnets
+ const vis=[];for(let i=0;i<N;i++){const qa=cam([Z[3*i],Z[3*i+1],Z[3*i+2]]),qb=cam([T[3*i],T[3*i+1],T[3*i+2]]);if(qa[2]>.015)vis.push({i,c:1,q:qa});if(qb[2]>.015)vis.push({i,c:0,q:qb})}
+ const al=it=>{if(held)return IS_TEST[it.i]?1:.18;if(focusSet)return focusSet.has(it.i)?1:.22;return 1};
+ // sprites from one atlas (shadows, tiles, chips): drawImage batches on the GPU, where a path per magnet does not
+ const A=ATL,cvA=A.cv,ns=A.sz,hs=ns/2;
+ const xf=(it,ox,oy)=>{const[x,y]=scr(it.q),r=Math.hypot(it.q[0],it.q[1]);let ux=1,uy=0;if(r>1e-6){ux=it.q[0]/r;uy=-it.q[1]/r}const k=Math.max(it.q[2],.06)-1;
+  c.setTransform(1+k*ux*ux,k*ux*uy,k*ux*uy,1+k*uy*uy,x+ox,y+oy)};
+ const fac=it=>(.6+.4*clamp(dot(it.q,LIGHT),0,1))*(.55+.45*Math.min(1,it.q[2]*2.2));
+ c.save();
+ if(!DBG.includes('s')&&!LITE)for(const it of vis){c.globalAlpha=al(it)<1?.3:1;xf(it,rc*.22,rc*.3);if(it.c)c.drawImage(cvA,0,0,ns,ns,-hs,-hs,ns,ns);else c.drawImage(cvA,A.tx,0,A.tw2,A.th2,-A.tw2/2,-A.th2/2,A.tw2,A.th2)}
+ for(const it of vis){if(it.c)continue;const a_=al(it);xf(it,0,0);c.globalAlpha=a_;c.drawImage(cvA,A.tx,A.th2,A.tw2,A.th2,-A.tw2/2,-A.th2/2,A.tw2,A.th2);
+  c.globalAlpha=a_*(1-fac(it));c.drawImage(cvA,A.tx,2*A.th2,A.tw2,A.th2,-A.tw2/2,-A.th2/2,A.tw2,A.th2)}
+ if(!DBG.includes('c'))for(const it of vis){if(!it.c)continue;const a_=al(it);xf(it,0,0);const sx=((it.i+1)%A.cols)*ns,sy=Math.floor((it.i+1)/A.cols)*ns;
+  c.globalAlpha=a_;c.drawImage(cvA,sx,sy,ns,ns,-hs,-hs,ns,ns);c.globalAlpha=a_*(1-fac(it));c.drawImage(cvA,A.dx,0,ns,ns,-hs,-hs,ns,ns)}
+ c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;
+ if(held){c.strokeStyle='rgba(255,246,220,.95)';c.lineWidth=Math.max(1.2,DPR*1.2);c.beginPath();for(const it of vis){if(!it.c||!IS_TEST[it.i])continue;const[x,y]=scr(it.q),ang=Math.atan2(-it.q[1],it.q[0]);c.moveTo(x+(rc*1.35)*Math.max(it.q[2],.05)*Math.cos(ang),y+(rc*1.35)*Math.max(it.q[2],.05)*Math.sin(ang));c.ellipse(x,y,Math.max(rc*1.35*it.q[2],.6),rc*1.35,ang,0,6.2832)}c.stroke()}
+ c.restore();
+ const P3=performance.now();overlays(rc);
+ if(!DBG.includes('l'))labels(vis,rc);PERF.parts={grat:P1-P0,threads:P2-P1,magnets:P3-P2,over:performance.now()-P3};
+ drawPins();
+ if(!OG&&!DBG.includes('f'))drawFront()}
+function overlays(rc){const c=cx;c.save();c.lineCap='round';
+ // bare patch
+ if(ho&&(ho.deg>20||tourMark==='hot'||tourMark==='cold')&&!held&&!query){const d=ho.dir,ang=ho.deg*Math.PI/180;const e1=nrm(cross(d,Math.abs(d[1])<.9?[0,1,0]:[1,0,0])),e2=cross(d,e1);
+  c.setLineDash([DPR*5,DPR*5]);c.lineWidth=Math.max(1.4,DPR*1.5);c.strokeStyle='rgba(255,226,160,.85)';c.beginPath();let pen=false;
+  for(let k=0;k<=96;k++){const t=k/96*6.2832,p=[0,1,2].map(i=>Math.cos(ang)*d[i]+Math.sin(ang)*(Math.cos(t)*e1[i]+Math.sin(t)*e2[i])),q=cam(p);if(q[2]<0){pen=false;continue}const[x,y]=scr(q);if(pen)c.lineTo(x,y);else{c.moveTo(x,y);pen=true}}
+  c.stroke();c.setLineDash([]);const qd=cam(d);c.fillStyle='rgba(255,226,160,.95)';c.font=`500 ${Math.round(11.5*DPR)}px "DM Mono",monospace`;c.textAlign='center';c.textBaseline='middle';
+  if(qd[2]>.1){const[x,y]=scr(qd);c.fillText('bare patch',x,y-7*DPR);c.fillText(ho.deg.toFixed(0)+'° radius',x,y+8*DPR);c.beginPath();c.arc(x,y-22*DPR,2*DPR,0,7);c.fill()}
+  else{let bq=null;for(let k=0;k<96;k++){const t=k/96*6.2832,q=cam([0,1,2].map(i=>Math.cos(ang)*d[i]+Math.sin(ang)*(Math.cos(t)*e1[i]+Math.sin(t)*e2[i])));if(!bq||q[2]>bq[2])bq=q}
+   if(bq&&bq[2]>0){const[x,y]=scr(bq),ux=qd[0]-bq[0],uy=-(qd[1]-bq[1]),ul=Math.hypot(ux,uy)||1,lx=x+ux/ul*GR*.13,ly=y+uy/ul*GR*.13;c.fillText('bare patch',lx,ly-7*DPR);c.fillText(ho.deg.toFixed(0)+'° radius',lx,ly+8*DPR)}}}
+ // forces on the selected chip
+ if(sel>=0&&R&&R.steps>0){if(forceDirty||!forceSel||forceSel.i!==sel){forceSel=CM.force(R,sel,Z,T);forceDirty=false;panelDirty=true}
+  const f=forceSel,a=[Z[3*sel],Z[3*sel+1],Z[3*sel+2]],mx=f.rivals[0]?f.rivals[0].share:1;
+  c.globalAlpha=.5;c.strokeStyle='#ff6b52';c.lineWidth=Math.max(1,DPR*.8);c.beginPath();for(const r of f.rivals)if(r.share/mx<=.12)strokeArc(a,[T[3*r.j],T[3*r.j+1],T[3*r.j+2]]);c.stroke();
+  for(let k=f.rivals.length-1;k>=0;k--){const r=f.rivals[k],s=r.share/mx;if(s<=.12)continue;const b=[T[3*r.j],T[3*r.j+1],T[3*r.j+2]];
+   c.globalAlpha=.55;c.strokeStyle='#160604';c.lineWidth=DPR*(2.6+4.2*s);c.beginPath();strokeArc(a,b);c.stroke();
+   c.globalAlpha=clamp(.35+.65*s,.35,1);c.strokeStyle='#ff5a3c';c.lineWidth=DPR*(1.1+3.4*s);c.beginPath();strokeArc(a,b);c.stroke()}
+  c.globalAlpha=1;const own=[T[3*sel],T[3*sel+1],T[3*sel+2]];c.strokeStyle='#1d1406';c.lineWidth=DPR*6;c.beginPath();strokeArc(a,own);c.stroke();c.strokeStyle='#ffd27a';c.lineWidth=DPR*3.4;c.beginPath();strokeArc(a,own);c.stroke();
+  const qa=cam(a);if(qa[2]>0){const[x,y]=scr(qa);const g=f.grad,gq=cam(g),gl=Math.hypot(gq[0],gq[1]);
+   c.strokeStyle='rgba(255,255,255,.95)';c.lineWidth=DPR*2.4;c.beginPath();c.arc(x,y,rc*1.7,0,7);c.stroke();
+   if(gl>1e-9){const L=GR*.16,ex=x+gq[0]/gl*L,ey=y-gq[1]/gl*L,an=Math.atan2(ey-y,ex-x);c.beginPath();c.moveTo(x+gq[0]/gl*rc*1.8,y-gq[1]/gl*rc*1.8);c.lineTo(ex,ey);c.stroke();
+    c.fillStyle='#fff';c.beginPath();c.moveTo(ex+Math.cos(an)*DPR*7,ey+Math.sin(an)*DPR*7);c.lineTo(ex+Math.cos(an+2.4)*DPR*7,ey+Math.sin(an+2.4)*DPR*7);c.lineTo(ex+Math.cos(an-2.4)*DPR*7,ey+Math.sin(an-2.4)*DPR*7);c.fill()}}}
+ // query
+ if(query){const v=query.v;c.strokeStyle='#ffd27a';c.lineWidth=DPR*1.6;c.globalAlpha=.9;for(const o of query.nn){const b=query.kind==='words'?[Z[3*o.j],Z[3*o.j+1],Z[3*o.j+2]]:[T[3*o.j],T[3*o.j+1],T[3*o.j+2]];c.beginPath();strokeArc(v,b);c.stroke()}c.globalAlpha=1;
+  if(query.kind==='rgb'){const q=cam(v);if(q[2]>0){const[x,y]=scr(q);c.fillStyle=query.hex;c.beginPath();c.arc(x,y,rc*1.5,0,7);c.fill();c.strokeStyle='#ffd27a';c.lineWidth=DPR*2.5;c.stroke()}}}
+ c.restore()}
+function drawPins(){if(!pins)return;const c=cx;c.save();c.lineCap='round';
+{c.font=`italic 500 ${Math.round(14*DPR)}px "Newsreader",serif`;c.textAlign='center';c.textBaseline='middle';
+  if(pinArc){const a=pins.find(p=>p.w===pinArc[0]),b=pins.find(p=>p.w===pinArc[1]);if(a&&b){c.setLineDash([DPR*4,DPR*4]);c.strokeStyle='rgba(255,226,160,.8)';c.lineWidth=DPR*1.5;c.beginPath();strokeArc(a.d,b.d);c.stroke();c.setLineDash([])}}
+  const placed=[];pinBoxes=[];
+  pins.forEach((p,pi)=>{const q=cam(p.d);if(q[2]<-.05)return;const[x,y]=scr(q),rr=Math.hypot(q[0],q[1])||1,ix=-q[0]/rr,iy=q[1]/rr;
+   const tw=c.measureText(p.w).width+14*DPR,hh=22*DPR;let hx=0,hy=0;
+   for(const[a_,s_]of[[.15,0],[.15,.12],[.15,-.12],[.27,0],[.27,.16],[.27,-.16],[.06,.2],[.06,-.2]]){hx=x+ix*GR*a_-iy*s_*GR;hy=y+iy*GR*a_+ix*s_*GR;
+    if(!placed.some(b=>Math.abs(b[0]-hx)<(b[2]+tw)/2+4*DPR&&Math.abs(b[1]-hy)<hh+4*DPR))break}
+   placed.push([hx,hy,tw]);pinBoxes.push({w:p.w,x:hx/DPR,y:hy/DPR,q2:q[2]});
+   c.strokeStyle='#e9c477';c.lineWidth=DPR*2;c.beginPath();c.moveTo(x,y);c.lineTo(hx,hy);c.stroke();c.fillStyle='#e9c477';c.beginPath();c.arc(x,y,DPR*3.2,0,7);c.fill();
+   c.fillStyle='#1d1406';c.strokeStyle='#e9c477';c.lineWidth=DPR*1.2;c.beginPath();c.roundRect(hx-tw/2,hy-hh/2,tw,hh,4*DPR);c.fill();c.stroke();c.fillStyle='#ffe2a0';c.fillText(p.w,hx,hy+1)})}
+ c.restore()}
+let labelBoxes=[],pinBoxes=[];
+function labels(vis,rc){const c=cx;c.save();const fs=Math.round((phone?11:12)*DPR);c.font=`500 ${fs}px "Newsreader",serif`;c.textAlign='center';c.textBaseline='middle';
+ const forced=[];if(sel>=0)forced.push(sel);if(forceSel&&sel>=0)for(const r of forceSel.rivals.slice(0,3))forced.push(r.j);
+ if(query&&query.kind==='rgb')for(const o of query.nn)forced.push(o.j);if(hover&&hover.c===0)forced.push(hover.i);if(focusSet)for(const i of focusSet)forced.push(i);
+ if(pins)for(const p of pins.slice(0,2))for(const o of CM.nearestChips(Z,p.d,3))forced.push(o.j);
+ const byI=new Map();for(const it of vis)if(!it.c)byI.set(it.i,it);
+ const cand=[];const seen=new Set();
+ for(const i of forced){const it=byI.get(i);if(it&&!seen.has(i)){cand.push(it);seen.add(i)}}
+ if(!focusSet&&!held&&!pins){const rest=[];for(const it of vis)if(!it.c&&!seen.has(it.i)&&it.q[2]>.42)rest.push(it);rest.sort((a,b)=>b.i-a.i);for(const it of rest)cand.push(it)}
+ else if(held){const rest=[];for(const it of vis)if(!it.c&&!seen.has(it.i)&&IS_TEST[it.i]&&it.q[2]>.3)rest.push(it);rest.sort((a,b)=>b.q[2]-a.q[2]);for(const it of rest)cand.push(it)}
+ const MAX=(phone?14:30)+forced.length,boxes=[],hh=fs*1.45,pad=6*DPR;
+ for(const it of cand){if(boxes.length>=MAX)break;const name=CM.NAMES[it.i];if(!TW[it.i])TW[it.i]=c.measureText(name).width/DPR;const wdt=TW[it.i]*DPR+pad*2;
+  const[x,y]=scr(it.q),b=[x-wdt/2,y-hh/2,x+wdt/2,y+hh/2],must=seen.has(it.i);
+  if(!must&&boxes.some(o=>b[0]<o[2]+2*DPR&&b[2]>o[0]-2*DPR&&b[1]<o[3]+2*DPR&&b[3]>o[1]-2*DPR))continue;if(b[0]<0||b[2]>cv.width)if(!must)continue;
+  boxes.push({...b,0:b[0],1:b[1],2:b[2],3:b[3],it,must})}
+ labelBoxes=boxes;
+ for(const bx of boxes){const it=bx.it,isSel=it.i===sel,isRiv=forceSel&&sel>=0&&forceSel.rivals.slice(0,3).some(r=>r.j===it.i),hv=hover&&hover.c===0&&hover.i===it.i;
+  const sh=.75+.25*clamp(dot(it.q,LIGHT),0,1);c.fillStyle='rgba(0,0,0,.45)';c.beginPath();c.roundRect(bx[0]+2*DPR,bx[1]+3*DPR,bx[2]-bx[0],bx[3]-bx[1],2*DPR);c.fill();
+  c.fillStyle=isSel?'#ffe2a0':`rgb(${243*sh|0},${236*sh|0},${217*sh|0})`;c.beginPath();c.roundRect(bx[0],bx[1],bx[2]-bx[0],bx[3]-bx[1],2*DPR);c.fill();
+  if(isRiv||hv||(query&&query.kind==='rgb'&&query.nn.some(o=>o.j===it.i))){c.strokeStyle=isRiv?'#ff6b52':'#ffd27a';c.lineWidth=DPR*1.6;c.stroke()}
+  if(held&&IS_TEST[it.i]){c.strokeStyle='#ffe2a0';c.lineWidth=DPR*1.4;c.stroke()}
+  c.fillStyle='#17140f';c.fillText(CM.NAMES[it.i],(bx[0]+bx[2])/2,(bx[1]+bx[3])/2+.5*DPR)}
+ if(query&&query.kind==='words'){const q=cam(query.v);if(q[2]>0){const[x,y]=scr(q);c.font=`600 ${Math.round(13*DPR)}px "Newsreader",serif`;const wd=c.measureText(query.text).width+16*DPR,h2=fs*1.7;
+  c.fillStyle='rgba(0,0,0,.5)';c.beginPath();c.roundRect(x-wd/2+2*DPR,y-h2/2+3*DPR,wd,h2,3*DPR);c.fill();c.fillStyle='#ffe2a0';c.beginPath();c.roundRect(x-wd/2,y-h2/2,wd,h2,3*DPR);c.fill();c.strokeStyle='#1d1406';c.lineWidth=DPR;c.stroke();c.fillStyle='#17140f';c.fillText(query.text,x,y+.5*DPR)}}
+ c.restore()}
+
+/* ---------- captions ---------- */
+let capT=null,capText='';
+function cap(html){const el=$('#caption'),sp=el.firstElementChild;capText=html.replace(/<[^>]+>/g,'');if(capT){clearTimeout(capT);capT=null}
+ if(STATIC||FIXED||!sp.innerHTML){sp.innerHTML=html;el.classList.remove('fade');return}
+ el.classList.add('fade');capT=setTimeout(()=>{sp.innerHTML=html;el.classList.remove('fade')},240)}
+const ST=STATS.fmt;
+const TOUR_CHIP='orange',TOUR_Q='light chocolate';
+const CAP={
+ scramble:()=>`${m('921')} paint chips from the xkcd colour survey and their ${m('921')} names, each a <b>magnet</b> on one steel globe; a thread ties every chip to its own name. Two untrained encoders put them here: one sees only the chip's RGB, the other only the words of its name.`,
+ train:()=>`Training with CLIP's loss, InfoNCE, at temperature ${m('τ = 0.07')}. Each step takes ${m('128')} pairs: every chip is <b>pulled</b> toward its own name and <b>pushed</b> away from the other 127, and every name likewise. Watch the threads shrink.`,
+ globe:()=>`${m(comma(R.steps)+' steps')} later, chips sit ${m(rd?rd.pairDeg.toFixed(1)+'°':'…')} from their names (median) and the colours cover the globe. Nothing told it about hue or lightness: similar names pulled similar chips together.`,
+ force:()=>{const f=forceSel;return`One chip's view of the last batch. <b>Gold</b> pulls ${w_(TOUR_CHIP)} toward its name; <b>red</b> threads push it from the batch's other names, thicker for the ones it is most likely to confuse${f?`: ${w_(CM.NAMES[f.rivals[0].j])} takes ${m(pct(f.rivals[0].share))} of the push`:''}. At ${m('τ = 0.07')} about ${m(f?f.effRivals.toFixed(0):'…')} names share it.`},
+ hot0:()=>`Now <b>hot</b>: ${m('τ = 10')}, retrained from the same scrambled start. The softmax flattens, so every rival in the batch pushes almost equally.`,
+ hot:()=>`At ${m('τ = 10')} every name in the batch pushes almost equally (effectively ${m(riv?riv.toFixed(0):'…')} of them), so it only feels where the crowd's <b>average</b> is, and that is already the globe's centre. Pairs still meet, but the crowd clumps and leaves a bare patch ${m(ho?ho.deg.toFixed(0)+'°':'…')} wide in radius. Over 30 runs the median is ${m(ST.hot3S)}, and ${m(ST.hot12S)} after training four times longer.`,
+ cold0:()=>`Now <b>cold</b>: ${m('τ = 0.002')}. The softmax turns almost into a max: only the nearest rival or two push.`,
+ cold:()=>`At ${m('τ = 0.002')} about ${m(riv?riv.toFixed(1):'…')} names push each chip. Pairs lock together, but nothing pushes the crowd outward, so it spreads slowly from where it started: a bare patch of ${m(ho?ho.deg.toFixed(0)+'°':'…')}. Over 30 runs the median is ${m(ST.cold3S)}, still ${m(ST.cold12S)} after 12,000 steps; between ${m('τ = 0.05')} and ${m('0.2')} it is ${m(ST.mid)}.`,
+ zs:()=>`Back to ${m('τ = 0.07')}. The ${m(String(CM.SPLIT.test.length))} ringed pairs <b>never</b> took part in training, and their names reach the name encoder only through words used in other names. Each held-out chip still finds its own name ${m(rd?ord(Math.round(rd.zsMed)+1):'…')} closest among all 921 (median); ${w_('red')} is one of them.`,
+ words:()=>{const a=wordAng('dark','light'),b=wordAng('light','pale');return`Each <b>word</b> is an arrow and a name points along the sum of its words' arrows. Nobody said what ${w_('dark')} means; its arrow ends up among dark chips (${nearC('dark')}), ${m(a.toFixed(0)+'°')} from ${w_('light')}, which sits among pale ones (${nearC('light')}). ${w_('pale')} lands ${m(b.toFixed(0)+'°')} from ${w_('light')}. Over 30 runs: ${m(ST.dlS)} and ${m(ST.lpS)}.`},
+ ask:()=>`Ask it for a colour nobody named: ${w_(TOUR_Q)} is not in the survey, but its two words point it at ${query?query.nn.slice(0,3).map(o=>w_(CM.NAMES[o.j])).join(', '):'…'}. Only words the names use are known: ${m('386')} of them.`,
+ you:()=>`Your turn. Drag to turn the globe, click a magnet to see its pull and push, change the temperature, or ask for a colour.`,
+ still:()=>`Reduced motion: no tour and no spin. The globe trains once at ${m('τ = 0.07')} (3,000 steps, about two seconds) and then stays put. Change the temperature, click a magnet to see its pull and push, or ask for a colour.`};
+function nearC(w){embed();return CM.nearestChips(Z,nrm(CM.wordVec(R,w)),2).map(o=>CM.NAMES[o.j]).join(', ')}
+function wordAng(a,b){const u=nrm(CM.wordVec(R,a)),v=nrm(CM.wordVec(R,b));return Math.acos(clamp(dot(u,v),-1,1))*180/Math.PI}
+
+/* ---------- tour ---------- */
+let script=null,swait=0,swaitFn=null,tourOn=false,tourDone=false,tourMark='',simT=0,live=true;
+function run(gen){script=gen;swait=0;swaitFn=null}
+function tickScript(dt){if(!script)return;if(swait>0){swait-=dt;if(swait>0)return}if(swaitFn){if(!swaitFn())return;swaitFn=null}
+ for(let guard=0;guard<50;guard++){const r=script.next();if(r.done){script=null;return}if(typeof r.value==='function'){if(!r.value()){swaitFn=r.value;return}}else{swait=r.value||0;if(swait>0)return}}}
+const ORDER=['scramble','train','globe','force','hot','cold','zs','words','ask','final'];
+function clearShow(){sel=-1;forceSel=null;query=null;pins=null;pinArc=null;focusSet=null;held=false;syncControls();$('#res').innerHTML='';$('#askt').value='';panelDirty=true}
+function* tour(start){
+ tourOn=true;tourDone=false;live=!start||start==='scramble';clearShow();spin=!STATIC;
+ const si=start?ORDER.indexOf(start):0,need=k=>ORDER.indexOf(k)>=si;
+ const mark=k=>{tourMark=k;if(!live&&k===start)live=true};
+ const trainWait=function*(){if(live)yield ()=>R.steps>=target;else finishNow()};
+ newRun(0.07,seed,'tour');aimAt([0,.3,1],[0,1,0],0);
+ mark('scramble');cap(CAP.scramble());playing=false;if(live)yield EMBED?2:5;
+ playing=true;mark('train');cap(CAP.train());yield* trainWait();
+ {const bv=bestView();aimAt(bv.front,bv.up,1.6)}spin=false;mark('globe');cap(CAP.globe());if(live)yield 5;spin=true;
+ const ci=IDX.get(TOUR_CHIP);sel=ci;forceDirty=true;forceSel=CM.force(R,ci,(embed(),Z),T);spin=false;aimAt([Z[3*ci],Z[3*ci+1],Z[3*ci+2]],null,1.2);mark('force');cap(CAP.force());if(live)yield 8;
+ if(need('hot')){newRun(10,seed,'tour');sel=ci;spin=true;cap(CAP.hot0());yield* trainWait();embed();spin=false;aimAt(holeView(),null,1.4);mark('hot');cap(CAP.hot());if(live)yield 9}
+ if(need('cold')){newRun(0.002,seed,'tour');sel=ci;spin=true;cap(CAP.cold0());yield* trainWait();embed();spin=false;aimAt(holeView(),null,1.4);mark('cold');cap(CAP.cold());if(live)yield 9}
+ sel=-1;forceSel=null;if(!restore(seed,0.07,'tour')){newRun(0.07,seed,'tour');finishNow()}embed();held=true;syncControls();spin=true;mark('zs');cap(CAP.zs());if(live)yield 8;
+ held=false;syncControls();spin=false;embed();
+ const dk=nrm(CM.wordVec(R,'dark')),lt=nrm(CM.wordVec(R,'light'));pins=['dark','light','pale'].map(w=>({w,d:nrm(CM.wordVec(R,w))}));pinArc=['dark','light'];
+ {const mid=nrm([dk[0]+lt[0],dk[1]+lt[1],dk[2]+lt[2]]),k=dot(lt,mid),tg=nrm([lt[0]-k*mid[0],lt[1]-k*mid[1],lt[2]-k*mid[2]]),pp=cross(mid,tg),a=.6;
+  aimAt(mid,[Math.cos(a)*tg[0]+Math.sin(a)*pp[0],Math.cos(a)*tg[1]+Math.sin(a)*pp[1],Math.cos(a)*tg[2]+Math.sin(a)*pp[2]],1.4)}mark('words');cap(CAP.words());if(live)yield 9;
+ pins=null;pinArc=null;ask(TOUR_Q,true);aimAt(query.v,null,1.2);mark('ask');cap(CAP.ask());if(live)yield 8;
+ mark('final');clearShow();spin=!STATIC;tourOn=false;tourDone=true;cap(CAP.you())}
+function poke(){if(tourOn){script=null;tourOn=false;tourDone=true;pins=null;pinArc=null;focusSet=null;aim=null;if(!(R.steps>=target))playing=true;cap(CAP.you());dirty=true;return true}return false}
+
+/* ---------- interaction ---------- */
+function ask(text,quiet){text=(text||'').trim().toLowerCase();const ws=text.split(/[ \/\-]+/).filter(Boolean);const unk=ws.filter(w=>!CM.WI.has(w));
+ if(!ws.length){query=null;$('#res').innerHTML='';dirty=true;return}
+ if(unk.length){query=null;$('#res').innerHTML=`<div class="bad">It has never seen ${unk.map(w=>'‘'+w.replace(/[<>&]/g,'')+'’').join(', ')}. It only knows the 386 words used in the survey's names.</div>`;dirty=true;panelDirty=true;return}
+ embed();const v=CM.encWords(R,ws);if(!v){query=null;return}const nn=CM.nearestChips(Z,v,5);const exact=IDX.has(ws.join(' '));
+ query={kind:'words',text:ws.join(' '),v,nn,exact};LOG.push({ev:'ask',text:query.text,seed,tau,steps:R.steps,nn:nn.map(o=>o.j)});
+ $('#res').innerHTML=`<div>${exact?'In the survey; its chips:':'Not in the survey. Closest chips:'}</div>`+nn.map(o=>`<div class="r"><i style="background:${HEX[o.j]}"></i><b>${CM.NAMES[o.j]}</b><em>${(Math.acos(clamp(o.cos,-1,1))*180/Math.PI).toFixed(1)}°</em></div>`).join('');
+ dirty=true;panelDirty=true}
+function pick(hex){const r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),b=parseInt(hex.substr(5,2),16);embed();const v=CM.encRGB(R,r,g,b);const nn=CM.nearestNames(T,v,5);
+ query={kind:'rgb',hex,rgb:[r,g,b],v,nn};LOG.push({ev:'pick',hex,seed,tau,steps:R.steps,nn:nn.map(o=>o.j)});
+ $('#res').innerHTML=`<div>The globe would call <span style="color:${hex}">●</span> ${hex}:</div>`+nn.map(o=>`<div class="r"><i style="background:${HEX[o.j]}"></i><b>${CM.NAMES[o.j]}</b><em>${(Math.acos(clamp(o.cos,-1,1))*180/Math.PI).toFixed(1)}°</em></div>`).join('');dirty=true;panelDirty=true}
+function pickAt(ex,ey){const r=cv.getBoundingClientRect(),x=(ex-r.left)*DPR,y=(ey-r.top)*DPR;let best=null,bd=(GR*.05)**2;
+ for(const b of labelBoxes)if(x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[3])return{i:b.it.i,c:0};
+ for(let i=0;i<N;i++)for(const c of[1,0]){const A=c?Z:T,q=cam([A[3*i],A[3*i+1],A[3*i+2]]);if(q[2]<.05)continue;const[sx,sy]=scr(q),d=(sx-x)**2+(sy-y)**2;if(d<bd){bd=d;best={i,c}}}return best}
+function select(i){sel=i;forceSel=null;forceDirty=true;if(i>=0)LOG.push({ev:'select',i,name:CM.NAMES[i],steps:R.steps});dirty=true;panelDirty=true}
+function hook(){
+ let drag=null;
+ cv.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={x:e.clientX,y:e.clientY,moved:false,id:e.pointerId,t:e.pointerType};if(e.pointerType!=='touch')cv.setPointerCapture(e.pointerId)});
+ cv.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!drag.moved&&Math.hypot(dx,dy)<4)return;
+   if(!drag.moved){drag.moved=true;poke();spin=false;aim=null;syncControls();cv.classList.add('grabbing')}
+   if(drag.t==='touch'&&Math.abs(dy)>Math.abs(dx)*1.2)return;
+   const s=2.2/(VS||400);VR=mul(rotAx([0,1,0],dx*s),VR);if(drag.t!=='touch')VR=mul(rotAx([1,0,0],dy*s),VR);VR=ortho(VR);drag.x=e.clientX;drag.y=e.clientY;dirty=true;return}
+  if(e.pointerType==='mouse'){const h=pickAt(e.clientX,e.clientY);const ch=JSON.stringify(h)!==JSON.stringify(hover);hover=h;cv.classList.toggle('pt',!!h);
+   const tip=$('#tip');if(h){const r=cv.getBoundingClientRect();tip.style.display='block';tip.style.left=(e.clientX-r.left)+'px';tip.style.top=(e.clientY-r.top)+'px';tip.innerHTML=`<i style="background:${HEX[h.i]}"></i>${h.c?'chip':'name'} · ${CM.NAMES[h.i]} · ${HEX[h.i]}${IS_TEST[h.i]?' · held out':''}`}else tip.style.display='none';if(ch)dirty=true}});
+ const up=e=>{if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;cv.classList.remove('grabbing');if(!d.moved){const h=pickAt(e.clientX,e.clientY);poke();if(h){select(h.i);spin=false;syncControls()}else select(-1)}};
+ cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{drag=null;cv.classList.remove('grabbing')});
+ cv.addEventListener('pointerleave',()=>{hover=null;$('#tip').style.display='none';dirty=true});
+ const ts=$('#taus');ts.addEventListener('input',e=>{const t=tauOf(+e.target.value);poke();$('#tauv').textContent=fmtTau(t)});
+ ts.addEventListener('change',e=>{const t=tauOf(+e.target.value);poke();retrain(t)});
+ $$('#tpre button').forEach(b=>b.addEventListener('click',()=>{poke();retrain(+b.dataset.v)}));
+ $('#playb').addEventListener('click',()=>{poke();if(R.steps>=target){target=R.steps+STEPS;playing=true}else playing=!playing;if(STATIC&&playing)pump();syncControls()});
+ $('#moreb').addEventListener('click',()=>{poke();target=Math.max(target,R.steps)+STEPS;playing=true;LOG.push({ev:'more',seed,tau,steps:R.steps,target});if(STATIC)pump();syncControls()});
+ $('#seedb').addEventListener('click',()=>{poke();retrain(tau,(seed*1103515245+12345)%1000|0||1)});
+ $('#spinb').addEventListener('click',()=>{poke();spin=!spin;aim=null;syncControls()});
+ $('#threadb').addEventListener('click',()=>{poke();threads=!threads;syncControls();dirty=true});
+ $('#heldb').addEventListener('click',()=>{poke();held=!held;syncControls();dirty=true;panelDirty=true});
+ $('#askb').addEventListener('click',()=>{poke();ask($('#askt').value);if(query)aimAt(query.v,null,STATIC?0:.9)});
+ $('#askt').addEventListener('keydown',e=>{if(e.key==='Enter'){poke();ask(e.target.value);if(query)aimAt(query.v,null,STATIC?0:.9)}});
+ $('#askt').addEventListener('focus',()=>poke());
+ $('#pick').addEventListener('input',e=>{poke();pick(e.target.value);aimAt(query.v,null,STATIC?0:.9)});
+ $('#tourb').addEventListener('click',()=>{seed=7;run(tour(null));tickScript(0);if(STATIC)pump();dirty=true});
+ addEventListener('resize',()=>{fit();kick()})}
+const LT0=Math.log10(0.002),LT1=1;
+const tauOf=v=>{const t=Math.pow(10,LT0+(LT1-LT0)*v/1000);return t<0.1?+t.toPrecision(2):t<1?+t.toFixed(2):+t.toFixed(1)};
+const sliderOf=t=>Math.round((Math.log10(t)-LT0)/(LT1-LT0)*1000);
+function retrain(t,s){if(s===undefined)s=seed;query=null;$('#res').innerHTML='';forceSel=null;
+ if(!restore(s,t,'user'))newRun(t,s,'user');if(STATIC)pump();dirty=true}
+
+/* ---------- panel ---------- */
+let panelDirty=true;
+function syncControls(){$('#taus').value=sliderOf(tau);$('#tauv').textContent=fmtTau(tau);$$('#tpre button').forEach(b=>b.setAttribute('aria-pressed',String(Math.abs(+b.dataset.v-tau)<1e-9)));
+ $('#playb').textContent=R&&R.steps>=target?'Train on':playing?'Pause':'Train';$('#spinb').setAttribute('aria-pressed',String(spin));$('#spinb').textContent=spin?'Spin on':'Spin off';
+ $('#threadb').setAttribute('aria-pressed',String(threads));$('#threadb').textContent=threads?'Threads on':'Threads off';$('#heldb').setAttribute('aria-pressed',String(held))}
+function panel(){panelDirty=false;if(!R)return;
+ $('#runv').textContent=`seed ${seed} · τ ${fmtTau(tau)}`;$('#rstep').textContent=comma(R.steps);$('#rloss').textContent=isFinite(R.loss)?'loss '+R.loss.toFixed(3):'loss –';
+ $('#rpair').textContent=rd?rd.pairDeg.toFixed(1)+'°':'–';$('#rtop').textContent=rd?pct(rd.top1):'–';$('#rhole').textContent=ho?ho.deg.toFixed(0)+'°':'–';
+ $('#rriv').textContent=riv?riv.toFixed(riv<10?1:0):'–';$('#rzs').textContent=rd?ord(Math.round(rd.zsMed)+1):'–';
+ const pb=$('#playb');pb.textContent=R.steps>=target?'Train on':playing?'Pause':'Train';
+ if(sel>=0){const f=forceSel,own=Math.acos(clamp(Z[3*sel]*T[3*sel]+Z[3*sel+1]*T[3*sel+1]+Z[3*sel+2]*T[3*sel+2],-1,1))*180/Math.PI;
+  $('#inspv').textContent=CM.NAMES[sel];
+  $('#insp').innerHTML=`<span class="sw" style="background:${HEX[sel]}"></span> <b>${CM.NAMES[sel]}</b> ${HEX[sel]}${IS_TEST[sel]?' · <b>held out</b>, never trained':''}<br>chip ↔ own name: <b>${own.toFixed(1)}°</b>, rank <b>${ord(CM.rankOf(Z,T,sel)+1)}</b> of 921<br>`+
+   (f?`softmax gives its own name <b>${pct(f.pOwn)}</b>; the push is shared by ~<b>${f.effRivals.toFixed(f.effRivals<10?1:0)}</b> names, most from ${f.rivals.slice(0,3).map(r=>`<b>${CM.NAMES[r.j]}</b> ${pct(r.share)}`).join(', ')}`:'')}
+ else{$('#inspv').textContent='click a magnet';$('#insp').innerHTML='Drag to turn the globe. Click a chip or a word to see the pull from its partner and the push from the other names in the last batch.'}
+ drawChart()}
+const chartC=$('#chart'),c2=chartC.getContext('2d');
+function drawChart(){const w=chartC.clientWidth,h=chartC.clientHeight,d=DPR;if(!w)return;if(chartC.width!==Math.round(w*d)){chartC.width=Math.round(w*d);chartC.height=Math.round(h*d)}
+ const c=c2;c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,w,h);const L=34,Rr=8,Tp=10,Bt=20,X=t=>L+(Math.log10(t)-LT0)/(LT1-LT0)*(w-L-Rr),Y=v=>Tp+(1-v/130)*(h-Tp-Bt);
+ c.font='400 9.5px "DM Mono",monospace';c.fillStyle='rgba(172,165,145,.85)';c.strokeStyle='rgba(255,255,255,.07)';c.lineWidth=1;
+ for(const v of[0,45,90]){c.beginPath();c.moveTo(L,Y(v));c.lineTo(w-Rr,Y(v));c.stroke();c.textAlign='right';c.fillText(v+'°',L-5,Y(v)+3)}
+ c.textAlign='center';for(const t of[0.002,0.01,0.07,1,10])c.fillText(String(t),X(t),h-6);
+ const cu=STATS.curve;c.fillStyle='rgba(224,180,92,.16)';c.beginPath();cu.forEach((p,k)=>{k?c.lineTo(X(p.tau),Y(p.hi)):c.moveTo(X(p.tau),Y(p.hi))});for(let k=cu.length-1;k>=0;k--)c.lineTo(X(cu[k].tau),Y(cu[k].lo));c.fill();
+ c.strokeStyle='#e0b45c';c.lineWidth=1.6;c.beginPath();cu.forEach((p,k)=>{k?c.lineTo(X(p.tau),Y(p.med)):c.moveTo(X(p.tau),Y(p.med))});c.stroke();
+ c.fillStyle='#e0b45c';for(const p of cu){c.beginPath();c.arc(X(p.tau),Y(p.med),1.8,0,7);c.fill()}
+ if(ho&&R){const x=X(tau),y=Y(Math.min(130,ho.deg));c.fillStyle=R.steps>=target?'#ffe2a0':'rgba(255,226,160,.5)';c.strokeStyle='#1d1406';c.lineWidth=1.5;c.beginPath();c.arc(x,y,4.5,0,7);c.fill();c.stroke()}}
+
+/* ---------- frame loop ---------- */
+let last=0,fails=0,frameErr='';window.__frame=0;
+function frame(ts,skipDraw){
+ if(!FIXED&&!STATIC)requestAnimationFrame(frame);
+ const now=FIXED?last+1000/60:(ts||performance.now()),raw=now-last,_a=adapt(raw),dt=FIXED?1/60:clamp(raw/1000,0,.1);last=now;window.__frame++;simT+=dt;
+ try{
+  tickScript(dt);
+  const tA=performance.now();trainSome();const tB=performance.now();PERF.train=tB-tA;
+  if(aim){aim.t+=dt;const k=clamp(aim.t/aim.dur,0,1),e=k<.5?2*k*k:1-2*(1-k)*(1-k);VR=qmat(slerp(aim.q0,aim.q1,e));if(k>=1)aim=null;dirty=true}
+  else if(spin){VR=ortho(mul(rotAx([0,1,0],dt*.16),VR));dirty=true}
+  if(!skipDraw){const tC=performance.now();if(dirty){render();PERF.render=performance.now()-tC}if(panelDirty||FIXED||simT-lastPanel>.12){lastPanel=simT;panel()}}
+ }catch(e){fails++;frameErr=String(e&&e.stack||e)}
+ window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tourOn,mark:tourMark,steps:R?R.steps:0,tau,seed}}
+let lastPanel=-9;const PERF={train:0,render:0,parts:{}};
+let pumpT=null;
+function pump(){if(pumpT)return;const go=()=>{pumpT=null;if(!playing||R.steps>=target){if(R.steps>=target&&rdStep!==R.steps)measure();render();panel();syncControls();return}
+  const t0=performance.now();while(performance.now()-t0<60&&R.steps<target)CM.step(R);embDirty=true;if(R.steps>=target)onRunEnd();else if(performance.now()-rdWall>400)measure();
+  render();panel();pumpT=setTimeout(go,0)};pumpT=setTimeout(go,0)}
+function kick(){if(STATIC||FIXED){render();panel()}}
+
+/* ---------- start ---------- */
+let ready=false;
+function ogText(){if(!rd||!ho)return;$('#ogchips').innerHTML=`InfoNCE · τ ${fmtTau(tau)} · ${comma(R.steps)} steps<br>chip ↔ name ${rd.pairDeg.toFixed(1)}° · own name 1st ${pct(rd.top1)}<br>held-out names: median rank ${ord(Math.round(rd.zsMed)+1)} of 921`}
+async function start(){
+ try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,EMBED?0:600))])}catch(e){}
+ try{await Promise.race([document.fonts.load('500 12px "Newsreader"'),document.fonts.load('italic 500 14px "Newsreader"'),new Promise(r=>setTimeout(r,800))])}catch(e){}
+ hook();fit();
+ if(STATIC){newRun(0.07,seed,'static');aimAt([0,.3,1],[0,1,0],0);spin=false;tourOn=false;tourDone=true;tourMark='final';cap(CAP.still());syncControls();pump()}
+ else{const target_=FIXED?(Q.get('mark')||'globe'):null;run(tour(target_));tickScript(0);if(FIXED&&target_==='globe'){script=null;tourOn=false;spin=true;const bv=bestView();aimAt(bv.front,bv.up,0);cap(CAP.globe())}}
+ if(Q.has('tau')&&!STATIC){script=null;tourOn=false;retrain(tau);if(FIXED)finishNow()}
+ if(OG){finishNow();ogText();const bv=bestView();aimAt(bv.front,bv.up,0);spin=false}
+ ready=true;syncControls();panel();
+ document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>{TW.fill(0);fit();panelDirty=true;kick()})}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+window.magnets={state:()=>{if(!ready||!R)return{ready:false};return{ready:true,fixed:FIXED,static:STATIC,embed:EMBED,seed,tau,steps:R.steps,target,playing,loss:R.loss,hash:CM.hash(R.th),ctr:R.ctr,
+  readings:rd?{pairDeg:rd.pairDeg,top1:rd.top1,zsMed:rd.zsMed,zsTop10:rd.zsTop10,zsRanks:rd.zsRanks.slice()}:null,readStep:rdStep,hole:ho?{deg:ho.deg,k:ho.k,dir:ho.dir}:null,rivals:riv,
+  sel,selName:sel>=0?CM.NAMES[sel]:null,force:forceSel?{i:forceSel.i,pOwn:forceSel.pOwn,eff:forceSel.effRivals,top:forceSel.top,rivals:forceSel.rivals.slice(0,5).map(r=>({j:r.j,name:CM.NAMES[r.j],share:r.share}))}:null,
+  query:query?{kind:query.kind,text:query.text||null,hex:query.hex||null,v:query.v,nn:query.nn.map(o=>({j:o.j,name:CM.NAMES[o.j],cos:o.cos}))}:null,
+  pins:pins?pinBoxes.slice():null,held,threads,spin,tour:tourOn,tourDone,mark:tourMark,caption:capText,log:JSON.parse(JSON.stringify(LOG)),frameErr,fails,
+  view:{size:VS,dpr:DPR,canvas:cv.width,gx:GX,gy:GY,gr:GR,VR:VR.map(r=>r.slice())},labels:labelBoxes.length,lite:LITE,perf:JSON.parse(JSON.stringify(PERF)),batch:Array.from(R.batch)}},
+ project:(i,c)=>{embed();const A=c?Z:T,q=cam([A[3*i],A[3*i+1],A[3*i+2]]);if(q[2]<0)return null;const[x,y]=scr(q),r=cv.getBoundingClientRect();return[r.left+x/DPR,r.top+y/DPR,q[2]]},
+ face:(i,c)=>{embed();const A=c?Z:T;aimAt([A[3*i],A[3*i+1],A[3*i+2]],null,0);spin=false;syncControls();render();return true},
+ emb:()=>{embed();return{Z:Array.from(Z),T:Array.from(T)}},
+ wordAng,finish:()=>{finishNow();render();panel();return R.steps}};
+(async()=>{await start();if(FIXED){frame()}else if(!STATIC){last=performance.now();requestAnimationFrame(frame)}})();
+
+</script>
+</body>
+</html>
