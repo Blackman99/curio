@@ -1,0 +1,11 @@
+{
+ "slug": "cross-plane-v8",
+ "title": "Cross-Plane V8",
+ "no": "048",
+ "date": "2026-11-16",
+ "kind": "V8 engine · three.js + Web Audio",
+ "blurb": "A running cutaway Chevrolet small-block 350: pistons on true slider-crank geometry, a cam ground to GM’s published specs, and exhaust synthesised from each bank’s pulse timing. Crankpins at 0-90-270-180 give each pipe pulses 270°, 180°, 90° and 180° apart: the burble. Swap in a flat-plane crank and it shrieks and shakes.",
+ "color": "#740028",
+ "exhibit": "crossPlaneV8",
+ "lane": "3d"
+}

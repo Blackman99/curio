@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cross-Plane V8 — a cutaway small-block, and why it burbles</title>
+<meta name="description" content="A cutaway Chevrolet small-block 350 on an engine stand, built in three.js and running: real crank-slider kinematics, a cam ground to GM's published specs, the firing order 1-8-4-3-6-5-7-2, and exhaust synthesised in Web Audio from each bank's actual pulse timing. Swap in a flat-plane crank and hear and feel the difference.">
+<meta property="og:title" content="Cross-Plane V8">
+<meta property="og:description" content="A running cutaway small-block 350. Each bank's exhaust gets pulses 270°, 180°, 90° and 180° apart, and that is the burble. Swap in a flat-plane crank and it screams and shakes.">
+<meta property="og:image" content="https://blackman99.github.io/curio/cross-plane-v8/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cross-Plane V8">
+<meta name="twitter:description" content="A running cutaway small-block 350 in three.js with Web Audio exhaust: why a cross-plane V8 burbles, and what a flat-plane crank changes.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/cross-plane-v8/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0d0c0b;--paper:#efe9df;--paper2:#aaa294;--amber:#f3a64e;--orange:#ff7a2e;--cyan:#8fd3ff;--red:#ff8a6a;--green:#9fe0a6;--line:rgba(240,225,200,.14);--panel:rgba(14,13,12,.9)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:#121110}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+#c.hot{cursor:pointer}
+#vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 72% 82% at 40% 46%,transparent 55%,rgba(0,0,0,.55) 100%)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:640px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,8,.5)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--amber);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(12,11,10,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--amber);color:#1a1205;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);text-shadow:0 1px 4px #000}
+h1{margin:8px 0 0;font:600 clamp(38px,3.6vw,58px)/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fbf3e4;text-shadow:0 2px 0 #3a2410,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 446px);max-width:880px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,8,.72)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#f6efe2;min-height:2.75em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--amber)}
+#caption .o{color:#ffb070;font-weight:600}
+#caption .r{color:#ff9a84;font-weight:600}
+#caption .g{color:var(--green);font-weight:600}
+#caption .c{color:var(--cyan);font-weight:600}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:382px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.lab b{font:500 11px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none;text-align:right}
+.sec{margin-bottom:12px}
+.btn{border:1px solid var(--line);background:rgba(243,166,78,.05);border-radius:8px;padding:7px 4px;font:400 11px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(243,166,78,.18);border-color:var(--amber);outline:none}
+.btn[aria-pressed=true]{background:rgba(255,122,46,.22);border-color:var(--orange)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 2px;font:400 10.5px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(243,166,78,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--amber);color:#1b1305;font-weight:500}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+input[type=range]{width:100%;accent-color:var(--orange);margin:2px 0 0}
+.ends{display:flex;justify-content:space-between;font:400 9.5px/1 'DM Mono',monospace;color:var(--paper2);margin-top:2px}
+.fo{display:flex;gap:3px;justify-content:space-between;margin-top:7px}
+.fo span{flex:1;text-align:center;border:1px solid var(--line);border-radius:6px;padding:5px 0 4px;font:600 17px/1 'Barlow Condensed',sans-serif;color:var(--paper2);transition:background .12s,color .12s}
+.fo span.L{border-bottom:2px solid #ffb070}
+.fo span.R{border-bottom:2px solid var(--cyan)}
+.fo span.on{background:var(--orange);color:#1b1006}
+.leg{display:flex;gap:12px;font:400 9.5px/1 'DM Mono',monospace;color:var(--paper2);margin-top:5px;flex-wrap:wrap}
+.leg i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+canvas.ch{display:block;width:100%;border:1px solid rgba(240,225,200,.1);border-radius:8px;background:rgba(255,240,210,.025)}
+#pulse{height:96px}
+#cyl{height:132px}
+#shk{height:104px}
+.cylb{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-bottom:6px}
+.cylb button{border:1px solid var(--line);background:transparent;border-radius:6px;padding:4px 0;font:600 14px/1 'Barlow Condensed',sans-serif;color:var(--paper2)}
+.cylb button[aria-pressed=true]{background:rgba(255,122,46,.25);border-color:var(--orange);color:#fff}
+.cylb button:hover,.cylb button:focus-visible{border-color:var(--amber);outline:none}
+.nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px}
+.nums div{border:1px solid rgba(240,225,200,.08);border-radius:8px;padding:5px 7px;background:rgba(255,240,210,.025)}
+.nums span{display:block;font:500 8.5px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.nums b{display:block;margin-top:3px;font:500 14px/1 'DM Mono',monospace;color:#ffe2a8}
+#gapv{font-size:10.5px}
+#snd[aria-pressed=true]{background:rgba(159,224,166,.2);border-color:var(--green)}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--amber);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--amber)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(240,230,215,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--amber);text-decoration:underline;font:inherit}
+#gl{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:30px;font:400 16px/1.5 'Newsreader',serif;color:var(--paper2)}
+.nogl #gl{display:flex}
+#ogtxt{display:none}
+@media (max-height:820px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(34px,3.2vw,48px);margin-top:7px}.sec{margin-bottom:9px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:350px}#story{width:calc(100vw - 410px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:44px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:8.2em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,440px);margin-top:4px}
+  #c{touch-action:pan-y}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(16,14,12,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story{display:none}
+.og #title{background:rgba(10,9,8,.55)}
+.og #ogtxt{display:block;position:fixed;left:30px;bottom:34px;z-index:2;max-width:540px;padding:14px 18px;border-radius:12px;background:rgba(10,9,8,.74);font:400 21px/1.35 'Newsreader',serif;color:#f6efe2}
+.og #ogtxt b{color:#ffd98a;font-weight:600}
+.og #ogtxt .m{font:500 .86em 'DM Mono',monospace;color:var(--amber)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 048 · Engine kinematics</span>
+  <h1>Cross-Plane V8</h1>
+</header>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <canvas id="c" aria-label="A Chevrolet small-block V8 in orange paint on a grey engine stand, cut open: the left bank's cylinder walls and head are sliced away so the pistons, connecting rods and valves can be seen moving, the timing cover is off to show the chain, and the oil pan is cut to show the crankshaft and its counterweights. Exhaust headers glow with each pulse and the spark plug wires flash in firing order."></canvas>
+  <div id="vig"></div>
+  <div id="gl">This exhibit needs WebGL, which this browser has switched off. The charts on the right and the exhaust sound still work.</div>
+</div>
+<div id="ogtxt"></div>
+<aside id="panel" aria-label="Engine controls and readouts">
+  <div class="sec">
+    <div class="lab"><span>Engine speed</span><b id="rpmv">700 rpm</b></div>
+    <input id="rpm" type="range" min="0" max="1000" value="0" step="1" aria-label="Engine speed, 700 to 6,500 rpm">
+    <div class="ends"><span>idle 700</span><span>3,000</span><span>6,500</span></div>
+    <div class="row2" style="margin-top:7px"><button class="btn" id="slow" aria-pressed="false" title="Turn the crank slowly: one revolution every ten seconds">Slow motion</button><button class="btn" id="snd" aria-pressed="false" title="Exhaust sound, made in Web Audio from each bank's pulses">Sound: off</button></div>
+    <div class="leg" id="picv" style="margin-top:6px"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Crankshaft</span><b id="crankv">pins 0° 90° 270° 180°</b></div>
+    <div class="seg" id="crank"><button data-v="cross" aria-pressed="true">Cross-plane</button><button data-v="flat" aria-pressed="false">Flat-plane</button></div>
+    <div class="lab" style="margin-top:9px"><span>Firing order</span><b id="fov">every 90°</b></div>
+    <div class="fo" id="fo"></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Each pipe hears</span><b id="gapv" title="Gaps between pulses, left bank | right bank (crank degrees)"></b></div>
+    <canvas class="ch" id="pulse" width="704" height="192" aria-label="Exhaust pulses in the left and right bank over one 720-degree cycle"></canvas>
+    <div class="seg" id="exh" style="margin-top:6px"><button data-v="0" aria-pressed="true">True duals</button><button data-v="1" aria-pressed="false">X-pipe</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Follow a cylinder</span><b id="cylv">No. 1 · power</b></div>
+    <div class="cylb" id="cylb"></div>
+    <canvas class="ch" id="cyl" width="704" height="264" aria-label="Piston position and valve lift over the four strokes of the followed cylinder"></canvas>
+    <div class="leg"><span><i style="background:#e8e2d6"></i>piston</span><span><i style="background:#8fd3ff"></i>intake valve</span><span><i style="background:#ff9a5a"></i>exhaust valve</span><span><i style="background:#ffe066"></i>spark</span></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Shaking force &amp; couple</span><b id="shkv"></b></div>
+    <canvas class="ch" id="shk" width="704" height="208" aria-label="Unbalanced force and couple on the block over one crank revolution"></canvas>
+    <div class="nums"><div><span>Free force</span><b id="nF">–</b></div><div><span>Free couple</span><b id="nM">–</b></div><div><span>Main order</span><b id="nO">–</b></div></div>
+    <div class="row2" style="margin-top:7px"><button class="btn" id="cw" aria-pressed="true" title="Counterweights on the crank webs">Counterweights: on</button><button class="btn" id="shake" aria-pressed="true" title="Let the engine move on its stand in proportion to the unbalanced force (exaggerated)">Show the shake</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Look</span><b id="viewv">three-quarter</b></div>
+    <div class="seg" id="cast"><button data-v="solid" aria-pressed="false">Assembled</button><button data-v="cut" aria-pressed="true">Cutaway</button><button data-v="glass" aria-pressed="false">Glass</button></div>
+    <div class="seg" id="view" style="margin-top:6px"><button data-v="hero" aria-pressed="true">3/4</button><button data-v="side" aria-pressed="false">Side</button><button data-v="front" aria-pressed="false">Front</button><button data-v="top" aria-pressed="false">Valley</button><button data-v="under" aria-pressed="false">Under</button></div>
+    <div class="lab" style="margin-top:9px"><span>Exploded view</span><b id="expv">together</b></div>
+    <input id="exp" type="range" min="0" max="1000" value="0" step="1" aria-label="Pull the engine apart along its axes">
+    <div class="ends"><span>together</span><span>pulled apart</span></div>
+  </div>
+  <details>
+    <summary>What is this?</summary>
+<p><b>The engine.</b> A Chevrolet small-block 350, introduced in 1967. GM gives the main numbers: 4.000″ bore, 3.480″ stroke and a 9.025″ <a href="https://chevrolet.com/performance-parts/components/engine/small-block" target="_blank" rel="noopener">deck height</a>, plus 4.4″ between bores, a 90° V and the firing order 1-8-4-3-6-5-7-2 (<a href="https://en.wikipedia.org/wiki/Chevrolet_small-block_engine_(first-_and_second-generation)" target="_blank" rel="noopener">Wikipedia</a>). The connecting rods are 5.700″ between centres (<a href="https://classic.manleyperformance.com/dl/cat/rods.pdf" target="_blank" rel="noopener">Manley’s catalogue</a>). The cam is <a href="https://chevrolet.com/performance-parts/components/small-block-engines/camshafts-components" target="_blank" rel="noopener">GM’s 10185071</a> hydraulic roller: 0.474″/0.510″ valve lift with 1.5 rockers, 208°/221° at 0.050″, 275°/280° advertised, 112° lobe separation. The stack checks out: half the stroke plus the rod plus a 1.560″ piston compression height leaves the crown 0.025″ below the deck.</p>
+<p><b>What is computed.</b> Every frame starts from one number, the crank angle. Each piston sits where the slider-crank formula puts it for its own crankpin and bank, and each rod hangs between the two pins. In the functional test I measure the 3D parts themselves: every big end sits on its crankpin and every small end on its wrist pin. The firing order is checked against the crank: the page lists every even-firing order a pin layout allows, and GM’s order is one of the 8 for pins at 0°, 90°, 270° and 180°. Each lobe is ground as the inner offset of the roller’s path, and the cam turns at half speed through 20- and 40-tooth sprockets, whose chain comes out at 55.0 links. The lobe shape is a raised-cosine power (p = 1.734 intake, 1.305 exhaust) that I fitted through GM’s three published numbers. GM doesn’t publish where the lobe is phased, so I assumed an intake centreline of 108° ATDC, the cam ground 4° advanced. At 0.050″ that opens the intake 4° after top centre and closes it 32° after bottom centre. The exhaust opens 46.5° before bottom centre and closes 5.5° before top centre. In the flat-plane version the page regrinds the cam: each lobe turns to the new firing order.</p>
+<p><b>Why it burbles.</b> The banks don’t take turns. The left bank fires cylinders 1, 3, 5 and 7 at 0°, 270°, 450° and 540°, so its pipe gets pulses <b>270°, 180°, 90°, 180°</b> apart, and the right bank’s pipe is just as uneven. I checked every pin layout a cross-plane crank can have: all 48 even-firing orders leave each bank with gaps of either 90-180-180-270 or 90-90-90-450, never even. Counted in engine orders (times per crank turn), the left pipe’s pulse train has no 2nd order at all. Its strongest lines are 1.5, 0.5 (0.78 of the 1.5 line) and 2.5 (0.34), all at half the bank’s average rate. That uneven lope is the burble. With a flat-plane crank each pipe gets one pulse every 180°, so it carries only orders 2, 4, 6 and so on, and in Python the half orders come out at zero to 1e-17.</p>
+<p><b>The sound.</b> The exhaust is synthesised live in an AudioWorklet from the same timing. Each cylinder’s pulse follows its exhaust valve’s lift times a decaying blowdown, and the sound follows the rate of change of that flow. It then goes into a 2 m pipe that reflects inverted from its open end, and through a two-stage low-pass for the muffler. With true duals the left bank plays in your left ear and the right bank in your right. An X-pipe mixes the two. The pulse shape and the pipe are my simple models. The timing is the real engine’s. A Python port of the synth reproduces the page’s samples exactly: 108,000 stereo samples, including changes of speed, crank and pipe partway through.</p>
+<p><b>Shaking.</b> The block feels minus the mass times the acceleration of every piston, plus the pull of the crankpins and big ends. I estimated stock part weights: 1.01 kg reciprocating per cylinder, 2.49 kg turning with each throw. The page uses the exact slider-crank acceleration. At 6,000 rpm the flat-plane engine shakes sideways with up to <b>31,203 N</b>, almost all of it second order, which counterweights can’t cancel. Its second-order line is 4√2·m·r·ω²·A₂ = 31,172 N, where A₂ = 0.3127 is the exact second-order coefficient (λ = 0.3053). The cross-plane crank without counterweights rocks end to end with up to <b>15,363 N·m</b>, against the textbook √10·m·r·ω²·d = 15,354 N·m; the difference comes from the left bank sitting half a rod ahead. With counterweights on every web all that remains is a <b>763 N</b> fourth-order vertical shake (4√2·m·r·ω²·A₄, A₄ = 0.00764) and 9 N·m from that stagger. An independent Python version agrees with the page to 1e-7. It finds the pistons by vector closure and differentiates numerically.</p>
+<p><b>What is simplified.</b> Anything GM doesn’t publish is my estimate from photographs: the shapes of the heads, manifold and pan, the valve gear geometry, the 4.52″ between crank and cam, the lifter angle and the part weights. The counterweights are drawn as a full set, one opposite each pin; production 350 cranks use six weights placed differently. The valves move by exactly 1.5 times the lifter rise because I made the rocker geometry linear. The spark advance (8° at idle to 34° by 3,200 rpm) and the glow in the cylinders are illustrations. Above 300 rpm the picture is slowed down, or it would just flicker. The movement on the stand is exaggerated and simply follows the unbalanced force.</p>
+  </details>
+  <div class="foot">Drag to turn · scroll or pinch to zoom · click a piston to follow it · <button id="tourb">replay the tour</button> · <a href="../">← Curio</a></div>
+</aside>
+<script type="module">
+/* ================= Cross-plane V8 engine (pure; shared by the page and node tests) ================= */
+const V8=(()=>{
+const IN=25.4,DEG=Math.PI/180;
+// Chevrolet small-block 350 (GM specifications): 4.000 in bore, 3.480 in stroke, 5.700 in rods, 4.400 in bore spacing, 9.025 in deck, 90-degree V
+const G={bore:4*IN,stroke:3.48*IN,r:1.74*IN,L:5.7*IN,spacing:4.4*IN,deck:9.025*IN,ch:1.56*IN,stagger:.94*IN,mainD:2.45*IN,pinD:2.1*IN,
+  camY:4.52*IN,camBase:.72*IN,roll:.35*IN,rocker:1.5,valveI:1.94*IN,valveE:1.5*IN};
+G.lam=G.r/G.L;
+// pin (throw) centre lines along the crank, front (+z) to back; left bank (odd cylinders) sits half a rod ahead of the right
+G.zPin=[1.5,.5,-.5,-1.5].map(k=>k*G.spacing);
+// masses (kg): typical stock parts, my estimates
+const MASS={piston:.80,rodSmall:.21,rodBig:.43,pin:.62};MASS.rec=MASS.piston+MASS.rodSmall;
+// GM 10185071 hydraulic roller cam: 208/221 deg at 0.050 in, 275/280 advertised (0.006 in), 0.474/0.510 in valve lift with 1.5 rockers, 112 deg lobe separation.
+// Intake centreline 108 deg ATDC is my assumption (ground 4 deg advanced); exhaust centreline is then 2*112-108 = 116 deg BTDC.
+const CAM={lsa:112,icl:108,ecl:116,
+  I:{H:.474/1.5,d50:208,dadv:275},E:{H:.510/1.5,d50:221,dadv:280}};
+// ---- series maths (identical results in JS and Python) ----
+const LN2=0.6931471805599453,PI=3.141592653589793;
+function expS(x){if(x>700)x=700;if(x<-700)return 0;const k=Math.floor(x/LN2+.5),r=x-k*LN2;let t=1,s=1;for(let i=1;i<=16;i++){t=t*r/i;s+=t}
+  let p=1;const b=k<0?.5:2;for(let i=0,n=Math.abs(k);i<n;i++)p*=b;return s*p}
+function lnS(x){if(!(x>0))return -1e300;let k=0;while(x>1.4142135623730951){x/=2;k++}while(x<0.7071067811865476){x*=2;k--}
+  const u=(x-1)/(x+1),u2=u*u;let t=u,s=0;for(let i=0;i<24;i++){s+=t/(2*i+1);t*=u2}return 2*s+k*LN2}
+function cosS(x){x=Math.abs(x);const k=Math.floor(x/(2*PI));x-=k*2*PI;if(x>PI)x=2*PI-x;  // x in [0, pi]
+  let flip=1;if(x>PI/2){x=PI-x;flip=-1}const x2=x*x;let t=1,s=1;for(let i=1;i<=12;i++){t=-t*x2/((2*i-1)*(2*i));s+=t}return flip*s}
+function powS(b,p){if(b<=0)return 0;return expS(p*lnS(b))}
+// lobe shape: h = H * ((1+cos(pi x))/2)^p, x = phi/Phi; Phi and p fitted through the 0.050 in and the advertised (0.006 in) durations
+function fitLobe(o){const H=o.H;const phiFor=(p,d,a)=>{const c=2*Math.pow(a/H,1/p)-1;return d/2/(Math.acos(c)/PI)};
+  let lo=.5,hi=20;const f=p=>phiFor(p,o.d50,.05)-phiFor(p,o.dadv,.006);for(let i=0;i<200;i++){const m=(lo+hi)/2;if(f(lo)*f(m)<=0)hi=m;else lo=m}
+  const p=(lo+hi)/2;return{H,p,Phi:phiFor(p,o.d50,.05)}}
+CAM.I.fit=fitLobe(CAM.I);CAM.E.fit=fitLobe(CAM.E);
+// lobe lift (inches at the lifter) at crank degrees phi from the lobe centreline
+function lobe(f,phi){const x=Math.abs(phi)/f.Phi;if(x>=1)return 0;return f.H*powS((1+cosS(PI*x))/2,f.p)}
+// ---- crankshafts ----
+// pin offsets in crank degrees relative to pin 1 (front to back) and the firing order used
+const CRANKS={
+  cross:{name:'Cross-plane',pins:[0,90,270,180],order:[1,8,4,3,6,5,7,2]},
+  flat:{name:'Flat-plane',pins:[0,180,180,0],order:[1,6,5,8,7,4,3,2]}};
+// every even-firing order a pin layout allows (each cylinder fires at one of its two TDCs, one every 90 degrees)
+function tdcs(pins){const t={};for(let k=0;k<4;k++){t[2*k+1]=((45-(45+pins[k]))%360+360)%360;t[2*k+2]=((-45-(45+pins[k]))%360+360)%360}return t}
+function orders(pins){const t=tdcs(pins),out=[];
+  for(let bits=0;bits<128;bits++){const f={1:t[1]};for(let c=2;c<=8;c++)f[c]=t[c]+((bits>>(c-2))&1?360:0);
+    const rel=[];for(let c=1;c<=8;c++)rel.push([((f[c]-f[1])%720+720)%720,c]);rel.sort((a,b)=>a[0]-b[0]);
+    if(rel.every((x,i)=>Math.abs(x[0]-90*i)<1e-9))out.push(rel.map(x=>x[1]))}
+  const seen=new Set(),u=[];for(const o of out){const k=o.join('');if(!seen.has(k)){seen.add(k);u.push(o)}}return u.sort((a,b)=>a.join('')<b.join('')?-1:1)}
+// gaps between exhaust pulses within each bank (crank degrees), starting from that bank's first cylinder in the order
+function bankGaps(order){const fire={};order.forEach((c,i)=>fire[c]=90*i);const g=odd=>{const ts=order.filter(c=>(c%2===1)===odd).map(c=>fire[c]);return ts.map((t,i)=>((ts[(i+1)%4]-t)%720+720)%720)};return{L:g(true),R:g(false)}}
+// ---- the cylinders ----
+function cyls(kind){const C=CRANKS[kind],fire={};C.order.forEach((c,i)=>fire[c]=90*i);const out=[];
+  for(let c=1;c<=8;c++){const k=(c-1)>>1,left=c%2===1,gam=left?45:-45;
+    out.push({c,k,left,gam,z:G.zPin[k]+(left?1:-1)*G.stagger/2,phi:45+C.pins[k],fire:fire[c],ax:[Math.sin(gam*DEG),Math.cos(gam*DEG)]})}
+  return out}
+const SBC_EI=['E','I','I','E','E','I','I','E'];   // valve order along each head, front to back
+// piston pin distance from the crank axis along the bore, rod angle; u = crank angle relative to the bore (deg)
+function slider(u){const s=Math.sin(u*DEG),c=Math.cos(u*DEG),S=Math.sqrt(G.L*G.L-G.r*G.r*s*s);return{s:G.r*c+S,beta:Math.asin(G.r*s/G.L),S}}
+// d2s/du2 per rad^2 (mm)
+function sdd(u){const s=Math.sin(u*DEG),c=Math.cos(u*DEG),S=Math.sqrt(G.L*G.L-G.r*G.r*s*s),r=G.r;return -r*c-r*r*(c*c-s*s)/S-r*r*r*r*s*s*c*c/(S*S*S)}
+const md=(x,m)=>((x%m)+m)%m;
+function spark(rpm){// total advance (deg BTDC): 8 at idle, mechanical curve to 34 by 3,200 rpm (my assumption)
+  return rpm<=800?8:rpm>=3200?34:8+26*(rpm-800)/2400}
+// valve lifts (inches at the valve) for cylinder cy at crank angle th
+function valves(cy,th){const ph=md(th-cy.fire,720);
+  const li=lobe(CAM.I.fit,md(ph-(360+CAM.icl)+360,720)-360),le=lobe(CAM.E.fit,md(ph-(360-CAM.ecl)+360,720)-360);
+  return{ph,stroke:Math.floor(ph/180),I:li*G.rocker,E:le*G.rocker,Ilob:li,Elob:le}}
+// cam: turns at half speed in the same direction; a lobe's nose points along its lifter (bank angle) at that valve's centreline
+function lobeAngles(kind){const cs=cyls(kind),out=[];for(const cy of cs){const P={I:360+CAM.icl,E:360-CAM.ecl};
+  for(const v of ['I','E'])out.push({c:cy.c,v,ang:md(cy.gam-(cy.fire+P[v])/2,360)})}return out}
+// the shaking force and couple on the block (N, N m) at crank angle th and speed rpm
+function shake(kind,th,rpm,cw){const cs=cyls(kind),w=rpm*2*Math.PI/60,w2=w*w,r=G.r/1000;let Fx=0,Fy=0,Mx=0,My=0;
+  for(const cy of cs){const psi=th+cy.phi,a=w2*sdd(psi-cy.gam)/1000,f=-MASS.rec*a,fx=f*cy.ax[0],fy=f*cy.ax[1],z=cy.z/1000;Fx+=fx;Fy+=fy;Mx+=-z*fy;My+=z*fx}
+  const C=CRANKS[kind];for(let k=0;k<4;k++){const psi=(th+45+C.pins[k])*DEG,ex=Math.sin(psi),ey=Math.cos(psi),z=G.zPin[k]/1000;
+    let m=2*MASS.rodBig+MASS.pin;if(cw)m-=2*MASS.rodBig+MASS.pin+MASS.rec;const fx=m*r*w2*ex,fy=m*r*w2*ey;Fx+=fx;Fy+=fy;Mx+=-z*fy;My+=z*fx}
+  return{Fx,Fy,Mx,My}}
+function shakePeak(kind,rpm,cw){let F=0,M=0,Fh=0,Fv=0;for(let i=0;i<720;i++){const s=shake(kind,i,rpm,cw);F=Math.max(F,Math.hypot(s.Fx,s.Fy));M=Math.max(M,Math.hypot(s.Mx,s.My));Fh=Math.max(Fh,Math.abs(s.Fx));Fv=Math.max(Fv,Math.abs(s.Fy))}return{F,M,Fh,Fv}}
+
+/* ---- exhaust synthesis: the same code runs in the AudioWorklet and in tests ---- */
+function makeSynth(fs,cfg){
+  // per-cylinder exhaust pulse: exhaust lobe lift (normalised) times a blowdown decay; table every 0.25 crank degrees from valve opening
+  const LN2=0.6931471805599453,PI=3.141592653589793;
+  function expS(x){if(x>700)x=700;if(x<-700)return 0;const k=Math.floor(x/LN2+.5),r=x-k*LN2;let t=1,s=1;for(let i=1;i<=16;i++){t=t*r/i;s+=t}let p=1;const b=k<0?.5:2;for(let i=0,n=Math.abs(k);i<n;i++)p*=b;return s*p}
+  function lnS(x){if(!(x>0))return -1e300;let k=0;while(x>1.4142135623730951){x/=2;k++}while(x<0.7071067811865476){x*=2;k--}const u=(x-1)/(x+1),u2=u*u;let t=u,s=0;for(let i=0;i<24;i++){s+=t/(2*i+1);t*=u2}return 2*s+k*LN2}
+  function cosS(x){x=Math.abs(x);const k=Math.floor(x/(2*PI));x-=k*2*PI;if(x>PI)x=2*PI-x;let flip=1;if(x>PI/2){x=PI-x;flip=-1}const x2=x*x;let t=1,s=1;for(let i=1;i<=12;i++){t=-t*x2/((2*i-1)*(2*i));s+=t}return flip*s}
+  const Phi=cfg.Phi,p=cfg.p,DEX=2*Phi,TS=4,NT=Math.ceil(DEX*TS)+2,TAB=new Float64Array(NT);
+  for(let j=0;j<NT;j++){const x=j/TS;let v=0;if(x<DEX){const q=Math.abs(x-Phi)/Phi;const b=(1+cosS(PI*q))/2;v=b>0?expS(p*lnS(b)):0;v=v*expS(-x/cfg.tau)}TAB[j]=v}
+  const st={th:0,rpm:cfg.rpm,tgt:cfg.rpm,mix:cfg.mix,mixT:cfg.mix,vol:cfg.vol,volT:cfg.vol,TF:cfg.TF.slice(),EVO:cfg.EVO,
+    pL:0,pR:0,yLd:new Float64Array(4096),yRd:new Float64Array(4096),wp:0,D:Math.round(fs*2*cfg.pipe/cfg.c),
+    l1L:0,l2L:0,l1R:0,l2R:0,dxL:0,dyL:0,dxR:0,dyR:0,seed:cfg.seed|0};
+  const aLP=1-expS(-2*PI*cfg.fc/fs),kr=1-expS(-1/(fs*.12)),km=1-expS(-1/(fs*.25)),dth=6/fs;
+  function rnd(){st.seed=(st.seed+0x6D2B79F5)|0;let t=Math.imul(st.seed^st.seed>>>15,1|st.seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+  function gain(rpm){const q=800/(rpm<200?200:rpm);return cfg.g0*expS(.65*lnS(q))}
+  function process(L,R,n){const yL=st.yLd,yR=st.yRd;
+    for(let i=0;i<n;i++){st.rpm+=(st.tgt-st.rpm)*kr;st.mix+=(st.mixT-st.mix)*km;st.vol+=(st.volT-st.vol)*km;
+      st.th+=st.rpm*dth;if(st.th>=720)st.th-=720;
+      let sL=0,sR=0;for(let c=0;c<8;c++){let x=st.th-st.TF[c]-st.EVO;x=x-720*Math.floor(x/720);if(x<DEX){const id=x*TS,i0=id|0,f=id-i0,v=TAB[i0]+(TAB[i0+1]-TAB[i0])*f;if(c&1)sR+=v;else sL+=v}}
+      const nz=rnd()-.5;sL=sL+cfg.turb*sL*nz;sR=sR-cfg.turb*sR*nz;
+      const m=st.mix*.5,k=1+st.mix*.9,a=(sL*(1-m)+sR*m)*k,b=(sR*(1-m)+sL*m)*k;
+      // radiated pressure follows the rate of change of the flow
+      const dA=a-st.pL,dB=b-st.pR;st.pL=a;st.pR=b;
+      // the pipe: an inverted reflection from the open tailpipe end after a round trip
+      const rp=(st.wp-st.D)&4095,oA=dA-cfg.refl*yL[rp],oB=dB-cfg.refl*yR[rp];yL[st.wp]=oA;yR[st.wp]=oB;st.wp=(st.wp+1)&4095;
+      // the muffler: two one-pole low-passes, then a DC blocker
+      st.l1L+=(oA-st.l1L)*aLP;st.l2L+=(st.l1L-st.l2L)*aLP;st.l1R+=(oB-st.l1R)*aLP;st.l2R+=(st.l1R-st.l2R)*aLP;
+      const hL=st.l2L-st.dxL+.999*st.dyL;st.dxL=st.l2L;st.dyL=hL;const hR=st.l2R-st.dxR+.999*st.dyR;st.dxR=st.l2R;st.dyR=hR;
+      const g=gain(st.rpm)*st.vol,uL=hL*g,uR=hR*g;
+      L[i]=uL/(1+(uL<0?-uL:uL));R[i]=uR/(1+(uR<0?-uR:uR))}}
+  return{st,process,TAB,DEX,D:st.D}}
+// the synth settings used by the page
+function synthCfg(kind,rpm,mix,vol){const cs=cyls(kind),TF=cs.map(cy=>cy.fire),f=CAM.E.fit;
+  // pulse table starts where the exhaust lobe starts to lift: Phi before its centreline (phase 360-ecl)
+  return{Phi:f.Phi,p:f.p,tau:45,TF,EVO:md(360-CAM.ecl-f.Phi,720),rpm,mix,vol,pipe:2.0,c:520,refl:.6,fc:1400,turb:.18,g0:900,seed:7}}
+
+return{G,MASS,CAM,CRANKS,SBC_EI,DEG,expS,lnS,cosS,powS,lobe,fitLobe,tdcs,orders,bankGaps,cyls,slider,sdd,md,spark,valves,lobeAngles,shake,shakePeak,makeSynth,synthCfg}})();
+
+/* ================= page ================= */
+import * as THREE from '../assets/vendor/three.module.min.js';
+import {mergeGeometries} from '../assets/vendor/three-addons.js';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],Q=new URLSearchParams(location.search);
+const FIXED=Q.has('fixed'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches,STILL=Q.has('still'),STATIC=RM||STILL,OGQ=Q.get('og'),IFR=window.self!==window.top,MARK=Q.get('mark');
+if(FIXED||STATIC)document.documentElement.classList.add('still');
+if(OGQ)document.documentElement.classList.add('og');
+const PI=Math.PI,TAU=2*PI,D2R=PI/180;
+const clamp=(x,a,b)=>x<a?a:x>b?b:x,lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const MOB=()=>innerWidth<=820;
+const G8=V8.G,IN=25.4,md=V8.md;
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const PIC_MAX=300,SLOW_RPM=6;
+
+/* ================= state ================= */
+const S={kind:'cross',rpm:700,slow:false,th:0,cw:true,mix:0,follow:1,cast:'cut',view:'hero',explode:0,explodeT:0,sound:false,shakeOn:true,
+  pins:V8.CRANKS.cross.pins.slice(),lobes:null,morph:null,cwV:1,castV:{solid:0,cut:1,glass:0},lastFire:0,log:[],perf:{}};
+let CY=V8.cyls('cross');
+function logAct(kind,v){S.log.push({kind,v,t:+(performance.now()/1000).toFixed(2),th:+S.th.toFixed(3)});if(S.log.length>500)S.log.splice(0,S.log.length-500)}
+const rpmFromSlider=v=>Math.round(700*Math.pow(6500/700,v/1000)/10)*10;
+const sliderFromRpm=r=>Math.round(1000*Math.log(r/700)/Math.log(6500/700));
+const picRpm=()=>S.slow?SLOW_RPM:Math.min(S.rpm,PIC_MAX);
+const running=()=>!S.slow&&!S.morph;
+
+/* ================= geometry helpers (millimetres; crank axis = z, front = +z, y up, the left bank leans to +x) ================= */
+const v3=(x,y,z)=>new THREE.Vector3(x,y,z),v2=(x,y)=>new THREE.Vector2(x,y);
+const BK={};
+for(const b of ['L','R']){const g=b==='L'?45:-45,a=g*D2R,side=b==='L'?1:-1,ax=v3(Math.sin(a),Math.cos(a),0),n=v3(Math.cos(a),-Math.sin(a),0).multiplyScalar(side),zz=new THREE.Vector3().crossVectors(ax,n);
+  BK[b]={b,g,ax,n,zz,zs:zz.z,cyl:CY.filter(c=>c.left===(b==='L')).map(c=>c.c)}}
+const bp=(b,s,v,z)=>BK[b].ax.clone().multiplyScalar(s).add(BK[b].n.clone().multiplyScalar(v)).setZ(z);
+function bankMat(b,s0){const B=BK[b],m=new THREE.Matrix4().makeBasis(B.n,B.zz,B.ax);m.setPosition(B.ax.clone().multiplyScalar(s0));return m}
+const DECK=G8.deck,S0=95,HTOP=300,VC=78,ZC=CY.map(c=>c.z),ZMAX=Math.max(...ZC)+64,ZMIN=Math.min(...ZC)-64;
+const CAMY=G8.camY,RB=G8.camBase,RR=G8.roll,LIFT_L=58;
+const ZMAIN=[2,1,0,-1,-2].map(k=>k*G8.spacing);
+// valves: E-I-I-E-E-I-I-E along each head; seat on the bore axis, stem 23 deg to the bore axis
+const TILT=23*D2R,VLEN=125;
+const VALVES=[];
+for(const b of ['L','R']){BK[b].cyl.forEach((c,j)=>{const z=CY[c-1].z,front=j%2===0?'E':'I',rear=front==='E'?'I':'E';
+  VALVES.push({c,b,type:front,z:z+24},{c,b,type:rear,z:z-24})})}
+VALVES.forEach((v,i)=>{v.i=i;const B=BK[v.b];v.va=B.ax.clone().multiplyScalar(Math.cos(TILT)).add(B.n.clone().multiplyScalar(Math.sin(TILT)));
+  v.th=B.ax.clone().multiplyScalar(-Math.sin(TILT)).add(B.n.clone().multiplyScalar(Math.cos(TILT)));   // rocker arm direction, pivot -> valve tip
+  v.seat=bp(v.b,DECK-3,0,v.z);v.tip=v.seat.clone().addScaledVector(v.va,VLEN);
+  v.P=v.tip.clone().addScaledVector(v.th,-34.5).addScaledVector(v.va,8);v.cup=v.P.clone().addScaledVector(v.th,-23).addScaledVector(v.va,-2);
+  v.camC=v3(0,CAMY,v.z)});
+function clipHalf(pts){// keep the side y >= x (the left bank's valley half): the cutaway plane runs through the crank axis along the left bank
+  const out=[],f=p=>p.y-p.x;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],fa=f(a),fb=f(b);if(fa>=0)out.push(a);if((fa>=0)!==(fb>=0)){const t=fa/(fa-fb);out.push(v2(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t))}}return out}
+const shp=pts=>{const s=new THREE.Shape();pts.forEach((p,i)=>i?s.lineTo(p.x,p.y):s.moveTo(p.x,p.y));s.closePath();return s};
+const circ=(cx,cy,r,n=40,a0=0,a1=TAU)=>{const o=[];for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;o.push(v2(cx+r*Math.cos(a),cy+r*Math.sin(a)))}return o};
+function extrudeZ(pts,z0,z1,opts={}){const g=new THREE.ExtrudeGeometry(Array.isArray(pts)?shp(pts):pts,Object.assign({depth:z1-z0,bevelEnabled:false,curveSegments:24},opts));g.translate(0,0,z0);return g}
+function quadsGeo(list){// list of [p0,p1,p2,p3] (counter-clockwise seen from the front of the face) with optional uv
+  const pos=[],uv=[],idx=[];list.forEach((q,k)=>{q.p.forEach((p,i)=>{pos.push(p.x,p.y,p.z);const u=q.uv?q.uv[i]:[i===1||i===2?1:0,i>=2?1:0];uv.push(u[0],u[1])});const o=k*4;idx.push(o,o+1,o+2,o,o+2,o+3)});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g}
+function lathe(prof,seg=48,a0=0,al=TAU){return new THREE.LatheGeometry(prof.map(p=>v2(p[0],p[1])),seg,a0,al)}
+const qUp=new THREE.Vector3(0,1,0);
+function orient(obj,dir){obj.quaternion.setFromUnitVectors(qUp,dir.clone().normalize())}
+
+/* ================= scene ================= */
+let renderer,scene,camera,R3=false,lite=false;const G={},mats={};
+const std=o=>new THREE.MeshStandardMaterial(o);
+const cvs=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+let rs=7;const rnd=()=>{rs=(rs+0x6D2B79F5)|0;let t=Math.imul(rs^rs>>>15,1|rs);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+function noiseTex(base,amp,n,rep){const c=cvs(256,256),g=c.getContext('2d');g.fillStyle=base;g.fillRect(0,0,256,256);for(let i=0;i<n;i++){const v=rnd();g.fillStyle=`rgba(${v<.5?0:255},${v<.5?0:255},${v<.5?0:255},${amp*rnd()})`;g.fillRect(rnd()*256,rnd()*256,1+rnd()*2.5,1+rnd()*2.5)}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep);return t}
+function glassMat(col,a0=.03,a1=.5){return new THREE.ShaderMaterial({uniforms:{c:{value:new THREE.Color(col)},a0:{value:a0},a1:{value:a1}},
+  vertexShader:'varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
+  fragmentShader:'uniform vec3 c;uniform float a0,a1;varying vec3 vN;varying vec3 vV;void main(){float f=1.-abs(dot(normalize(vN),normalize(vV)));gl_FragColor=vec4(c,a0+a1*pow(f,2.2));}',
+  transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide})}
+function headTex(){// the sawn face of the left head: combustion chambers, ports, water jackets
+  const W=1024,H=192,c=cvs(W,H),g=c.getContext('2d');const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#c9ccd0');gr.addColorStop(1,'#aeb2b7');g.fillStyle=gr;g.fillRect(0,0,W,H);
+  for(let i=0;i<5000;i++){g.fillStyle=`rgba(${rnd()<.5?40:255},${rnd()<.5?40:255},${rnd()<.5?40:255},.06)`;g.fillRect(rnd()*W,rnd()*H,2,1)}
+  const zu=z=>(z-ZMIN)/(ZMAX-ZMIN)*W,sv=s=>H-(s-DECK)/(HTOP-DECK)*H;
+  for(const c of BK.L.cyl){const z=CY[c-1].z,x=zu(z);
+    g.fillStyle='#2b2421';g.beginPath();g.ellipse(x,H,46/(ZMAX-ZMIN)*W*1.05,20/(HTOP-DECK)*H,0,PI,TAU);g.fill();
+    g.fillStyle='#3a312c';for(const dz of [-24,24]){const xx=zu(z+dz);g.fillRect(xx-5,sv(DECK+60),10,sv(DECK+12)-sv(DECK+60))}
+    g.fillStyle='rgba(60,70,80,.55)';g.beginPath();g.ellipse(x,sv(DECK+52),18,10,0,0,TAU);g.fill()}
+  g.strokeStyle='rgba(30,30,30,.35)';g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t}
+function makeScene(){
+  const cv=$('#c');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance',preserveDrawingBuffer:FIXED});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x151413);scene.fog=new THREE.Fog(0x151413,4200,9000);
+  camera=new THREE.PerspectiveCamera(30,1,10,20000);
+  {const pm=new THREE.PMREMGenerator(renderer),es=new THREE.Scene();es.background=new THREE.Color(0x5a554e);
+   const pl=(w,h,x,y,z,c,i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(c).multiplyScalar(i),side:THREE.DoubleSide,toneMapped:false}));m.position.set(x,y,z);m.lookAt(0,0,0);es.add(m)};
+   pl(14,6,-3,10,7,0xfff1dc,6);pl(16,7,-11,4,5,0xdde6ff,3);pl(10,11,10,4,-7,0xc6d6ff,2.6);pl(30,3,0,-1,-11,0xffe4c0,2);pl(7,7,8,9,7,0xffffff,4);pl(30,4,0,2,12,0xf4efe8,2);pl(4,18,-12,3,-6,0xffffff,2.4);pl(30,30,0,14,0,0xfff6ea,1.1);
+   const fl=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshBasicMaterial({color:0x6a6158,side:THREE.DoubleSide}));fl.rotation.x=-PI/2;fl.position.y=-6;es.add(fl);
+   scene.environment=pm.fromScene(es,.02).texture;pm.dispose()}
+  scene.environmentIntensity=1.05;scene.add(new THREE.HemisphereLight(0xfff2e0,0x17140f,.35));
+  const key=new THREE.DirectionalLight(0xfff0dc,2.5);key.position.set(900,2300,1500);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+  Object.assign(key.shadow.camera,{left:-900,right:900,top:900,bottom:-900,near:800,far:5600});key.shadow.bias=-.0004;key.shadow.normalBias=1.2;scene.add(key);G.key=key;
+  const rim=new THREE.DirectionalLight(0xffe8d0,1.3);rim.position.set(-1500,1100,-1800);scene.add(rim);
+  const fill=new THREE.DirectionalLight(0xdfe8ff,.6);fill.position.set(-1600,500,1200);scene.add(fill);
+  const nz=noiseTex('#808080',.25,9000,.025);
+  mats.paint=std({color:0xd8561b,roughness:.42,metalness:.12,bumpMap:nz,bumpScale:.6});           // Chevrolet engine orange
+  mats.paintD=std({color:0xb8461a,roughness:.5,metalness:.12,bumpMap:nz,bumpScale:.6});
+  mats.cutf=std({color:0xc6c9cd,roughness:.38,metalness:.85,side:THREE.DoubleSide});                // sawn cast iron
+  mats.bore=std({color:0xc3c7cc,roughness:.2,metalness:1,side:THREE.DoubleSide});
+  mats.alu=std({color:0xc8ccd2,metalness:1,roughness:.34});
+  mats.steel=std({color:0xa9aeb5,metalness:1,roughness:.3});
+  mats.pol=std({color:0xd6d9dd,metalness:1,roughness:.14});
+  mats.dark=std({color:0x6a6e75,metalness:.9,roughness:.36});
+  mats.black=std({color:0x1b1b1d,metalness:.3,roughness:.55});
+  mats.chrome=std({color:0xe8eaee,metalness:1,roughness:.07});
+  mats.spring=std({color:0x30343a,metalness:.8,roughness:.35});
+  mats.ceramic=std({color:0xf0ede6,metalness:0,roughness:.35});
+  mats.rubber=std({color:0x1a1a1a,metalness:0,roughness:.75});
+  mats.wire=std({color:0xa3201c,metalness:0,roughness:.55,emissive:0xff5a1a,emissiveIntensity:0});
+  mats.stand=std({color:0x3b4048,metalness:.5,roughness:.45});
+  mats.standY=std({color:0xc79a2a,metalness:.4,roughness:.45});
+  mats.floor=std({color:0x3a3733,metalness:0,roughness:.92,map:noiseTex('#77716a',.18,24000,18)});mats.floor.map.colorSpace=THREE.SRGBColorSpace;
+  mats.header=std({color:0xc4c8cd,metalness:1,roughness:.24,emissive:0xff4a10,emissiveIntensity:0});
+  mats.glass=glassMat(0xff9a5c,.02,.42);mats.glassC=glassMat(0xd0e4ff,.02,.35);
+  mats.headCut=std({map:headTex(),roughness:.4,metalness:.7,side:THREE.DoubleSide});
+  const root=new THREE.Group();scene.add(root);G.root=root;
+  const eng=new THREE.Group();root.add(eng);G.eng=eng;G.cast=[];G.parts=0;
+  buildFloorStand(root);buildBlock(eng);buildHeads(eng);buildCrank(eng);buildCylinders(eng);buildCam(eng);buildValvetrain(eng);buildFront(eng);buildTop(eng);buildExhaust(eng);
+  applyCast();
+  try{const gl=renderer.getContext();let rn=gl.getParameter(gl.RENDERER);if(/WebKit|Mozilla/.test(rn)){const e=gl.getExtension('WEBGL_debug_renderer_info');if(e)rn=gl.getParameter(e.UNMASKED_RENDERER_WEBGL)}G.renderer=String(rn)}catch(e){G.renderer='?'}
+}
+function addCast(solid,cut,o={}){// a casting: solid mesh, cutaway variant (same mesh, another mesh, or null = taken off)
+  const e={solid,cut:cut===undefined?solid:cut,glass:o.glass||mats.glass,group:o.group||null};for(const m of [e.solid,e.cut])if(m){m.castShadow=true;m.receiveShadow=true;m.userData.mat=m.material}
+  G.cast.push(e);return e}
+function mesh(geo,mat,parent){const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;if(parent)parent.add(m);G.parts++;return m}
+
+/* ---------- floor and engine stand ---------- */
+const FLOOR=-720;
+function buildFloorStand(root){
+  const fl=new THREE.Mesh(new THREE.CircleGeometry(4200,64),mats.floor);fl.rotation.x=-PI/2;fl.position.y=FLOOR;fl.receiveShadow=true;root.add(fl);
+  const st=new THREE.Group();root.add(st);G.stand=st;const box=(w,h,d,x,y,z,m=mats.stand)=>{const b=mesh(new THREE.BoxGeometry(w,h,d),m,st);b.position.set(x,y,z);return b};
+  const tube=(a,b,r,m=mats.stand)=>{const d=b.clone().sub(a),c=mesh(new THREE.CylinderGeometry(r,r,d.length(),20),m,st);c.position.copy(a).addScaledVector(d,.5);orient(c,d);return c};
+  const ZP=-560;box(70,70,1100,0,FLOOR+48,ZP+430);box(760,70,70,0,FLOOR+48,ZP);
+  for(const [x,z] of [[-350,ZP],[350,ZP],[0,ZP+960]]){box(60,14,60,x,FLOOR+6+60,z,mats.standY);const w=mesh(new THREE.CylinderGeometry(34,34,28,22),mats.rubber,st);w.rotation.z=PI/2;w.position.set(x,FLOOR+34,z)}
+  tube(v3(0,FLOOR+80,ZP),v3(0,-60,ZP),40);box(96,110,96,0,-30,ZP);
+  tube(v3(0,-20,ZP+50),v3(0,-20,ZMIN-150),33);
+  const hp=mesh(new THREE.CylinderGeometry(78,78,16,32),mats.stand,st);hp.rotation.x=PI/2;hp.position.set(0,-20,ZMIN-150);
+  const crank=tube(v3(-60,-20,ZP-10),v3(-60,-150,ZP-120),9,mats.standY);
+  for(const [x,y] of [[150,120],[-150,120],[160,-55],[-160,-55]]){const a=v3(x*.32,-20+y*.3,ZMIN-145),b=v3(x,y,ZMIN-12);const t=tube(a,b,12);
+    const bl=mesh(new THREE.CylinderGeometry(9,9,16,12),mats.dark,st);bl.rotation.x=PI/2;bl.position.set(x,y,ZMIN-6)}}
+
+/* ---------- block, crankcase, bulkheads, pan ---------- */
+function buildBlock(eng){
+  for(const b of ['L','R']){const B=BK[b],w=c=>CY[c-1].z*B.zs;
+    const ws=B.cyl.map(w),wmin=Math.min(...ws)-64,wmax=Math.max(...ws)+64;
+    const s=shp([v2(-62,wmin),v2(62,wmin),v2(62,wmax),v2(-62,wmax)]);for(const ww of ws)s.holes.push(new THREE.Path(circ(0,ww,53,48).reverse()));
+    const gS=new THREE.ExtrudeGeometry(s,{depth:DECK-S0,bevelEnabled:false,curveSegments:48});gS.applyMatrix4(bankMat(b,S0));
+    const solid=mesh(gS,mats.paint,eng);let cut=solid;
+    if(b==='L'){// keep the valley half (v <= 0): half bores open toward the viewer
+      const sorted=ws.slice().sort((a,c)=>c-a),pts=[v2(-62,wmin),v2(-62,wmax),v2(0,wmax)];
+      for(const ww of sorted){pts.push(v2(0,ww+53));for(let i=1;i<24;i++){const a=PI/2+PI*i/24;pts.push(v2(53*Math.cos(a),ww+53*Math.sin(a)))}pts.push(v2(0,ww-53))}pts.push(v2(0,wmin));
+      const gC=new THREE.ExtrudeGeometry(shp(pts),{depth:DECK-S0,bevelEnabled:false});gC.applyMatrix4(bankMat(b,S0));cut=mesh(gC,mats.paint,eng)}
+    addCast(solid,cut);
+    // cylinder sleeves (bores)
+    for(const c of B.cyl){const z=CY[c-1].z;const full=mesh(lathe([[50.8,0],[53,0],[53,DECK-S0+1],[50.8,DECK-S0+1],[50.8,0]],48),mats.bore,eng);full.position.copy(bp(b,S0,0,z));orient(full,B.ax);
+      let half=full;if(b==='L'){half=mesh(lathe([[50.8,0],[53,0],[53,DECK-S0+1],[50.8,DECK-S0+1],[50.8,0]],24,PI,PI),mats.bore,eng);half.position.copy(full.position);orient(half,B.ax)}
+      addCast(full,half,{glass:mats.glassC})}}
+  // crankcase: a U around the crank cavity, up into the lifter valley
+  const PL=a=>{const B=BK[a.b];return v2(B.ax.x*a.s+B.n.x*a.v,B.ax.y*a.s+B.n.y*a.v)};
+  const Lo=PL({b:'L',s:S0,v:62}),Li=PL({b:'L',s:S0,v:-62}),Ro=PL({b:'R',s:S0,v:62}),Ri=PL({b:'R',s:S0,v:-62});
+  const RC=95,xr=Math.sqrt(RC*RC-76*76);
+  const U=[v2(xr,-76),v2(128,-76),v2(128,-18),Lo,Li,v2(46,170),v2(-46,170),Ri,Ro,v2(-128,-18),v2(-128,-76),v2(-xr,-76)];
+  const a0=Math.atan2(-76,-xr),a1=Math.atan2(-76,xr)-TAU;for(let i=1;i<40;i++){const a=a0+(a1-a0)*i/40;U.push(v2(RC*Math.cos(a),RC*Math.sin(a)))}
+  const cc=mesh(extrudeZ(U,ZMIN,ZMAX),mats.paint,eng),ccC=mesh(extrudeZ(clipHalf(U),ZMIN,ZMAX),mats.paint,eng);addCast(cc,ccC);
+  // main bulkheads with the bearing bores, and the main caps
+  for(const z of ZMAIN){const th=z===ZMAIN[4]?30:22;const P=[v2(-xr,-76),v2(xr,-76)];for(let i=1;i<40;i++){const a=Math.atan2(-76,xr)+(Math.atan2(-76,-xr)+TAU-Math.atan2(-76,xr))*i/40;P.push(v2(RC*Math.cos(a),RC*Math.sin(a)))}
+    const sh=shp(P);sh.holes.push(new THREE.Path(circ(0,0,G8.mainD/2+2,40).reverse()));
+    const bh=mesh(new THREE.ExtrudeGeometry(sh,{depth:th,bevelEnabled:false}),mats.paintD,eng);bh.geometry.translate(0,0,z-th/2);
+    const shC=shp(clipHalf(P));const bhC=mesh(new THREE.ExtrudeGeometry(shC,{depth:th,bevelEnabled:false}),mats.paintD,eng);bhC.geometry.translate(0,0,z-th/2);addCast(bh,bhC);
+    const cap=mesh(extrudeZ([v2(-58,-76),v2(58,-76),v2(52,-30),v2(34,-12),v2(-34,-12),v2(-52,-30)],z-th/2-.5,z+th/2+.5),mats.steel,eng);
+    for(const x of [-44,44]){const bo=mesh(new THREE.CylinderGeometry(7.5,7.5,14,6),mats.dark,eng);bo.position.set(x,-82,z)}}
+  // the sawn faces on the cutaway plane (the plane through the crank axis along the left bank): bank pillars, bulkhead stubs, crankcase sliver
+  const B=BK.L,P=(s,z)=>B.ax.clone().multiplyScalar(s).add(B.n.clone().multiplyScalar(.35)).setZ(z),q=[];
+  const rect=(s0,s1,z0,z1)=>q.push({p:[P(s0,z1),P(s0,z0),P(s1,z0),P(s1,z1)]});
+  const zb=B.cyl.map(c=>CY[c-1].z).sort((a,b)=>b-a);let zt=ZMAX;for(const z of zb){rect(S0,DECK,z+50.8,zt);zt=z-50.8}rect(S0,DECK,ZMIN,zt);
+  for(const z of ZMAIN){const th=z===ZMAIN[4]?30:22;rect(G8.mainD/2+2,RC,z-th/2,z+th/2);rect(-RC,-(G8.mainD/2+2),z-th/2,z+th/2)}
+  rect(-76*Math.SQRT2,-RC,ZMIN,ZMAX);
+  const cf=mesh(quadsGeo(q),mats.cutf,eng);cf.castShadow=false;addCast(null,cf);
+  // front and rear faces of the block (decks of the extrusions are already closed); oil pan as a thin pressed-steel tub
+  const pan=(bot,z0,z1)=>{const o=[v2(138,-76),v2(138,-120),v2(122,bot),v2(-122,bot),v2(-138,-120),v2(-138,-76)],i=[v2(-134,-76),v2(-134,-119),v2(-119,bot+3),v2(119,bot+3),v2(134,-119),v2(134,-76)];
+    const U=o.concat(i);const s=mesh(extrudeZ(U,z0,z1),mats.paint,eng),c=mesh(extrudeZ(clipHalf(U),z0,z1),mats.paint,eng);s.material=mats.paint;addCast(s,c);
+    const endP=o.slice();for(const z of [z0,z1-3]){const e=mesh(extrudeZ(endP,z,z+3),mats.paint,eng),ec=mesh(extrudeZ(clipHalf(endP),z,z+3),mats.paint,eng);addCast(e,ec)}};
+  pan(-165,30,ZMAX);pan(-262,ZMIN,30);
+  const rail=mesh(extrudeZ([v2(142,-76),v2(142,-82),v2(-142,-82),v2(-142,-76)],ZMIN,ZMAX),mats.paintD,eng);addCast(rail,mesh(extrudeZ(clipHalf([v2(142,-76),v2(142,-82),v2(-142,-82),v2(-142,-76)]),ZMIN,ZMAX),mats.paintD,eng));
+  G.panGroup=null}
+
+/* ---------- heads, valve covers ---------- */
+function buildHeads(eng){
+  for(const b of ['L','R']){const B=BK[b];const hg=new THREE.Group();eng.add(hg);(G.heads=G.heads||{})[b]=hg;
+    const ws=B.cyl.map(c=>CY[c-1].z*B.zs),wmin=Math.min(...ws)-70,wmax=Math.max(...ws)+70;
+    const R=(v0,v1)=>[v2(v0,wmin),v2(v1,wmin),v2(v1,wmax),v2(v0,wmax)];
+    const g=new THREE.ExtrudeGeometry(shp(R(-74,VC)),{depth:HTOP-DECK,bevelEnabled:true,bevelSize:3,bevelThickness:3,bevelSegments:2,bevelOffset:-3});g.applyMatrix4(bankMat(b,DECK));
+    const solid=mesh(g,mats.paint,hg);let cut=solid;
+    if(b==='L'){const gc=new THREE.ExtrudeGeometry(shp(R(-74,0)),{depth:HTOP-DECK,bevelEnabled:false});gc.applyMatrix4(bankMat(b,DECK));cut=mesh(gc,mats.paint,hg);
+      const P=(s,z)=>B.ax.clone().multiplyScalar(s).add(B.n.clone().multiplyScalar(.35)).setZ(z);
+      const f=mesh(quadsGeo([{p:[P(DECK,ZMIN),P(DECK,ZMAX),P(HTOP,ZMAX),P(HTOP,ZMIN)],uv:[[0,0],[1,0],[1,1],[0,1]]}]),mats.headCut,hg);f.castShadow=false;addCast(null,f)}
+    addCast(solid,cut);
+    // valve cover: a chrome shell
+    const o=R(-66,70),inn=R(-62,66);const sh=shp(o);sh.holes.push(new THREE.Path(inn.slice().reverse()));
+    const wall=new THREE.ExtrudeGeometry(sh,{depth:62,bevelEnabled:false});wall.applyMatrix4(bankMat(b,HTOP));
+    const top=new THREE.ExtrudeGeometry(shp(o),{depth:6,bevelEnabled:true,bevelSize:4,bevelThickness:4,bevelSegments:3,bevelOffset:-4});top.applyMatrix4(bankMat(b,HTOP+62));
+    const vc=mesh(mergeGeometries([wall,top]),mats.chrome,hg);const vcc=null;
+    addCast(vc,vcc,{glass:mats.glassC})}}
+
+/* ---------- crankshaft: four throws that can be re-indexed (cross-plane <-> flat-plane) ---------- */
+function gearShape(n,rp,h=5,rootF=.85){const pts=[];for(let i=0;i<n;i++){const a=i/n*TAU,da=TAU/n;
+  for(const [f,r] of [[0,rp-h*.9],[.18,rp-h*.9],[.32,rp+h*.75],[.5,rp+h*.9],[.68,rp+h*.75],[.82,rp-h*.9]]){const b=a+f*da;pts.push(v2(r*Math.sin(b),r*Math.cos(b)))}}return pts}
+function buildCrank(eng){
+  const cr=new THREE.Group();eng.add(cr);G.crank=cr;G.throws=[];G.cwMeshes=[];
+  const cyl=(r,z0,z1,m,seg=40)=>{const c=mesh(new THREE.CylinderGeometry(r,r,z1-z0,seg),m,cr);c.rotation.x=PI/2;c.position.z=(z0+z1)/2;return c};
+  ZMAIN.forEach((z,i)=>cyl(G8.mainD/2,z-11-(i===4?4:0),z+11+(i===4?4:0),mats.pol));
+  for(let k=0;k<4;k++){const tg=new THREE.Group();cr.add(tg);G.throws.push(tg);const zp=G8.zPin[k],r=G8.r;
+    const pin=mesh(new THREE.CylinderGeometry(G8.pinD/2,G8.pinD/2,48,40),mats.pol,tg);pin.rotation.x=PI/2;pin.position.set(0,r,zp);
+    // webs: a slot around the pin and the main, plus a counterweight sector opposite the pin
+    const arm=[];for(let i=0;i<=20;i++){const a=-PI/2+PI*i/20;arm.push(v2(36*Math.sin(a+PI/2)*0+36*Math.cos(a),r+36*Math.sin(a)))}for(let i=0;i<=20;i++){const a=PI/2+PI*i/20;arm.push(v2(42*Math.cos(a),42*Math.sin(a)))}
+    const cwp=[];const R0=26,R1=84,sp=60*D2R;for(let i=0;i<=24;i++){const a=-PI/2-sp+2*sp*i/24;cwp.push(v2(R1*Math.cos(a),R1*Math.sin(a)))}for(let i=24;i>=0;i--){const a=-PI/2-sp+2*sp*i/24;cwp.push(v2(R0*Math.cos(a),R0*Math.sin(a)))}
+    for(const sgn of [1,-1]){const z0=zp+sgn*24,z1=zp+sgn*44.9,za=Math.min(z0,z1),zb=Math.max(z0,z1);
+      const w=mesh(extrudeZ(arm,za,zb,{bevelEnabled:true,bevelSize:1.5,bevelThickness:1.5,bevelSegments:1,bevelOffset:-1.5}),mats.steel,tg);
+      const cw=mesh(extrudeZ(cwp,za+.6,zb-.6,{bevelEnabled:true,bevelSize:2,bevelThickness:2,bevelSegments:2,bevelOffset:-2}),mats.steel,tg);G.cwMeshes.push(cw)}}
+  // snout, sprocket, balancer, pulley; rear flange and flywheel with its 168-tooth ring gear
+  cyl(21,ZMAIN[0]+11,350,mats.pol);
+  const sp=mesh(extrudeZ(gearShape(20,30.45,4.6),255,271),mats.steel,cr);G.crankSpr=sp;
+  const hb=mesh(new THREE.CylinderGeometry(78,78,34,56),mats.dark,cr);hb.rotation.x=PI/2;hb.position.z=306;
+  const hr=mesh(new THREE.CylinderGeometry(70,70,35,56),mats.rubber,cr);hr.rotation.x=PI/2;hr.position.z=306;
+  const mark=mesh(new THREE.BoxGeometry(3,10,1.5),mats.ceramic,cr);mark.position.set(0,74,323.5);
+  const pu=mesh(lathe([[22,0],[70,0],[70,4],[60,10],[70,16],[70,20],[22,20]],56),mats.dark,cr);pu.rotation.x=PI/2;pu.position.z=344;
+  cyl(50,ZMAIN[4]-15,ZMIN-6,mats.steel);
+  const fw=mesh(lathe([[52,0],[166,0],[166,22],[52,22]],72),mats.steel,cr);fw.rotation.x=-PI/2;fw.position.z=ZMIN-8;
+  const ring=mesh(extrudeZ(gearShape(168,172,3.6),ZMIN-30,ZMIN-14),mats.dark,cr);
+  for(let i=0;i<6;i++){const a=i/6*TAU,bo=mesh(new THREE.CylinderGeometry(6,6,6,6),mats.dark,cr);bo.rotation.x=PI/2;bo.position.set(70*Math.sin(a),70*Math.cos(a),ZMIN-32)}
+  setThrows()}
+function setThrows(){for(let k=0;k<4;k++)G.throws[k].rotation.z=-(45+S.pins[k])*D2R}
+
+/* ---------- pistons, rods, the charge in each cylinder ---------- */
+function buildCylinders(eng){
+  const pp=[[0,-39],[45,-39],[48.5,-36],[49.6,-20],[50.3,0],[50.3,22],[50.6,24],[50.6,26.5],[48.6,26.5],[48.6,28.5],[50.6,28.5],[50.6,31],[48.6,31],[48.6,33],[50.6,33],[50.6,35.5],[48.6,35.5],[48.6,37.5],[50.6,37.5],[50.6,39.6],[46,39.6],[40,38.8],[0,38.8]];
+  const pGeo=lathe(pp,40);
+  const rodShape=()=>{const L=G8.L,p=[v2(15,62)];for(let i=0;i<=28;i++){const a=(20-220*i/28)*D2R;p.push(v2(40*Math.cos(a),40*Math.sin(a)))}
+    p.push(v2(-15,62),v2(-11,L-13));for(let i=0;i<=18;i++){const a=(200-220*i/18)*D2R;p.push(v2(15.5*Math.cos(a),L+15.5*Math.sin(a)))}p.push(v2(11,L-13));
+    const sh=shp(p);sh.holes.push(new THREE.Path(circ(0,0,G8.pinD/2+.4,40).reverse()));sh.holes.push(new THREE.Path(circ(0,L,11.8,24).reverse()));return sh};
+  const rGeo=new THREE.ExtrudeGeometry(rodShape(),{depth:21,bevelEnabled:true,bevelSize:1.2,bevelThickness:1.2,bevelSegments:2,bevelOffset:-1.2,curveSegments:24});rGeo.translate(0,0,-10.5);
+  const boltG=new THREE.CylinderGeometry(4.6,4.6,26,10);
+  const chG=new THREE.CylinderGeometry(50.2,50.2,1,40,1,false);chG.translate(0,.5,0);
+  G.cyl=[];
+  for(const cy of CY){const b=cy.left?'L':'R',B=BK[b];
+    const pg=new THREE.Group();eng.add(pg);const pm=mesh(pGeo,mats.alu,pg);pm.userData.cyl=cy.c;
+    const wp=mesh(new THREE.CylinderGeometry(11.6,11.6,62,24),mats.pol,pg);wp.rotation.x=PI/2;
+    const rg=new THREE.Group();eng.add(rg);const rm=mesh(rGeo,mats.steel,rg);rm.userData.cyl=cy.c;
+    for(const x of [-30,30]){const bo=mesh(boltG,mats.dark,rg);bo.position.set(x,-6,0)}
+    const capLine=mesh(new THREE.BoxGeometry(84,1.2,22),mats.dark,rg);capLine.position.y=-2;
+    const chM=new THREE.MeshBasicMaterial({color:0xff7a2e,transparent:true,opacity:0,depthWrite:false,toneMapped:false});
+    const ch=new THREE.Mesh(chG,chM);eng.add(ch);
+    G.cyl.push({cy,b,pg,pm,rg,rm,ch,chM})}}
+
+/* ---------- camshaft (16 lobes ground from the lift curve), lifters ---------- */
+function lobeGeo(f){// pitch curve of the roller centre, offset inward by the roller radius: the lobe outline for a roller lifter
+  const N=180,pc=[];for(let i=0;i<N;i++){const be=i/N*TAU-PI;const phi=2*be/D2R;const h=V8.lobe(f,phi)*IN;const r=RB+RR+h;pc.push(v2(r*Math.sin(be),r*Math.cos(be)))}
+  const out=[];for(let i=0;i<N;i++){const a=pc[(i+N-1)%N],b=pc[(i+1)%N],t=v2(b.x-a.x,b.y-a.y).normalize(),nrm=v2(t.y,-t.x);const p=pc[i];
+    const o=v2(p.x+nrm.x*RR,p.y+nrm.y*RR);if(o.length()>p.length())o.set(p.x-nrm.x*RR,p.y-nrm.y*RR);out.push(o)}return out}
+function buildCam(eng){
+  const cg=new THREE.Group();cg.position.set(0,CAMY,0);eng.add(cg);G.cam=cg;
+  const sh=mesh(new THREE.CylinderGeometry(13,13,ZMAX-ZMIN+40,24),mats.dark,cg);sh.rotation.x=PI/2;sh.position.z=10;
+  for(const z of ZMAIN){const j=mesh(new THREE.CylinderGeometry(23.7,23.7,20,36),mats.pol,cg);j.rotation.x=PI/2;j.position.z=z}
+  const gI=extrudeZ(lobeGeo(V8.CAM.I.fit),-7,7,{bevelEnabled:true,bevelSize:.8,bevelThickness:.8,bevelSegments:1,bevelOffset:-.8}),gE=extrudeZ(lobeGeo(V8.CAM.E.fit),-7,7,{bevelEnabled:true,bevelSize:.8,bevelThickness:.8,bevelSegments:1,bevelOffset:-.8});
+  G.lobes=VALVES.map(v=>{const g=new THREE.Group();cg.add(g);g.position.z=v.z;const m=mesh(v.type==='I'?gI:gE,mats.pol,g);return g});
+  const spr=mesh(extrudeZ(gearShape(40,60.7,4.6),255,271),mats.steel,cg);
+  const hub=mesh(new THREE.CylinderGeometry(30,30,22,32),mats.steel,cg);hub.rotation.x=PI/2;hub.position.z=262;
+  for(let i=0;i<3;i++){const a=i/3*TAU,bo=mesh(new THREE.CylinderGeometry(5,5,8,6),mats.dark,cg);bo.rotation.x=PI/2;bo.position.set(40*Math.sin(a),40*Math.cos(a),273)}
+  const dot=mesh(new THREE.CylinderGeometry(3,3,2,10),mats.ceramic,cg);dot.rotation.x=PI/2;dot.position.set(0,-55,272);
+  setLobes(V8.lobeAngles('cross'))}
+function setLobes(la){S.lobes=la.map(x=>({...x}));VALVES.forEach((v,i)=>{const l=la.find(x=>x.c===v.c&&x.v===v.type);v.lobe=l.ang;G.lobes[i].rotation.z=-l.ang*D2R})}
+
+/* ---------- valvetrain: lifters, pushrods, rockers, valves, springs, retainers (instanced) ---------- */
+function buildValvetrain(eng){
+  const N=VALVES.length,inst=(geo,mat)=>{const m=new THREE.InstancedMesh(geo,mat,N);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;eng.add(m);G.parts+=N;return m};
+  const lif=mergeGeometries([new THREE.CylinderGeometry(10.7,10.7,LIFT_L-6,20).translate(0,(LIFT_L-6)/2+6,0),new THREE.CylinderGeometry(RR,RR,12,20).rotateX(PI/2)]);
+  G.lifter=inst(lif,mats.black);
+  const pr=new THREE.CylinderGeometry(4,4,1,10);pr.translate(0,.5,0);G.push=inst(pr,mats.chrome);
+  const rk=mergeGeometries([new THREE.BoxGeometry(70,9,13).translate(5.75,0,0),new THREE.CylinderGeometry(9,9,15,16).rotateX(PI/2),new THREE.SphereGeometry(5.5,10,8).translate(-23,-4,0)]);
+  G.rocker=inst(rk,mats.steel);
+  const vI=lathe([[0,0],[24.6,0],[24.6,1.6],[8,7],[4.4,14],[4.4,VLEN],[0,VLEN]],32),vE=lathe([[0,0],[19,0],[19,1.6],[7,7],[4.4,14],[4.4,VLEN],[0,VLEN]],32);
+  G.valveI=inst(vI,mats.steel);G.valveE=inst(vE,mats.steel);
+  const pts=[];const turns=6.5;for(let i=0;i<=130;i++){const t=i/130,a=t*turns*TAU;pts.push(v3(15.5*Math.cos(a),t*46,15.5*Math.sin(a)))}
+  const spG=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),117,2.4,6,false);G.spring=inst(spG,mats.spring);
+  G.ret=inst(lathe([[4.5,0],[19,0],[19,3],[12,7],[4.5,7]],24),mats.dark);
+  G.stud=inst(new THREE.CylinderGeometry(4.6,4.6,26,10).translate(0,-8,0),mats.dark);
+  G.parts+=0}
+
+/* ---------- front: timing chain, cover, water pump; spark plugs, wires, distributor ---------- */
+function chainPath(){const r1=30.45,r2=60.7,d=CAMY,phi=Math.asin((r2-r1)/d),seg=Math.sqrt(d*d-(r2-r1)*(r2-r1));
+  const C1=v2(0,0),C2=v2(0,d),aR=PI/2+phi,aL=1.5*PI-phi;const P=(C,r,a)=>v2(C.x+r*Math.sin(a),C.y+r*Math.cos(a));
+  const parts=[{t:'l',a:P(C2,r2,aR),b:P(C1,r1,aR)},{t:'c',C:C1,r:r1,a0:aR,a1:aL},{t:'l',a:P(C1,r1,aL),b:P(C2,r2,aL)},{t:'c',C:C2,r:r2,a0:aL,a1:aR+TAU}];
+  let L=0;for(const p of parts){p.len=p.t==='l'?p.a.distanceTo(p.b):p.r*(p.a1-p.a0);p.s0=L;L+=p.len}
+  const at=s=>{s=((s%L)+L)%L;for(const p of parts){if(s<=p.s0+p.len){const u=(s-p.s0)/p.len;if(p.t==='l'){const q=v2(lerp(p.a.x,p.b.x,u),lerp(p.a.y,p.b.y,u));return{p:q,dir:Math.atan2(p.b.x-p.a.x,p.b.y-p.a.y)}}
+    const a=lerp(p.a0,p.a1,u);return{p:P(p.C,p.r,a),dir:a+PI/2}}}return at(0)};return{L,at,r1}}
+function buildFront(eng){
+  const ch=chainPath();G.chain=ch;const n=Math.round(ch.L/9.525);G.chainN=n;
+  const lg=mergeGeometries([new THREE.BoxGeometry(5,12,26),new THREE.CylinderGeometry(3.2,3.2,26,8).rotateX(PI/2).translate(0,4.7,0)]);
+  const lm=new THREE.InstancedMesh(lg,mats.steel,n);lm.castShadow=true;lm.frustumCulled=false;eng.add(lm);G.links=lm;G.parts+=n;
+  // timing cover (taken off in the cutaway)
+  const cov=[];for(let i=0;i<=20;i++){const a=PI+PI*i/20;cov.push(v2(44*Math.cos(a),44*Math.sin(a)))}for(let i=0;i<=24;i++){const a=PI*i/24;cov.push(v2(76*Math.cos(a),CAMY+76*Math.sin(a)))}
+  const cv=mesh(extrudeZ(cov.reverse(),ZMAX,290,{bevelEnabled:true,bevelSize:4,bevelThickness:4,bevelSegments:2,bevelOffset:-4}),mats.paint,eng);addCast(cv,null);
+  // front plate of the block behind the chain
+  const fp=mesh(extrudeZ([v2(-150,-76),v2(150,-76),v2(150,40),v2(118,200),v2(-118,200),v2(-150,40)],ZMAX,ZMAX+4),mats.paintD,eng);addCast(fp,fp);
+  // water pump with its pulley, alternator, belt
+  const wp=mesh(new THREE.CylinderGeometry(46,52,40,32),mats.alu,eng);wp.rotation.x=PI/2;wp.position.set(0,175,ZMAX+60);
+  const wpp=new THREE.Group();wpp.position.set(0,175,354);eng.add(wpp);const wpu=mesh(lathe([[14,0],[70,0],[70,4],[60,10],[70,16],[70,20],[14,20]],48),mats.dark,wpp);wpu.rotation.x=PI/2;wpu.position.z=-10;
+  for(let i=0;i<4;i++){const s=mesh(new THREE.BoxGeometry(8,96,4),mats.dark,wpp);s.rotation.z=i*PI/4;s.position.z=-16}G.wpp=wpp;
+  const alt=new THREE.Group();alt.position.set(-205,135,300);eng.add(alt);const ab=mesh(new THREE.CylinderGeometry(62,62,90,32),mats.alu,alt);ab.rotation.x=PI/2;ab.position.z=-30;
+  for(let i=0;i<16;i++){const f=mesh(new THREE.BoxGeometry(3,10,70),mats.dark,alt);const a=i/16*TAU;f.position.set(61*Math.sin(a),61*Math.cos(a),-30);f.rotation.z=-a}
+  const ap=new THREE.Group();ap.position.set(-205,135,354);eng.add(ap);const apu=mesh(lathe([[10,0],[35,0],[35,4],[27,10],[35,16],[35,20],[10,20]],32),mats.dark,ap);apu.rotation.x=PI/2;apu.position.z=-10;
+  const fan=mesh(new THREE.BoxGeometry(6,70,3),mats.dark,ap);fan.position.z=-24;G.altp=ap;
+  const br=mesh(new THREE.BoxGeometry(150,14,10),mats.dark,eng);br.position.set(-110,150,284);br.rotation.z=.2;
+  const bpts=[];const pul=[[0,0,62],[0,175,62],[-205,135,28]];// belt: wrapped around the three V-grooves (drawn as a closed loop)
+  const hull=[];for(const [x,y,r] of pul)for(let i=0;i<48;i++){const a=i/48*TAU;hull.push(v2(x+r*Math.cos(a),y+r*Math.sin(a)))}
+  hull.sort((a,b)=>a.x-b.x||a.y-b.y);const cr=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);const lo=[],up=[];for(const p of hull){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}
+  for(let i=hull.length-1;i>=0;i--){const p=hull[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}const H=lo.slice(0,-1).concat(up.slice(0,-1));
+  const belt=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(H.map(p=>v3(p.x,p.y,354)),true,'catmullrom',.1),240,5,6,true),mats.rubber,eng);
+  // spark plugs and the distributor
+  G.plugs=[];G.sparks=[];
+  const dz=ZMIN+18,dist=new THREE.Group();dist.position.set(0,0,dz);eng.add(dist);G.dist=dist;
+  const dh=mesh(new THREE.CylinderGeometry(24,30,120,24),mats.alu,dist);dh.position.y=250;const cap=mesh(new THREE.CylinderGeometry(52,46,40,32),mats.black,dist);cap.position.y=330;
+  const rot=new THREE.Group();rot.position.y=322;dist.add(rot);const rb=mesh(new THREE.BoxGeometry(8,8,40).translate(0,0,18),mats.ceramic,rot);G.rotor=rot;
+  const term=i=>{const a=i*D2R;return v3(40*Math.sin(a),352,dz+40*Math.cos(a))};
+  const sparkTex=(()=>{const c=cvs(64,64),g=c.getContext('2d'),gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,230,1)');gr.addColorStop(.25,'rgba(255,220,120,.85)');gr.addColorStop(1,'rgba(255,120,30,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
+  G.wires=[];
+  for(const cy of CY){const b=cy.left?'L':'R',B=BK[b];
+    const tip=bp(b,DECK+6,40,cy.z),dir=B.n.clone().multiplyScalar(.82).add(B.ax.clone().multiplyScalar(.57)).normalize();
+    const pl=new THREE.Group();eng.add(pl);pl.position.copy(tip);orient(pl,dir);
+    const body=mesh(lathe([[0,0],[3,0],[3,30],[7,30],[7,46],[11,46],[11,58],[7,58],[7,92],[5,104],[0,104]],16),mats.ceramic,pl);
+    const boot=mesh(new THREE.CylinderGeometry(8.5,10,30,14).translate(0,113,0),mats.wire,pl);
+    const spk=new THREE.Sprite(new THREE.SpriteMaterial({map:sparkTex,color:0xffffff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));spk.scale.set(46,46,1);spk.position.copy(bp(b,DECK+4,22,cy.z));eng.add(spk);G.sparks.push(spk);
+    const bootEnd=tip.clone().addScaledVector(dir,126);
+    const term0=term(cy.fire/2+0),mid=bootEnd.clone().addScaledVector(dir,40).add(v3(0,30,0)),mid2=v3(bootEnd.x*.5,Math.max(bootEnd.y+70,350),lerp(cy.z,dz,.5));
+    const wm=mats.wire.clone();const w=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([bootEnd,mid,mid2,term0.clone().add(v3(0,30,0)),term0]),60,4.2,8,false),wm,eng);G.wires.push(wm)}}
+
+/* ---------- intake manifold, carburettor, air cleaner ---------- */
+function buildTop(eng){
+  const PL=(b,s,v)=>{const B=BK[b];return v2(B.ax.x*s+B.n.x*v,B.ax.y*s+B.n.y*v)};
+  const sec=[PL('L',DECK+4,-74),PL('L',HTOP-6,-74),v2(132,HTOP+14),v2(-132,HTOP+14),PL('R',HTOP-6,-74),PL('R',DECK+4,-74),v2(-64,196),v2(64,196)];
+  const man=mesh(extrudeZ(sec,ZMIN+30,ZMAX-30,{bevelEnabled:true,bevelSize:5,bevelThickness:5,bevelSegments:2,bevelOffset:-5}),mats.paint,eng);
+  for(const cy of CY){const b=cy.left?'L':'R',sx=b==='L'?1:-1,a=PL(b,HTOP-14,-80),c0=v2(sx*40,HTOP+20);const dx=a.x-c0.x,dy=a.y-c0.y,len=Math.hypot(dx,dy);
+    const r=mesh(new THREE.BoxGeometry(len,22,46),mats.paint,eng);r.position.set((a.x+c0.x)/2,(a.y+c0.y)/2+6,cy.z);r.rotation.z=Math.atan2(dy,dx);addCast(r,r)}
+  const pl=mesh(new THREE.BoxGeometry(110,34,300),mats.paint,eng);pl.position.set(0,HTOP+24,0);addCast(pl,pl);
+  const top=new THREE.Group();eng.add(top);G.top=top;
+  const yT=sec[2].y;
+  const pad=mesh(new THREE.BoxGeometry(150,16,140),mats.paintD,top);pad.position.set(0,yT+8,10);
+  const carb=mesh(new THREE.BoxGeometry(128,84,118),mats.alu,top);carb.position.set(0,yT+58,10);
+  for(const [x,z] of [[-28,-26],[28,-26],[-28,40],[28,40]]){const v=mesh(new THREE.CylinderGeometry(19,19,4,20),mats.black,top);v.position.set(x,yT+101,z+5)}
+  const ac=mesh(lathe([[0,0],[178,0],[180,6],[180,62],[176,70],[30,74],[0,74]],64),mats.chrome,top);ac.position.set(0,yT+104,10);
+  const el=mesh(new THREE.CylinderGeometry(170,170,52,64,1,true),mats.black,top);el.position.set(0,yT+136,10);
+  const wn=mesh(new THREE.CylinderGeometry(14,14,22,6),mats.chrome,top);wn.position.set(0,yT+186,10);
+  addCast(man,man);G.airTop=top}
+
+/* ---------- exhaust headers ---------- */
+function buildExhaust(eng){
+  G.prim=[];G.coll={};G.hdr={};
+  for(const b of ['L','R']){const B=BK[b],sx=b==='L'?1:-1;const hg=new THREE.Group();eng.add(hg);G.hdr[b]=hg;
+    const cm=mats.header.clone();G.coll[b]=cm;
+    const col=v3(sx*312,-150,-205);
+    for(const v of VALVES.filter(v=>v.b===b&&v.type==='E')){const P0=bp(b,268,VC-2,v.z),P1=P0.clone().addScaledVector(B.n,60),P2=v3(sx*330,P1.y-90,v.z*.92),P3=v3(sx*322,-70,lerp(v.z,col.z,.55)),P4=col.clone();
+      const m=mats.header.clone();mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([P0,P1,P2,P3,P4],false,'catmullrom',.35),64,20.6,10,false),m,hg);
+      const fl=mesh(new THREE.BoxGeometry(56,8,56),mats.steel,hg);fl.position.copy(P0);orient(fl,B.n);G.prim.push({c:v.c,b,m})}
+    const cone=mesh(new THREE.CylinderGeometry(34,58,120,24),cm,eng);cone.position.copy(col).add(v3(0,0,-50));cone.rotation.x=-PI/2;
+    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([col.clone().add(v3(0,0,-110)),v3(sx*302,-182,-430),v3(sx*296,-190,-690)]),40,32,16,false),cm,eng);
+    const tipm=mesh(new THREE.CylinderGeometry(36,36,60,24,1,true),mats.chrome,eng);tipm.position.set(sx*296,-190,-715);tipm.rotation.x=PI/2}
+  // the X-pipe: shown when selected
+  const xg=new THREE.Group();eng.add(xg);G.xpipe=xg;
+  for(const s of [1,-1]){mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([v3(s*300,-186,-470),v3(s*120,-200,-540),v3(-s*120,-200,-600),v3(-s*298,-188,-660)]),40,24,12,false),mats.header,xg)}}
+
+/* ================= per-frame pose ================= */
+const tmpM=new THREE.Matrix4(),tmpQ=new THREE.Quaternion(),tmpS=new THREE.Vector3(1,1,1),tmpV=new THREE.Vector3();
+function setInst(im,i,pos,q,s){tmpS.set(s?s.x:1,s?s.y:1,s?s.z:1);tmpM.compose(pos,q,tmpS);im.setMatrixAt(i,tmpM)}
+const EXP={crank:v3(0,-240,0),pist:300,head:200,cam:v3(0,0,420),top:v3(0,380,0),front:v3(0,0,220),pan:v3(0,-330,0)};
+let poseCache=null;
+function pose(){
+  if(!R3)return;const th=S.th,E=ease(S.explode);
+  G.crank.rotation.z=-th*D2R;G.crank.position.copy(EXP.crank).multiplyScalar(E);
+  G.cam.rotation.z=-th/2*D2R;G.cam.position.set(0,CAMY,0).addScaledVector(EXP.cam,E);
+  const rec=[];
+  for(const C of G.cyl){const cy=C.cy,B=BK[C.b],k=cy.k,psi=th+45+S.pins[k],u=psi-cy.gam,sl=V8.slider(u);
+    const pinP=v3(G8.r*Math.sin(psi*D2R),G8.r*Math.cos(psi*D2R),cy.z).add(G.crank.position);
+    const off=B.ax.clone().multiplyScalar(EXP.pist*E);
+    const wp=B.ax.clone().multiplyScalar(sl.s).setZ(cy.z).add(off);
+    C.pg.position.copy(wp);orient(C.pg,B.ax);
+    const d=wp.clone().sub(pinP).normalize();C.rg.position.copy(pinP).setZ(cy.z);C.rg.rotation.set(0,0,Math.atan2(-d.x,d.y));
+    // the charge above the piston
+    const crown=sl.s+G8.ch,h=Math.max(.5,DECK-crown);C.ch.position.copy(B.ax.clone().multiplyScalar(crown).setZ(cy.z).add(off));orient(C.ch,B.ax);C.ch.scale.set(1,h,1);
+    const ph=md(th-cy.fire,720),adv=V8.spark(S.rpm);let col=0x000000,op=0;
+    if(ph<180){const f=ph<6?ph/6:Math.exp(-(ph-6)/85);col=ph<45?0xffa21e:0xff5a12;op=.82*f+.06}
+    else if(ph<360){col=0x6b5a50;op=.16}else if(ph<540){col=0x5aa8ff;op=.16*Math.sin((ph-360)/180*PI)+.05}else{col=0x3f7fff;op=.08+.2*(ph-540)/180;if(ph>720-adv){col=0xffe8a0;op=.75}}
+    C.chM.color.setHex(col);C.chM.opacity=op*(S.cast==='solid'?0:1);rec.push(ph)}
+  // valve train
+  const camPos=G.cam.position,hOff={L:BK.L.ax.clone().multiplyScalar(EXP.head*E),R:BK.R.ax.clone().multiplyScalar(EXP.head*E)};
+  let iI=0,iE=0;
+  for(const v of VALVES){const cy=CY[v.c-1],vl=V8.valves(cy,th),hl=(v.type==='I'?vl.Ilob:vl.Elob)*IN,B=BK[v.b];
+    const lb=v3(0,camPos.y,v.z).addScaledVector(B.ax,RB+RR+hl);
+    tmpQ.setFromUnitVectors(qUp,B.ax);setInst(G.lifter,v.i,lb,tmpQ);
+    const lTop=lb.clone().addScaledVector(B.ax,LIFT_L);
+    const dl=hl/23,ho=hOff[v.b];
+    // rocker: rotates about its pivot, cup up by the lifter rise, tip down by 1.5 times that
+    const P=v.P.clone().add(ho),cup=v.cup.clone().add(ho).addScaledVector(v.va,hl),tipD=hl*G8.rocker;
+    const xq=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(v.th,v.va,new THREE.Vector3().crossVectors(v.th,v.va)));
+    const rq=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3().crossVectors(v.th,v.va).normalize(),-dl);
+    setInst(G.rocker,v.i,P,rq.multiply(xq));
+    tmpQ.setFromUnitVectors(qUp,v.va);setInst(G.stud,v.i,P,tmpQ);
+    const pd=cup.clone().sub(lTop.clone().add(ho.clone().multiplyScalar(.5)));const pStart=lTop.clone().add(ho.clone().multiplyScalar(.5));
+    const pq=new THREE.Quaternion().setFromUnitVectors(qUp,pd.clone().normalize());setInst(G.push,v.i,pStart,pq,{x:1,y:pd.length(),z:1});
+    const seat=v.seat.clone().add(ho).addScaledVector(v.va,-tipD);tmpQ.setFromUnitVectors(qUp,v.va);
+    if(v.type==='I')setInst(G.valveI,iI++,seat,tmpQ);else setInst(G.valveE,iE++,seat,tmpQ);
+    const sp0=v.seat.clone().add(ho).addScaledVector(v.va,72),retP=seat.clone().addScaledVector(v.va,VLEN-7);
+    setInst(G.spring,v.i,sp0,tmpQ,{x:1,y:retP.distanceTo(sp0)/46,z:1});setInst(G.ret,v.i,retP,tmpQ);
+    v.now={hl,tipD,lTop,cup,seat}}
+  for(const im of [G.lifter,G.push,G.rocker,G.valveI,G.valveE,G.spring,G.ret,G.stud])im.instanceMatrix.needsUpdate=true;
+  G.valveI.count=iI;G.valveE.count=iE;
+  // chain, pulleys, distributor rotor
+  const cs=G.chain.r1*th*D2R;const pf=EXP.front.clone().multiplyScalar(E);
+  for(let i=0;i<G.chainN;i++){const a=G.chain.at(i*G.chain.L/G.chainN+cs);tmpQ.setFromAxisAngle(new THREE.Vector3(0,0,1),-a.dir);setInst(G.links,i,v3(a.p.x+pf.x,a.p.y+pf.y,263+pf.z),tmpQ)}G.links.instanceMatrix.needsUpdate=true;
+  G.wpp.rotation.z=-th*D2R*62/62;G.altp.rotation.z=-th*D2R*62/28;
+  const adv=V8.spark(S.rpm);G.rotor.rotation.y=((th+adv)/2)*D2R;
+  G.dist.position.set(0,EXP.top.y*E,ZMIN+18);G.top.position.copy(EXP.top).multiplyScalar(E);
+  G.heads.L.position.copy(hOff.L);G.heads.R.position.copy(hOff.R);
+  // sparks, wires, exhaust glow
+  const fired=[];
+  CY.forEach((cy,i)=>{const ph=md(th-cy.fire+adv,720),on=ph<14?1-ph/14:0;G.sparks[i].material.opacity=on;G.sparks[i].position.copy(bp(cy.left?'L':'R',DECK+4,22,cy.z)).add(hOff[cy.left?'L':'R']);G.wires[i].emissiveIntensity=on*2.2;if(on>0)fired.push(cy.c)});
+  const cfg=SYN;const sum={L:0,R:0};
+  for(const p of G.prim){const cy=CY[p.c-1];let x=th-cy.fire-cfg.EVO;x=md(x,720);const v=x<SYNTAB.DEX?SYNTAB.f(x)/SYNTAB.max:0;p.m.emissiveIntensity=2.4*v*v;sum[p.b]+=v}
+  G.coll.L.emissiveIntensity=.5*Math.max(0,sum.L-.6);G.coll.R.emissiveIntensity=.5*Math.max(0,sum.R-.6);
+  G.xpipe.visible=S.mix>.5;
+  // the whole engine moves on its stand with the unbalanced force and couple (exaggerated)
+  if(S.shakeOn&&running()){const sh=V8.shake(S.kind,th,S.rpm,S.cw);const kf=6/30000,km=.014/15000;G.eng.position.set(sh.Fx*kf,sh.Fy*kf,0);G.eng.rotation.set(sh.Mx*km,sh.My*km,0)}else{G.eng.position.set(0,0,0);G.eng.rotation.set(0,0,0)}
+  for(const cw of G.cwMeshes){cw.visible=S.cwV>.01;cw.scale.set(1,1,1)}
+  G.stand.position.y=0}
+let SYN=null,SYNTAB=null;
+function synthTables(){SYN=V8.synthCfg(S.kind,S.rpm,S.mix,.7);const s=V8.makeSynth(48000,SYN);const T=s.TAB,DEX=s.DEX;let mx=0;for(const v of T)mx=Math.max(mx,v);SYNTAB={DEX,T,max:mx,f:x=>{const id=x*4,i0=id|0,f=id-i0;return T[i0]+(T[i0+1]-T[i0])*f}}}
+
+/* ================= casting modes ================= */
+function applyCast(){if(!R3)return;const m=S.cast;
+  for(const e of G.cast){const show=m==='cut'?e.cut:e.solid;for(const x of [e.solid,e.cut]){if(!x)continue;const vis=x===show;x.visible=vis;if(vis){x.material=m==='glass'?e.glass:x.userData.mat;x.castShadow=m!=='glass'}}}
+  G.hdr.L.visible=m!=='cut';for(const C of G.cyl)C.ch.visible=m!=='solid'}
+
+/* ================= exhaust sound (AudioWorklet; ScriptProcessor fallback) ================= */
+const AU={ctx:null,node:null,ok:false,err:''};
+async function soundOn(){
+  try{if(!AU.ctx){const AC=window.AudioContext||window.webkitAudioContext;AU.ctx=new AC();
+      const cfg=V8.synthCfg(S.kind,S.rpm,S.mix,0);
+      if(AU.ctx.audioWorklet){const src=`${V8.makeSynth.toString()}
+class P extends AudioWorkletProcessor{constructor(o){super();this.s=makeSynth(sampleRate,o.processorOptions.cfg);this.port.onmessage=e=>{const d=e.data,st=this.s.st;if('rpm' in d)st.tgt=d.rpm;if('mix' in d)st.mixT=d.mix;if('vol' in d)st.volT=d.vol;if(d.TF)st.TF=d.TF.slice()}}
+process(i,o){const c=o[0];this.s.process(c[0],c[1]||c[0],c[0].length);return true}}
+registerProcessor('v8-exhaust',P);`;
+        const url=URL.createObjectURL(new Blob([src],{type:'application/javascript'}));await AU.ctx.audioWorklet.addModule(url);
+        AU.node=new AudioWorkletNode(AU.ctx,'v8-exhaust',{numberOfInputs:0,outputChannelCount:[2],processorOptions:{cfg}});AU.post=d=>AU.node.port.postMessage(d)}
+      else{const s=V8.makeSynth(AU.ctx.sampleRate,cfg),sp=AU.ctx.createScriptProcessor(2048,0,2);sp.onaudioprocess=e=>{const L=e.outputBuffer.getChannelData(0),R=e.outputBuffer.getChannelData(1);s.process(L,R,L.length)};AU.node=sp;
+        AU.post=d=>{const st=s.st;if('rpm' in d)st.tgt=d.rpm;if('mix' in d)st.mixT=d.mix;if('vol' in d)st.volT=d.vol;if(d.TF)st.TF=d.TF.slice()}}
+      AU.an=AU.ctx.createAnalyser();AU.an.fftSize=2048;AU.node.connect(AU.an);AU.an.connect(AU.ctx.destination);AU.ok=true}
+    if(AU.ctx.state!=='running')await AU.ctx.resume();S.sound=true;soundSync(true)}catch(e){AU.err=String(e);S.sound=false;console.warn(e)}
+  syncControls()}
+function soundOff(){S.sound=false;if(AU.post)AU.post({vol:0});syncControls()}
+let lastSnd='';function soundSync(force){if(!AU.post)return;const vol=S.sound&&running()&&S.explode<.05?.7:0;const k=[S.rpm,S.mix,vol,S.kind].join();if(k===lastSnd&&!force)return;lastSnd=k;
+  AU.post({rpm:S.rpm,mix:S.mix,vol,TF:CY.map(c=>c.fire)})}
+
+/* ================= charts ================= */
+const CH={};
+function chartCtx(id){const c=$(id);return{c,g:c.getContext('2d'),w:c.width,h:c.height}}
+const BANKC={L:'#ffb070',R:'#8fd3ff'};
+function drawPulse(){const {g,w,h}=CH.pulse;g.clearRect(0,0,w,h);const padL=34,padR=8,W=w-padL-padR,rowH=(h-20)/2,X=ph=>padL+ph/720*W;
+  g.font='500 17px "DM Mono",monospace';g.textBaseline='middle';
+  const gaps=V8.bankGaps(V8.CRANKS[S.kind].order);
+  if(!CH.pmax||CH.pk!==S.kind){let mx=0;for(const b of ['L','R']){const cs=CY.filter(c=>c.left===(b==='L'));for(let i=0;i<720;i+=2){let v=0;for(const cy of cs){const x=md(i-cy.fire-SYN.EVO,720);if(x<SYNTAB.DEX)v+=SYNTAB.f(x)}mx=Math.max(mx,v)}}CH.pmax=mx;CH.pk=S.kind}
+  ['L','R'].forEach((b,ri)=>{const y0=6+ri*rowH,base=y0+rowH-6,amp=rowH-26;g.fillStyle='rgba(240,225,200,.55)';g.fillText(b==='L'?'Left':'Right',2,y0+rowH/2-6);g.font='400 13px "DM Mono",monospace';g.fillText(b==='L'?'1357':'2468',2,y0+rowH/2+12);g.font='500 17px "DM Mono",monospace';
+    g.strokeStyle='rgba(240,225,200,.12)';g.lineWidth=1;g.beginPath();g.moveTo(padL,base);g.lineTo(w-padR,base);g.stroke();
+    const cs=CY.filter(c=>c.left===(b==='L'));g.beginPath();g.moveTo(padL,base);
+    for(let i=0;i<=720;i+=2){let v=0;for(const cy of cs){let x=md(i-cy.fire-SYN.EVO,720);if(x<SYNTAB.DEX)v+=SYNTAB.f(x)}g.lineTo(X(i),base-v/CH.pmax*amp)}
+    g.lineTo(w-padR,base);g.closePath();g.fillStyle=b==='L'?'rgba(255,176,112,.35)':'rgba(143,211,255,.3)';g.fill();g.strokeStyle=BANKC[b];g.lineWidth=2;g.stroke();
+    // pulse start ticks with cylinder numbers and the gaps between them
+    const st=cs.map(cy=>({c:cy.c,x:md(cy.fire+SYN.EVO+60,720)})).sort((a,c)=>a.x-c.x);
+    g.fillStyle=BANKC[b];g.textAlign='center';for(const p of st)g.fillText(p.c,X(p.x),y0+8);
+    g.fillStyle='rgba(240,225,200,.8)';g.font='400 14px "DM Mono",monospace';
+    for(let i=0;i<4;i++){const a=st[i].x,b2=i<3?st[i+1].x:st[0].x+720,m=(a+b2)/2,gp=Math.round(b2-a);const xx=X(m>720?m-720:m);g.fillText(gp+'°',xx,base-amp*.62)}g.font='500 17px "DM Mono",monospace';g.textAlign='left'});
+  g.fillStyle='rgba(240,225,200,.45)';g.font='400 12px "DM Mono",monospace';g.textAlign='center';for(let a=0;a<=720;a+=180)g.fillText(a+'°',X(a),h-7);g.textAlign='left';
+  const cx=X(md(S.th,720));g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.5;g.beginPath();g.moveTo(cx,4);g.lineTo(cx,h-16);g.stroke();
+  $('#gapv').textContent=gaps.L.join('·')+' | '+gaps.R.join('·')}
+function drawCyl(){const {g,w,h}=CH.cyl;g.clearRect(0,0,w,h);const cy=CY[S.follow-1],padL=8,padR=8,W=w-padL-padR,top=22,bot=h-24,H=bot-top,X=ph=>padL+ph/720*W;
+  const names=['POWER','EXHAUST','INTAKE','COMPRESSION'],cols=['rgba(255,122,46,.13)','rgba(150,120,100,.10)','rgba(111,184,255,.10)','rgba(79,143,255,.14)'];
+  for(let i=0;i<4;i++){g.fillStyle=cols[i];g.fillRect(X(i*180),top,W/4,H);g.fillStyle='rgba(240,225,200,.6)';g.font='500 14px "DM Mono",monospace';g.textAlign='center';g.fillText(names[i],X(i*180+90),top-9)}
+  // piston: distance below TDC (top of the chart = TDC)
+  g.beginPath();for(let p=0;p<=720;p+=3){const s=V8.slider(p).s,y=top+(G8.r+G8.L-s)/(2*G8.r)*H;p?g.lineTo(X(p),y):g.moveTo(X(p),y)}g.strokeStyle='#e8e2d6';g.lineWidth=2;g.stroke();
+  for(const [key,col] of [['I','#8fd3ff'],['E','#ff9a5a']]){g.beginPath();for(let p=0;p<=720;p+=2){const v=V8.valves({fire:0},p),y=bot-(key==='I'?v.I:v.E)/.52*H*.9;p?g.lineTo(X(p),y):g.moveTo(X(p),y)}g.strokeStyle=col;g.lineWidth=2.2;g.stroke()}
+  const adv=V8.spark(S.rpm);g.strokeStyle='#ffe066';g.lineWidth=2;g.setLineDash([5,4]);g.beginPath();g.moveTo(X(720-adv),top);g.lineTo(X(720-adv),bot);g.stroke();g.setLineDash([]);
+  g.font='400 12.5px "DM Mono",monospace';g.fillStyle='rgba(240,225,200,.7)';g.textAlign='center';
+  const ev=[[360+V8.CAM.icl+104,'IVC'],[360-V8.CAM.ecl-110.5,'EVO'],[360,'EVC·IVO']];for(const [p,t] of ev){g.fillText(t,X(p),bot+14)}
+  g.fillStyle='rgba(240,225,200,.45)';g.fillText('TDC',X(0)+18,bot+14);g.fillText('TDC',X(720)-18,bot+14);
+  const ph=md(S.th-cy.fire,720),cx=X(ph);g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=1.5;g.beginPath();g.moveTo(cx,top);g.lineTo(cx,bot);g.stroke();
+  const vl=V8.valves(cy,S.th);$('#cylv').textContent='No. '+cy.c+' · '+names[vl.stroke].toLowerCase()+(vl.I>.005?' · intake '+vl.I.toFixed(3)+'″':'')+(vl.E>.005?' · exhaust '+vl.E.toFixed(3)+'″':'')}
+let shkCache={k:''};
+function drawShk(){const {g,w,h}=CH.shk;const k=[S.kind,S.rpm,S.cw].join();
+  if(shkCache.k!==k){const F=[],M=[];let fm=0,mm=0;for(let i=0;i<360;i+=2){const s=V8.shake(S.kind,i,S.rpm,S.cw);F.push([s.Fx,s.Fy]);M.push(Math.hypot(s.Mx,s.My));fm=Math.max(fm,Math.hypot(s.Fx,s.Fy));mm=Math.max(mm,Math.hypot(s.Mx,s.My))}
+    const pk=V8.shakePeak(S.kind,S.rpm,S.cw);shkCache={k,F,M,fm,mm,pk};
+    $('#nF').textContent=fmt(pk.F)+' N';$('#nM').textContent=fmt(pk.M)+' N·m';
+    $('#nO').textContent=S.kind==='flat'?'2nd · sideways':S.cw?'4th · vertical':'1st · rocking couple';$('#shkv').textContent='at '+fmt(S.rpm)+' rpm'}
+  const C=shkCache;g.clearRect(0,0,w,h);const padL=8,W=w-16,mid=h/2-6,A=h/2-18,X=i=>padL+i/360*W;
+  g.strokeStyle='rgba(240,225,200,.12)';g.beginPath();g.moveTo(padL,mid);g.lineTo(w-8,mid);g.stroke();
+  const sc=Math.max(C.fm,1e-6),scM=Math.max(C.mm,1e-6);
+  for(const [j,col] of [[0,'#ffb070'],[1,'#8fd3ff']]){g.beginPath();C.F.forEach((f,i)=>{const y=mid-f[j]/sc*A;i?g.lineTo(X(i*2),y):g.moveTo(X(i*2),y)});g.strokeStyle=col;g.lineWidth=2;g.stroke()}
+  g.beginPath();C.M.forEach((m,i)=>{const y=mid-m/scM*A;i?g.lineTo(X(i*2),y):g.moveTo(X(i*2),y)});g.strokeStyle='rgba(159,224,166,.85)';g.setLineDash([4,4]);g.lineWidth=1.6;g.stroke();g.setLineDash([]);
+  g.font='400 13px "DM Mono",monospace';g.fillStyle='#ffb070';g.fillText('sideways',padL+2,13);g.fillStyle='#8fd3ff';g.fillText('vertical',padL+92,13);g.fillStyle='rgba(159,224,166,.9)';g.fillText('couple',padL+180,13);
+  g.fillStyle='rgba(240,225,200,.5)';g.textAlign='right';g.fillText('scale: force ±'+fmt(sc)+' N, couple '+fmt(scM)+' N·m',w-10,h-6);g.textAlign='left';
+  const cx=X(md(S.th,360));g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1.5;g.beginPath();g.moveTo(cx,16);g.lineTo(cx,h-6);g.stroke()}
+function drawFO(){const o=V8.CRANKS[S.kind].order;const el=$('#fo');if(el.dataset.k!==S.kind){el.dataset.k=S.kind;el.innerHTML=o.map(c=>`<span class="${c%2?'L':'R'}" data-c="${c}">${c}</span>`).join('')}
+  const adv=V8.spark(S.rpm);let best=0,bd=1e9;for(const cy of CY){const d=md(S.th+adv-cy.fire,720);if(d<bd){bd=d;best=cy.c}}S.lastFire=best;
+  el.querySelectorAll('span').forEach(s=>s.classList.toggle('on',+s.dataset.c===best&&bd<60))}
+let lastCharts=0;function charts(force){const now=performance.now();if(!force&&!FIXED&&now-lastCharts<40)return;lastCharts=now;drawPulse();drawCyl();drawShk();drawFO()}
+
+/* ================= camera ================= */
+const VIEWS={hero:{yaw:.9,pitch:.27,dist:2150,tx:40,ty:70,tz:-40},side:{yaw:1.5,pitch:.12,dist:2350,tx:0,ty:30,tz:-40},front:{yaw:.06,pitch:.16,dist:2200,tx:0,ty:60,tz:60},
+  top:{yaw:.42,pitch:1.18,dist:2350,tx:0,ty:120,tz:-20},under:{yaw:1.15,pitch:-.2,dist:2100,tx:60,ty:-30,tz:0},
+  cyl1:{yaw:1.42,pitch:-.12,dist:1300,tx:125,ty:120,tz:110},pipes:{yaw:-1.05,pitch:.12,dist:2250,tx:-140,ty:-10,tz:-130},cutn:{yaw:1.57,pitch:-.42,dist:1750,tx:60,ty:70,tz:0},og:{yaw:1.3,pitch:-.06,dist:1720,tx:110,ty:78,tz:120},
+  shake:{yaw:.7,pitch:.22,dist:2900,tx:0,ty:-60,tz:-80},explode:{yaw:.86,pitch:.32,dist:3300,tx:30,ty:40,tz:0}};
+const VNAME={cutn:'through the cut',hero:'three-quarter',side:'the cut side',front:'from the front',top:'down into the valley',under:'from underneath',cyl1:'cylinder 1',pipes:'the right bank’s pipes',og:'three-quarter',shake:'on its stand',explode:'pulled apart'};
+const CAM=Object.assign({},VIEWS.hero),CAM_T=Object.assign({},VIEWS.hero);let userCam=false,camDrag=null,pinch=null;
+function setView(v,instant){S.view=v;Object.assign(CAM_T,VIEWS[v]);if(instant)Object.assign(CAM,CAM_T);$$('#view button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v?'true':'false'));$('#viewv').textContent=VNAME[v]||v}
+function fit(){if(!R3)return;const st=$('#stage'),w=st.clientWidth,h=st.clientHeight;renderer.setSize(w,h,false);
+  const pw=MOB()||OGQ?0:($('#panel').offsetWidth+30);
+  if(pw>0){camera.aspect=(w+pw)/h;camera.setViewOffset(w+pw,h,pw,0,w,h)}else{camera.aspect=w/h;camera.clearViewOffset()}
+  camera.updateProjectionMatrix()}
+function placeCam(){const c=CAM,cp=Math.cos(c.pitch);camera.position.set(c.tx+Math.sin(c.yaw)*cp*c.dist,c.ty+Math.sin(c.pitch)*c.dist,c.tz+Math.cos(c.yaw)*cp*c.dist);camera.lookAt(c.tx,c.ty,c.tz);camera.updateMatrixWorld()}
+
+/* ================= readouts ================= */
+let lastRead=0;
+function readouts(force){const now=performance.now();if(!force&&!FIXED&&now-lastRead<120)return;lastRead=now;
+  $('#rpmv').textContent=fmt(S.rpm)+' rpm';
+  const pr=picRpm();$('#picv').textContent=S.slow?'Picture: one turn every 10 s (slow motion). Sound, charts and forces are at '+fmt(S.rpm)+' rpm.':S.rpm>PIC_MAX?'Picture slowed to '+PIC_MAX+' rpm (×'+(S.rpm/PIC_MAX).toFixed(1)+'), or it would only flicker; sound, charts and forces run at '+fmt(S.rpm)+' rpm.':'';
+  $('#crankv').textContent='pins '+S.pins.map(p=>Math.round(p)+'°').join(' ');
+  $('#fov').textContent=V8.CRANKS[S.kind].order.join('-');
+  $('#expv').textContent=S.explode<.02?'together':'pulled apart '+Math.round(S.explode*100)+'%'}
+function syncControls(){
+  $('#rpm').value=sliderFromRpm(S.rpm);$$('#crank button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.kind?'true':'false'));
+  $$('#exh button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===S.mix?'true':'false'));
+  $$('#cast button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.cast?'true':'false'));
+  $('#slow').setAttribute('aria-pressed',S.slow?'true':'false');$('#snd').setAttribute('aria-pressed',S.sound?'true':'false');$('#snd').textContent=S.sound?'Sound: on':(AU.err?'Sound: unavailable':'Sound: off');
+  $('#cw').setAttribute('aria-pressed',S.cw?'true':'false');$('#cw').textContent='Counterweights: '+(S.cw?'on':'off');$('#shake').setAttribute('aria-pressed',S.shakeOn?'true':'false');
+  $$('#cylb button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.c===S.follow?'true':'false'));$('#exp').value=Math.round(S.explodeT*1000)}
+
+/* ================= captions ================= */
+let capKey='';
+function cap(html,key){const el=$('#caption');capKey=key||'';if(STATIC||FIXED){el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade');return}
+  el.classList.add('fade');clearTimeout(cap.t);cap.t=setTimeout(()=>{el.innerHTML='<span>'+html+'</span>';el.classList.remove('fade')},260)}
+const ST={};
+function stats(){for(const k of ['cross','flat']){const ok=V8.orders(V8.CRANKS[k].pins).some(o=>o.join()===V8.CRANKS[k].order.join());ST['ok_'+k]=ok;if(!ok)console.error('firing order does not fit the crank',k)}
+  ST.cw6=V8.shakePeak('cross',6000,true);ST.nocw6=V8.shakePeak('cross',6000,false);ST.flat6=V8.shakePeak('flat',6000,true);ST.flat7=V8.shakePeak('flat',700,true);
+  let n=0;const pats=new Set();for(const p of [[0,90,180,270],[0,90,270,180],[0,180,90,270],[0,180,270,90],[0,270,90,180],[0,270,180,90]]){for(const o of V8.orders(p)){n++;const g=V8.bankGaps(o);pats.add(g.L.slice().sort((a,b)=>a-b).join('-'));pats.add(g.R.slice().sort((a,b)=>a-b).join('-'))}}ST.nOrders=n;ST.pats=[...pats]}
+const CAP={
+  idle:()=>`<b>A Chevrolet small-block 350</b>, cut open on its stand and idling at 700 rpm. Eight cylinders fire in the order <span class="m">1-8-4-3-6-5-7-2</span>, one every 90° of crank rotation. The crankpins sit at <span class="o">0°, 90°, 270° and 180°</span>, so seen from the end the crankshaft makes a cross.`,
+  stroke:()=>`<b>Cylinder 1, slowed down.</b> Power, exhaust, intake, compression: two turns of the crank for one turn of the cam. With GM’s cam the exhaust valve starts lifting past 0.050″ at <span class="m">46.5° before bottom centre</span> and the intake closes <span class="m">32° after</span> it. The valves move because the lobes push the lifters, pushrods and 1.5:1 rockers.`,
+  pipes:()=>`<b>Each bank has its own pipe, and each pipe hears an uneven beat.</b> The left bank’s cylinders exhale <span class="o">270°, 180°, 90°, 180°</span> apart, and the right bank’s, glowing here, <span class="c">90°, 180°, 270°, 180°</span>. I tried all ${ST.nOrders} even-firing orders a cross-plane crank allows: every one leaves each bank with gaps of 90-180-180-270 or 90-90-90-450, never even. That lopsided beat in each pipe is the V8 burble.`,
+  flat:()=>`<b>Now a flat-plane crank.</b> The pins move to <span class="c">0°, 180°, 180°, 0°</span>, the cam is re-ground for the new firing order <span class="m">1-6-5-8-7-4-3-2</span>, and the banks take turns. Each pipe now gets a pulse every <span class="c">180°</span>, like a four-cylinder engine, and there is nothing left at half the firing rate. That is the race-car shriek.`,
+  shake:()=>`<b>The price of a flat-plane crank.</b> Each bank is an inline four, and their second-order shakes add up sideways: at 6,000 rpm a free force of <span class="r">${fmt(ST.flat6.F)} N</span> swinging the engine left and right twice per revolution. Counterweights can’t cancel it. Flat-plane V8s live with it by using small, light pistons.`,
+  cw:()=>`<b>The price of a cross-plane crank.</b> Take off the counterweights and the throws rock the engine end to end with a couple of <span class="r">${fmt(ST.nocw6.M)} N·m</span> at 6,000 rpm. That is √10 × the force of one throw × the bore spacing. Heavy counterweights cancel it, and then all that is left is a <span class="g">${fmt(ST.cw6.F)} N</span> fourth-order shake. The cost is a heavy crank that is slow to rev.`,
+  explode:()=>`<b>Pulled apart along its own axes:</b> heads up the banks, pistons and rods out of their bores, the cam out of the front, the crank down. Every part moves only as the crank angle says: slider-crank geometry for the pistons, lobe profiles for the valves, a 20:40 chain for the cam.`,
+  you:()=>`<b>Your turn.</b> Rev it, swap the crankshaft, take the counterweights off, follow any cylinder, and switch on the sound to hear what each bank’s pipe hears. Drag to turn the engine, and click a piston to follow it.`,
+  still:()=>`<b>A cutaway Chevrolet small-block 350.</b> Crankpins at 0°, 90°, 270° and 180° and the firing order 1-8-4-3-6-5-7-2 give each bank’s exhaust pulses 270°, 180°, 90° and 180° apart. That uneven beat in each pipe is the V8 burble. A flat-plane crank evens it out but shakes sideways at twice engine speed.`};
+
+/* ================= the tour ================= */
+let tour=null,tourDone=false;
+function setKind(kind,instant){if(kind===S.kind&&!S.morph)return;const from=S.pins.slice(),to=V8.CRANKS[kind].pins.slice();
+  const la0=VALVES.map(v=>v.lobe),la1t=V8.lobeAngles(kind);S.kind=kind;CY=V8.cyls(kind);synthTables();shkCache.k='';
+  if(instant||STATIC||!R3){S.pins=to;setThrows();setLobes(la1t);S.morph=null}
+  else{// shortest re-indexing of each throw and each lobe
+    const tgt=to.map((p,k)=>{let d=md(p-from[k]+180,360)-180;return from[k]+d});const l1=VALVES.map((v,i)=>{const l=la1t.find(x=>x.c===v.c&&x.v===v.type).ang;return la0[i]+md(l-la0[i]+180,360)-180});
+    S.morph={t:0,dur:1.4,from,tgt,la0,l1,la1t}}
+  soundSync(true);drawFO();readouts(true);syncControls();logAct('crank',kind)}
+function stepMorph(dt){const m=S.morph;if(!m)return;m.t+=dt;const u=ease(clamp(m.t/m.dur,0,1));S.pins=m.from.map((p,k)=>lerp(p,m.tgt[k],u));setThrows();
+  VALVES.forEach((v,i)=>{G.lobes[i].rotation.z=-lerp(m.la0[i],m.l1[i],u)*D2R});if(m.t>=m.dur){S.pins=V8.CRANKS[S.kind].pins.slice();setThrows();setLobes(m.la1t);S.morph=null;soundSync(true)}}
+const TOUR=[
+  {mark:'idle',t:0,do:()=>{setView('hero');S.slow=false;S.rpm=700;setKind('cross',true);S.cw=true;S.mix=0;S.cast='cut';applyCast();S.explodeT=0;S.follow=1;cap(CAP.idle(),'idle')}},
+  {mark:'stroke',t:9.5,do:()=>{setView('cyl1');S.slow=true;S.follow=1;cap(CAP.stroke(),'stroke')}},
+  {mark:'pipes',t:22,do:()=>{setView('pipes');S.slow=false;S.rpm=700;cap(CAP.pipes(),'pipes')}},
+  {mark:'flat',t:32,do:()=>{setView('cutn');setKind('flat');cap(CAP.flat(),'flat')}},
+  {mark:'shake',t:42,do:()=>{setView('shake');S.rpm=6000;S.shakeOn=true;cap(CAP.shake(),'shake')}},
+  {mark:'cw',t:51,do:()=>{setView('under');setKind('cross');S.cw=false;S.rpm=6000;cap(CAP.cw(),'cw')}},
+  {mark:'cw2',t:57,do:()=>{S.cw=true}},
+  {mark:'explode',t:61,do:()=>{setView('explode');S.rpm=700;S.cast='glass';applyCast();S.explodeT=1;cap(CAP.explode(),'explode')}},
+  {mark:'you',t:70,do:()=>{tour=null;tourDone=true;setView('hero');S.explodeT=0;S.cast='cut';applyCast();S.rpm=700;cap(CAP.you(),'you')}}];
+function startTour(mark){let i=0;if(mark){const j=TOUR.findIndex(s=>s.mark===mark);if(j>=0){i=j;// replay the state of the earlier steps without waiting
+      for(let k=0;k<j;k++){TOUR[k].do()}if(S.morph){S.morph.t=S.morph.dur;stepMorph(0)}}}
+  tour={t:TOUR[i].t,i};tourDone=false;tourStep(0)}
+function tourStep(dt){if(!tour)return;tour.t+=dt;while(tour&&tour.i<TOUR.length&&tour.t>=TOUR[tour.i].t){const s=TOUR[tour.i];tour.i++;tour.mark=s.mark;s.do();syncControls();soundSync()}}
+function poke(){if(tour){tour=null;tourDone=true;S.slow=false;syncControls();cap(CAP.you(),'you')}}
+
+/* ================= controls ================= */
+function bind(){
+  $('#cylb').innerHTML=[1,2,3,4,5,6,7,8].map(c=>`<button data-c="${c}" aria-label="Follow cylinder ${c}">${c}</button>`).join('');
+  $('#rpm').addEventListener('input',e=>{const v=+e.target.value;poke();S.rpm=rpmFromSlider(v);synthTables();soundSync();readouts(true);logAct('rpm',S.rpm)});
+  $('#slow').addEventListener('click',()=>{poke();S.slow=!S.slow;soundSync();syncControls();logAct('slow',S.slow)});
+  $('#snd').addEventListener('click',()=>{poke();if(S.sound)soundOff();else soundOn();logAct('sound',!S.sound)});
+  $$('#crank button').forEach(b=>b.addEventListener('click',()=>{poke();setKind(b.dataset.v)}));
+  $$('#exh button').forEach(b=>b.addEventListener('click',()=>{poke();S.mix=+b.dataset.v;synthTables();soundSync();syncControls();logAct('mix',S.mix)}));
+  $$('#cylb button').forEach(b=>b.addEventListener('click',()=>{poke();S.follow=+b.dataset.c;syncControls();charts(true);logAct('follow',S.follow)}));
+  $('#cw').addEventListener('click',()=>{poke();S.cw=!S.cw;shkCache.k='';syncControls();logAct('cw',S.cw)});
+  $('#shake').addEventListener('click',()=>{poke();S.shakeOn=!S.shakeOn;syncControls();logAct('shake',S.shakeOn)});
+  $$('#cast button').forEach(b=>b.addEventListener('click',()=>{poke();S.cast=b.dataset.v;applyCast();syncControls();logAct('cast',S.cast)}));
+  $$('#view button').forEach(b=>b.addEventListener('click',()=>{poke();userCam=false;setView(b.dataset.v);logAct('view',b.dataset.v)}));
+  $('#exp').addEventListener('input',e=>{const v=+e.target.value/1000;poke();S.explodeT=v;if(STATIC||FIXED)S.explode=v;soundSync();logAct('explode',v)});
+  $('#tourb').addEventListener('click',()=>{if(STATIC)return;userCam=false;startTour()});
+  const cv=$('#c'),ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+  const pick=e=>{if(!R3)return null;const r=cv.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ndc,camera);
+    const hits=ray.intersectObjects(G.cyl.flatMap(C=>[C.pm,C.rm]),false);return hits.length?hits[0].object.userData.cyl:null};
+  cv.addEventListener('pointerdown',e=>{camDrag={x:e.clientX,y:e.clientY,yaw:CAM_T.yaw,pitch:CAM_T.pitch,touch:e.pointerType==='touch',moved:false};cv.classList.add('drag');if(!camDrag.touch)cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!camDrag){if(e.pointerType==='mouse'){cv.classList.toggle('hot',!!pick(e))}return}const dx=e.clientX-camDrag.x,dy=e.clientY-camDrag.y;if(camDrag.touch&&Math.abs(dy)>Math.abs(dx)*1.2)return;
+    if(Math.abs(dx)+Math.abs(dy)>4){camDrag.moved=true;poke();userCam=true}if(camDrag.moved){CAM_T.yaw=camDrag.yaw-dx*.006;CAM_T.pitch=clamp(camDrag.pitch+dy*.004,-.5,1.4)}});
+  const up=e=>{if(camDrag&&!camDrag.moved&&e&&e.type==='pointerup'){const c=pick(e);if(c){poke();S.follow=c;syncControls();charts(true);logAct('follow',c)}}camDrag=null;cv.classList.remove('drag')};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{camDrag=null;cv.classList.remove('drag')});
+  cv.addEventListener('wheel',e=>{e.preventDefault();poke();userCam=true;CAM_T.dist=clamp(CAM_T.dist*Math.exp(e.deltaY*.0012),600,6000)},{passive:false});
+  cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch={d:Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),dist:CAM_T.dist}}},{passive:true});
+  cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);poke();CAM_T.dist=clamp(pinch.dist*pinch.d/d,600,6000);e.preventDefault()}},{passive:false});
+  cv.addEventListener('touchend',()=>{pinch=null});
+  addEventListener('resize',()=>{sizeStage();fit();render()})}
+
+/* ================= loop ================= */
+let ready=false,last=0,frameMs=16,slowFrames=0;window.__frame=0;
+function update(dt){
+  tourStep(dt);stepMorph(dt);
+  if((running()||S.slow)&&!OGQ&&!STATIC){S.th=md(S.th+picRpm()*6*dt,720)}
+  if(Math.abs(S.explode-S.explodeT)>1e-4){S.explode=STATIC?S.explodeT:lerp(S.explode,S.explodeT,1-Math.exp(-dt*2.4));if(Math.abs(S.explode-S.explodeT)<1e-3)S.explode=S.explodeT}
+  S.cwV=S.cw?1:0;
+  if(R3){pose();const k=STATIC||FIXED&&!tour?1:1-Math.exp(-dt*1.8);for(const p in CAM)CAM[p]=lerp(CAM[p],CAM_T[p],k);placeCam()}
+  soundSync();
+  if(!FIXED){readouts();charts()}}
+function render(){if(R3)renderer.render(scene,camera)}
+function frame(ts,skip){
+  if(!FIXED)requestAnimationFrame(frame);
+  const now=FIXED?last+1000/60:(ts||performance.now()),dt=FIXED?1/60:clamp((now-last)/1000,0,.1);
+  if(!FIXED&&last){frameMs=frameMs*.95+(now-last)*.05;if(frameMs>45&&!lite&&++slowFrames>12)goLite()}
+  last=now;window.__frame++;const t0=performance.now();update(dt);const t1=performance.now();if(!skip){if(FIXED){readouts(true);charts(true)}render()}S.perf={update:+(t1-t0).toFixed(2),render:+(performance.now()-t1).toFixed(2)};
+  window.__state={t:tour?+tour.t.toFixed(3):null,frame:window.__frame,mark:tour?tour.mark:null,view:S.view,kind:S.kind,rpm:S.rpm,th:+S.th.toFixed(3),cast:S.cast}}
+function goLite(){lite=true;if(renderer){renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;G.key.castShadow=false;fit()}}
+function sizeStage(){if(MOB()){$('#stage').style.setProperty('--sh',Math.round(Math.min(560,Math.max(380,innerWidth*1.15)))+'px')}}
+async function start(){sizeStage();
+  if(document.fonts){try{await Promise.race([Promise.all([document.fonts.load('600 40px "Barlow Condensed"'),document.fonts.load('500 17px "DM Mono"'),document.fonts.load('400 14px "DM Mono"'),document.fonts.ready]),new Promise(r=>setTimeout(r,IFR?0:1500))])}catch(e){}}
+  stats();synthTables();
+  CH.pulse=chartCtx('#pulse');CH.cyl=chartCtx('#cyl');CH.shk=chartCtx('#shk');
+  try{makeScene();R3=true}catch(e){console.warn(e);R3=false;document.body.classList.add('nogl')}
+  bind();fit();
+  if(STATIC){setView('hero',true);S.th=128;S.cast='cut';applyCast();pose();cap(CAP.still(),'still')}
+  else if(OGQ){setView('og',true);S.th=Number(Q.get('th')||20);S.cast='cut';applyCast();pose();
+    $('#ogtxt').innerHTML=`<b>Cross-plane V8.</b> Crankpins at 0-90-270-180° and the firing order <span class="m">1-8-4-3-6-5-7-2</span> give each bank’s pipe pulses <b>270°, 180°, 90°, 180°</b> apart: the burble. A flat-plane crank evens them out and shakes sideways instead.`}
+  else{setView('hero',true);startTour(MARK);
+    if(FIXED){Object.assign(CAM,CAM_T);const pre=MARK?.6:1.6;for(let i=0;i<Math.round(pre*60);i++)update(1/60)}}
+  applyCast();syncControls();readouts(true);charts(true);ready=true}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)};
+(async()=>{await start();if(R3)pose();render();if(FIXED||STATIC){frame()}if(!FIXED){last=performance.now();requestAnimationFrame(frame)}})();
+
+/* ================= test hooks ================= */
+function probe(){if(!R3)return null;scene.updateMatrixWorld(true);const out={cyl:[],valves:[],chain:null,rotor:null};const inv=new THREE.Matrix4().copy(G.eng.matrixWorld).invert();
+  const W=(o,v)=>v.clone().applyMatrix4(o.matrixWorld).applyMatrix4(inv);   // world -> engine frame (undo the shake)
+  for(const C of G.cyl){const cy=C.cy,k=cy.k,B=BK[C.b];
+    const pin=W(G.throws[k],v3(0,G8.r,G8.zPin[k]));const big=W(C.rg,v3(0,0,0)),small=W(C.rg,v3(0,G8.L,0)),wp=W(C.pg,v3(0,0,0)),crown=W(C.pg,v3(0,39.6,0));
+    const sAx=wp.x*B.ax.x+wp.y*B.ax.y,off=Math.abs(wp.x*B.ax.y-wp.y*B.ax.x);
+    out.cyl.push({c:cy.c,pinGap:+Math.hypot(pin.x-big.x,pin.y-big.y).toFixed(5),pinDz:+(big.z-cy.z).toFixed(5),smallGap:+small.distanceTo(wp).toFixed(5),axisOff:+off.toFixed(5),s:+sAx.toFixed(5),zErr:+(wp.z-cy.z).toFixed(5),
+      crownS:+(crown.x*B.ax.x+crown.y*B.ax.y).toFixed(4)})}
+  const camAng=-G.cam.rotation.z/D2R,crAng=-G.crank.rotation.z/D2R;
+  const vm=new THREE.Matrix4();
+  for(const v of VALVES){const B=BK[v.b];G.lifter.getMatrixAt(v.i,vm);const lp=new THREE.Vector3().setFromMatrixPosition(vm).applyMatrix4(G.lifter.matrixWorld).applyMatrix4(inv);
+    const camC=new THREE.Vector3(0,0,v.z).applyMatrix4(G.cam.matrixWorld).applyMatrix4(inv);const lift=(lp.clone().sub(camC).dot(B.ax)-RB-RR)/IN;
+    const g=G.lobes[v.i];const nose=md(-(g.rotation.z+G.cam.rotation.z)/D2R,360);
+    G.push.getMatrixAt(v.i,vm);const pp=new THREE.Vector3(),pq=new THREE.Quaternion(),ps=new THREE.Vector3();vm.decompose(pp,pq,ps);
+    out.valves.push({c:v.c,type:v.type,lift:+lift.toFixed(6),nose:+nose.toFixed(4),lobeNoseVsLifter:+(md(nose-BK[v.b].g+180,360)-180).toFixed(4),pushLen:+ps.y.toFixed(3),valveDrop:+(v.now.tipD/IN).toFixed(6)})}
+  out.cam={camAng:+md(camAng,360).toFixed(4),crank:+md(crAng,360).toFixed(4)};
+  out.rotor=+md(G.rotor.rotation.y/D2R,360).toFixed(4);
+  return out}
+window.v8={V8,state:()=>{if(!ready)return{ready:false};const info=renderer&&renderer.info?renderer.info.render:null;
+  return{ready:true,kind:S.kind,pins:S.pins.slice(),order:V8.CRANKS[S.kind].order.slice(),gaps:V8.bankGaps(V8.CRANKS[S.kind].order),rpm:S.rpm,pic:picRpm(),slow:S.slow,th:S.th,cw:S.cw,mix:S.mix,follow:S.follow,
+    cast:S.cast,view:S.view,explode:S.explode,explodeT:S.explodeT,sound:S.sound,soundErr:AU.err,shakeOn:S.shakeOn,morph:!!S.morph,tour:tour?tour.mark:null,tourDone,caption:$('#caption').textContent,capKey,
+    lobes:S.lobes,peak:shkCache.pk||null,fits:{I:V8.CAM.I.fit,E:V8.CAM.E.fit},synth:SYN,lastFire:S.lastFire,tris:info?info.triangles:null,calls:info?info.calls:null,parts:G.parts||0,lite,r3:R3,perf:S.perf,log:S.log.slice(),stats:ST,renderer:G.renderer||null,static:STATIC,iframe:IFR,fo:$('#fov').textContent,gapText:$('#gapv').textContent,nF:$('#nF').textContent,nM:$('#nM').textContent,xpipe:R3?G.xpipe.visible:null,cwVis:R3?G.cwMeshes[0].visible:null,hdrL:R3?G.hdr.L.visible:null}},
+  probe,
+  camSet:o=>{Object.assign(CAM_T,o);Object.assign(CAM,CAM_T);userCam=true;placeCam();render()},
+  hide:names=>{for(const n of names){const o=G[n];if(o&&o.visible!==undefined)o.visible=false}render()},
+  bbox:()=>{scene.updateMatrixWorld(true);const out=[];G.eng.traverse(o=>{if(o.isMesh&&o.visible){const b=new THREE.Box3().setFromObject(o);const sz=b.getSize(new THREE.Vector3());if(Math.max(sz.x,sz.y,sz.z)>900)out.push({type:o.geometry.type,size:[sz.x|0,sz.y|0,sz.z|0],c:b.getCenter(new THREE.Vector3()).toArray().map(x=>x|0)})}});return out},
+  setTheta:th=>{S.th=md(th,720);if(R3)pose();charts(true);render()},
+  renderAudio:(cfg,n,events)=>{const s=V8.makeSynth(cfg.fs||48000,cfg),L=new Float32Array(n),R=new Float32Array(n);const ev=(events||[]).slice().sort((a,b)=>a.at-b.at);let i=0;
+    // run in blocks split at event times, exactly as the AudioWorklet would receive messages between blocks
+    const Lf=new Float64Array(n),Rf=new Float64Array(n);let pos=0;while(pos<n){while(ev.length&&ev[0].at<=pos){const e=ev.shift(),st=s.st;if('tgt' in e)st.tgt=e.tgt;if('mixT' in e)st.mixT=e.mixT;if('volT' in e)st.volT=e.volT;if(e.TF)st.TF=e.TF.slice()}
+      const end=ev.length?Math.min(n,ev[0].at):n;const a=new Float64Array(end-pos),b=new Float64Array(end-pos);s.process(a,b,end-pos);Lf.set(a,pos);Rf.set(b,pos);pos=end}
+    return{L:Array.from(Lf),R:Array.from(Rf),D:s.D,DEX:s.DEX}},
+  where:c=>{if(!R3)return null;scene.updateMatrixWorld(true);const C=G.cyl[c-1];const v=new THREE.Vector3(0,20,0).applyMatrix4(C.pg.matrixWorld);v.project(camera);const r=$('#c').getBoundingClientRect();return{x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height,z:v.z}},
+  audio:()=>{if(!AU.an)return null;const a=new Float32Array(AU.an.fftSize);AU.an.getFloatTimeDomainData(a);let s=0;for(const x of a)s+=x*x;return{rms:Math.sqrt(s/a.length),state:AU.ctx.state,sr:AU.ctx.sampleRate,worklet:!!(AU.ctx.audioWorklet)}}};
+
+</script>
+</body>
+</html>
