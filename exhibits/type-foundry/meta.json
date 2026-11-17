@@ -1,0 +1,11 @@
+{
+ "slug": "type-foundry",
+ "title": "Type Foundry",
+ "no": "049",
+ "date": "2026-11-17",
+ "kind": "Variable fonts · live DOM text",
+ "blurb": "Caslon’s 1734 specimen, cast again in one variable font. Letters thicken under a ladle while every line stays exactly justified: the page solves each line’s width axis from the font’s own gvar and HVAR tables and predicts Chrome’s layout to the pixel. It is all live text; open a letter in the brass matrix to watch its points move.",
+ "color": "#cc8670",
+ "exhibit": "typeFoundry",
+ "lane": "web"
+}
