@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quantization Mosaic — one small network, five walls of tiles, 32 down to 1 bit</title>
+<meta name="description" content="A small network learned to paint one blue-and-white tile. Its 784 weights are the tiles of a wall; store them in 32, 8, 4, 2 or 1 bits and the workshop has fewer stamps to choose from. Five walls side by side show what rounding breaks, and one kiln slider retrains the low-bit walls with their stamps in the loop until they paint the tile again.">
+<meta property="og:title" content="Quantization Mosaic">
+<meta property="og:description" content="One small network paints a blue-and-white tile. Store its 784 weights in 32, 8, 4, 2 or 1 bits and compare the five paintings side by side, then re-fire the low-bit walls until they paint it again.">
+<meta property="og:image" content="https://blackman99.github.io/curio/quantization-mosaic/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Quantization Mosaic">
+<meta name="twitter:description" content="Five copies of the same tiny network, stored in 32, 8, 4, 2 and 1 bits, each painting the tile it learned. Rounding cracks the low-bit walls; retraining with the stamps in the loop mends them.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/quantization-mosaic/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f6f2e8;--paper2:#ece6d6;--ink:#151515;--ink2:#4a4842;--ink3:#8a867b;--co:#1f3f9f;--co2:#2c55c4;--cosoft:#dfe4f1;--rule:rgba(21,21,21,.85);--hair:rgba(21,21,21,.16);--cw:220px;--gap:28px;--mx:40px}
+*{box-sizing:border-box}
+html{background:var(--paper);-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--ink);font-family:'Literata',Georgia,serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+a{color:inherit}
+.sans{font-family:'Instrument Sans',system-ui,sans-serif}
+/* masthead */
+.mast{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:0 var(--mx);padding:14px 0 7px;border-bottom:1.5px solid var(--rule);font-family:'Instrument Sans',system-ui,sans-serif;font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase}
+.mast a{text-decoration:none}
+.mast a:hover{color:var(--co)}
+.mast .no{color:var(--ink2)}
+.mast .no b{color:var(--co);font-weight:600}
+/* title block */
+.head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:44px;align-items:end;margin:0 var(--mx);padding:14px 0 10px}
+h1{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:68px;line-height:.9;letter-spacing:-.01em;margin:0;white-space:nowrap}
+h1 i{color:var(--co)}
+.deck{margin:0;font-size:15.5px;line-height:1.45;color:var(--ink2);columns:2 250px;column-gap:28px;max-width:760px}
+.deck em{font-style:italic;color:var(--ink)}
+/* plate */
+#plate{display:grid;grid-template-columns:repeat(5,var(--cw));gap:var(--gap);justify-content:center;margin:0 var(--mx);padding:8px 0 0;border-top:1px solid var(--hair)}
+.col{position:relative;display:flex;flex-direction:column;align-items:stretch;min-width:0}
+.ch{display:flex;align-items:baseline;gap:8px;height:44px;border-bottom:1px solid var(--hair);margin-bottom:10px}
+.ch .n{font-family:'Instrument Serif',Georgia,serif;font-size:40px;line-height:1}
+.ch .u{font-family:'Instrument Sans',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.ch .s{margin-left:auto;font-family:'Instrument Sans',sans-serif;font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.tile{position:relative;width:var(--cw);height:var(--cw);border-radius:3px;box-shadow:0 1px 0 rgba(0,0,0,.05),0 14px 22px -16px rgba(30,30,50,.55),0 0 0 1px rgba(21,21,21,.08);overflow:hidden;background:var(--paper);cursor:pointer}
+.tile canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tile .rep{display:none}
+.cap{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin:8px 0 9px;font-family:'Instrument Sans',sans-serif;font-size:13px;font-variant-numeric:tabular-nums;min-height:19px}
+.cap b{font-weight:600}
+.cap .ok{color:var(--ink3)}
+.cap .bad b{color:var(--ink)}
+.cap .bar{flex:1;height:5px;margin-left:8px;background:linear-gradient(90deg,var(--ink) var(--p,0%),transparent var(--p,0%)),repeating-linear-gradient(90deg,var(--hair) 0 1px,transparent 1px 10%);align-self:center;border-radius:1px}
+.wallbox{position:relative;width:var(--cw)}
+.wallbox canvas{display:block;margin:0 auto;touch-action:none;cursor:crosshair}
+.stamps{display:flex;align-items:center;gap:6px;margin-top:8px;font-family:'Instrument Sans',sans-serif;font-size:11.5px;color:var(--ink2);min-height:18px}
+.stamps canvas{display:block}
+.lbl{position:absolute;left:calc(-1 * var(--gap) + 2px);width:calc(var(--gap) - 6px);font-family:'Instrument Sans',sans-serif;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;white-space:nowrap;pointer-events:none}
+/* kiln line */
+#kiln{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:36px;align-items:center;margin:14px var(--mx) 0;padding:12px 0 14px;border-top:1.5px solid var(--rule);border-bottom:1px solid var(--hair)}
+.kt{margin:0;font-size:16px;line-height:1.5}
+.kt .lead{font-family:'Instrument Serif',serif;font-size:24px;line-height:1;margin-right:4px}
+.kctl{display:flex;align-items:center;gap:14px;margin-top:8px;font-family:'Instrument Sans',sans-serif;font-size:13px;font-variant-numeric:tabular-nums}
+.kctl output{min-width:118px}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:28px;background:transparent;margin:0;cursor:pointer;--r:0%;--v:0%}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--co) var(--v),transparent var(--v)),linear-gradient(90deg,#c9cfe2 var(--r),transparent var(--r)),repeating-linear-gradient(90deg,rgba(21,21,21,.22) 0 1px,transparent 1px 10%),var(--paper2)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--co) var(--v),transparent var(--v)),linear-gradient(90deg,#c9cfe2 var(--r),transparent var(--r)),repeating-linear-gradient(90deg,rgba(21,21,21,.22) 0 1px,transparent 1px 10%),var(--paper2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:2px;background:var(--paper);border:2px solid var(--co);box-shadow:0 2px 5px rgba(0,0,0,.2);transform:rotate(45deg)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:2px;background:var(--paper);border:2px solid var(--co);box-shadow:0 2px 5px rgba(0,0,0,.2);transform:rotate(45deg)}
+input[type=range]:focus-visible{outline:2px solid var(--co);outline-offset:3px}
+#say{margin:6px 0 0;font-size:14.5px;font-style:italic;color:var(--ink2);min-height:22px;transition:opacity .25s}
+#say.fade{opacity:0}
+#chart{display:block;width:300px;height:96px}
+/* foot */
+.foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:12px var(--mx) 0;font-family:'Instrument Sans',sans-serif;font-size:13px}
+.btn{border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:5px 14px;cursor:pointer;font-weight:500;transition:background .15s,color .15s}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn[aria-pressed=true]{background:var(--co);border-color:var(--co);color:#fff}
+.btn:disabled{opacity:.45;cursor:default;background:transparent;color:var(--ink)}
+.foot .note{color:var(--ink3)}
+/* what is this */
+details.what{margin:22px var(--mx) 60px;border-top:1.5px solid var(--rule)}
+details.what summary{list-style:none;cursor:pointer;padding:12px 0;font-family:'Instrument Serif',serif;font-size:30px;line-height:1}
+details.what summary::-webkit-details-marker{display:none}
+details.what summary::after{content:' +';color:var(--co)}
+details.what[open] summary::after{content:' −'}
+.wbody{columns:3 280px;column-gap:36px;font-size:15px;line-height:1.55;color:var(--ink2)}
+.wbody h3{font-family:'Instrument Sans',sans-serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin:0 0 4px;break-after:avoid}
+.wbody p{margin:0 0 12px}
+.wbody .src{font-size:13.5px}
+.wbody b{color:var(--ink);font-weight:600}
+/* loupe */
+#loupe{position:fixed;z-index:20;pointer-events:none;background:var(--paper);border:1.5px solid var(--ink);box-shadow:0 12px 30px -12px rgba(0,0,0,.45);padding:10px 12px 9px;font-family:'Instrument Sans',sans-serif;font-size:12px;opacity:0;transition:opacity .12s;max-width:330px}
+#loupe.on{opacity:1}
+#loupe .t{font-weight:600;margin-bottom:6px}
+#loupe .row{display:flex;gap:8px}
+#loupe .c{display:flex;flex-direction:column;align-items:center;gap:3px;font-variant-numeric:tabular-nums;color:var(--ink2)}
+#loupe .c b{color:var(--ink);font-weight:600}
+#loupe canvas{display:block;border-radius:2px}
+.busy{opacity:.55}
+html.still *,html.still *::before,html.still *::after{transition:none!important;animation:none!important}
+/* og */
+#oghead{display:none}
+html.og #oghead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:end;gap:36px;margin:30px var(--mx) 20px;padding-bottom:14px;border-bottom:1.5px solid var(--rule)}
+#oghead h2{margin:0;font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:70px;line-height:.85;white-space:nowrap}
+#oghead h2 i{color:var(--co)}
+#oghead p{margin:0;font-size:19px;line-height:1.35;color:var(--ink2);max-width:520px}
+#oghead span{font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--co)}
+html.og #plate{border-top:0;padding-top:0}
+html.og .mast,html.og .head,html.og #kiln,html.og .foot,html.og details.what,html.og .stamps,html.og .lbl{display:none}
+html.og body{overflow:hidden}
+/* narrower desktops and the hall's iframe */
+@media (max-width:1180px){h1{font-size:56px}.head{gap:28px}#kiln{grid-template-columns:minmax(0,1fr) 250px}#chart{width:250px}}
+/* short windows (the hall's viewer is about 1297 x 717) */
+@media (min-width:761px) and (max-height:800px){
+ .mast{padding:9px 0 5px}
+ .head{padding:8px 0 6px;gap:30px}
+ h1{font-size:50px}
+ .deck{font-size:13.5px;line-height:1.38}
+ .ch{height:34px;margin-bottom:7px}.ch .n{font-size:30px}
+ .cap{margin:6px 0 6px}
+ .stamps{margin-top:5px}
+ #kiln{margin-top:8px;padding:8px 0 8px}
+ .kt{font-size:14.5px;line-height:1.4}.kt .lead{font-size:21px}
+ .kctl{margin-top:2px}
+ #say{margin-top:2px;font-size:13.5px}
+ #chart{height:80px}
+}
+html.narrow .cap .long,html.narrow .lbl{display:none}
+html.narrow .cap{font-size:12px}
+html.narrow .stamps{font-size:10.5px}
+/* phone */
+@media (max-width:760px){
+ :root{--mx:16px}
+ .mast{font-size:10.5px;letter-spacing:.1em;padding-top:12px}
+ .head{grid-template-columns:1fr;gap:8px;padding-top:12px}
+ h1{font-size:46px;white-space:normal}
+ .deck{columns:1;font-size:15px}
+ #plate{grid-template-columns:1fr;gap:16px;padding-top:4px;border-top:0}
+ .col{display:grid;grid-template-columns:var(--pw) minmax(0,1fr);grid-template-areas:"h h" "t w" "c s";column-gap:12px;padding-bottom:12px;border-bottom:1px solid var(--hair)}
+ .ch{grid-area:h;height:38px;margin-bottom:8px}.ch .n{font-size:32px}
+ .tile{grid-area:t;width:var(--pw);height:var(--pw)}
+ .cap{grid-area:c;margin:6px 0 0;font-size:12px}.cap .bar{display:none}
+ .wallbox{grid-area:w;width:auto;align-self:center}
+ .stamps{grid-area:s;margin-top:6px;font-size:11px}
+ .lbl{display:none}
+ #kiln{grid-template-columns:1fr;gap:0;position:sticky;bottom:0;z-index:5;background:var(--paper);margin:10px 0 0;padding:8px var(--mx) calc(8px + env(safe-area-inset-bottom));box-shadow:0 -10px 20px -14px rgba(0,0,0,.35)}
+ .kt{font-size:14px;margin:0}.kt .lead{font-size:20px}.kt .rest{display:none}
+ .kctl{margin-top:2px}
+ .cap .long{display:none}
+ #chart{display:none}
+ #say{font-size:13.5px;margin-top:2px}
+ .wbody{columns:1}
+ details.what{margin-top:16px}
+}
+</style>
+</head>
+<body>
+<div id="oghead" aria-hidden="true"><h2>Quantization <i>Mosaic</i></h2><p>One small network paints a tile. Its 784 weights, stored in 32, 8, 4, 2 and 1 bits, side by side.</p><span>Curio · No. 051</span></div>
+<header class="mast"><a href="../" title="Back to the cabinet">← Curio</a><span class="no">Curio · No. <b>051</b> · Quantization</span></header>
+<section class="head">
+ <h1>Quantization <i>Mosaic</i></h1>
+ <p class="deck">A small network learned to paint one blue-and-white tile. Its <em>784 weights</em> are the tiles of the wall beneath each painting. Store them in fewer bits and the workshop has fewer stamps to choose from: every weight on the wall is set with the nearest one. Five copies of the same network, side by side; the cracks mark where a copy paints the tile differently from the 32-bit one.</p>
+</section>
+<main id="plate" aria-label="The same network stored at 32, 8, 4, 2 and 1 bits"></main>
+<section id="kiln">
+ <div>
+  <p class="kt"><span class="lead">Fire them again.</span> <span class="rest">Put the four lower walls back in the kiln: retrain each one with its own stamps in the loop, the weights nudged underneath while every painting is done with the stamps.</span></p>
+  <div class="kctl"><input id="kr" type="range" min="0" max="600" step="10" value="0" aria-label="Rounds in the kiln"><output id="ko" for="kr">0 of 600 rounds</output></div>
+  <p id="say" aria-live="polite"></p>
+ </div>
+ <canvas id="chart" width="300" height="96" aria-label="Share of the tile repainted, by rounds in the kiln"></canvas>
+</section>
+<div class="foot">
+ <button class="btn" id="bwall" aria-pressed="false">Tile the paintings 3 × 3</button>
+ <button class="btn" id="btrain">Train a new painter</button>
+ <span class="note" id="fnote">computed in your browser · <a href="../">back to Curio</a></span>
+</div>
+<details class="what" id="what">
+ <summary>What is this?</summary>
+ <div class="wbody"><h3>The painter</h3>
+<p>A network with 32 inputs, two hidden layers of 16 ReLU units and one output (784 weights, 33 biases) learned to paint this tile: at every point it says ink or glaze. It only sees one eighth of the tile, the point folded into the triangle 0 ≤ v ≤ u ≤ 1, through 32 cosines of the folded position (Fourier features), so whatever it paints keeps the tile's eight-fold symmetry. It was trained by this page's own code: full-batch Adam, learning rate 0.01, 3,000 steps in float64, on the 1,176 pixel centres of a 96 × 96 grid that fall in the triangle, seed 7. Its 32-bit copy matches the design on <b>98.6%</b> of a 128 × 128 grid (30 seeds: median 98.5%, lowest 98.0%). The design is an original one in the blue-and-white manner, drawn for this page.</p>
+<h3>The walls</h3>
+<p>Each wall is the same network with its weights stored in fewer bits. Each of a wall's three panels (layer 1: 16 rows of 32; layer 2: 16 × 16, two units to a row; the 16 output weights along the bottom) gets one set of 2<sup>b</sup> stamps, evenly spaced across ± the largest weight in that panel, and every weight is set with the nearest stamp. The quantizer is symmetric and uniform with no zero stamp, so even one bit keeps the sign. The 32-bit wall is IEEE single precision. A white tile is a positive weight and a blue tile a negative one; the diamond grows with the size. Biases stay 32-bit on every wall (33 numbers, 132 bytes, not counted in the byte totals). Only the weights are rounded: the arithmetic is float64 throughout. This is weight-only quantization, the kind used to run large language models on small machines; integer hardware also rounds the activations.</p>
+<h3>Rounding</h3>
+<p>Rounded straight from the trained weights, seed 7 repaints <b>0.15%</b> of the tile at 8 bits, <b>2.0%</b> at 4, <b>7.6%</b> at 2 and <b>12.5%</b> at 1. Repainted means the share of a 128 × 128 grid where the wall says ink and the 32-bit wall says glaze, or the other way round. Over 30 seeds the medians are 0.15%, 2.2%, 9.4% and 12.3% (1 bit: 8.1% to 17.1%).</p>
+<h3>The kiln</h3>
+<p>Re-firing is quantization-aware training. Each lower wall is trained again for 600 rounds of Adam (learning rate 0.01, cosine-decayed to zero) with its stamps in the forward pass. Rounding has no useful gradient, so the gradient is passed straight through to hidden float weights underneath, which are rounded again before the next round (the straight-through estimator). The biases are retrained too. After 600 rounds seed 7 repaints <b>0.63%</b>, <b>2.4%</b> and <b>4.3%</b> at 4, 2 and 1 bits. Over 30 seeds the median 1-bit wall goes from 12.3% to 3.5%, and in <b>30 of 30</b> seeds the re-fired 1-bit wall repaints less than the rounded 2-bit wall. The re-fired 2-bit wall beats the rounded 4-bit wall in 15 of 30. The 8-bit wall had nothing to mend: re-fired it ends at a median 0.20% against 0.15% rounded, worse in 19 of 30.</p>
+<h3>Why the curve jitters</h3>
+<p>Weights that sit near the boundary between two stamps hop back and forth. Over its 600 rounds the 1-bit wall of seed 7 changes a stamp <b>2,329</b> times, yet only <b>115</b> of its 784 tiles end on a different stamp from the one they started with (30 seeds: medians 2,366 and 91). This oscillation is a known side effect of the straight-through estimator. The slider shows every tenth round as it was, jitter included, so the best moment is often a little better than the end (median gap at 1 bit: 0.40%).</p>
+<h3>Computed, and drawn</h3>
+<p>All five paintings are the networks' own outputs, evaluated on a 128 × 128 grid and drawn with a one-pixel edge taken from the slope of the output. The cracks are drawn wherever a wall's painting differs from the 32-bit wall's; the glaze texture is decoration. The page's engine uses its own exp and cos series, a fixed summation order and a counter-based random generator, and a numpy twin matches it bit for bit: the 3,000-step training, all four 600-round kilns and every evaluated painting. <i>Train a new painter</i> trains a fresh one from another seed in a worker, here in your browser, and fires its kiln.</p>
+<h3>Sources</h3>
+<p class="src">Bengio, Léonard &amp; Courville, <a href="https://arxiv.org/abs/1308.3432">Estimating or propagating gradients through stochastic neurons</a> (2013) · Courbariaux, Bengio &amp; David, <a href="https://arxiv.org/abs/1511.00363">BinaryConnect</a> (2015) · Jacob et al., <a href="https://arxiv.org/abs/1712.05877">Quantization and training of neural networks for efficient integer-arithmetic-only inference</a> (2018) · Tancik et al., <a href="https://arxiv.org/abs/2006.10739">Fourier features let networks learn high frequency functions</a> (2020) · Nagel et al., <a href="https://arxiv.org/abs/2106.08295">A white paper on neural network quantization</a> (2021) · Nagel et al., <a href="https://arxiv.org/abs/2203.11086">Overcoming oscillations in quantization-aware training</a> (2022).</p>
+</div>
+</details>
+<div id="loupe" aria-hidden="true"></div>
+<script>
+'use strict';
+// Quantization Mosaic engine: a tiny MLP that paints one azulejo, trained with Adam in float64,
+// then stored at 32/8/4/2/1 bits (post-training rounding) or re-trained with the stamps in the loop
+// (quantization-aware training, straight-through estimator). Every operation is written so that
+// ref.py (numpy) reproduces it bit for bit: own exp / cos(pi x), fixed summation order, counter RNG.
+function makeQM() {
+  'use strict';
+  const NF = 32, H = 16, K = 8;
+  const NW1 = H * NF, NW2 = H * H, NW3 = H, NB = H + H + 1;
+  const NPAR = NW1 + NW2 + NW3;                    // 784 weights (the tiles)
+  // ---- counter RNG (mulberry32 used as a hash of seed + n) --------------------------------
+  function rndU(seed, n) {
+    let a = (seed + Math.imul(n + 1, 0x6D2B79F5)) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function gauss(seed, n) {
+    let s = 0;
+    for (let k = 0; k < 12; k++) s += rndU(seed, n * 12 + k);
+    return s - 6;
+  }
+  // ---- exp, cos(pi t) ---------------------------------------------------------------------
+  const P2 = new Float64Array(2101); P2[1050] = 1;
+  for (let i = 1051; i < 2101; i++) P2[i] = P2[i - 1] * 2;
+  for (let i = 1049; i >= 0; i--) P2[i] = P2[i + 1] * 0.5;
+  const LN2_HI = 6.93147180369123816490e-01, LN2_LO = 1.90821492927058770002e-10, INV_LN2 = 1.4426950408889634;
+  function exp(x) {
+    if (x > 700) x = 700; if (x < -700) x = -700;
+    const n = Math.floor(x * INV_LN2 + 0.5);
+    const r = (x - n * LN2_HI) - n * LN2_LO;
+    let p = 1;
+    for (let k = 14; k >= 1; k--) p = 1 + p * r / k;
+    return p * P2[n + 1050];
+  }
+  const SC = [], CC = [];
+  { let f = 1; for (let k = 1; k <= 20; k++) { f = f * k; if (k % 2 === 1) SC.push(((k >> 1) % 2 ? -1 : 1) / f); else CC.push(((k >> 1) % 2 ? -1 : 1) / f); } }
+  // SC[k] = (-1)^k/(2k+1)!, CC[k] = (-1)^(k+1)/(2k+2)!  (k = 0..9)
+  const PI = 3.141592653589793;
+  function sinpoly(x) { const x2 = x * x; let p = SC[9]; for (let k = 8; k >= 0; k--) p = SC[k] + x2 * p; return x * p; }
+  function cospoly(x) { const x2 = x * x; let p = CC[9]; for (let k = 8; k >= 0; k--) p = CC[k] + x2 * p; return 1 + x2 * p; }
+  function cospi(t) {
+    t = Math.abs(t);
+    t = t - 2 * Math.floor(t * 0.5);
+    if (t > 1) t = 2 - t;
+    let s = 1;
+    if (t > 0.5) { t = 1 - t; s = -1; }
+    if (t > 0.25) return s * sinpoly((0.5 - t) * PI);
+    return s * cospoly(t * PI);
+  }
+  // ---- the motif (the tile the network must learn to paint), in folded coordinates u >= v >= 0
+  function ink(u, v) {
+    const u2 = u * u, v2 = v * v, r2 = u2 + v2, r = Math.sqrt(r2);
+    if (r < 0.035) return 1;
+    if (r > 0.075) {
+      const c4 = (u2 * u2 - 6 * u2 * v2 + v2 * v2) / (r2 * r2);
+      if (r < 0.34 * (0.42 + 0.58 * (c4 * c4))) return 1;
+    }
+    if (r > 0.47 && r < 0.51) return 1;
+    const du = u - 0.70, dv = v - 0.70;
+    if (Math.sqrt(du * du + dv * dv) < 0.11) return 1;
+    const t = (u + v) * 0.7071067811865476, w = Math.abs(u - v) * 0.7071067811865476;
+    if (t > 0.99 && t < 1.22) { const s = (t - 0.99) / 0.23; if (w < 0.22 * s * (1 - s)) return 1; }
+    const cu = 1 - u, cv = 1 - v, rc = Math.sqrt(cu * cu + cv * cv);
+    if (rc < 0.07 || (rc > 0.15 && rc < 0.24)) return 1;
+    if (Math.abs(1 - u) + 1.25 * v < 0.19) return 1;
+    const eu = u - 0.62;
+    if (Math.sqrt(eu * eu + v2) < 0.045) return 1;
+    return 0;
+  }
+  // ---- features: 32 cosines of the folded coordinates (Fourier features) --------------------
+  function feat(u, v, out, o) {
+    const a = (u + v) * 0.5, d = (u - v) * 0.5;
+    for (let k = 1; k <= K; k++) {
+      out[o++] = cospi(k * u); out[o++] = cospi(k * v);
+      out[o++] = cospi(k * a); out[o++] = cospi(k * d);
+    }
+  }
+  // fundamental domain of a G x G pixel grid: pixel centres with x >= y > 0 (one eighth of the tile)
+  function domain(G) {
+    const h = G >> 1, pts = [];
+    for (let i = h; i < G; i++) for (let j = h; j <= i; j++) pts.push([i, j]);
+    const N = pts.length, X = new Float64Array(N * NF), Y = new Float64Array(N), M = new Float64Array(N);
+    const U = new Float64Array(N), V = new Float64Array(N), I = new Int32Array(N), J = new Int32Array(N);
+    for (let n = 0; n < N; n++) {
+      const [i, j] = pts[n];
+      const u = (2 * i + 1) / G - 1, v = (2 * j + 1) / G - 1;
+      U[n] = u; V[n] = v; I[n] = i; J[n] = j;
+      feat(u, v, X, n * NF); Y[n] = ink(u, v); M[n] = i === j ? 4 : 8;
+    }
+    return { G, N, X, Y, M, U, V, I, J };
+  }
+  // ---- network ---------------------------------------------------------------------------
+  function initNet(seed) {
+    const W = new Float64Array(NPAR), b = new Float64Array(NB);
+    const s1 = Math.sqrt(2 / NF), s2 = Math.sqrt(2 / H);
+    for (let n = 0; n < NPAR; n++) W[n] = gauss(seed, n) * (n < NW1 ? s1 : s2);
+    return { W, b };
+  }
+  function cloneNet(net) { return { W: Float64Array.from(net.W), b: Float64Array.from(net.b) }; }
+  // panels: [offset, length] of W1, W2, W3 inside W
+  const PANELS = [[0, NW1], [NW1, NW2], [NW1 + NW2, NW3]];
+  // b-bit stamps for one panel: symmetric mid-rise uniform quantizer over [-max|w|, +max|w|]
+  function quantizeInto(W, bits, out) {
+    for (const [o, len] of PANELS) {
+      if (bits >= 32) { for (let n = o; n < o + len; n++) out[n] = Math.fround(W[n]); continue; }
+      let C = 0;
+      for (let n = o; n < o + len; n++) { const a = Math.abs(W[n]); if (a > C) C = a; }
+      const L = P2[1050 + bits], D = 2 * C / L, lo = -L / 2, hi = L / 2 - 1;
+      for (let n = o; n < o + len; n++) {
+        if (D === 0) { out[n] = 0; continue; }
+        let k = Math.floor(W[n] / D);
+        if (k < lo) k = lo; if (k > hi) k = hi;
+        out[n] = D * (k + 0.5);
+      }
+    }
+    return out;
+  }
+  function stampIndex(W, bits) {          // which of the 2^bits stamps each tile carries (for drawing)
+    const idx = new Int32Array(NPAR), scale = [];
+    for (const [o, len] of PANELS) {
+      let C = 0;
+      for (let n = o; n < o + len; n++) { const a = Math.abs(W[n]); if (a > C) C = a; }
+      const L = P2[1050 + bits], D = 2 * C / L;
+      scale.push(C);
+      for (let n = o; n < o + len; n++) { let k = D === 0 ? 0 : Math.floor(W[n] / D); if (k < -L / 2) k = -L / 2; if (k > L / 2 - 1) k = L / 2 - 1; idx[n] = k; }
+    }
+    return { idx, scale };
+  }
+  function frBias(b, out) { for (let n = 0; n < NB; n++) out[n] = Math.fround(b[n]); return out; }
+  // forward pass; keeps activations in `ws` (workspace) for the backward pass
+  function workspace(N) {
+    return { N, Z1: new Float64Array(N * H), H1: new Float64Array(N * H), Z2: new Float64Array(N * H), H2: new Float64Array(N * H), Z3: new Float64Array(N) };
+  }
+  function forward(W, b, set, ws) {
+    const { N, X } = set, { Z1, H1, Z2, H2, Z3 } = ws;
+    const o2 = NW1, o3 = NW1 + NW2;
+    for (let n = 0; n < N; n++) {
+      const xo = n * NF, ho = n * H;
+      for (let j = 0; j < H; j++) {
+        let s = 0; const wo = j * NF;
+        for (let i = 0; i < NF; i++) s += W[wo + i] * X[xo + i];
+        s += b[j]; Z1[ho + j] = s; H1[ho + j] = s > 0 ? s : 0;
+      }
+      for (let j = 0; j < H; j++) {
+        let s = 0; const wo = o2 + j * H;
+        for (let i = 0; i < H; i++) s += W[wo + i] * H1[ho + i];
+        s += b[H + j]; Z2[ho + j] = s; H2[ho + j] = s > 0 ? s : 0;
+      }
+      let s = 0;
+      for (let i = 0; i < H; i++) s += W[o3 + i] * H2[ho + i];
+      Z3[n] = s + b[2 * H];
+    }
+    return Z3;
+  }
+  // gradient of mean BCE-with-logits; Wf/bf are the weights actually used in the forward pass
+  function backward(Wf, set, ws, gW, gb) {
+    const { N, X, Y } = set, { Z1, H1, Z2, H2, Z3 } = ws;
+    const o2 = NW1, o3 = NW1 + NW2;
+    gW.fill(0); gb.fill(0);
+    const d2 = new Float64Array(H), d1 = new Float64Array(H);
+    for (let n = 0; n < N; n++) {
+      const ho = n * H, xo = n * NF;
+      const sg = 1 / (1 + exp(-Z3[n]));
+      const dz = (sg - Y[n]) / N;
+      for (let i = 0; i < H; i++) gW[o3 + i] += dz * H2[ho + i];
+      gb[2 * H] += dz;
+      for (let j = 0; j < H; j++) d2[j] = Z2[ho + j] > 0 ? dz * Wf[o3 + j] : 0;
+      for (let j = 0; j < H; j++) {
+        const wo = o2 + j * H, dj = d2[j];
+        for (let i = 0; i < H; i++) gW[wo + i] += dj * H1[ho + i];
+        gb[H + j] += dj;
+      }
+      for (let i = 0; i < H; i++) {
+        let s = 0;
+        for (let j = 0; j < H; j++) s += d2[j] * Wf[o2 + j * H + i];
+        d1[i] = Z1[ho + i] > 0 ? s : 0;
+      }
+      for (let j = 0; j < H; j++) {
+        const wo = j * NF, dj = d1[j];
+        for (let i = 0; i < NF; i++) gW[wo + i] += dj * X[xo + i];
+        gb[j] += dj;
+      }
+    }
+  }
+  // Adam trainer. bits = 0: plain float64 training. bits = 32/8/4/2/1: quantization-aware
+  // (forward with the stamps and float32 biases, gradient passed straight through to the latent weights).
+  function trainer(net, set, opt) {
+    const W = Float64Array.from(net.W), b = Float64Array.from(net.b);
+    const mW = new Float64Array(NPAR), vW = new Float64Array(NPAR), mb = new Float64Array(NB), vb = new Float64Array(NB);
+    const gW = new Float64Array(NPAR), gb = new Float64Array(NB);
+    const Wq = new Float64Array(NPAR), bq = new Float64Array(NB);
+    const ws = workspace(set.N);
+    const bits = opt.bits || 0, lr0 = opt.lr, T = opt.steps, cos = opt.sched === 'cos';
+    const B1 = 0.9, B2 = 0.999, EPS = 1e-8;
+    let b1t = 1, b2t = 1, t = 0;
+    function adam(p, m, v, g, lr, bc1, bc2) {
+      for (let n = 0; n < p.length; n++) {
+        const gn = g[n];
+        m[n] = B1 * m[n] + (1 - B1) * gn;
+        v[n] = B2 * v[n] + (1 - B2) * (gn * gn);
+        const mh = m[n] / bc1, vh = v[n] / bc2;
+        p[n] = p[n] - lr * mh / (Math.sqrt(vh) + EPS);
+      }
+    }
+    function step() {
+      t++;
+      const lr = cos ? lr0 * 0.5 * (1 + cospi((t - 1) / T)) : lr0;
+      let Wf = W, bf = b;
+      if (bits) { quantizeInto(W, bits, Wq); frBias(b, bq); Wf = Wq; bf = bq; }
+      forward(Wf, bf, set, ws);
+      backward(Wf, set, ws, gW, gb);
+      b1t = b1t * B1; b2t = b2t * B2;
+      const bc1 = 1 - b1t, bc2 = 1 - b2t;
+      adam(W, mW, vW, gW, lr, bc1, bc2);
+      adam(b, mb, vb, gb, lr, bc1, bc2);
+    }
+    function snapshot() {          // the network as it is used: stamps + float32 biases
+      if (bits) return { W: quantizeInto(W, bits, new Float64Array(NPAR)), b: frBias(b, new Float64Array(NB)) };
+      return { W: Float64Array.from(W), b: Float64Array.from(b) };
+    }
+    return { step, snapshot, latent: () => ({ W: Float64Array.from(W), b: Float64Array.from(b) }), get t() { return t; } };
+  }
+  // the network as stored at `bits` (post-training rounding): stamps + float32 biases
+  function stored(net, bits) {
+    return { W: quantizeInto(net.W, bits, new Float64Array(NPAR)), b: frBias(net.b, new Float64Array(NB)) };
+  }
+  function logits(net, set, ws) { return Float64Array.from(forward(net.W, net.b, set, ws || workspace(set.N))); }
+  // share of the full tile (by symmetry multiplicity) where two paintings disagree on ink / no ink
+  function disagree(zA, zB, set) {
+    let s = 0;
+    for (let n = 0; n < set.N; n++) if ((zA[n] > 0) !== (zB[n] > 0)) s += set.M[n];
+    return s;
+  }
+  function wrong(z, set) {
+    let s = 0;
+    for (let n = 0; n < set.N; n++) if ((z[n] > 0) !== (set.Y[n] > 0.5)) s += set.M[n];
+    return s;
+  }
+  // 32-bit-word polynomial hash of a Float64Array (same in numpy: uint32 words * 0x9E3779B1^k)
+  function hash(arr) {
+    const u = new Uint32Array(arr.buffer, arr.byteOffset, arr.length * 2);
+    let h = 0, m = 1;
+    for (let k = 0; k < u.length; k++) { h = (h + Math.imul(u[k], m)) >>> 0; m = Math.imul(m, 0x9E3779B1) >>> 0; }
+    return h >>> 0;
+  }
+  function trainFloat(seed, set, steps, onTick) {
+    const tr = trainer(initNet(seed), set, { lr: 0.01, steps, sched: 'const' });
+    for (let s = 0; s < steps; s++) { tr.step(); if (onTick) onTick(tr); }
+    return tr.latent();
+  }
+  return {
+    NF, H, K, NW1, NW2, NW3, NB, NPAR, PANELS, rndU, gauss, exp, cospi, ink, feat, domain, initNet, cloneNet,
+    quantizeInto, stampIndex, frBias, stored, workspace, forward, backward, trainer, logits, disagree, wrong, hash, trainFloat,
+    FLOAT_STEPS: 3000, KILN_STEPS: 600, KILN_LR: 0.01, TRAIN_G: 96, EVAL_G: 128, BITS: [32, 8, 4, 2, 1]
+  };
+}
+
+
+// jobs shared by the page and its workers: re-firing one wall (quantization-aware training) and training a new painter
+function makeJobs(QM) {
+  const S = QM.domain(QM.TRAIN_G), E = QM.domain(QM.EVAL_G);
+  function* kiln(net, bits, z32, every) {
+    const tr = QM.trainer(net, S, { bits, lr: QM.KILN_LR, steps: QM.KILN_STEPS, sched: 'cos' });
+    const ws = QM.workspace(E.N);
+    for (let t = 1; t <= QM.KILN_STEPS; t++) {
+      tr.step();
+      if (t % every === 0) {
+        const sn = tr.snapshot(), z = QM.logits(sn, E, ws);
+        yield { bits, t, W: sn.W, b: sn.b, z, rep: QM.disagree(z, z32, E), wrong: QM.wrong(z, E) };
+      }
+    }
+  }
+  function* train(seed, every) {
+    const tr = QM.trainer(QM.initNet(seed), S, { lr: 0.01, steps: QM.FLOAT_STEPS, sched: 'const' });
+    for (let t = 1; t <= QM.FLOAT_STEPS; t++) {
+      tr.step();
+      if (t % every === 0 || t === QM.FLOAT_STEPS) { const l = tr.latent(); yield { t, W: l.W, b: l.b }; }
+    }
+  }
+  return { S, E, kiln, train };
+}
+const QM = makeQM(), JOBS = makeJobs(QM), S = JOBS.S, E = JOBS.E;
+const NET0 = {"seed":7,"W":[-0.600525704961586,0.29362930307308116,0.24921623763529469,-0.3423497569722426,-0.031161937753216237,0.8303316788434203,-0.19637099472780073,-0.5517811042387532,0.2025662375470992,0.9245094595231256,0.03229221852641188,-1.0196965637247575,0.47841218608835706,-0.06264515945739534,0.28669986869039665,0.2754097111892946,-0.1686919818387019,1.46252303100604,0.2291678911597047,-0.16432698465919704,1.4682134283723842,-0.2625579995292746,-0.1950740599617829,-0.7642988990094,-0.08105095136067501,0.12213738602957583,-0.4212361563241218,-0.42629687769962904,-0.11564238576739139,0.5179287380552684,-1.0501978874445708,-0.8354065142751234,-0.46800807376190023,0.2573493771532435,-0.7073616097225419,-0.028378695972827907,-0.3260769401669376,-0.5401358032893724,-0.30591180986953737,0.005449477380787657,0.44139813712050635,-0.5773066179686417,-0.1495195139326377,0.49119154416217936,1.1021097920613163,1.2316246354456528,1.0182470333570786,-0.4354357073371464,-0.5641814598333045,0.006826369920082933,0.8525236030719174,-0.2302010318218286,-0.9986272019997545,0.6032352344193992,1.735957997167916,-0.33800014725913213,0.9743074748290348,0.7579098519897114,0.49965851834567165,-0.23264379131757332,1.2238470195043125,-0.422286019390829,0.8743820525197338,0.45386544647367666,0.24089315859179236,0.1152147658127609,0.07112474155102097,-0.06589883294372918,0.4693169841846374,0.23725984824130697,0.47060435198209505,0.4341017552430003,-0.3244020503486237,0.6451034734494865,-0.032735864313799906,0.33935677665744063,-0.15727355356046158,-0.16989043646579896,0.7507985084945892,0.6113687784856698,0.028595132117444595,1.0464137968566964,-0.3159270531458669,0.6956607009065782,0.27225324441167226,-0.24942878560112602,-0.4184916595230549,-0.1778559717236568,-0.5382071106365531,0.9491068726545908,-1.0224673385014127,0.43753763143875185,-0.0884756549669735,-1.2931320822935104,-0.5790701962542879,0.9190192472982575,-0.11971962130396083,-0.631392152778426,0.16604758943900308,-0.12716091009647493,0.2654855917910608,-0.10516953291061341,-0.06513720245052897,0.36738974751909487,0.9702304785836748,0.3887125370946538,0.5110208148930074,0.04791437054545426,0.17935625616107195,-0.8506259578353996,-0.4118812769840584,-0.03466873843298447,0.469651074045055,0.40539702016960677,-0.3015320017044705,0.03460504415838662,0.23014401560137665,-0.9697740307343956,-0.9949738870738215,0.5019123721407313,0.03450842806823955,-0.19967086536572284,0.7119198162246739,0.4848716785124282,-1.1132814066425183,-0.3062358807749053,-0.9783061670011064,0.6670010082711342,-0.042603562638095525,-0.1976457466704438,-0.6806643371596991,0.38075652163323864,-0.18971455716546598,-0.8320425079111209,-0.45794985046763004,0.31877063665179395,-0.06345583558172053,-0.7569644405742567,0.6135714220855734,0.5033085811360812,0.7106428781107419,1.1320194617200117,-0.1852710988206004,-0.6970120106825297,1.3511187012790105,0.8654562927788342,0.07794133283877729,-0.6974733392343481,-0.9533334577728806,0.7105774579156696,-0.8300380109047713,-0.22764406275117477,-1.904299861594855,-0.72682890349303,-1.5964087848214998,0.3791529622350374,-1.5341281423065412,-0.9576200163372998,0.140274452200565,-0.12254617537131839,0.05012608791118338,-0.0910935119672368,0.043279109842433536,-0.0037629903845614854,-0.11829054192242491,0.5963103436764736,0.26014867643494854,0.09383387513114504,-0.3914568879086379,0.41203689787632986,0.5096535414715325,0.12911791607375794,-0.5474456133680086,-0.29328836050430596,0.700293716016272,0.47311198781294866,-0.4647334918483076,0.7393630853289813,0.08661224876725447,0.3558719677966244,0.5138152691324062,0.08516998045210496,-0.1629490072768592,-0.3407930296533511,-0.23029645393449938,0.482797360717369,-0.848376938543447,-0.36625620447918816,0.2012718641136082,-0.36918535948819553,0.061984429870333105,0.9068514937601102,-0.29872715103289066,-1.3143772502001205,-0.6770723158777617,-0.18506125983942415,-0.2991846349125119,-0.8003382777581022,-0.883109289128432,0.25452950130090296,-0.16410594207885834,-0.6836694570640871,0.164144924845338,0.5392153698212854,-0.29503078626087315,-0.5190115979356225,-0.36832302545632345,0.36928823999345156,0.7751510354412546,-0.06537651326785332,-1.0892619632080165,-0.4370021739373749,1.4521158095189548,1.5582187137711403,1.2505648303233392,-0.13328778364407737,0.1672912999998883,-0.6037701374322058,0.29678804501185096,0.27522164920897535,2.1495542151262894,1.021303921192928,2.3718023373868093,0.5424362589050882,0.391689859194342,0.12303263543440635,0.017716130933138657,0.05219370983217819,-0.04587024739039602,0.031119197382871576,0.3533783831901369,-0.05466751468273726,-0.9858571986437601,-0.27074397379010345,0.39016144859301843,-0.08883488744079845,-1.2068931053662666,-0.10472269434562731,-1.0191506376920991,-0.5031957160490443,0.5448985621577782,-0.30732536895843604,-1.5895014570538804,-0.17703447676523915,1.2000879483194624,-0.15922235838213683,-1.1356724510166663,-0.4622667951496113,-0.20463205862826991,0.21058792073774593,1.155883164965869,0.13002447612487775,-1.127328934382936,-0.7344463848488497,1.2112346081214755,-0.20861096828625816,-0.15803870445156426,-0.24958485705107397,-0.5692785562540454,0.39707976283029217,0.27692624856207093,-0.12299754256465455,-0.17097880552766936,0.27542233609111294,-0.43728564520235225,-1.0095849760479625,0.5408120069623075,0.006961875113545037,-0.7757683440791517,0.21032680276940485,0.03778360953143059,-0.008742184284007665,0.06927734039493615,-1.0265805259184784,-1.113281356893532,-0.1531430579110338,0.4048865343404863,-0.618357223891532,0.6837152433445338,0.1187280672503427,1.2142891760282817,0.9391653948273254,0.8125967883594597,-0.2663194382777626,-1.0467050917447533,0.026621646320698994,1.0659758253294735,-0.2119540825937919,0.24616613101616766,-0.24889091590350787,-0.16240705347227957,0.0526025713413913,0.36659141250084093,-0.022562971095315493,0.32869435267845365,-0.17308631379970948,0.01975676413278259,-0.7758113440286964,0.10431693057024806,0.023956859159613875,-0.1697133595587109,0.008070936652500067,-0.3839641711838458,0.2278642720105239,-1.0653924824637504,-0.12131418056737518,1.1507187695202927,-0.3594860635839401,0.04246957850370679,-0.18257397357935484,-0.40271472360118,-0.20495462991971944,0.22756973143315243,-0.5271819086336949,-0.9215407122037345,-0.2463138252743707,0.6081117969299658,-0.8083441135302154,-0.6516767673276945,-0.22264172463252174,-0.3794004915561638,0.22120837577919383,0.12447204969434347,0.5879438352597367,-0.10045654350513283,0.0771449601750809,-0.48305517856084407,0.1441135661967283,0.03319655128150306,-0.009971230040778257,-1.0632622375745593,-0.7555852668089706,-1.0201650112371115,-0.41741684805052665,-0.315983389947043,-0.4182612254313179,0.668798218776736,-0.3092582112962326,1.6363707404979473,-0.34545865614849647,0.7689706880742245,0.1640107453343351,-0.9695643567889835,0.3903490624182994,0.9203470813442507,-1.7409033566340164,0.025121306412125895,0.05162523894401467,0.1532366960116863,-1.1564540843736553,-0.24559821782741076,-0.864294663126244,1.0113286648023312,-0.1989667921360526,0.17268108720258638,-0.6344260868932439,-0.7603249360961303,0.47189630903309177,0.07356394262490602,-0.08652883832398996,0.3632371160245835,0.23689827530022922,-0.5879450067964905,0.5429993525693009,0.29434145883989477,-1.4888721665405096,-1.1980545408700058,0.6929575538349675,1.6018677175315805,-1.5174116718951036,-0.7648942106936637,0.6973575454731582,-1.6467713482492001,-0.28863720298587353,0.9179132193416527,0.5983507678765586,-1.633841078973536,-1.548070940020589,0.846543225135303,0.5476681392964651,0.08994805183948033,-0.9521553782543428,0.5724006367288487,1.192308608393834,-0.018641329740843995,0.20898717498054517,0.3814408823064629,0.256552730107375,-0.31493697231089823,-0.15770747684004022,-0.49372686779573494,-0.10422057650514989,0.060006334267635686,-0.5353655908842753,-0.5119699648336672,-0.9597580367472202,0.021557250411774483,-0.4834137821042545,0.5381442084980692,-0.4307693299701204,1.1033636136946459,-0.5745965072924539,0.279356534509466,-0.17576316820973598,0.2823304183947604,0.1959421572059609,-0.5461778782131903,0.28025353500538036,-1.6111995968093238,0.7088233927268878,-1.2349364333550659,-0.1045279345826786,0.3880647635762598,0.2686142078957575,-0.7126079646398008,-0.37999225705551753,-0.39106095763997534,0.1225204908929719,-0.2459123704576379,0.3444143239251307,0.4966847610337669,0.5076983324246022,0.1751712619128812,0.19064950574988176,-0.2459997099418803,0.08826541454321996,-0.03685693642639745,1.1472422713167376,-0.5409947961021797,0.6029269632979878,0.548584013458229,0.4380600217809796,-0.3318718670273003,-0.5528326682451538,-0.7402942640871413,-0.054320615165009814,0.16127364662676677,0.6529914695956592,-0.6555867583770649,-0.22549056971096526,0.8549250519803278,-1.027557832517394,-1.4865272420826652,0.21202243882772598,1.1325050613881205,-1.3195604541879746,-0.1241858003101074,0.12716771119685097,0.14871870090474307,0.43707136581052164,0.04379972762301259,0.15135527158029471,-0.2842529295688988,0.46821749118772005,0.13502206260188881,0.6491363906861548,-0.08268408681649464,-0.05950593620074766,-0.7937186846869344,0.7787490418161386,1.2588532862287027,-0.6383982997359079,0.2167953726499147,0.8631303460834668,-0.0583405563128732,0.16533627644038748,0.5054479769801852,0.6307619133020911,-0.522087592788813,-1.4658003451672366,-0.4473550143220164,0.3856857143302779,1.1191411168074454,0.37873171722854493,-0.12103331732957816,0.7145822469058687,0.7175513373017853,-1.345294205372853,-0.6694635957341921,1.1349394254636818,-0.03129085317041534,-0.8238390942754844,0.05670974157760171,-0.05613422947765884,-0.16484201467887433,-0.26172547936145596,-0.056096420265845486,-0.23680332315202782,-0.24343543870123585,0.014628530176111938,0.07418871554697469,0.33814191898713963,0.020436486194784692,-0.5698252477060856,-0.523435014128306,-0.36546292802954033,-0.134394893917121,-0.3148983726540987,0.21453192136386143,0.6238301715248473,0.1956262026349539,-0.027743290689848404,-0.8102838546079892,-0.06282256774425252,0.752536368500228,-0.8252986002794767,0.005833064541637617,-0.16664282633477423,-0.13259232308857732,0.15098812842871506,-0.05395836247750648,-0.7171271680979763,-0.05069964519591655,0.146731364949917,-0.2269474431142578,0.12766971229813268,0.9091528032272126,-0.14198517092406623,0.28380965008259673,0.6466103318011301,0.6700322210496339,0.08086188813767216,0.785131788561523,-0.44984752681658446,0.4247907166456394,-0.36601340880293765,-0.13613200025801467,-0.2829424510972913,1.5821294837260211,-0.8263385950810773,1.0646702741849503,0.46716015858007276,-1.4938475983886597,0.5535418386711422,1.2982859439443766,-1.7329650253480289,-2.4950825055590866,-1.132446439289059,-2.6848650810285766,2.257788579993759,-0.12567520384213304,-0.4124717721964473,0.954324860705356,-0.47550216819907687,0.9953841093818916,-0.2670845644327441,0.5308775035436969,0.5634070654377853,-0.9147388519908262,0.7779726306461359,0.6799220465187829,-0.5290859341250089,0.09622484618454415,-0.2105880331062558,-0.252565438093238,0.08101626464612782,-0.5470768903609583,-0.7067751619695725,0.5685273345740459,-0.3572598153630898,0.7767836072471543,0.2665208663265962,0.5156449836406554,0.11309481200651554,-0.22561235720103326,0.28825601528256595,0.32250752758783763,0.23796100256124036,-0.3671858579054062,0.21781371033033955,-0.1617415478056201,0.36363074075330604,-0.41706337168969476,-0.43885118133867174,-0.17736818246220726,0.4995294348330255,0.33605134161822325,-0.09364164728824965,-1.0453252034914886,0.3977963854694176,0.7709650930488252,-0.33998462483703196,0.41000365529859173,0.2236218270330424,1.1504656633248425,0.8022085354117325,1.426993581547407,-0.5791886514890797,0.5939425739708147,-0.30268586113826185,-0.07689578393784278,0.14385188898504442,0.2398332519334185,0.35042301745931415,-0.9250624679150429,0.24660974256132914,-0.06287617789951203,-0.31570703072491424,0.4916002765641599,0.06784585111255173,1.1412903169649469,0.6884009300249689,0.8053660102948716,-0.8062724655209316,0.9811034424758699,-0.38572636536164984,0.15106508236824823,-0.015614456811594558,-1.733378294228796,1.4486723121971241,0.4367764086288256,-2.1982040090808175,0.828266279302349,0.12139764516199131,-1.8701783125064124,-0.4343059023722182,1.0231083530165286,0.8145694817203156,0.42735950292363967,-1.6229722945795917,1.1385052603798858,2.094108446277654,0.6471358825079164,0.30599375105415716,0.024143014136728563,-0.26503269412336683,-0.21199481763790518,0.32904089225123734,0.632352735330917,-0.11865782654586864,0.1759874477981222,1.1724462273631953,0.6929288417530814,0.7195158797506334,1.2110553781008222,-0.8168833759101644,0.6026400178064455,0.5087531952994605,0.43923817684683075,0.11125863334019725,-0.40451115030327556,0.07381317281289382,-0.5506077600826378,-0.7446067085899216,-0.532498617937736,0.21173714344634176,-0.20243799423113945,-0.06857729484486866,0.25665516318588616,0.2705328029851636,-0.8217414431067271,-0.21417989093348905,-0.11388806208656171,-0.3501975835216309,-0.2149894481444237,-0.16734654003114022,-0.015663871775584187,-0.9271205260708816,0.4392007627580548,0.8846221088370777,0.10098102015678216,-0.059394716478689685,-0.45229706921431817,-0.20074202921867476,0.01415083311928052,0.5444783196340566,-0.05044303559530914,0.0738152890262288,0.15311538290427998,-1.008095115334799,0.5481938304165042,-0.1314981565569186,0.045755646746545926,-0.4091181372251521,-0.35391161152204265,0.2873318773912735,-0.043256732325247925,-0.2502658202123997,-0.14454430978828253,0.8467649038909588,0.7913564708492483,0.33198237479032255,0.8371190666725667,0.13654226579005432,-0.18983192699700005,-0.23453161745135812,-0.46990454207552323,0.6450666903041774,1.3707055649943374,0.371619182585863,0.16327659868157185,-0.9603414330059553,0.06573741674899616,0.6569943859159566,1.707562219084564,-0.22237641587634174,-0.046109843772907055,-0.7547792575305358,-1.0458102227700443,1.0031788163498325,-2.6396902409505953,0.8378940749912567,-1.7675076772670726,-0.8737617595708154,0.2768147671653451,0.38908182226999827,-0.9973247738298947,0.47187440969324795,0.416526765091225,-0.8258750243487737,0.5814844544161772,1.2303233065036623,0.8589652912043653,0.20350873663785363,0.8289595524921544,-0.7308553265338789,0.5894921668734433,-0.4468793371760606,0.16762011688134887,-0.11966094263585966,0.6700436450618821,-0.023604332089030462,0.21013531876182218,-0.5865524437916824,0.051624433176428654,0.12421493202313,0.5519407328508354,-0.2391982393472685,-0.3083643778147673,0.18431922306773793,-0.18496889756244372,-0.4357624982404439,-1.0649874932842778,-0.253658053627768,0.04641921003255673,-0.40878795273106994,-0.40814894158638676,1.0355805814226633,0.38242724160316455,-1.0061344891038217,0.7335352324673506,0.12711528397252897,-0.44161009690629593,1.4160808994597522,1.3345152216078566,0.8351787298132446,1.1875192376845198,-1.2364007692313506,1.06167520176691,0.9000284054251352,0.5611810654876188,0.2279961071000851,-0.038263394035902024,0.19723661523908698,-0.7249566449703684,0.13100350204797817,0.3759195568955026,-0.5330462760448025,0.01833697315424095,0.8957385910967,0.7187615210838395,0.3143620684399337,0.6634754299577078,-0.7124118013852261,0.46010130211381073,0.668264656957966,0.6244879408634325,0.488570407857703,-1.046162517850099,2.3643008553591156,0.5241313408300493,0.19426967157418928,-0.49354821729550447,-1.3539019320203907,-2.992842455739321,-0.5203499107411607,0.5645381992288032,0.8376231635532287,-1.278834697337709,2.0249818128203656,-1.2647831076646627,0.21876094420577719,-0.49782057562258075,-0.9669299754513032],"b":[0.34791799453790345,0.24645359728545121,0.16665580892408283,-0.03156485247876697,0.1465565618277908,-0.13435746150724132,-0.009803014543067022,-0.10508456269338216,0.24051299085091737,-0.11795074535245965,0.26275148004798643,-0.3634270906364304,0.2958519136820623,0.36094751284233473,0.2251562815194381,-0.15081945141617503,0.12303885241620924,0.2972558111534187,0.007618032788909607,-0.085764617988118,0.12966248402588476,0.03415238982071901,0.37961292064312846,0.15320716524476133,-0.1303576149627434,-0.10632354286293352,0.10475893749977319,-0.03599356844255056,0.23296936710220723,-0.12253595855047633,0.20548790573761333,0.1560569161474176,-0.0715181062093055]};
+const STATS = {"seed7":{"8":{"ptq":0.00146484375,"kiln":0.0009765625},"4":{"ptq":0.020263671875,"kiln":0.00634765625},"2":{"ptq":0.076416015625,"kiln":0.0244140625},"1":{"ptq":0.12451171875,"kiln":0.042724609375}}};
+const Q = new URLSearchParams(location.search);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED = Q.has('fixed'), STILL = Q.has('still'), STATIC = (RM || STILL) && !FIXED;
+const OG = Q.has('og') ? (+Q.get('og') || 1) : 0;
+let EMBED = false; try { EMBED = window.top !== window.self; } catch (e) { EMBED = true; }
+if (FIXED || STATIC) document.documentElement.classList.add('still');
+if (OG) document.documentElement.classList.add('og');
+const $ = s => document.querySelector(s);
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+const BITS = QM.BITS, LOW = [8, 4, 2, 1], GE = QM.EVAL_G, TOT = GE * GE, EVERY = 10, KMAX = QM.KILN_STEPS;
+const STAMPS = { 32: 'each its own', 8: '256 stamps', 4: '16 stamps', 2: '4 stamps', 1: '2 stamps' };
+const BYTES = { 32: '3,136 bytes', 8: '784 bytes', 4: '392 bytes', 2: '196 bytes', 1: '98 bytes' };
+// full 128 x 128 grid -> index into the one-eighth domain the network is evaluated on
+const IDX = new Int32Array(GE * GE);
+{
+  const h = GE >> 1, at = new Map();
+  for (let n = 0; n < E.N; n++) at.set(E.I[n] * GE + E.J[n], n);
+  for (let r = 0; r < GE; r++) for (let c = 0; c < GE; c++) {
+    let i = c < h ? GE - 1 - c : c, j = r < h ? GE - 1 - r : r;
+    if (j > i) { const t = i; i = j; j = t; }
+    IDX[r * GE + c] = at.get(i * GE + j);
+  }
+}
+// ---------------------------------------------------------------------------------------------
+const log = [];
+let seed = +(Q.get('seed') || NET0.seed), net = null, z32 = null, netGen = 0, ready = false;
+let tiled = Q.has('tiled'), training = null, say0 = '', crawl = { t0: 0, on: false }, selN = -1, hoverN = -1;
+const walls = BITS.map((bits, k) => ({ bits, k, cur: null, t: 0, Z: new Float32Array(GE * GE), dirty: true, crackImg: null, el: {} }));
+const kiln = { step: 0, want: 0, ck: {}, ready: {}, done: {}, gen: 0, workers: [], mode: 'none' };
+const perf = { paint: 0, crack: 0, wall: 0, frame: 0 };
+
+function hashes(n) { return { hW: QM.hash(n.W), hB: QM.hash(n.b) }; }
+function evalNet(n) { return QM.logits(n, E); }
+function wallFromNet(bits, n) {
+  const z = evalNet(n);
+  return { W: n.W, b: n.b, z, rep: z32 ? QM.disagree(z, z32, E) : 0, wrong: QM.wrong(z, E) };
+}
+function distinct(W) { const s = new Set(); for (let i = 0; i < W.length; i++) s.add(W[i]); return s.size; }
+
+function setNet(latent, src) {
+  net = latent; netGen++;
+  const n32 = QM.stored(net, 32);
+  z32 = evalNet(n32);
+  const h = hashes(net);
+  log.push({ ev: 'net', seed, src, hW: h.hW, hB: h.hB });
+  for (const w of walls) {
+    const st = QM.stored(net, w.bits);
+    w.cur = wallFromNet(w.bits, st); w.t = 0; w.dirty = true;
+    const hh = hashes(st);
+    log.push({ ev: 'ptq', seed, bits: w.bits, hW: hh.hW, hB: hh.hB, rep: w.cur.rep, wrong: w.cur.wrong });
+  }
+  resetKiln();
+}
+
+// ---------------------------------------------------------------------------------------------
+// the kiln: four quantization-aware re-trainings, one per lower wall, in workers when possible
+function workerSource() {
+  return `'use strict';const makeQM=${makeQM.toString()};const makeJobs=${makeJobs.toString()};const QM=makeQM(),J=makeJobs(QM);
+onmessage=e=>{const m=e.data;const g=m.cmd==='kiln'?J.kiln({W:new Float64Array(m.W),b:new Float64Array(m.b)},m.bits,new Float64Array(m.z32),m.every):J.train(m.seed,m.every);
+for(const r of g){r.job=m.job;const tf=[r.W.buffer,r.b.buffer];if(r.z)tf.push(r.z.buffer);postMessage(r,tf)}postMessage({job:m.job,bits:m.bits,done:true})};`;
+}
+let WURL = null;
+function newWorker() {
+  try { if (!WURL) WURL = URL.createObjectURL(new Blob([workerSource()], { type: 'text/javascript' })); return new Worker(WURL); }
+  catch (e) { return null; }
+}
+const pumps = [];      // main-thread fallback generators
+function resetKiln() {
+  for (const w of kiln.workers) w.terminate();
+  kiln.workers = []; pumps.length = 0;
+  kiln.gen++; kiln.step = 0; kiln.want = 0;
+  for (const b of LOW) { kiln.ck[b] = [walls[BITS.indexOf(b)].cur]; kiln.ready[b] = 0; kiln.done[b] = false; }
+  syncSlider();
+  if (FIXED) { kiln.mode = 'sync'; kiln.gens = {}; for (const b of LOW) kiln.gens[b] = JOBS.kiln(QM.cloneNet(net), b, z32, EVERY); return; }
+  const gen = kiln.gen;
+  let ok = !Q.has('noworker');
+  if (ok) {
+    for (const b of LOW) {
+      const wk = newWorker();
+      if (!wk) { ok = false; break; }
+      wk.onmessage = e => onKiln(gen, e.data);
+      wk.onerror = () => { if (gen === kiln.gen && kiln.mode === 'worker') { kiln.mode = 'main'; fallbackKiln(gen); } };
+      wk.postMessage({ cmd: 'kiln', job: gen, W: net.W.slice().buffer, b: net.b.slice().buffer, z32: z32.slice().buffer, bits: b, every: EVERY });
+      kiln.workers.push(wk);
+    }
+  }
+  if (ok) kiln.mode = 'worker'; else { kiln.mode = 'main'; fallbackKiln(gen); }
+}
+function fallbackKiln(gen) {
+  for (const w of kiln.workers) w.terminate(); kiln.workers = [];
+  pumps.length = 0;
+  for (const b of LOW) if (!kiln.done[b]) {
+    const g = JOBS.kiln(QM.cloneNet(net), b, z32, EVERY);
+    for (let i = 0; i < kiln.ready[b]; i++) g.next();       // skip what already arrived
+    pumps.push({ gen, b, g });
+  }
+  if (!pumpTimer) pumpTimer = setTimeout(pump, 0);
+}
+let pumpTimer = 0;
+function pump() {
+  pumpTimer = 0;
+  const t0 = performance.now();
+  while (pumps.length && performance.now() - t0 < 24) {
+    const p = pumps[0];
+    if (p.gen !== kiln.gen) { pumps.shift(); continue; }
+    const r = p.g.next();
+    if (r.done) { pumps.shift(); onKiln(p.gen, { job: p.gen, bits: p.b, done: true }); continue; }
+    r.value.job = p.gen; onKiln(p.gen, r.value);
+    pumps.push(pumps.shift());      // round robin so the four walls fill together
+  }
+  if (pumps.length) pumpTimer = setTimeout(pump, STATIC ? 0 : 8);
+}
+function onKiln(gen, r) {
+  if (gen !== kiln.gen || r.job !== gen) return;
+  if (r.done) { kiln.done[r.bits] = true; if (LOW.every(b => kiln.done[b])) logKilnDone(); chartDirty = true; return; }
+  const ck = { W: new Float64Array(r.W), b: new Float64Array(r.b), z: new Float64Array(r.z), rep: r.rep, wrong: r.wrong };
+  kiln.ck[r.bits][r.t / EVERY] = ck;
+  kiln.ready[r.bits] = Math.max(kiln.ready[r.bits], r.t / EVERY);
+  chartDirty = true;
+  if (kiln.want > kiln.step && allowed() > kiln.step) showKiln(Math.min(kiln.want, allowed()));
+  syncSlider();
+}
+function logKilnDone() {
+  for (const b of LOW) {
+    const ck = kiln.ck[b][KMAX / EVERY]; if (!ck) continue;
+    log.push({ ev: 'kiln', seed, bits: b, t: KMAX, hW: QM.hash(ck.W), hB: QM.hash(ck.b), rep: ck.rep, wrong: ck.wrong, changed: stampChanges(b) });
+  }
+}
+function stampChanges(b) {
+  const a = QM.stampIndex(QM.stored(net, b).W, b).idx, ck = kiln.ck[b][KMAX / EVERY];
+  if (!ck) return -1;
+  const c = QM.stampIndex(ck.W, b).idx; let n = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== c[i]) n++;
+  return n;
+}
+function allowed() { return Math.min(...LOW.map(b => kiln.ready[b])) * EVERY; }
+// in ?fixed the kiln is fired synchronously up to whatever is asked for
+function fireSync(step) {
+  if (kiln.mode !== 'sync') return;
+  for (const b of LOW) {
+    while (kiln.ready[b] * EVERY < step) {
+      const r = kiln.gens[b].next(); if (r.done) { kiln.done[b] = true; break; }
+      onKiln(kiln.gen, Object.assign(r.value, { job: kiln.gen }));
+    }
+    if (kiln.ready[b] * EVERY >= KMAX) kiln.done[b] = true;
+  }
+  if (step >= KMAX && LOW.every(b => kiln.done[b]) && !log.some(e => e.ev === 'kiln' && e.seed === seed)) logKilnDone();
+}
+function showKiln(step) {
+  step = clamp(Math.round(step / EVERY) * EVERY, 0, KMAX);
+  if (FIXED) fireSync(step);
+  step = Math.min(step, allowed());
+  kiln.step = step;
+  for (const b of LOW) {
+    const w = walls[BITS.indexOf(b)], ck = kiln.ck[b][step / EVERY];
+    if (ck && w.cur !== ck) { w.cur = ck; w.t = step; w.dirty = true; }
+  }
+  syncSlider(); setSay(); chartDirty = true;
+}
+function syncSlider() {
+  const r = $('#kr'); if (!r) return;
+  const a = allowed();
+  r.value = kiln.step;
+  r.style.setProperty('--r', (a / KMAX * 100) + '%');
+  r.style.setProperty('--v', (kiln.step / KMAX * 100) + '%');
+  r.disabled = !!training;
+  $('#ko').textContent = `${kiln.step} of ${KMAX} rounds`;
+  if (a < KMAX && !training && kiln.mode !== 'sync') $('#ko').textContent += ' · heating';
+}
+// ---------------------------------------------------------------------------------------------
+// captions
+function pct(n) { const p = n / TOT * 100; return p === 0 ? '0%' : p < 1 ? p.toFixed(2) + '%' : p.toFixed(1) + '%'; }
+function sayText() {
+  if (training) return `Training a new painter from seed ${seed}: the walls follow its weights as they settle.`;
+  const a = allowed();
+  if (kiln.step === 0) return a === 0 ? 'Rounded straight from the trained weights. The kiln is heating up…' : 'Rounded straight from the trained weights. Drag the slider to fire the four lower walls again.';
+  if (kiln.step < KMAX) return `Round ${kiln.step}: every painting is made with the stamps, and the weights underneath move to suit them.`;
+  const r1 = kiln.ck[1][KMAX / EVERY], p2 = kiln.ck[2][0];
+  if (r1 && p2 && r1.rep < p2.rep) return 'Re-fired, the 1-bit wall now paints closer to the model than the rounded 2-bit wall did, with half the bits.';
+  return 'Re-fired, every wall paints closer to the model; the 1-bit wall still shows the most cracks.';
+}
+function setSay() {
+  const s = sayText(), el = $('#say');
+  if (s === say0) return;
+  say0 = s;
+  if (FIXED || STATIC || OG) { el.textContent = s; return; }
+  el.classList.add('fade');
+  clearTimeout(setSay.tm);
+  setSay.tm = setTimeout(() => { el.textContent = say0; el.classList.remove('fade'); }, 200);
+}
+// ---------------------------------------------------------------------------------------------
+// DOM for the five columns
+function buildColumns() {
+  const plate = $('#plate');
+  for (const w of walls) {
+    const c = document.createElement('section');
+    c.className = 'col'; c.dataset.bits = w.bits;
+    c.innerHTML = `<div class="ch"><span class="n">${w.bits}</span><span class="u">${w.bits === 1 ? 'bit' : 'bits'}</span><span class="s">${BYTES[w.bits]}</span></div>
+<div class="tile" role="img"><canvas class="p"></canvas><canvas class="k"></canvas></div>
+<div class="cap"></div>
+<div class="wallbox"><canvas class="w" aria-label="The ${w.bits}-bit wall: one tile per weight"></canvas>${w.k === 0 ? '<span class="lbl l1">layer 1</span><span class="lbl l2">layer 2 · out</span>' : ''}</div>
+<div class="stamps"><canvas class="st"></canvas><span>${STAMPS[w.bits]}</span></div>`;
+    plate.appendChild(c);
+    w.el = { col: c, tile: c.querySelector('.tile'), p: c.querySelector('canvas.p'), k: c.querySelector('canvas.k'), cap: c.querySelector('.cap'), w: c.querySelector('canvas.w'), st: c.querySelector('canvas.st') };
+    w.el.tile.addEventListener('click', () => { tiled = !tiled; syncTiled(); });
+    bindWall(w);
+  }
+}
+function syncTiled() {
+  $('#bwall').setAttribute('aria-pressed', tiled ? 'true' : 'false');
+  for (const w of walls) w.dirty = true;
+  log.push({ ev: 'tiled', on: tiled });
+}
+// ---------------------------------------------------------------------------------------------
+// layout
+let DPR = 1, CW = 220, PW = 130, WW = 220, TP = 7, GAPPX = 4, PHONE = false;
+function layout() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  const W = document.documentElement.clientWidth, H = window.innerHeight;
+  PHONE = W <= 760;
+  const root = document.documentElement.style;
+  if (OG) {
+    const gap = 26, mx = 48;
+    const oh = $('#oghead').offsetHeight + 50;
+    CW = Math.floor(Math.min((W - 2 * mx - 4 * gap) / 5, (H - oh - 54 - 36 - 30) / (1 + WALLR)));
+    root.setProperty('--gap', gap + 'px'); root.setProperty('--mx', mx + 'px'); root.setProperty('--cw', CW + 'px');
+    WW = CW;
+  } else if (PHONE) {
+    PW = Math.round(clamp((W - 32) * 0.36, 104, 160));
+    root.setProperty('--pw', PW + 'px');
+    WW = W - 32 - PW - 12; CW = PW;
+  } else {
+    const mx = W < 1180 ? 28 : 40, gap = W < 1180 ? 20 : 28;
+    root.setProperty('--gap', gap + 'px'); root.setProperty('--mx', mx + 'px');
+    const byW = (W - 2 * mx - 4 * gap) / 5;
+    const short = H <= 800, fixed = $('.mast').offsetHeight + $('.head').offsetHeight + $('#kiln').offsetHeight + (short ? 0 : $('.foot').offsetHeight) + (short ? 34 + 7 + 30 + 22 + 12 + 8 : 46 + 14 + 36 + 26 + 20 + 26);
+    const byH = (H - fixed) / (1 + WALLR);
+    CW = Math.floor(clamp(Math.min(byW, byH), 140, 300));
+    root.setProperty('--cw', CW + 'px'); WW = CW;
+  }
+  document.documentElement.classList.toggle('narrow', !PHONE && !OG && CW < 210);
+  TP = Math.max(3, Math.floor(WW * DPR / 32)); sprites = null;
+  GAPPX = Math.max(2, Math.round(TP * 0.6));
+  const S = Math.round(CW * DPR);
+  for (const w of walls) {
+    const { p, k, w: wc, st } = w.el;
+    for (const cv of [p, k]) if (cv.width !== S) { cv.width = S; cv.height = S; }
+    const ww = 32 * TP, wh = 25 * TP + 2 * GAPPX;
+    if (wc.width !== ww || wc.height !== wh) { wc.width = ww; wc.height = wh; }
+    wc.style.width = (ww / DPR) + 'px'; wc.style.height = (wh / DPR) + 'px';
+    w.dirty = true; w.crackImg = null;
+    drawStampStrip(w, st);
+  }
+  if (!PHONE) {
+    const c0 = walls[0].el.w, top = c0.offsetTop;
+    const l1 = document.querySelector('.lbl.l1'), l2 = document.querySelector('.lbl.l2');
+    if (l1) { l1.style.top = '0px'; l1.style.height = (16 * TP / DPR) + 'px'; l2.style.top = ((16 * TP + GAPPX) / DPR) + 'px'; l2.style.height = ((9 * TP + GAPPX) / DPR) + 'px'; }
+  }
+  sprites = null; noiseCache.clear(); crackCache.clear();
+  chartDirty = true;
+}
+const WALLR = (25 + 1.2) / 32;
+// ---------------------------------------------------------------------------------------------
+// painting the tile: logits bilinear on the 128 grid, one-pixel antialiased edge from |grad z|
+const noiseCache = new Map();
+function glazeNoise(S) {
+  if (noiseCache.has(S)) return noiseCache.get(S);
+  const n = 9, g = new Float32Array((n + 1) * (n + 1));
+  for (let i = 0; i < g.length; i++) g[i] = QM.rndU(4242, i);
+  const out = new Float32Array(S * S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const fx = x / S * n, fy = y / S * n, ix = fx | 0, iy = fy | 0, tx = fx - ix, ty = fy - iy;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = g[iy * (n + 1) + ix], b = g[iy * (n + 1) + ix + 1], c = g[(iy + 1) * (n + 1) + ix], d = g[(iy + 1) * (n + 1) + ix + 1];
+    out[y * S + x] = (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+  }
+  noiseCache.set(S, out); return out;
+}
+function fillZ(w) {
+  const z = w.cur.z, Z = w.Z;
+  for (let p = 0; p < GE * GE; p++) Z[p] = z[IDX[p]];
+}
+const PAPER = [247, 243, 234], CO1 = [24, 52, 140], CO2 = [44, 82, 190];
+function sampleSetup(S, rep) {
+  // per canvas pixel: grid cell and fractions along one axis (same for x and y)
+  const key = S + ':' + rep;
+  if (sampleSetup.c && sampleSetup.k === key) return sampleSetup.c;
+  const i0 = new Int32Array(S), fr = new Float32Array(S);
+  for (let p = 0; p < S; p++) {
+    let u = ((p + 0.5) / S * rep) % 1;
+    let g = u * GE - 0.5, i = Math.floor(g);
+    if (i < 0) { i = 0; g = 0; } if (i > GE - 2) { i = GE - 2; g = GE - 1; }
+    i0[p] = i; fr[p] = g - i;
+  }
+  sampleSetup.k = key; sampleSetup.c = { i0, fr, f: GE * rep / S };
+  return sampleSetup.c;
+}
+function renderPaint(w) {
+  const t0 = performance.now();
+  const cv = w.el.p, S = cv.width, ctx = cv.getContext('2d');
+  const rep = tiled ? 3 : 1, { i0, fr, f } = sampleSetup(S, rep), Z = w.Z, N = glazeNoise(S);
+  const img = ctx.createImageData(S, S), D = img.data;
+  for (let y = 0; y < S; y++) {
+    const iy = i0[y], ty = fr[y], r0 = iy * GE, r1 = r0 + GE;
+    for (let x = 0; x < S; x++) {
+      const ix = i0[x], tx = fr[x];
+      const z00 = Z[r0 + ix], z10 = Z[r0 + ix + 1], z01 = Z[r1 + ix], z11 = Z[r1 + ix + 1];
+      const za = z00 + (z10 - z00) * tx, zb = z01 + (z11 - z01) * tx, z = za + (zb - za) * ty;
+      const gx = ((z10 - z00) * (1 - ty) + (z11 - z01) * ty) * f, gy = (zb - za) * f;
+      const g = Math.sqrt(gx * gx + gy * gy) + 1e-6;
+      let a = 0.5 + z / g; a = a < 0 ? 0 : a > 1 ? 1 : a;
+      const nz = N[y * S + x], o = (y * S + x) * 4;
+      const cr = CO1[0] + (CO2[0] - CO1[0]) * nz, cg = CO1[1] + (CO2[1] - CO1[1]) * nz, cb = CO1[2] + (CO2[2] - CO1[2]) * nz;
+      const pw = 1 - 0.018 * nz;
+      D[o] = PAPER[0] * pw + (cr - PAPER[0] * pw) * a; D[o + 1] = PAPER[1] * pw + (cg - PAPER[1] * pw) * a; D[o + 2] = PAPER[2] * pw + (cb - PAPER[2] * pw) * a; D[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  if (rep === 3) { ctx.strokeStyle = 'rgba(21,21,21,.12)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 1; k < 3; k++) { const q = Math.round(S * k / 3) + 0.5; ctx.moveTo(q, 0); ctx.lineTo(q, S); ctx.moveTo(0, q); ctx.lineTo(S, q); } ctx.stroke(); }
+  perf.paint = performance.now() - t0;
+}
+// crazing: two scales of jittered-grid Voronoi edges, drawn only where this wall's painting
+// disagrees (ink / no ink) with the 32-bit wall's
+const crackCache = new Map();
+function crazing(S) {
+  if (crackCache.has(S)) return crackCache.get(S);
+  const out = new Float32Array(S * S);
+  for (const [cell, seedc, wpx, amp] of [[Math.max(10, S / 15), 77, 1.05 * DPR, 1], [Math.max(24, S / 5), 78, 1.4 * DPR, 1]]) {
+    const n = Math.ceil(S / cell) + 2, px = new Float32Array(n * n), py = new Float32Array(n * n);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const q = j * n + i; px[q] = (i - 1 + 0.15 + 0.7 * QM.rndU(seedc, q * 2)) * cell; py[q] = (j - 1 + 0.15 + 0.7 * QM.rndU(seedc, q * 2 + 1)) * cell; }
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const ci = Math.floor(x / cell) + 1, cj = Math.floor(y / cell) + 1;
+      let d1 = 1e9, d2 = 1e9;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const q = (cj + dj) * n + ci + di, dx = px[q] - x, dy = py[q] - y, d = Math.sqrt(dx * dx + dy * dy);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+      }
+      const e = (d2 - d1) * 0.5, v = e < wpx ? (1 - e / wpx) * amp : 0;
+      if (v > out[y * S + x]) out[y * S + x] = v;
+    }
+  }
+  crackCache.set(S, out); return out;
+}
+function renderCrack(w) {
+  const t0 = performance.now();
+  const cv = w.el.k, S = cv.width;
+  const off = w.crackCv || (w.crackCv = document.createElement('canvas'));
+  if (off.width !== S) { off.width = S; off.height = S; }
+  const ctx = off.getContext('2d');
+  ctx.clearRect(0, 0, S, S);
+  let flipped = 0;
+  if (w.bits !== 32) {
+    const rep = tiled ? 3 : 1, { i0, fr } = sampleSetup(S, rep), Z = w.Z, R = walls[0].Z, C = crazing(S);
+    const img = ctx.createImageData(S, S), D = img.data;
+    const M = new Uint8Array(S * S);
+    for (let y = 0; y < S; y++) {
+      const iy = i0[y], ty = fr[y], r0 = iy * GE, r1 = r0 + GE;
+      for (let x = 0; x < S; x++) {
+        const ix = i0[x], tx = fr[x];
+        const a = Z[r0 + ix] + (Z[r0 + ix + 1] - Z[r0 + ix]) * tx, b = Z[r1 + ix] + (Z[r1 + ix + 1] - Z[r1 + ix]) * tx;
+        const c = R[r0 + ix] + (R[r0 + ix + 1] - R[r0 + ix]) * tx, d = R[r1 + ix] + (R[r1 + ix + 1] - R[r1 + ix]) * tx;
+        if ((a + (b - a) * ty > 0) !== (c + (d - c) * ty > 0)) M[y * S + x] = 1;
+      }
+    }
+    // dilate by ~1.5 css px so thin slivers still show a crack, then draw lines + a faint wash
+    const r = Math.max(1, Math.round(1 * DPR));
+    const Mx = new Uint8Array(S * S);
+    for (let y = 0; y < S; y++) { let run = -1e9; for (let x = 0; x < S; x++) { if (M[y * S + x]) run = x; if (x - run <= r) Mx[y * S + x] = 1; } run = 1e9; for (let x = S - 1; x >= 0; x--) { if (M[y * S + x]) run = x; if (run - x <= r) Mx[y * S + x] = 1; } }
+    const My = new Uint8Array(S * S);
+    for (let x = 0; x < S; x++) { let run = -1e9; for (let y = 0; y < S; y++) { if (Mx[y * S + x]) run = y; if (y - run <= r) My[y * S + x] = 1; } run = 1e9; for (let y = S - 1; y >= 0; y--) { if (Mx[y * S + x]) run = y; if (run - y <= r) My[y * S + x] = 1; } }
+    for (let p = 0; p < S * S; p++) {
+      if (M[p]) flipped++;
+      if (!My[p]) continue;
+      const v = C[p], o = p * 4;
+      const al = Math.max(M[p] ? 0.10 : 0.04, 0.9 * v);
+      D[o] = 18; D[o + 1] = 18; D[o + 2] = 22; D[o + 3] = al * 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  w.crackImg = off; w.flippedPx = flipped;
+  perf.crack = performance.now() - t0;
+}
+function crawlFront(w, now) {
+  if (!crawl.on || w.bits === 32) return 1;
+  const order = { 1: 0, 2: 1, 4: 2, 8: 3 }[w.bits];
+  const t = (now - crawl.t0) / 1000 - 0.6 - order * 0.55;
+  return clamp(t / 1.6, 0, 1);
+}
+function drawCrack(w, now) {
+  const cv = w.el.k, S = cv.width, ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, S, S);
+  if (!w.crackImg || w.bits === 32) return;
+  const p = crawlFront(w, now);
+  if (p >= 1) { ctx.drawImage(w.crackImg, 0, 0); return; }
+  if (p <= 0) return;
+  const e = 1 - (1 - p) * (1 - p);
+  ctx.save(); ctx.beginPath();
+  const base = S * (1 - e) - 0.08 * S * (1 - e);
+  ctx.moveTo(0, S);
+  for (let x = 0; x <= S; x += S / 24) ctx.lineTo(x, base + S * 0.06 * Math.sin(x * 0.07 + w.bits) * (1 - e) + S * 0.04 * QM.rndU(w.bits, x | 0));
+  ctx.lineTo(S, S); ctx.closePath(); ctx.clip();
+  ctx.drawImage(w.crackImg, 0, 0); ctx.restore();
+}
+// ---------------------------------------------------------------------------------------------
+// the wall: one tile per weight, set with the nearest of the wall's 2^b stamps
+let sprites = null;
+const LV = 32;
+function buildSprites() {
+  const tp = TP, cv = document.createElement('canvas');
+  cv.width = tp * (LV + 1); cv.height = tp * 2;
+  const c = cv.getContext('2d');
+  for (let s = 0; s < 2; s++) for (let l = 0; l <= LV; l++) {
+    const x0 = l * tp, y0 = s * tp, a = l / LV, inner = tp - 1;
+    c.fillStyle = s === 0 ? '#f8f5ee' : '#1f3f9f';
+    c.fillRect(x0, y0, inner, inner);
+    const r = (0.10 + 0.36 * a) * inner, cx = x0 + inner / 2, cy = y0 + inner / 2;
+    c.fillStyle = s === 0 ? '#1f3f9f' : '#f8f5ee';
+    c.beginPath(); c.moveTo(cx, cy - r); c.lineTo(cx + r, cy); c.lineTo(cx, cy + r); c.lineTo(cx - r, cy); c.closePath(); c.fill();
+  }
+  sprites = cv;
+}
+function tileXY(n) {
+  if (n < 512) return [n % 32, (n / 32) | 0, 0];
+  if (n < 768) { const m = n - 512, j = (m / 16) | 0, i = m % 16; return [(j % 2) * 16 + i, 16 + (j >> 1), 1]; }
+  return [8 + (n - 768), 24, 2];
+}
+function tilePx(n) { const [cx, ry, sec] = tileXY(n); return [cx * TP, ry * TP + sec * GAPPX]; }
+function paramAt(px, py) {
+  const cx = Math.floor(px / TP);
+  if (cx < 0 || cx > 31) return -1;
+  const y1 = 16 * TP, y2 = y1 + GAPPX, y3 = y2 + 8 * TP, y4 = y3 + GAPPX;
+  if (py >= 0 && py < y1) return ((py / TP) | 0) * 32 + cx;
+  if (py >= y2 && py < y3) { const r = ((py - y2) / TP) | 0, j = r * 2 + (cx >> 4); return 512 + j * 16 + (cx & 15); }
+  if (py >= y4 && py < y4 + TP && cx >= 8 && cx < 24) return 768 + cx - 8;
+  return -1;
+}
+function stampOf(W, n, scale) { const a = clamp(W[n] / scale, -1, 1); return [a < 0 ? 1 : 0, Math.round(Math.abs(a) * LV)]; }
+function panelMax(W) { return QM.PANELS.map(([o, len]) => { let C = 0; for (let n = o; n < o + len; n++) C = Math.max(C, Math.abs(W[n])); return C || 1; }); }
+// a stored wall's stamps sit at (k + 1/2) * 2C / 2^b, so its own range C is the top stamp / (1 - 2^-b)
+function panelScale(W, bits) { const m = panelMax(W); return bits >= 32 ? m : m.map(v => v / (1 - 1 / 2 ** bits)); }
+function panelOf(n) { return n < 512 ? 0 : n < 768 ? 1 : 2; }
+function renderWall(w) {
+  const t0 = performance.now();
+  if (!sprites) buildSprites();
+  const cv = w.el.w, c = cv.getContext('2d');
+  c.fillStyle = '#d8d1c0'; c.fillRect(0, 0, cv.width, cv.height);
+  c.clearRect(0, 16 * TP, cv.width, GAPPX); c.clearRect(0, 24 * TP + GAPPX, cv.width, GAPPX);
+  c.clearRect(0, 24 * TP + 2 * GAPPX, 8 * TP, TP); c.clearRect(24 * TP, 24 * TP + 2 * GAPPX, 8 * TP, TP);
+  // the scale is this wall's own: the largest weight of each panel in the latent network it was rounded from
+  const W = w.cur.W, sc = panelScale(W, w.bits);
+  for (let n = 0; n < QM.NPAR; n++) {
+    const [s, l] = stampOf(W, n, sc[panelOf(n)]), [x, y] = tilePx(n);
+    c.drawImage(sprites, l * TP, s * TP, TP, TP, x, y, TP, TP);
+  }
+  const hn = selN >= 0 ? selN : hoverN;
+  if (hn >= 0) {
+    const [x, y] = tilePx(hn);
+    c.lineWidth = Math.max(1.5, DPR * 1.2); c.strokeStyle = '#151515';
+    c.strokeRect(x - 1.5, y - 1.5, TP + 2, TP + 2);
+  }
+  perf.wall = performance.now() - t0;
+}
+function drawStampStrip(w, cv) {
+  if (!sprites) buildSprites();
+  const n = w.bits <= 4 ? 2 ** w.bits : 12, avail = (PHONE ? WW : CW) - 78, gap = Math.max(1, Math.round(1.5 * DPR));
+  const s = Math.round(clamp(Math.floor(avail / n) - 2, 6, 12) * DPR);
+  cv.width = n * (s + gap); cv.height = s;
+  cv.style.width = (cv.width / DPR) + 'px'; cv.style.height = (s / DPR) + 'px';
+  const c = cv.getContext('2d');
+  // draw each available level as a stamp (continuous walls: a sample run from -max to +max)
+  const tmp = document.createElement('canvas'); tmp.width = TP; tmp.height = TP;
+  for (let i = 0; i < n; i++) {
+    let a;
+    if (w.bits <= 4) { const Lb = 2 ** w.bits, D = 2 / Lb; a = D * ((i - Lb / 2) + 0.5); }
+    else a = -1 + 2 * (i + 0.5) / n;
+    const l = Math.round(Math.abs(a) * LV), sg = a < 0 ? 1 : 0;
+    c.imageSmoothingEnabled = true;
+    c.drawImage(sprites, l * TP, sg * TP, TP - 1, TP - 1, i * (s + gap), 0, s, s);
+  }
+}
+// ---------------------------------------------------------------------------------------------
+// captions and the kiln chart
+function renderCap(w) {
+  const el = w.el.cap;
+  if (w.bits === 32) { el.innerHTML = `<span class="ok"><span class="long">the model: </span><b>${(100 - w.cur.wrong / TOT * 100).toFixed(1)}%</b> of the design</span>`; return; }
+  const p = w.cur.rep / TOT * 100;
+  el.innerHTML = `<span class="${p > 1 ? 'bad' : 'ok'}"><b>${pct(w.cur.rep)}</b> repainted</span><span class="bar" style="--p:${clamp(p / 14 * 100, 0, 100).toFixed(1)}%"></span>`;
+  el.dataset.rep = w.cur.rep;
+}
+let chartDirty = true;
+function drawChart() {
+  const cv = $('#chart'); if (!cv || PHONE) return;
+  const cw = cv.clientWidth || 300, ch = cv.clientHeight || 96;
+  if (cv.width !== Math.round(cw * DPR)) { cv.width = Math.round(cw * DPR); cv.height = Math.round(ch * DPR); }
+  const c = cv.getContext('2d'); c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.clearRect(0, 0, cw, ch);
+  const L = 26, R = cw - 34, T = 6, B = ch - 18;
+  let ymax = 0.04;
+  for (const b of LOW) for (const ck of kiln.ck[b] || []) if (ck) ymax = Math.max(ymax, ck.rep / TOT);
+  ymax = Math.ceil(ymax * 50) / 50;
+  const X = t => L + (R - L) * t / KMAX, Y = v => B - (B - T) * v / ymax;
+  c.font = '500 10px "Instrument Sans",sans-serif'; c.fillStyle = '#8a867b'; c.textBaseline = 'middle';
+  c.strokeStyle = 'rgba(21,21,21,.14)'; c.lineWidth = 1;
+  for (let k = 0; k <= 2; k++) { const v = ymax * k / 2, y = Math.round(Y(v)) + 0.5; c.beginPath(); c.moveTo(L, y); c.lineTo(R, y); c.stroke(); c.textAlign = 'right'; c.fillText(Math.round(v * 100) + '%', L - 4, y); }
+  c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText('0', L, B + 4); c.textAlign = 'right'; c.fillText(KMAX + ' rounds', R, B + 4);
+  const sty = { 1: [2.2, []], 2: [1.5, []], 4: [1, []], 8: [1, [2, 2]] };
+  for (const b of LOW) {
+    const arr = kiln.ck[b] || []; c.beginPath(); let started = false, last = null;
+    for (let i = 0; i < arr.length; i++) { const ck = arr[i]; if (!ck) break; const x = X(i * EVERY), y = Y(ck.rep / TOT); if (!started) { c.moveTo(x, y); started = true; } else c.lineTo(x, y); last = [x, y]; }
+    c.lineWidth = sty[b][0]; c.setLineDash(sty[b][1]); c.strokeStyle = '#151515'; c.stroke(); c.setLineDash([]);
+    if (last && (kiln.ready[b] * EVERY >= KMAX)) { c.fillStyle = '#151515'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = '600 10px "Instrument Sans",sans-serif'; c.fillText(b + (b === 1 ? ' bit' : ''), last[0] + 4, last[1] + (b === 8 ? -5 : b === 4 ? 1 : 0)); }
+  }
+  const x = Math.round(X(kiln.step)) + 0.5;
+  c.strokeStyle = '#1f3f9f'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, T - 2); c.lineTo(x, B); c.stroke();
+  chartDirty = false;
+}
+// ---------------------------------------------------------------------------------------------
+// the loupe: the same weight on all five walls
+const FEAT = ['u', 'v', '(u+v)/2', '(u−v)/2'];
+function paramName(n) {
+  if (n < 512) { const j = (n / 32) | 0, i = n % 32, k = (i >> 2) + 1, t = FEAT[i & 3]; return `Layer 1 · unit ${j + 1} ← cos(${k === 1 ? '' : k}π·${t})`; }
+  if (n < 768) { const m = n - 512; return `Layer 2 · unit ${((m / 16) | 0) + 1} ← unit ${(m % 16) + 1}`; }
+  return `Output ← unit ${n - 768 + 1}`;
+}
+function showLoupe(n, cx, cy) {
+  const L = $('#loupe');
+  if (n < 0) { L.classList.remove('on'); return; }
+  const s = 30, tmp = [];
+  let html = `<div class="t">${paramName(n)}</div><div class="row">`;
+  for (const w of walls) {
+    const sc = panelScale(w.cur.W, w.bits)[panelOf(n)];
+    const v = w.cur.W[n];
+    html += `<div class="c"><canvas width="${s * 2}" height="${s * 2}" style="width:${s}px;height:${s}px" data-k="${w.k}"></canvas><b>${w.bits}</b><span>${(v >= 0 ? '+' : '−') + Math.abs(v).toFixed(w.bits >= 8 ? 4 : 3)}</span></div>`;
+    tmp.push([w.k, stampOf(w.cur.W, n, sc)]);
+  }
+  L.innerHTML = html + '</div>';
+  if (!sprites) buildSprites();
+  for (const [k, [sg, l]] of tmp) { const cv = L.querySelector(`canvas[data-k="${k}"]`), c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(sprites, l * TP, sg * TP, TP - 1, TP - 1, 0, 0, s * 2, s * 2); }
+  L.classList.add('on');
+  const r = L.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = innerHeight;
+  let x = cx + 16, y = cy - r.height - 14;
+  if (x + r.width > vw - 8) x = cx - r.width - 16;
+  if (y < 8) y = cy + 18;
+  if (y + r.height > vh - 8) y = vh - 8 - r.height;
+  L.style.left = Math.max(8, x) + 'px'; L.style.top = y + 'px';
+}
+function bindWall(w) {
+  const cv = w.el.w;
+  const at = e => { const r = cv.getBoundingClientRect(); return paramAt((e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height); };
+  cv.addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; const n = at(e); if (n !== hoverN) { hoverN = n; for (const v of walls) v.wallDirty = true; } showLoupe(selN >= 0 ? selN : n, e.clientX, e.clientY); });
+  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'touch') return; hoverN = -1; for (const v of walls) v.wallDirty = true; if (selN < 0) showLoupe(-1); });
+  cv.addEventListener('pointerdown', e => {
+    const n = at(e);
+    selN = n === selN ? -1 : n; for (const v of walls) v.wallDirty = true;
+    if (selN >= 0) { log.push({ ev: 'pick', n: selN, bits: w.bits }); const r = cv.getBoundingClientRect(), [x, y] = tilePx(selN); showLoupe(selN, r.left + (x + TP / 2) / DPR, r.top + y / DPR); }
+    else showLoupe(-1);
+  });
+}
+document.addEventListener('pointerdown', e => { if (selN >= 0 && !e.target.closest('canvas.w')) { selN = -1; for (const v of walls) v.wallDirty = true; showLoupe(-1); } });
+// ---------------------------------------------------------------------------------------------
+// training a new painter (float64, Adam, 3,000 steps) in a worker, the walls following along
+function trainNew(newSeed) {
+  if (training) return;
+  seed = newSeed;
+  training = { t: 0, gen: ++netGen };
+  for (const w of kiln.workers) w.terminate(); kiln.workers = []; pumps.length = 0; kiln.gen++;
+  kiln.step = 0; for (const b of LOW) { kiln.ready[b] = 0; kiln.ck[b] = []; }
+  $('#btrain').disabled = true; syncSlider(); setSay(); chartDirty = true;
+  const onStep = r => {
+    training.t = r.t;
+    const lat = { W: new Float64Array(r.W), b: new Float64Array(r.b) };
+    if (r.t >= QM.FLOAT_STEPS) { training = null; $('#btrain').disabled = false; setNet(lat, 'trained'); startCrawl(); setSay(); return; }
+    const n32 = QM.stored(lat, 32); z32 = evalNet(n32);
+    for (const w of walls) { w.cur = wallFromNet(w.bits, QM.stored(lat, w.bits)); w.dirty = true; }
+    $('#ko').textContent = `training ${r.t.toLocaleString('en-US')} of ${QM.FLOAT_STEPS.toLocaleString('en-US')} steps`;
+  };
+  if (FIXED) { for (const r of JOBS.train(seed, 500)) onStep(r); return; }
+  const wk = Q.has('noworker') ? null : newWorker();
+  if (wk) {
+    const gen = training.gen;
+    wk.onmessage = e => { const r = e.data; if (r.done) { wk.terminate(); return; } if (training && training.gen === gen) onStep(r); };
+    wk.postMessage({ cmd: 'train', job: gen, seed, every: 60 });
+  } else {
+    const g = JOBS.train(seed, 60);
+    const step = () => { const t0 = performance.now(); while (performance.now() - t0 < 30) { const r = g.next(); if (r.done) return; onStep(r.value); if (!training) return; } setTimeout(step, 0); };
+    setTimeout(step, 0);
+  }
+}
+// ---------------------------------------------------------------------------------------------
+function startCrawl() { crawl.on = !(FIXED || STATIC || OG); crawl.t0 = performance.now(); }
+let last = 0;
+window.__frame = 0;
+function frame(ts, skipDraw) {
+  if (!FIXED && !STATIC) requestAnimationFrame(frame);
+  const now = FIXED ? last + 1000 / 60 : (ts || performance.now()); last = now; window.__frame++;
+  if (!ready) return;
+  const t0 = performance.now();
+  for (const w of walls) {
+    if (w.dirty) { w.dirty = false; fillZ(w); if (!skipDraw) { renderPaint(w); renderCrack(w); renderWall(w); renderCap(w); w.wallDirty = false; w.crawlDone = false; } else w.dirty = true; }
+    if (skipDraw) continue;
+    if (w.wallDirty) { w.wallDirty = false; renderWall(w); }
+    const p = crawlFront(w, now);
+    if (!w.crawlDone) { drawCrack(w, now); if (p >= 1) w.crawlDone = true; }
+  }
+  if (crawl.on && walls.every(w => w.crawlDone)) crawl.on = false;
+  if (chartDirty && !skipDraw) drawChart();
+  if (!skipDraw) setSay();
+  perf.frame = performance.now() - t0;
+  if (selN < 0 && hoverN < 0) {}
+  window.__state = { frame: window.__frame, kiln: kiln.step, crawl: crawl.on, training: training ? training.t : -1 };
+}
+function redrawAll() { for (const w of walls) { w.dirty = true; } if (STATIC) frame(); }
+// ---------------------------------------------------------------------------------------------
+function bindUI() {
+  const r = $('#kr');
+  r.addEventListener('input', e => {
+    const v = +e.target.value;
+    kiln.want = v;
+    showKiln(v);
+    if (STATIC) frame();
+  });
+  r.addEventListener('change', () => {
+    log.push({ ev: 'slider', seed, t: kiln.step, walls: LOW.map(b => { const ck = kiln.ck[b][kiln.step / EVERY]; return { bits: b, hW: QM.hash(ck.W), hB: QM.hash(ck.b), rep: ck.rep, wrong: ck.wrong }; }) });
+  });
+  $('#bwall').addEventListener('click', () => { tiled = !tiled; syncTiled(); if (STATIC) frame(); });
+  $('#btrain').addEventListener('click', () => { trainNew(seed === NET0.seed ? 101 : seed + 1); if (STATIC) frame(); });
+  let rt = 0;
+  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { layout(); if (STATIC || FIXED) frame(); }, FIXED ? 0 : 60); });
+  if (STATIC) setInterval(() => { if (walls.some(w => w.dirty || w.wallDirty) || chartDirty) frame(); }, 120);
+}
+async function start() {
+  buildColumns(); bindUI();
+  try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); } catch (e) { }
+  layout();
+  if (seed === NET0.seed) setNet({ W: Float64Array.from(NET0.W), b: Float64Array.from(NET0.b) }, 'shipped');
+  else { setNet({ W: Float64Array.from(NET0.W), b: Float64Array.from(NET0.b) }, 'shipped'); const s = seed; seed = NET0.seed; trainNew(s); }
+  ready = true;
+  if (Q.has('kiln')) { kiln.want = +Q.get('kiln'); if (FIXED) showKiln(kiln.want); }
+  setSay();
+  startCrawl();
+  document.fonts && document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => { layout(); chartDirty = true; if (STATIC || FIXED) frame(); });
+}
+window.step = n => { if (!FIXED) return; n = n || 1; for (let i = 0; i < n; i++) frame(0, i < n - 1); };
+window.mosaic = {
+  state: () => {
+    if (!ready) return { ready: false };
+    return {
+      ready: true, seed, fixed: FIXED, static: STATIC, embed: EMBED, og: OG, tiled, phone: PHONE, cw: CW, tp: TP, dpr: DPR,
+      kilnMode: kiln.mode, kiln: kiln.step, allowed: allowed(), kilnReady: Object.fromEntries(LOW.map(b => [b, kiln.ready[b] * EVERY])), kilnDone: LOW.every(b => kiln.done[b]),
+      training: training ? training.t : -1, say: $('#say').textContent, sel: selN, hover: hoverN,
+      net: net ? hashes(net) : null,
+      walls: walls.map(w => ({ bits: w.bits, t: w.t, rep: w.cur.rep, repPct: +(w.cur.rep / TOT * 100).toFixed(4), wrong: w.cur.wrong, stamps: distinct(w.cur.W), hW: QM.hash(w.cur.W), hB: QM.hash(w.cur.b), cap: w.el.cap.textContent, flippedPx: w.flippedPx | 0 })),
+      perf: Object.assign({}, perf), log: log.slice(), frame: window.__frame
+    };
+  },
+  // test hooks: the z values a wall paints with, where a weight tile sits on screen, the network itself
+  logits: k => Array.from(walls[k].cur.z),
+  weights: k => ({ W: Array.from(walls[k].cur.W), b: Array.from(walls[k].cur.b) }),
+  latent: () => net ? { W: Array.from(net.W), b: Array.from(net.b) } : null,
+  tileRect: (k, n) => { const cv = walls[k].el.w, r = cv.getBoundingClientRect(), [x, y] = tilePx(n); return { x: r.left + (x + TP / 2) / DPR, y: r.top + (y + TP / 2) / DPR }; },
+  paramAt: (k, cx, cy) => { const cv = walls[k].el.w, r = cv.getBoundingClientRect(); return paramAt((cx - r.left) * cv.width / r.width, (cy - r.top) * cv.height / r.height); },
+  kiln: v => { kiln.want = v; showKiln(v); if (FIXED || STATIC) frame(); return kiln.step; },
+  stats: STATS
+};
+(async () => { await start(); if (FIXED) frame(); else if (!STATIC) { last = performance.now(); requestAnimationFrame(frame); } else frame(); })();
+
+</script>
+</body>
+</html>

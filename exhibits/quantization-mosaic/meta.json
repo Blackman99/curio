@@ -1,0 +1,11 @@
+{
+ "slug": "quantization-mosaic",
+ "title": "Quantization Mosaic",
+ "no": "051",
+ "date": "2026-11-19",
+ "kind": "Quantization · Canvas 2D + Workers",
+ "blurb": "A small network learned to paint one blue-and-white tile, and its 784 weights are a wall of tiles. Five copies stored in 32, 8, 4, 2 and 1 bits paint side by side: 8 bits changes almost nothing, 1 bit cracks the design. One kiln slider retrains the low-bit walls with their stamps in the loop until they paint it again.",
+ "color": "#0030a8",
+ "exhibit": "quantizationMosaic",
+ "lane": "ml"
+}
