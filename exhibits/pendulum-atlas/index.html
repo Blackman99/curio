@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pendulum Atlas — a quarter of a million double pendulums, and the arithmetic that decides them</title>
+<meta name="description" content="Every pixel is a double pendulum: 262,144 of them swing at once on your GPU and colour the map by when they first flip over the top, as in Heyl's double pendulum fractal. Your CPU redoes them all in double precision and marks where single precision gives a different answer. Click a pixel to hang its pendulum beside its twin, drop the bits, zoom into Heyl's enlargement.">
+<meta property="og:title" content="Pendulum Atlas">
+<meta property="og:description" content="262,144 double pendulums swing on your GPU and map when each first flips. Your CPU redoes them in double precision and marks where the arithmetic, not the physics, picked the colour.">
+<meta property="og:image" content="https://blackman99.github.io/curio/pendulum-atlas/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pendulum Atlas">
+<meta name="twitter:description" content="A map of 262,144 double pendulums, coloured by when each first flips, computed live on your GPU and checked in double precision on your CPU. Each extra bit buys the twins 1.8 time units together.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/pendulum-atlas/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0c0b0a;--paper:#efe7d6;--paper2:#aca591;--brass:#e0b45c;--hot:#ffe2a0;--ghost:#9ccfff;--cyan:#46e6ff;--line:rgba(239,226,200,.14);--panel:rgba(14,13,12,.94)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:'Newsreader',Georgia,serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+#stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at 34% 46%,#1e1a15 0,#110f0d 55%,#0a0908 100%)}
+#view{position:absolute;left:0;top:0;width:400px;height:400px}
+#gl,#ov,#c2{position:absolute;inset:0;width:100%;height:100%;display:block}
+#gl,#c2{background:#000;box-shadow:0 0 0 1px rgba(255,240,210,.1),0 30px 90px rgba(0,0,0,.65);image-rendering:pixelated}
+#c2{display:none}
+#ov{touch-action:none;cursor:crosshair}
+.tick{position:absolute;width:14px;height:14px;border:1px solid rgba(224,180,92,.55);pointer-events:none}
+.tick.a{left:-9px;top:-9px;border-right:0;border-bottom:0}.tick.b{right:-9px;top:-9px;border-left:0;border-bottom:0}
+.tick.c{left:-9px;bottom:-9px;border-right:0;border-top:0}.tick.d{right:-9px;bottom:-9px;border-left:0;border-top:0}
+.ax{position:absolute;font:400 10.5px/1 'DM Mono',monospace;color:rgba(239,231,214,.55);white-space:nowrap;pointer-events:none}
+.ax.x{top:calc(100% + 7px);transform:translateX(-50%)}
+.ax.y{left:-9px;transform:translate(-100%,-50%)}
+.axt{position:absolute;font:500 10px/1 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);pointer-events:none;white-space:nowrap}
+.axt.x{left:50%;top:calc(100% + 22px);transform:translateX(-50%)}
+.axt.y{left:-50px;top:50%;transform:translate(-50%,-50%) rotate(-90deg)}
+#hov{position:absolute;left:0;top:0;display:none;pointer-events:none;font:400 11px/1.35 'DM Mono',monospace;color:var(--paper);background:rgba(10,9,8,.86);border:1px solid var(--line);border-radius:7px;padding:5px 7px;white-space:nowrap;z-index:2}
+#hov b{color:var(--hot);font-weight:500}
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font:400 17px/1.4 'Newsreader',serif;color:var(--paper2)}
+#case{position:absolute;left:0;top:0;width:280px;height:400px}
+#cc{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:12px;box-shadow:0 0 0 1px rgba(224,180,92,.28),0 30px 90px rgba(0,0,0,.6)}
+#title{position:fixed;left:18px;top:14px;z-index:2;pointer-events:none;max-width:560px;padding:10px 16px 12px 12px;border-radius:12px;background:rgba(10,9,8,.55)}
+#title a{pointer-events:auto}
+.bk{display:inline-block;font:500 11.5px/1 'DM Mono',monospace;letter-spacing:.06em;color:var(--brass);text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:999px;background:rgba(10,9,8,.6);transition:background .2s,color .2s}
+.bk:hover,.bk:focus-visible{background:var(--brass);color:#1d1406;outline:none}
+.kick{display:inline-block;margin-left:10px;font:500 10.5px/1.3 'DM Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);text-shadow:0 1px 4px #000}
+h1{margin:9px 0 0;font:400 clamp(32px,3.2vw,48px)/1 'DM Serif Display',Georgia,serif;letter-spacing:.005em;color:#fbf3e2;text-shadow:0 2px 0 #3a2a12,0 5px 24px rgba(0,0,0,.8)}
+#story{position:fixed;left:18px;bottom:14px;width:calc(100vw - 440px);max-width:920px;z-index:2;pointer-events:none;padding:9px 14px 10px;border-radius:12px;background:rgba(10,9,8,.76)}
+#caption{margin:0;font:400 18px/1.36 'Newsreader',serif;color:#fbf5e8;min-height:4.08em;display:flex;align-items:center;transition:opacity .3s}
+#caption>span{display:block}
+#caption.fade{opacity:0}
+#caption b{font-weight:600;color:#fff}
+#caption .m{font:500 .84em 'DM Mono',monospace;color:var(--brass)}
+#caption .g{color:#7dff86;font-weight:600}#caption .r{color:#ff6a58;font-weight:600}#caption .p{color:#d38cff;font-weight:600}#caption .c{color:var(--cyan);font-weight:600}#caption .gh{color:var(--ghost);font-weight:600}#caption .br{color:var(--hot);font-weight:600}
+#caption sub,details sub{font-size:.7em}
+#panel{position:fixed;right:16px;top:16px;bottom:16px;width:372px;z-index:3;overflow:auto;scrollbar-width:thin;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px 12px;box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,210,.06)}
+.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:500 10px/1.1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);margin-bottom:6px}
+.lab b{font:500 11.5px/1 'DM Mono',monospace;letter-spacing:0;color:var(--paper);text-transform:none}
+.sec{margin-bottom:12px}
+.read{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:9px 6px}
+.rd{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rd span{font:500 9px/1.15 'DM Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--paper2)}
+.rd b{font:500 19px/1 'DM Mono',monospace;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.rd.big b{font-size:24px;color:var(--hot)}
+.rd small{font:400 10.5px/1.15 'DM Mono',monospace;color:var(--paper2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+canvas.chart{display:block;width:100%;border-radius:9px;background:#0a0a09;border:1px solid rgba(255,255,255,.07)}
+#vchart{height:104px}#lchart{height:150px}
+.btn{border:1px solid var(--line);background:rgba(224,180,92,.05);border-radius:8px;padding:8px 6px;font:400 11.5px/1.1 'DM Mono',monospace;color:var(--paper)}
+.btn:hover,.btn:focus-visible{background:rgba(224,180,92,.18);border-color:var(--brass);outline:none}
+.btn.go{background:var(--brass);border-color:var(--brass);color:#1d1406;font-weight:500}
+.btn.go:hover,.btn.go:focus-visible{background:#ffd789}
+.btn[aria-pressed=true]{background:rgba(224,180,92,.28);border-color:var(--brass)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 3px;font:400 11px/1.05 'DM Mono',monospace;color:var(--paper2);border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button:hover,.seg button:focus-visible{background:rgba(224,180,92,.14);outline:none;color:var(--paper)}
+.seg button[aria-pressed=true]{background:var(--brass);color:#1d1406;font-weight:500}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.hint{font:400 10.5px/1.4 'DM Mono',monospace;color:var(--paper2);margin-top:6px}
+.hint b{color:var(--paper);font-weight:500}
+.key{display:flex;flex-wrap:wrap;gap:4px 10px;font:400 10.5px/1.3 'DM Mono',monospace;color:var(--paper2);margin-top:7px}
+.key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+#twin{font:400 11px/1.5 'DM Mono',monospace;color:var(--paper2);border:1px dashed var(--line);border-radius:9px;padding:7px 9px}
+#twin table{width:100%;border-collapse:collapse}
+#twin td{padding:1px 0}#twin td:last-child{text-align:right;color:var(--paper);font-variant-numeric:tabular-nums}
+#twin .br{color:var(--hot)}#twin .gh{color:var(--ghost)}#twin .gp{color:#7dff86}
+details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+summary{cursor:pointer;font:500 10px/1 'DM Mono',monospace;letter-spacing:.17em;text-transform:uppercase;color:var(--brass);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:' +'}
+details[open] summary::after{content:' −'}
+details p{font-size:15px;line-height:1.42;color:var(--paper2);margin:9px 0 0}
+details p b{color:var(--paper);font-weight:600}
+details a,.foot a{color:var(--brass)}
+.foot{margin-top:10px;font:400 10.5px/1.5 'DM Mono',monospace;color:rgba(239,231,214,.55)}
+.foot button{background:none;border:0;padding:0;color:var(--brass);text-decoration:underline;font:inherit}
+@media (max-height:800px) and (min-width:821px){#caption{font-size:16.5px}h1{font-size:clamp(28px,2.8vw,40px);margin-top:7px}.sec{margin-bottom:9px}.rd b{font-size:17px}.rd.big b{font-size:21px}}
+@media (max-width:1180px) and (min-width:821px){#panel{width:340px}#story{width:calc(100vw - 400px)}#caption{font-size:16px}}
+@media (max-width:820px){
+  body{overflow:auto;overflow-x:hidden}
+  #title{position:static;max-width:none;padding:14px 16px 0;background:none;border-radius:0}
+  .kick{margin-left:8px;font-size:9px;letter-spacing:.13em}
+  h1{font-size:34px;margin:10px 0 2px}
+  #story{position:static;width:auto;max-width:none;padding:8px 16px 0;background:none}
+  #caption{font-size:16px;min-height:7.2em;align-items:flex-start}
+  #stage{position:relative;inset:auto;height:var(--sh,820px);margin-top:4px}
+  #ov{touch-action:pan-y}
+  .axt.y{left:-30px}
+  .ax.y{font-size:9px}
+  #panel{position:static;width:auto;margin:0 10px calc(14px + env(safe-area-inset-bottom));background:rgba(15,14,13,.98)}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}}
+.still *{transition:none!important}
+.og #panel,.og #story,.og .ax,.og .axt{display:none}
+#ogtext{display:none}
+.og #ogtext{display:block;position:fixed;right:38px;top:118px;width:27vw;z-index:2;font:400 25px/1.32 'Newsreader',serif;color:#f6ecd8;text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.og #ogtext p{margin:0 0 16px}.og #ogtext b{color:var(--hot);font-weight:600}.og #ogtext .c{color:var(--cyan);font-weight:600}
+.og #ogtext .chips{font:500 15.5px/1.6 'DM Mono',monospace;color:var(--brass);letter-spacing:.02em}
+.og #title{background:none}
+.lite #title,.lite #story{background:rgba(10,9,8,.86)}
+</style>
+</head>
+<body>
+<header id="title">
+  <a class="bk" href="../" title="Back to the cabinet">← Curio</a><span class="kick">Curio · No. 050 · Chaos</span>
+  <h1>Pendulum Atlas</h1>
+</header>
+<div id="ogtext" aria-hidden="true"><p>Every pixel is a <b>double pendulum</b>, coloured by when it first flips over the top.</p><p><span class="c">Cyan</span>: where single precision and double precision give a <b>different answer</b>. There, the arithmetic picked the colour.</p><p class="chips" id="ogchips"></p></div>
+<section id="story"><p id="caption" aria-live="polite"><span></span></p></section>
+<div id="stage">
+  <div id="view">
+    <canvas id="gl" aria-label="A square map of 262,144 double pendulums. Across, the starting angle of the upper rod; up, the starting angle of the lower rod, both from minus pi to pi. Each pixel takes a colour when its pendulum first flips over the top: green within 10 time units, red within 100, purple later, white never. A pale lens in the middle, inside a black curve, is where flipping is impossible for lack of energy. Around it, swirling bands of green and red, and a speckled red fringe where the outcome is chaotic."></canvas>
+    <canvas id="c2" aria-hidden="true"></canvas>
+    <canvas id="ov" aria-hidden="true"></canvas>
+    <i class="tick a"></i><i class="tick b"></i><i class="tick c"></i><i class="tick d"></i>
+    <div id="axes"></div>
+    <span class="axt x">θ₁ · upper rod at the start</span><span class="axt y">θ₂ · lower rod</span>
+    <div id="hov"></div>
+    <div id="msg"></div>
+  </div>
+  <div id="case"><canvas id="cc" aria-label="A glass case with the selected double pendulum, two brass rods hanging from a pivot, and its pale blue twin computed with fewer bits. Below, a chart of how far apart the twins are over time, on a logarithmic scale."></canvas></div>
+</div>
+<aside id="panel" aria-label="Readings and controls">
+  <div class="sec">
+    <div class="lab"><span>The atlas</span><b id="pathv">GPU · float32</b></div>
+    <div class="read">
+      <div class="rd big"><span>Time</span><b id="rt">–</b><small id="rts">of 200 √(l/g)</small></div>
+      <div class="rd"><span>Flipped</span><b id="rf">–</b><small id="rfs">–</small></div>
+      <div class="rd"><span>Speed</span><b id="rsp">–</b><small id="rsps">pendulum-steps / s</small></div>
+    </div>
+    <div class="key"><span><i style="background:#5ee668"></i>flips by 10</span><span><i style="background:#e8402f"></i>by 100</span><span><i style="background:#a35ae0"></i>by 200</span><span><i style="background:#fff"></i>not by 200</span><span><i style="background:#e6dcc6"></i>cannot</span><span><i style="background:var(--cyan)"></i>answers differ</span></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Map shows</span><b id="modev">GPU, single precision</b></div>
+    <div class="seg" id="mode"><button data-v="0" aria-pressed="true">float32 · GPU</button><button data-v="1" aria-pressed="false">float64 · CPU</button><button data-v="2" aria-pressed="false">where they differ</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Bits of significand</span><b id="bitsv">24 · IEEE single</b></div>
+    <div class="seg" id="bits"><button data-v="8" aria-pressed="false">8</button><button data-v="12" aria-pressed="false">12</button><button data-v="16" aria-pressed="false">16</button><button data-v="20" aria-pressed="false">20</button><button data-v="24" aria-pressed="true">24</button></div>
+    <div class="hint">Every number the map and the ghost twin compute is rounded to this many bits. Double precision has 53.</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Checked in double precision</span><b id="vprog">–</b></div>
+    <div class="read">
+      <div class="rd"><span>Checked</span><b id="vck">–</b><small id="vcks">pendulums, on your CPU</small></div>
+      <div class="rd big"><span>Differ</span><b id="vdf">–</b><small id="vdfs">–</small></div>
+      <div class="rd"><span>First differ</span><b id="vfirst">–</b><small>flip time</small></div>
+    </div>
+    <canvas id="vchart" class="chart" style="margin-top:8px"></canvas>
+    <div class="hint">Share of pendulums whose flip time differs (by more than one step), by when they flip. Dots: your CPU's own single precision.</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>This pendulum</span><b id="selv">click the map</b></div>
+    <div id="twin"></div>
+    <div class="row3" style="margin-top:7px"><button class="btn go" id="playb">Pause</button><button class="btn" id="againb">From t = 0</button><button class="btn" id="zoomb" title="Zoom in four times around this pendulum">Zoom ×4 here</button></div>
+    <div class="seg" id="speed" style="margin-top:6px"><button data-v="2" aria-pressed="false">slow</button><button data-v="6" aria-pressed="true">normal</button><button data-v="20" aria-pressed="false">fast</button></div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>When do twins part?</span><b id="lv">–</b></div>
+    <canvas id="lchart" class="chart"></canvas>
+    <div class="hint" id="lhint">Time until a twin with fewer bits is 0.1 rad away from the double-precision pendulum. Line: median of 12,384 pendulums. Dots: this one.</div>
+  </div>
+  <div class="sec">
+    <div class="lab"><span>Window</span><b id="winv">−π … π</b></div>
+    <div class="row2"><button class="btn" id="fullb">Whole map</button><button class="btn" id="heylb" title="The window of Heyl's Fig. 3">Heyl's enlargement</button></div>
+    <div class="hint">Drag a box on the map to zoom into it.</div>
+  </div>
+  <details id="what"><summary>What is this?</summary><p><b>The pendulum.</b> Two identical uniform rods, the upper one hung from a fixed pivot and the lower one from the end of the upper, as in Jeremy Heyl's <a href="https://www.famaf.unc.edu.ar/~vmarconi/fiscomp/Double.pdf"><i>The Double Pendulum Fractal</i></a> (UBC, 2008). Both start at rest at the pixel's angles: θ₁ across, θ₂ up, each from −π to π. The page integrates Heyl's equations of motion (his eqs. 7–10, in momentum form, with m = l = g = 1) by the classical fourth-order Runge–Kutta method with a fixed step of 0.01 √(l/g) (Heyl used adaptive steps), for up to 20,000 steps: t = 200 √(l/g). A pixel's colour is the first time either rod passes straight up (|θ| &gt; π). Colours follow his Fig. 2: green within 10, red within 100, purple after (his purple runs to 1,000, ours stops at 200); within each colour, darker flips sooner. White pendulums had not flipped by t = 200. The ivory lens inside the curve 3 cos θ₁ + cos θ₂ = 2 cannot flip at all: those pendulums start with less energy than it takes to lift the lower rod over the top (Heyl's eq. 13), so nothing is integrated there.</p>
+<p><b>The whole map.</b> At 512 × 512: 262,144 pendulums, 63,924 inside the lens. Of the other 198,220, in double precision, 133,288 flip before t = 10, 49,872 between 10 and 100, 3,368 between 100 and 200, and 11,692 not by 200. Against Heyl's Fig. 2, sampled at the same 512 × 512 angles: where his colour is unambiguous, 99.7% of our green pixels are green in his figure, and 92.1% of his red ones are red here.</p>
+<p><b>Two computers.</b> The map runs on your GPU in single precision (32-bit floats, 24 bits of significand): a WebGL2 fragment shader keeps every pendulum's angles and momenta in a floating-point texture and takes up to a few hundred steps per frame. Sine and cosine are not the GPU's own; the shader evaluates the same Taylor polynomials as the CPU. Meanwhile your CPU (Web Workers, one per core) redoes every pendulum in double precision (53 bits), every eighth pixel first, then every fourth, every second, and the rest. “Where they differ” marks pendulums whose first flip comes out more than one step (0.01) apart, or that flip in one and not in the other.</p>
+<p><b>What differs.</b> Single against double precision, both on the CPU, over the whole map: 8,946 of 198,220 pendulums (4.5%). Of the 133,288 that flip before t = 10, 4 differ; the first difference is at t = 8.11. Of those that flip between 10 and 20, 0.9% differ; 30–50, 21.8%; 50–100, 52.8%; 100–200, 88.5%. A GPU is not quite IEEE single precision either: it fuses a·b + c into one rounding. On the machine this page was built on (Apple M4 Pro), the GPU and the CPU, both in single precision, give the same flip step for 187,332 of the 198,220 pendulums and differ by more than a step for 7,916 (4.0%), none of them before t = 10.1: nearly as many as single against double.</p>
+<p><b>Each bit buys a fixed amount of time.</b> Put a twin beside each pendulum that rounds every number to p bits (24 bits is exactly IEEE single; other widths round each double-precision result with Veltkamp's split) and time when the two are first 0.1 rad apart. Median over 12,384 pendulums (a 128 × 128 map without the lens): 8.8 at 12 bits, 30.4 at 24, 73.0 at 48. From 12 to 48 bits that is a straight line, 1.78 time units per bit (no point more than 0.25 off it). Rounding errors grow e-fold every 2.6 time units (a Lyapunov exponent of 0.39 per √(l/g)), so halving the error buys a fixed amount of time, not twice the time. Double precision's 29 extra bits over single buy about 52 more; the line points to about 82 at 53 bits, which this page cannot check: that would need a still wider arithmetic as referee. At 8 bits the twins part almost at once (0.63).</p>
+<p><b>Neither is the pendulum.</b> Both computers solve the same stepped equations, and the step has its own error. Double precision with step 0.01 against step 0.005: twins part at a median t = 36.8, as if the step were worth about 28 bits. Beyond t ≈ 36.8, the colours in the speckled band belong to neither the real pendulum nor any one arithmetic; only their statistics do. Heyl's finding that the edge of the stable set is a fat fractal, about 0.15% of all starting angles undecidable at any precision, is about the true pendulum, not about one computed picture.</p>
+<p><b>Cross-checks.</b> The double-precision, single-precision and p-bit arithmetics are written twice, in JavaScript for the page and in Python with numpy, with the same operations in the same order and their own sine and cosine (Taylor series after a Cody–Waite reduction), so neither language's maths library can make them differ: 6,140 flip times, partings and trajectory samples match bit for bit. In the tests, the page's own log (every ladder and twin, and a sample of the double-precision verdict) is replayed in Python and matches too.</p>
+<p><b>What is simulated.</b> Ideal rigid rods, frictionless pivots, no air. Over 200 random pendulums to t = 200, the step drifts the energy by at most 2×10<sup>−4</sup> mgl. Below 24 bits the GPU rounds each single-precision result again, and the ghost twin rounds each double-precision result, so map and ghost can differ in the last bit there.</p>
+</details>
+  <div class="foot"><button id="tourb">Replay the tour</button> · computed in your browser · <a href="../">back to Curio</a></div>
+</aside>
+<script type="module">
+const STATS={"map":{"N":512,"dt":0.01,"T":200,"px":262144,"forbidden":63924,"flippable":198220,"lt10":133288,"b10_100":49872,"b100_200":3368,"none":11692},"c32":{"differ":8946,"identical":185820,"firstT":8.11,"bands":[{"lo":0,"hi":10,"n":133288,"dis":4},{"lo":10,"hi":20,"n":28188,"dis":248},{"lo":20,"hi":30,"n":9182,"dis":704},{"lo":30,"hi":50,"n":6942,"dis":1516},{"lo":50,"hi":100,"n":5934,"dis":3132},{"lo":100,"hi":200,"n":3776,"dis":3342},{"lo":200,"hi":null,"n":10910,"dis":0}],"half_after":null},"ladder":{"N":128,"n":12384,"ps":[8,12,16,20,24,28,32,36,40,44,48],"med":[0.63,8.77,16.15,23.37,30.445,37.74,44.74,51.620000000000005,58.965,66.05,73.0],"q25":[0.46,6.4275,12.41,18.47,24.61,30.76,36.910000000000004,43.1775,49.52,55.78,61.97],"q75":[1.1500000000000001,12.38,22.150000000000002,31.7525,40.92,50.05,59.03,67.98,76.88499999999999,85.75,94.615],"never":[0.0,0.0008074935400516795,0.02406330749354005,0.037467700258397935,0.04247416020671835,0.046188630490956076,0.05167958656330749,0.05910852713178295,0.0710594315245478,0.08446382428940569,0.09560723514211886],"slope":1.7816212121212118,"icpt":-12.363636363636344,"pred53":82.06228787878788,"lam":0.38905418045325074,"half":36.785,"halfBits":27.586467891858785,"maxResid":0.24581818181819948},"extra":{"hg":"99.7%","hr":"92.1%","gpuSame":"the GPU and the CPU, both in single precision, give the same flip step for 187,332 of the 198,220 pendulums and differ by more than a step for 7,916 (4.0%), none of them before t = 10.1: nearly as many as single against double.","cases":"6,140 flip times, partings and trajectory samples","edrift":"2\u00d710<sup>\u22124</sup>"}};
+function makeEngine(){
+  'use strict';
+  const PIO2_HI=1.57079632673412561417, PIO2_LO=6.07710050650619224932e-11, TWO_OVER_PI=0.6366197723675814;
+  const SC=[-0.16666666666666666,0.008333333333333333,-0.0001984126984126984,2.7557319223985893e-06,
+    -2.505210838544172e-08,1.6059043836821613e-10,-7.647163731819816e-13,2.8114572543455206e-15,-8.22063524662433e-18];
+  const CC=[-0.5,0.041666666666666664,-0.001388888888888889,2.48015873015873e-05,-2.755731922398589e-07,
+    2.08767569878681e-09,-1.1470745597729725e-11,4.779477332387385e-14,-1.5619206968586225e-16,4.110317623312165e-19];
+  const [S1,S2,S3,S4,S5,S6,S7,S8,S9]=SC, [C1,C2,C3,C4,C5,C6,C7,C8,C9,C10]=CC;
+  const PI=Math.PI, SEP=0.1;
+  // ---------------- float64 ----------------
+  function sinr(r){const z=r*r;let p=S9;p=S8+z*p;p=S7+z*p;p=S6+z*p;p=S5+z*p;p=S4+z*p;p=S3+z*p;p=S2+z*p;p=S1+z*p;return r+r*z*p;}
+  function cosr(r){const z=r*r;let q=C10;q=C9+z*q;q=C8+z*q;q=C7+z*q;q=C6+z*q;q=C5+z*q;q=C4+z*q;q=C3+z*q;q=C2+z*q;q=C1+z*q;return 1+z*q;}
+  function sin64(x){const k=Math.floor(x*TWO_OVER_PI+0.5),r=(x-k*PIO2_HI)-k*PIO2_LO,q=k&3;
+    return q===0?sinr(r):q===1?cosr(r):q===2?-sinr(r):-cosr(r);}
+  function cos64(x){const k=Math.floor(x*TWO_OVER_PI+0.5),r=(x-k*PIO2_HI)-k*PIO2_LO,q=k&3;
+    return q===0?cosr(r):q===1?-sinr(r):q===2?-cosr(r):sinr(r);}
+  function d64(t1,t2,p1,p2,D){
+    const d=t1-t2, sd=sin64(d), cd=cos64(d), s1=sin64(t1), s2=sin64(t2);
+    const den=16-9*cd*cd;
+    const w1=6*(2*p1-3*cd*p2)/den, w2=6*(8*p2-3*cd*p1)/den;
+    const m=w1*w2*sd;
+    D[0]=w1;D[1]=w2;D[2]=-0.5*(m+3*s1);D[3]=-0.5*(s2-m);
+  }
+  const A=new Float64Array(4),B=new Float64Array(4),C=new Float64Array(4),E=new Float64Array(4);
+  function step64(Y,dt){
+    const h2=0.5*dt,h6=dt/6, t1=Y[0],t2=Y[1],p1=Y[2],p2=Y[3];
+    d64(t1,t2,p1,p2,A);
+    d64(t1+h2*A[0],t2+h2*A[1],p1+h2*A[2],p2+h2*A[3],B);
+    d64(t1+h2*B[0],t2+h2*B[1],p1+h2*B[2],p2+h2*B[3],C);
+    d64(t1+dt*C[0],t2+dt*C[1],p1+dt*C[2],p2+dt*C[3],E);
+    Y[0]=t1+h6*(A[0]+2*B[0]+2*C[0]+E[0]);Y[1]=t2+h6*(A[1]+2*B[1]+2*C[1]+E[1]);
+    Y[2]=p1+h6*(A[2]+2*B[2]+2*C[2]+E[2]);Y[3]=p2+h6*(A[3]+2*B[3]+2*C[3]+E[3]);
+  }
+  // Heyl eq 13: neither rod can flip when 3 cos t1 + cos t2 > 2
+  function canFlip(a,b){return 3*cos64(a)+cos64(b)<=2;}
+  // ---------------- IEEE single ----------------
+  const F=Math.fround;
+  const fS=SC.map(F), fC=CC.map(F), fT=F(TWO_OVER_PI), PI32=F(PI);
+  const gHI=1.5703125, fLO=F(PI/2-1.5703125);           // 201/128: k*gHI is exact in any width >= 8 bits
+  function sinr32(r){const z=F(r*r);let p=fS[8];for(let i=7;i>=0;i--)p=F(fS[i]+F(z*p));return F(r+F(F(r*z)*p));}
+  function cosr32(r){const z=F(r*r);let q=fC[9];for(let i=8;i>=0;i--)q=F(fC[i]+F(z*q));return F(1+F(z*q));}
+  function sin32(x){const k=Math.floor(F(F(x*fT)+0.5)),r=F(F(x-k*gHI)-F(k*fLO)),q=k&3;
+    return q===0?sinr32(r):q===1?cosr32(r):q===2?-sinr32(r):-cosr32(r);}
+  function cos32(x){const k=Math.floor(F(F(x*fT)+0.5)),r=F(F(x-k*gHI)-F(k*fLO)),q=k&3;
+    return q===0?cosr32(r):q===1?-sinr32(r):q===2?-cosr32(r):sinr32(r);}
+  function d32(t1,t2,p1,p2,D){
+    const d=F(t1-t2), sd=sin32(d), cd=cos32(d), s1=sin32(t1), s2=sin32(t2);
+    const den=F(16-F(F(9*cd)*cd));
+    const w1=F(F(6*F(F(2*p1)-F(F(3*cd)*p2)))/den), w2=F(F(6*F(F(8*p2)-F(F(3*cd)*p1)))/den);
+    const m=F(F(w1*w2)*sd);
+    D[0]=w1;D[1]=w2;D[2]=F(-0.5*F(m+F(3*s1)));D[3]=F(-0.5*F(s2-m));
+  }
+  function step32(Y,dt){
+    dt=F(dt);const h2=F(0.5*dt),h6=F(dt/6), t1=Y[0],t2=Y[1],p1=Y[2],p2=Y[3];
+    d32(t1,t2,p1,p2,A);
+    d32(F(t1+F(h2*A[0])),F(t2+F(h2*A[1])),F(p1+F(h2*A[2])),F(p2+F(h2*A[3])),B);
+    d32(F(t1+F(h2*B[0])),F(t2+F(h2*B[1])),F(p1+F(h2*B[2])),F(p2+F(h2*B[3])),C);
+    d32(F(t1+F(dt*C[0])),F(t2+F(dt*C[1])),F(p1+F(dt*C[2])),F(p2+F(dt*C[3])),E);
+    for(let i=0;i<4;i++)Y[i]=F(Y[i]+F(h6*F(F(F(A[i]+F(2*B[i]))+F(2*C[i]))+E[i])));
+  }
+  // ---------------- p-bit significand (Veltkamp) ----------------
+  function mk(p){
+    const S=Math.pow(2,53-p)+1;
+    const R=x=>{const c=x*S;return c-(c-x);};
+    const pS=SC.map(R), pC=CC.map(R), pT=R(TWO_OVER_PI), pLO=R(PI/2-1.5703125), pPI=R(PI), half=R(0.5);
+    const sinr=r=>{const z=R(r*r);let s=pS[8];for(let i=7;i>=0;i--)s=R(pS[i]+R(z*s));return R(r+R(R(r*z)*s));};
+    const cosr=r=>{const z=R(r*r);let q=pC[9];for(let i=8;i>=0;i--)q=R(pC[i]+R(z*q));return R(1+R(z*q));};
+    const sc=(x,c)=>{const k=Math.floor(R(R(x*pT)+0.5)),r=R(R(x-k*gHI)-R(k*pLO)),q=(k+(c?1:0))&3;
+      return q===0?sinr(r):q===1?cosr(r):q===2?-sinr(r):-cosr(r);};
+    const d=(t1,t2,p1,p2,D)=>{
+      const dd=R(t1-t2), sd=sc(dd,0), cd=sc(dd,1), s1=sc(t1,0), s2=sc(t2,0);
+      const den=R(16-R(R(9*cd)*cd));
+      const w1=R(R(6*R(R(2*p1)-R(R(3*cd)*p2)))/den), w2=R(R(6*R(R(8*p2)-R(R(3*cd)*p1)))/den);
+      const m=R(R(w1*w2)*sd);
+      D[0]=w1;D[1]=w2;D[2]=R(-0.5*R(m+R(3*s1)));D[3]=R(-0.5*R(s2-m));
+    };
+    const step=(Y,dt)=>{
+      dt=R(dt);const h2=R(0.5*dt),h6=R(dt/6), t1=Y[0],t2=Y[1],p1=Y[2],p2=Y[3];
+      d(t1,t2,p1,p2,A);
+      d(R(t1+R(h2*A[0])),R(t2+R(h2*A[1])),R(p1+R(h2*A[2])),R(p2+R(h2*A[3])),B);
+      d(R(t1+R(h2*B[0])),R(t2+R(h2*B[1])),R(p1+R(h2*B[2])),R(p2+R(h2*B[3])),C);
+      d(R(t1+R(dt*C[0])),R(t2+R(dt*C[1])),R(p1+R(dt*C[2])),R(p2+R(dt*C[3])),E);
+      for(let i=0;i<4;i++)Y[i]=R(Y[i]+R(h6*R(R(R(A[i]+R(2*B[i]))+R(2*C[i]))+E[i])));
+    };
+    return {p,R,step,PI:pPI,sin:x=>sc(R(x),0),cos:x=>sc(R(x),1)};
+  }
+  const AR={53:{p:53,R:x=>x,step:step64,PI:PI,sin:sin64,cos:cos64},24:{p:24,R:F,step:step32,PI:PI32,sin:sin32,cos:cos32}};
+  function arith(p){return AR[p]||(AR[p]=mk(p));}
+  // ---------------- runs ----------------
+  // first step n (1-based) after which |t1|>pi or |t2|>pi in arithmetic p; -1 none within nmax; -2 forbidden (Heyl eq 13)
+  const Y=new Float64Array(4);
+  function flip(a,b,dt,nmax,p){
+    if(!canFlip(a,b))return -2;
+    const M=arith(p||53),R=M.R,st=M.step,P=M.PI;
+    Y[0]=R(a);Y[1]=R(b);Y[2]=0;Y[3]=0;
+    if(st===step64){for(let n=1;n<=nmax;n++){step64(Y,dt);if(Math.abs(Y[0])>PI||Math.abs(Y[1])>PI)return n;}return -1;}
+    for(let n=1;n<=nmax;n++){st(Y,dt);if(Math.abs(Y[0])>P||Math.abs(Y[1])>P)return n;}
+    return -1;
+  }
+  // a p-bit twin beside the double-precision pendulum: first step where max|dtheta| > SEP (-1 never),
+  // and each one's flip step. full=false stops at the parting (statistics); full=true runs until both flipped too.
+  function part(a,b,dt,nmax,p,full,dtB){
+    const M=arith(p),R=M.R,st=M.step,P=M.PI;
+    const U=new Float64Array([a,b,0,0]),V=new Float64Array([R(a),R(b),0,0]);
+    const ok=canFlip(a,b);let sep=-1,fu=ok?-1:-2,fv=ok?-1:-2;
+    const k=dtB?Math.round(dt/dtB):1, dv=dtB||dt;
+    for(let n=1;n<=nmax;n++){
+      step64(U,dt);for(let j=0;j<k;j++)st(V,dv);
+      if(fu===-1&&(Math.abs(U[0])>PI||Math.abs(U[1])>PI))fu=n;
+      if(fv===-1&&(Math.abs(V[0])>P||Math.abs(V[1])>P))fv=n;
+      if(sep<0&&(Math.abs(U[0]-V[0])>SEP||Math.abs(U[1]-V[1])>SEP)){sep=n;if(!full)break;}
+      if(full&&sep>=0&&fu!==-1&&fv!==-1)break;
+    }
+    return {sep,fu,fv};
+  }
+  // energy H (Heyl eq 4 with momenta): used by tests for drift
+  function energy(Y){
+    const c=cos64(Y[0]-Y[1]),den=16-9*c*c,w1=6*(2*Y[2]-3*c*Y[3])/den,w2=6*(8*Y[3]-3*c*Y[2])/den;
+    return (w2*w2+4*w1*w1+3*w1*w2*c)/6-0.5*(3*cos64(Y[0])+cos64(Y[1]));
+  }
+  // pixel centres of an N x N window centred (cx,cy) with half-width hw: theta = c + (i + 0.5 - N/2) * (2 hw / N)
+  function axis(c,hw,N,i){return c+(i+0.5-N/2)*(2*hw/N);}
+  return {sin64,cos64,step64,step32,arith,canFlip,flip,part,energy,axis,PI,PI32,SEP};
+}
+
+
+const E=makeEngine();
+
+/* ================= page ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const Q=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FIXED=Q.has('fixed'),STILL=Q.has('still'),STATIC=(RM||STILL)&&!FIXED;
+if(STATIC||FIXED)document.documentElement.classList.add('still');
+const OG=Q.has('og')?(+Q.get('og')||1):0;if(OG)document.documentElement.classList.add('og');
+const EMBED=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),lerp=(a,b,t)=>a+(b-a)*t;
+const comma=n=>Math.round(n).toLocaleString('en-US');
+const big=n=>n>=1e9?(n/1e9).toFixed(n>=1e10?0:1)+' bn':n>=1e6?(n/1e6).toFixed(n>=1e7?0:1)+' M':comma(n);
+const m=x=>`<span class="m">${x}</span>`;
+const pct=x=>x===0?'0%':x<1e-4?'<0.01%':(x*100).toFixed(x<.001?2:x<.1?1:0)+'%';
+const tf=n=>(n*DT).toFixed(2);
+
+/* ---------- constants ---------- */
+const DT=0.01,NMAX=20000,TMAX=200;
+const PS=[8,12,16,20,24,28,32,36,40,44,48];
+const FULL={cx:0,cy:0,hw:Math.PI},HEYL3={cx:1.15,cy:2,hw:0.25};
+const TOUR={i:391,j:404};                // on the whole map at 512: theta1 1.6628, theta2 1.8224
+const TA=E.axis(0,Math.PI,512,391),TB=E.axis(0,Math.PI,512,404);
+const ISLE=[1.08,1.9];                   // inside the white island of Heyl's Fig. 3
+const BANDS=[[0,10],[10,20],[20,30],[30,50],[50,100],[100,200]];
+const LOG=[];
+
+/* ---------- state ---------- */
+let W={...FULL},NG=512,bits=24,mode=0,PATH='gpu',SOFT=false,LITE=Q.has('lite'),renderer='',glErr='';
+let th1=null,th2=null,forb=null;          // pixel centres (float64) and Heyl's energy test
+let nNow=0,simGen=0,simDone=false,simStart=0,paceMul=1,Kmax=FIXED?40:64,lastSteps=0,spsGPU=0;
+let gflip=null;                           // GPU (or CPU-path) flip steps after the run, Float32Array
+let flippedCount=0;
+let vflip=null,vDone=0,vTotal=0,vGen=0,vLevel=-1;   // double-precision verdict: Int32Array, -3 = not yet
+let cflip=null,cDone=0,cGen=0;            // CPU-path map (p-bit) when there is no usable GPU
+let cmp=null;                             // comparison GPU vs double
+let sel=null;                             // selected pendulum
+let tourOn=false,tourDone=false,tourMark='',simT=0,live=true,script=null,swait=0,swaitFn=null;
+let capText='',ready=false,frameErr='',fails=0;
+
+/* ---------- grid ---------- */
+function makeGrid(){
+ th1=new Float64Array(NG);th2=new Float64Array(NG);
+ for(let i=0;i<NG;i++){th1[i]=E.axis(W.cx,W.hw,NG,i);th2[i]=E.axis(W.cy,W.hw,NG,i)}
+ forb=new Uint8Array(NG*NG);let nf=0;
+ for(let j=0;j<NG;j++)for(let i=0;i<NG;i++){const f=E.canFlip(th1[i],th2[j])?0:1;forb[j*NG+i]=f;nf+=f}
+ return nf}
+const ixOf=(a,b)=>[Math.round((a-W.cx)/(2*W.hw/NG)+NG/2-.5),Math.round((b-W.cy)/(2*W.hw/NG)+NG/2-.5)];
+
+/* ---------- WebGL2 ---------- */
+const cv=$('#gl'),c2=$('#c2'),ov=$('#ov'),oc=ov.getContext('2d'),cc=$('#cc'),cx2=cc.getContext('2d');
+let gl=null,PR={},TX={},FB=[],cur=0,c2d=null;
+const VS=`#version 300 es
+in vec2 aP;void main(){gl_Position=vec4(aP,0.,1.);}`;
+function simFS(P){return `#version 300 es
+precision highp float;precision highp int;
+#define P ${P}
+uniform highp sampler2D uS,uI;
+uniform int uK,uN0,uNMAX;
+uniform float uDt,uH2,uH6,uPI,uT,uLO;
+uniform float uSC[9];uniform float uCC[10];
+layout(location=0) out vec4 oS;layout(location=1) out vec4 oI;
+#if P<24
+float R(float x){uint u=floatBitsToUint(x);const uint SH=uint(24-P);uint lsb=(u>>SH)&1u;u=u+((1u<<(SH-1u))-1u)+lsb;u&=~((1u<<SH)-1u);return uintBitsToFloat(u);}
+vec4 Rv(vec4 v){return vec4(R(v.x),R(v.y),R(v.z),R(v.w));}
+#else
+#define R(x) (x)
+#define Rv(x) (x)
+#endif
+vec2 sc(float x){
+ float k=floor(R(R(x*uT)+0.5));float r=R(R(x-k*1.5703125)-R(k*uLO));
+ float z=R(r*r);float s=uSC[8];for(int i=7;i>=0;i--)s=R(uSC[i]+R(z*s));float sv=R(r+R(R(r*z)*s));
+ float q=uCC[9];for(int i=8;i>=0;i--)q=R(uCC[i]+R(z*q));float cv=R(1.0+R(z*q));
+ int qd=int(k)&3;
+ return qd==0?vec2(sv,cv):qd==1?vec2(cv,-sv):qd==2?vec2(-sv,-cv):vec2(-cv,sv);}
+vec4 der(vec4 y){
+ float d=R(y.x-y.y);vec2 a=sc(d);float s1=sc(y.x).x,s2=sc(y.y).x;float sd=a.x,cd=a.y;
+ float den=R(16.0-R(R(9.0*cd)*cd));
+ float w1=R(R(6.0*R(R(2.0*y.z)-R(R(3.0*cd)*y.w)))/den);
+ float w2=R(R(6.0*R(R(8.0*y.w)-R(R(3.0*cd)*y.z)))/den);
+ float m=R(R(w1*w2)*sd);
+ return vec4(w1,w2,R(-0.5*R(m+R(3.0*s1))),R(-0.5*R(s2-m)));}
+vec4 step4(vec4 y){
+ vec4 A=der(y);vec4 B=der(Rv(y+Rv(uH2*A)));vec4 C=der(Rv(y+Rv(uH2*B)));vec4 D=der(Rv(y+Rv(uDt*C)));
+ return Rv(y+Rv(uH6*Rv(Rv(Rv(A+Rv(2.0*B))+Rv(2.0*C))+D)));}
+void main(){
+ ivec2 p=ivec2(gl_FragCoord.xy);vec4 y=texelFetch(uS,p,0),inf=texelFetch(uI,p,0);
+ float fl=inf.x;bool fb=inf.y>0.5;
+ if(fl<0.0){for(int k=0;k<uK;k++){int n=uN0+k+1;if(n>uNMAX)break;y=step4(y);if(!fb&&(abs(y.x)>uPI||abs(y.y)>uPI)){fl=float(n);break;}}}
+ oS=y;oI=vec4(fl,inf.y,inf.z,inf.w);}`}
+const COLGLSL=`
+vec3 band(float t){
+ if(t<10.0){float f=t/10.0;return mix(vec3(.03,.17,.05),vec3(.42,1.0,.45),pow(f,.85));}
+ if(t<100.0){float f=log(t/10.0)/log(10.0);return mix(vec3(.24,.03,.02),vec3(1.0,.33,.24),pow(f,.8));}
+ float f=clamp(log(t/100.0)/log(2.0),0.0,1.0);return mix(vec3(.25,.06,.36),vec3(.82,.46,1.0),f);}
+const vec3 WHITE=vec3(.98,.97,.94),IVORY=vec3(.86,.82,.73),UNK=vec3(.09,.085,.08),CYAN=vec3(.27,.9,1.0);`;
+const DISP=`#version 300 es
+precision highp float;precision highp int;
+uniform highp sampler2D uI,uS,uV;uniform int uNg,uMode,uDone,uLive;uniform vec2 uRes;uniform float uDt,uPulse;
+out vec4 o;
+${COLGLSL}
+vec3 dim(vec3 c,float k){float l=dot(c,vec3(.3,.55,.15));return mix(vec3(l),c,.35)*k;}
+void main(){
+ vec2 f=gl_FragCoord.xy/uRes;ivec2 p=clamp(ivec2(floor(f*float(uNg))),ivec2(0),ivec2(uNg-1));
+ vec4 inf=texelFetch(uI,p,0);float g=inf.x;bool fb=inf.y>0.5;
+ vec3 cg;
+ if(fb)cg=IVORY;else if(g>=0.0)cg=band(g*uDt);else if(g<-2.5)cg=UNK;
+ else if(uDone==1)cg=WHITE;
+ else if(uLive==1){vec4 s=texelFetch(uS,p,0);float e=clamp((2.0-cos(s.x)-cos(s.y))*.25,0.,1.);cg=mix(vec3(.06,.055,.05),vec3(.55,.43,.26),e);}
+ else cg=UNK;
+ vec3 c=cg;
+ if(uMode>0){float v=texelFetch(uV,p,0).x;
+  if(uMode==1){if(v<-2.5)c=dim(cg,.35);else if(v<-1.5)c=IVORY;else if(v<-.5)c=WHITE;else c=band(v*uDt);}
+  else if(uMode==3){if(!fb&&v>-2.5&&uDone==1&&g>-2.5&&((g>=0.0)!=(v>=0.0)||(g>=0.0&&abs(g-v)>1.5)))c=CYAN;}
+  else{ if(fb)c=dim(IVORY,.3);
+   else if(v<-2.5||uDone==0||g<-2.5)c=dim(cg,.22);
+   else{bool d=(g>=0.0)!=(v>=0.0)||(g>=0.0&&abs(g-v)>1.5);c=d?CYAN*(.82+.18*uPulse):dim(cg,.34);}}}
+ o=vec4(pow(c,vec3(1.0)),1.0);}`;
+function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s}
+function program(fs){const p=gl.createProgram();gl.attachShader(p,compile(gl.VERTEX_SHADER,VS));gl.attachShader(p,compile(gl.FRAGMENT_SHADER,fs));gl.bindAttribLocation(p,0,'aP');gl.linkProgram(p);
+ if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);
+ for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);const nm=a.name.replace(/\[0\]$/,'');u[nm]=gl.getUniformLocation(p,a.name)}return{p,u}}
+function initGL(){
+ gl=cv.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,preserveDrawingBuffer:!!(FIXED||STATIC||OG),powerPreference:'high-performance'});
+ if(!gl)throw new Error('no WebGL2');
+ const dbg=gl.getExtension('WEBGL_debug_renderer_info');renderer=String(gl.getParameter(gl.RENDERER)||'');
+ if(dbg&&/webkit|mozilla/i.test(renderer)&&renderer.length<20)renderer=String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)||renderer);
+ SOFT=/swiftshader|llvmpipe|software|basic render/i.test(renderer);
+ const cbf=gl.getExtension('EXT_color_buffer_float');
+ const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+ gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+ PR.disp=program(DISP);
+ PATH=(cbf&&!SOFT&&!Q.has('cpu'))?'gpu':'cpu';
+ if(PATH==='gpu'){try{PR.sim24=program(simFS(24))}catch(e){PATH='cpu';glErr='sim: '+String(e.message||e).slice(0,120)}}
+}
+function tex(fmt,w,h,data){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ if(fmt==='rgba')gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,data||null);else gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,w,h,0,gl.RED,gl.FLOAT,data||null);return t}
+function freeTex(){for(const k in TX)if(TX[k])gl.deleteTexture(TX[k]);for(const f of FB)gl.deleteFramebuffer(f);TX={};FB=[]}
+function simProg(){const k='sim'+bits;if(!PR[k])PR[k]=program(simFS(bits));return PR[k]}
+function arithConsts(){const A=E.arith(bits),R=bits===24?Math.fround:(x=>Math.fround(A.R(x)));const dt=R(DT);
+ const SC=[-0.16666666666666666,0.008333333333333333,-0.0001984126984126984,2.7557319223985893e-06,-2.505210838544172e-08,1.6059043836821613e-10,-7.647163731819816e-13,2.8114572543455206e-15,-8.22063524662433e-18];
+ const CC=[-0.5,0.041666666666666664,-0.001388888888888889,2.48015873015873e-05,-2.755731922398589e-07,2.08767569878681e-09,-1.1470745597729725e-11,4.779477332387385e-14,-1.5619206968586225e-16,4.110317623312165e-19];
+ return{dt,h2:R(0.5*dt),h6:R(dt/6),PI:R(Math.PI),T:R(0.6366197723675814),LO:R(Math.PI/2-1.5703125),SC:SC.map(R),CC:CC.map(R)}}
+
+/* ---------- restarting the map ---------- */
+let VTEX=null,vDirty=false,cDirty=false;
+function restartSim(ev){
+ simGen++;nNow=0;simDone=false;gflip=null;cmp=null;flippedCount=0;simStart=simT;lastSteps=0;
+ const A=E.arith(bits);
+ if(gl){freeTex();
+  if(PATH==='gpu'){const st=new Float32Array(4*NG*NG),inf=new Float32Array(4*NG*NG);
+   for(let j=0;j<NG;j++){const b=Math.fround(A.R(th2[j]));for(let i=0;i<NG;i++){const k=j*NG+i;st[4*k]=Math.fround(A.R(th1[i]));st[4*k+1]=b;inf[4*k]=-1;inf[4*k+1]=forb[k]}}
+   for(let s=0;s<2;s++){TX['S'+s]=tex('rgba',NG,NG,s?null:st);TX['I'+s]=tex('rgba',NG,NG,s?null:inf);
+    const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,TX['S'+s],0);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,TX['I'+s],0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);FB.push(f)}
+   gl.bindFramebuffer(gl.FRAMEBUFFER,null);cur=0}
+  else{TX.S0=tex('rgba',1,1,new Float32Array(4));TX.I0=tex('rgba',NG,NG,null);cur=0}
+  }
+ if(PATH==='cpu'){cflip=new Int32Array(NG*NG).fill(-3);cDone=0;cGen++;cDirty=true}
+ vDirty=true;LOG.push({ev:ev||'restart',win:{...W},bits,NG,path:PATH,at:+simT.toFixed(2)})}
+function newWindow(w,ev){W={...w};const nf=makeGrid();vflip=new Int32Array(NG*NG).fill(-3);for(let k=0;k<NG*NG;k++)if(forb[k])vflip[k]=-2;
+ vDone=0;vTotal=NG*NG-nf;vGen++;vLevel=-1;restartSim(ev);queueAll();drawAxes();ovDirty=true}
+function restartMap(ev){restartSim(ev);queueAll(true)}
+function setBits(p,ev){if(p===bits)return;bits=p;restartMap(ev||'bits');if(sel)selectAB(sel.a,sel.b,'rebits',true);syncControls()}
+
+/* ---------- GPU stepping ---------- */
+function simPass(K){
+ if(PATH!=='gpu'||simDone)return 0;K=Math.min(K,NMAX-nNow);if(K<=0)return 0;
+ const pr=simProg(),C=arithConsts(),nxt=1-cur;gl.useProgram(pr.p);
+ gl.bindFramebuffer(gl.FRAMEBUFFER,FB[nxt]);gl.viewport(0,0,NG,NG);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,TX['S'+cur]);gl.uniform1i(pr.u.uS,0);
+ gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,TX['I'+cur]);gl.uniform1i(pr.u.uI,1);
+ gl.uniform1i(pr.u.uK,K);gl.uniform1i(pr.u.uN0,nNow);gl.uniform1i(pr.u.uNMAX,NMAX);
+ gl.uniform1f(pr.u.uDt,C.dt);gl.uniform1f(pr.u.uH2,C.h2);gl.uniform1f(pr.u.uH6,C.h6);gl.uniform1f(pr.u.uPI,C.PI);gl.uniform1f(pr.u.uT,C.T);gl.uniform1f(pr.u.uLO,C.LO);
+ gl.uniform1fv(pr.u.uSC,C.SC);gl.uniform1fv(pr.u.uCC,C.CC);
+ gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,null);cur=nxt;nNow+=K;
+ if(nNow>=NMAX)finishGPU();return K}
+function readInfo(){const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,TX['I'+cur],0);
+ const a=new Float32Array(4*NG*NG);gl.readPixels(0,0,NG,NG,gl.RGBA,gl.FLOAT,a);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(f);
+ const g=new Float32Array(NG*NG);for(let k=0;k<NG*NG;k++)g[k]=a[4*k];return g}
+function finishGPU(){simDone=true;gflip=readInfo();let n=0;for(let k=0;k<gflip.length;k++)if(gflip[k]>=0)n++;flippedCount=n;compare();LOG.push({ev:'map-done',bits,path:PATH,flipped:n,at:+simT.toFixed(2)});panelDirty=true}
+function runToEnd(){if(PATH==='gpu'){while(!simDone)simPass(1000);gl.finish()}}
+function runTo(n){if(PATH==='gpu'){while(nNow<n&&!simDone)simPass(Math.min(1000,n-nNow));gl.finish()}}
+
+/* ---------- workers: double-precision verdict, CPU-path map, ladders ---------- */
+function workerMain(){
+ const E=makeEngine();
+ self.onmessage=e=>{const m=e.data;
+  if(m.type==='row'){const b=E.axis(m.cy,m.hw,m.N,m.j),out=new Int32Array(m.is.length);
+   for(let k=0;k<m.is.length;k++)out[k]=E.flip(E.axis(m.cx,m.hw,m.N,m.is[k]),b,m.dt,m.nmax,m.p);
+   self.postMessage({type:'row',kind:m.kind,gen:m.gen,j:m.j,is:m.is,out},[out.buffer])}
+  else if(m.type==='ladder'){const res=[];for(const p of m.ps){const r=E.part(m.a,m.b,m.dt,m.nmax,p,false);res.push(r.sep)}
+   const tw=E.part(m.a,m.b,m.dt,m.nmax,m.p,true);self.postMessage({type:'ladder',id:m.id,ps:m.ps,sep:res,twin:tw,p:m.p})}};
+}
+const WN=clamp((navigator.hardwareConcurrency||4)-1,1,12);
+let workers=[],queue=[],busy=0;
+function startWorkers(){const src=makeEngine.toString()+'\n'+workerMain.toString()+'\nworkerMain();';const url=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));
+ for(let k=0;k<WN;k++){const w=new Worker(url);w.idle=true;w.onmessage=e=>{w.idle=true;busy--;onResult(e.data);pumpQ()};w.onerror=err=>{w.idle=true;busy--;frameErr='worker: '+(err.message||err);pumpQ()};workers.push(w)}}
+function pumpQ(){for(const w of workers){if(!w.idle)continue;let t=null;while(queue.length){t=queue.shift();if(t.type!=='row'||(t.kind==='v'?t.gen===vGen:t.gen===cGen))break;t=null}
+  if(!t)return;w.idle=false;busy++;w.postMessage(t)}}
+const STRIDE=[8,4,2,1];
+function rowTasks(kind,gen,p){const T=[];for(let l=0;l<4;l++){const s=STRIDE[l],ps=l?STRIDE[l-1]:0;
+ for(let j=0;j<NG;j+=s){const is=[];for(let i=0;i<NG;i+=s){if(l&&i%ps===0&&j%ps===0)continue;const k=j*NG+i;if(forb[k])continue;is.push(i)}
+  if(is.length)T.push({type:'row',kind,gen,lvl:l,j,is,cx:W.cx,cy:W.cy,hw:W.hw,N:NG,dt:DT,nmax:NMAX,p})}}return T}
+function queueAll(mapOnly){
+ const lad=queue.filter(t=>t.type==='ladder');
+ if(mapOnly){queue=queue.filter(t=>t.type==='row'&&t.kind==='v');if(PATH==='cpu')mergeQ(rowTasks('c',cGen,bits));queue=lad.concat(queue);pumpQ();return}
+ queue=[];const v=rowTasks('v',vGen,53);
+ if(PATH==='cpu'){const c=rowTasks('c',cGen,bits);mergeQ(c,v)}else queue=v;
+ queue=lad.concat(queue);pumpQ()}
+// interleave by level: the map's own level l before the verdict's level l
+function mergeQ(c,v){v=v||queue.filter(t=>t.type==='row'&&t.kind==='v');const out=[];for(let l=0;l<4;l++){for(const t of c)if(t.lvl===l)out.push(t);for(const t of v)if(t.lvl===l)out.push(t)}queue=out}
+const vRows=new Set();
+let statT=null;function schedStatic(){if(!STATIC||statT)return;statT=setTimeout(()=>{statT=null;if(cmpDirty&&simDone){cmpDirty=false;compare()}display();drawOverlay();drawCase();panel()},150)}
+function onResult(r){schedStatic();
+ if(r.type==='row'){
+  if(r.kind==='v'){if(r.gen!==vGen)return;for(let k=0;k<r.is.length;k++){const q=r.j*NG+r.is[k];if(vflip[q]===-3){vflip[q]=r.out[k];vDone++}}vDirty=true;
+   if(vSample.length<96&&r.is.length){const k=(r.j*7)%r.is.length;vSample.push({i:r.is[k],j:r.j,a:th1[r.is[k]],b:th2[r.j],f:r.out[k]})}
+   if(vDone>=vTotal){LOG.push({ev:'verdict-done',win:{...W},checked:vDone,at:+simT.toFixed(2)});}
+   cmpDirty=true}
+  else{if(r.gen!==cGen)return;for(let k=0;k<r.is.length;k++){const q=r.j*NG+r.is[k];if(cflip[q]===-3){cflip[q]=r.out[k];cDone++}}cDirty=true;
+   if(cDone>=vTotal){simDone=true;gflip=Float32Array.from(cflip);let n=0;for(const x of cflip)if(x>=0)n++;flippedCount=n;LOG.push({ev:'map-done',bits,path:PATH,flipped:n,at:+simT.toFixed(2)})}
+   cmpDirty=true}}
+ else if(r.type==='ladder'){if(!sel||r.id!==sel.id)return;sel.ladder={ps:r.ps,sep:r.sep};sel.twinRes=r.twin;
+  LOG.push({ev:'ladder',a:sel.a,b:sel.b,p:r.p,ps:r.ps,sep:r.sep,twin:r.twin});panelDirty=true;lDirty=true}}
+let vSample=[];
+let cmpDirty=false,lastCmp=0;
+function compare(){
+ if(!gflip||!vflip)return;const B=BANDS.map(b=>({lo:b[0],hi:b[1],n:0,dis:0}));let ck=0,dis=0,first=Infinity;
+ for(let k=0;k<NG*NG;k++){const v=vflip[k];if(v===-3||v===-2)continue;const g=gflip[k];if(g<-2.5)continue;ck++;
+  const d=(g>=0)!==(v>=0)||(g>=0&&Math.abs(g-v)>1);const tm=Math.min(g>=0?g:1e9,v>=0?v:1e9)*DT;
+  if(d){dis++;if(tm<first)first=tm}
+  for(const b of B)if(tm>=b.lo&&tm<b.hi){b.n++;if(d)b.dis++;break}}
+ cmp={checked:ck,differ:dis,first:isFinite(first)?first:null,bands:B};panelDirty=true}
+
+/* ---------- selecting a pendulum: the twins ---------- */
+let selId=0,twinSps=6;
+function selectAB(a,b,ev,keepT){
+ const A=E.arith(bits);const id=++selId;const [i,j]=ixOf(a,b);
+ sel={id,a,b,i,j,p:bits,U:new Float64Array([a,b,0,0]),V:new Float64Array([A.R(a),A.R(b),0,0]),n:0,fu:E.canFlip(a,b)?-1:-2,fv:0,sep:-1,
+  hist:new Float32Array(NMAX+1),trailU:[],trailV:[],ladder:null,twinRes:null,playing:!STATIC};sel.fv=sel.fu;sel.hist[0]=logd(sel.U,sel.V);
+ queue=queue.filter(t=>t.type!=='ladder');queue.unshift({type:'ladder',id,a,b,ps:PS,p:bits,dt:DT,nmax:NMAX});pumpQ();
+ if(ev!=='tour'&&ev!=='rebits')LOG.push({ev:'select',a,b,i,j,p:bits});
+ lDirty=true;panelDirty=true;ovDirty=true}
+function selectIJ(i,j,ev){selectAB(th1[clamp(i,0,NG-1)],th2[clamp(j,0,NG-1)],ev)}
+const logd=(U,V)=>{const d=Math.max(Math.abs(U[0]-V[0]),Math.abs(U[1]-V[1]));return d>0?Math.log10(d):-12};
+function twinStep(k){if(!sel)return;const A=E.arith(sel.p),P=A.PI;
+ for(let s=0;s<k&&sel.n<NMAX;s++){E.step64(sel.U,DT);A.step(sel.V,DT);sel.n++;const n=sel.n,U=sel.U,V=sel.V;
+  if(sel.fu===-1&&(Math.abs(U[0])>Math.PI||Math.abs(U[1])>Math.PI))sel.fu=n;
+  if(sel.fv===-1&&(Math.abs(V[0])>P||Math.abs(V[1])>P))sel.fv=n;
+  const ld=logd(U,V);sel.hist[n]=ld;if(sel.sep<0&&ld>-1)sel.sep=n;
+  if(n%3===0){sel.trailU.push(tip(U));sel.trailV.push(tip(V));if(sel.trailU.length>140){sel.trailU.shift();sel.trailV.shift()}}}}
+const tip=Y=>[Math.sin(Y[0])+Math.sin(Y[1]),Math.cos(Y[0])+Math.cos(Y[1])];
+function twinTo(n){if(!sel)return;if(n<sel.n){const s=sel;selectAB(s.a,s.b,'again');}twinStep(n-sel.n)}
+
+/* ---------- layout ---------- */
+let VS_=400,CW=280,CH=400,DPR=1,ovDirty=true,panelDirty=true,lDirty=true;
+function fit(){const Wd=innerWidth,H=innerHeight,phone=Wd<=820,view=$('#view'),cs=$('#case');DPR=Math.min(window.devicePixelRatio||1,2);
+ let s,left,top,cw,ch,cl,ct;
+ if(phone){s=Math.min(Wd-58,560);left=Math.round((Wd-s)/2)+14;top=8;cw=Math.min(Wd-24,560);ch=Math.round(Math.min(cw*1.32,560));cl=Math.round((Wd-cw)/2);ct=top+s+44;
+  document.documentElement.style.setProperty('--sh',(ct+ch+16)+'px')}
+ else if(OG){s=Math.min(H-150,Wd*.42);left=64;top=(H-s)/2+34;cw=Math.round(s*.46);ch=s;cl=left+s+26;ct=top}
+ else{const pw=($('#panel').offsetWidth||372)+32,aw=Wd-pw,tb=$('#title').getBoundingClientRect().bottom+12,bb=$('#story').offsetHeight+48,avH=H-tb-bb;
+  const s1=Math.min(avH,(aw-60-24)/1.42);cw=Math.round(clamp(s1*.42,220,330));s=Math.max(200,Math.min(avH,aw-60-24-cw));ch=s;
+  const tot=s+24+cw;left=Math.max(74,Math.round((aw-tot)/2)+24);top=Math.round(tb+Math.max(0,(avH-s)/2));cl=left+s+24;ct=top}
+ s=Math.floor(s);view.style.width=view.style.height=s+'px';view.style.left=Math.round(left)+'px';view.style.top=Math.round(top)+'px';VS_=s;
+ cs.style.left=cl+'px';cs.style.top=ct+'px';cs.style.width=cw+'px';cs.style.height=ch+'px';CW=cw;CH=ch;
+ const px=Math.round(s*DPR);if(cv.width!==px){cv.width=cv.height=px}if(c2.width!==NG){c2.width=c2.height=NG}ov.width=ov.height=px;
+ cc.width=Math.round(cw*DPR);cc.height=Math.round(ch*DPR);caseBg=null;ovDirty=true;lDirty=true;drawAxes();chartsSize()}
+function chartsSize(){for(const c of[$('#vchart'),$('#lchart')]){const r=c.getBoundingClientRect();c.width=Math.max(10,Math.round(r.width*DPR));c.height=Math.max(10,Math.round(r.height*DPR))}}
+function fmtAng(x){const r=x/Math.PI;if(Math.abs(Math.abs(r)-1)<1e-9)return r<0?'−π':'π';if(Math.abs(r)<1e-12)return '0';if(Math.abs(Math.abs(r)-.5)<1e-9)return(r<0?'−':'')+'π/2';
+ const d=W.hw<.01?5:W.hw<.1?4:W.hw<1?3:2;return x.toFixed(d).replace('-','−')}
+function drawAxes(){const ax=$('#axes');if(!ax||!th1)return;let h='';const lo1=W.cx-W.hw,lo2=W.cy-W.hw,span=2*W.hw;
+ const ticks=(W.hw===Math.PI&&W.cx===0&&W.cy===0)?[-Math.PI,-Math.PI/2,0,Math.PI/2,Math.PI].map(v=>[v,v]):[0,.25,.5,.75,1].map(f=>[lo1+f*span,lo2+f*span]);
+ for(const [v1,v2] of ticks){const f1=(v1-lo1)/span,f2=(v2-lo2)/span;h+=`<span class="ax x" style="left:${(f1*100).toFixed(2)}%">${fmtAng(v1)}</span><span class="ax y" style="top:${((1-f2)*100).toFixed(2)}%">${fmtAng(v2)}</span>`}
+ ax.innerHTML=h}
+
+/* ---------- display ---------- */
+let pulse=0,lastVUp=0;
+function display(){
+ if(gl){
+  if(vDirty&&VTEX&&(FIXED||STATIC||performance.now()-lastVUp>180)){lastVUp=performance.now();gl.bindTexture(gl.TEXTURE_2D,VTEX);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,NG,NG,gl.RED,gl.FLOAT,Float32Array.from(vflip));vDirty=false}
+  if(PATH==='cpu'&&cDirty){const a=new Float32Array(4*NG*NG);const src=provisional(cflip);for(let k=0;k<NG*NG;k++){a[4*k]=src[k];a[4*k+1]=forb[k]}gl.bindTexture(gl.TEXTURE_2D,TX.I0);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,NG,NG,gl.RGBA,gl.FLOAT,a);cDirty=false}
+  const pr=PR.disp;gl.useProgram(pr.p);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,TX['I'+cur]);gl.uniform1i(pr.u.uI,0);
+  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,TX['S'+cur]||TX.S0);gl.uniform1i(pr.u.uS,1);
+  gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,VTEX);gl.uniform1i(pr.u.uV,2);
+  gl.uniform1i(pr.u.uNg,NG);gl.uniform1i(pr.u.uMode,mode);gl.uniform1i(pr.u.uDone,simDone||PATH==='cpu'?1:0);gl.uniform1i(pr.u.uLive,PATH==='gpu'?1:0);
+  gl.uniform2f(pr.u.uRes,cv.width,cv.height);gl.uniform1f(pr.u.uDt,DT);gl.uniform1f(pr.u.uPulse,pulse);
+  gl.drawArrays(gl.TRIANGLES,0,3)}
+ else if(c2d)display2d()}
+// CPU path: pixels not computed yet take the colour of the coarser pixel that covers them
+function provisional(f){const o=Float32Array.from(f);for(let l=0;l<3;l++){const s=STRIDE[l];for(let j=0;j<NG;j++)for(let i=0;i<NG;i++){const k=j*NG+i;if(o[k]!==-3)continue;const q=(j-j%s)*NG+(i-i%s);if(o[q]!==-3&&!forb[q])o[k]=o[q]}}return o}
+// no WebGL2 at all: the same colours on a 2D canvas
+const band2=t=>{const mx=(a,b,f)=>a.map((x,i)=>x+(b[i]-x)*f);if(t<10)return mx([.03,.17,.05],[.42,1,.45],Math.pow(t/10,.85));if(t<100)return mx([.24,.03,.02],[1,.33,.24],Math.pow(Math.log(t/10)/Math.LN10,.8));return mx([.25,.06,.36],[.82,.46,1],clamp(Math.log(t/100)/Math.LN2,0,1))};
+function display2d(){const img=c2d.createImageData(NG,NG),d=img.data,src=provisional(cflip);
+ for(let j=0;j<NG;j++)for(let i=0;i<NG;i++){const k=j*NG+i,o=4*((NG-1-j)*NG+i);let c;const g=src[k];
+  if(forb[k])c=[.86,.82,.73];else if(g>=0)c=band2(g*DT);else if(g===-1)c=[.98,.97,.94];else c=[.09,.085,.08];
+  if(mode>0){const v=vflip[k];if(mode===1&&v>=0)c=band2(v*DT);else if(mode===2&&!forb[k]){if(v>-2.5&&g>-2.5&&((g>=0)!==(v>=0)||(g>=0&&Math.abs(g-v)>1)))c=[.27,.9,1];else{const l=.3*c[0]+.55*c[1]+.15*c[2];c=c.map(x=>(l+(x-l)*.35)*.3)}}}
+  d[o]=c[0]*255;d[o+1]=c[1]*255;d[o+2]=c[2]*255;d[o+3]=255}
+ c2d.putImageData(img,0,0)}
+
+/* ---------- overlay: energy curve, selection, zoom box, axes ---------- */
+let drag=null,hover=null;
+const toPx=(a,b)=>[((a-(W.cx-W.hw))/(2*W.hw))*ov.width,(1-(b-(W.cy-W.hw))/(2*W.hw))*ov.height];
+function drawOverlay(){const w=ov.width,h=ov.height;oc.clearRect(0,0,w,h);
+ // Heyl eq 13: 3 cos t1 + cos t2 = 2
+ oc.save();oc.beginPath();oc.rect(0,0,w,h);oc.clip();oc.lineWidth=Math.max(1.2,1.5*DPR);oc.strokeStyle='rgba(8,7,6,.92)';
+ for(const sg of[1,-1]){oc.beginPath();let st=false;const a0=Math.acos(1/3),n=400;
+  for(let k=0;k<=n;k++){const a=-a0+2*a0*k/n,c=2-3*Math.cos(a),b=sg*Math.acos(clamp(c,-1,1));const [x,y]=toPx(a,b);if(!st){oc.moveTo(x,y);st=true}else oc.lineTo(x,y)}oc.stroke()}
+ if(sel){const [x,y]=toPx(sel.a,sel.b),r=Math.max(7,(VS_/NG)*DPR*2.2)+5*DPR;oc.lineWidth=2*DPR;oc.strokeStyle='rgba(0,0,0,.7)';oc.beginPath();oc.arc(x,y,r+1.5*DPR,0,7);oc.stroke();
+  oc.strokeStyle='#ffe2a0';oc.lineWidth=1.6*DPR;oc.beginPath();oc.arc(x,y,r,0,7);oc.stroke();
+  oc.beginPath();for(const [dx,dy] of[[1,0],[-1,0],[0,1],[0,-1]]){oc.moveTo(x+dx*(r+3*DPR),y+dy*(r+3*DPR));oc.lineTo(x+dx*(r+11*DPR),y+dy*(r+11*DPR))}oc.stroke()}
+ if(drag&&drag.box){const [x0,y0,x1,y1]=drag.box;oc.fillStyle='rgba(224,180,92,.12)';oc.strokeStyle='#e0b45c';oc.lineWidth=1.5*DPR;oc.setLineDash([6*DPR,4*DPR]);
+  const s=Math.max(Math.abs(x1-x0),Math.abs(y1-y0));const cxp=(x0+x1)/2,cyp=(y0+y1)/2;oc.fillRect(cxp-s/2,cyp-s/2,s,s);oc.strokeRect(cxp-s/2,cyp-s/2,s,s);oc.setLineDash([])}
+ oc.restore();ovDirty=false}
+function evPx(e){const r=ov.getBoundingClientRect();return[(e.clientX-r.left)/r.width*ov.width,(e.clientY-r.top)/r.height*ov.height,r]}
+function pxToIJ(x,y){return[Math.floor(x/ov.width*NG),Math.floor((1-y/ov.height)*NG)]}
+function hook(){
+ ov.addEventListener('pointerdown',e=>{const [x,y]=evPx(e);drag={x0:x,y0:y,box:null,id:e.pointerId,touch:e.pointerType==='touch'};if(!drag.touch)ov.setPointerCapture(e.pointerId)});
+ ov.addEventListener('pointermove',e=>{const [x,y,r]=evPx(e);
+  if(drag&&!drag.touch){if(Math.hypot(x-drag.x0,y-drag.y0)>8*DPR){drag.box=[drag.x0,drag.y0,x,y];ovDirty=true}}
+  const [i,j]=pxToIJ(x,y);if(i>=0&&j>=0&&i<NG&&j<NG){hover={i,j,cx:e.clientX-r.left,cy:e.clientY-r.top};showHover()}});
+ ov.addEventListener('pointerleave',()=>{hover=null;$('#hov').style.display='none'});
+ const up=e=>{if(!drag)return;const d=drag;drag=null;ovDirty=true;const [x,y]=evPx(e);
+  if(d.box){const s=Math.max(Math.abs(x-d.x0),Math.abs(y-d.y0));if(s>12*DPR){poke();const cxp=(d.x0+x)/2,cyp=(d.y0+y)/2;
+    const a=W.cx-W.hw+cxp/ov.width*2*W.hw,b=W.cy+W.hw-cyp/ov.height*2*W.hw,hw=Math.max(s/ov.width*W.hw,1e-6);newWindow({cx:a,cy:b,hw},'zoom-box')}return}
+  if(Math.hypot(x-d.x0,y-d.y0)<10*DPR||d.touch){const [i,j]=pxToIJ(x,y);if(i>=0&&j>=0&&i<NG&&j<NG){poke();selectIJ(i,j,'click');kick()}}};
+ ov.addEventListener('pointerup',up);ov.addEventListener('pointercancel',()=>{drag=null;ovDirty=true});
+ $$('#mode button').forEach(b=>b.addEventListener('click',()=>{poke();mode=+b.dataset.v;LOG.push({ev:'mode',mode});syncControls();kick()}));
+ $$('#bits button').forEach(b=>b.addEventListener('click',()=>{poke();setBits(+b.dataset.v,'bits');kick()}));
+ $$('#speed button').forEach(b=>b.addEventListener('click',()=>{poke();twinSps=+b.dataset.v;syncControls()}));
+ $('#playb').addEventListener('click',()=>{poke();if(sel){sel.playing=!sel.playing;if(STATIC&&sel.playing)pumpTwin()}panelDirty=true});
+ $('#againb').addEventListener('click',()=>{poke();if(sel){selectAB(sel.a,sel.b,'again');sel.playing=true;if(STATIC)pumpTwin()}});
+ $('#zoomb').addEventListener('click',()=>{poke();if(sel)newWindow({cx:sel.a,cy:sel.b,hw:W.hw/4},'zoom-x4')});
+ $('#fullb').addEventListener('click',()=>{poke();newWindow(FULL,'full');kick()});
+ $('#heylb').addEventListener('click',()=>{poke();newWindow(HEYL3,'heyl3');kick()});
+ $('#tourb').addEventListener('click',()=>{if(STATIC){startStatic();return}poke();run(tour())});
+ addEventListener('resize',()=>{fit();kick()})}
+function showHover(){const el=$('#hov');if(!hover||drag&&drag.box){el.style.display='none';return}const {i,j}=hover,k=j*NG+i;
+ let t='';const g=gflip?gflip[k]:null,v=vflip?vflip[k]:-3;
+ const f=x=>x>=0?'t = '+tf(x):x===-1?'none by 200':x===-2?'cannot':'…';
+ t=`θ₁ ${th1[i].toFixed(4)} · θ₂ ${th2[j].toFixed(4)}<br>`;
+ if(forb[k])t+='cannot flip (energy)';else t+=`${bits}-bit: <b>${g!=null?f(g):'running'}</b><br>double: <b>${f(v)}</b>`;
+ el.innerHTML=t;el.style.display='block';const vw=VS_;el.style.left=Math.min(hover.cx+14,vw-150)+'px';el.style.top=Math.max(4,hover.cy-58)+'px'}
+
+/* ---------- the case: brass pendulum and its ghost ---------- */
+let caseBg=null;
+function makeCaseBg(w,h,sq){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
+ const gr=g.createLinearGradient(0,0,w,h);gr.addColorStop(0,'#2b1b10');gr.addColorStop(.5,'#1f130b');gr.addColorStop(1,'#170e08');g.fillStyle=gr;g.fillRect(0,0,w,h);
+ let s=7;const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};g.globalAlpha=.07;
+ for(let k=0;k<70;k++){const x=rnd()*w;g.strokeStyle=rnd()<.5?'#000':'#6a4a2e';g.lineWidth=(.5+rnd()*2.2)*DPR;g.beginPath();g.moveTo(x,0);for(let y=0;y<=h;y+=h/12)g.lineTo(x+Math.sin(y*.011+k)*6*DPR,y);g.stroke()}
+ g.globalAlpha=1;
+ // glass bay for the pendulum
+ const m=10*DPR;g.fillStyle='rgba(6,5,4,.55)';rr(g,m,m,w-2*m,sq-m,10*DPR);g.fill();
+ g.strokeStyle='rgba(224,180,92,.35)';g.lineWidth=1*DPR;rr(g,m,m,w-2*m,sq-m,10*DPR);g.stroke();
+ const cx=w/2,cy=m+(sq-m)/2,L=sqL(w,sq);g.strokeStyle='rgba(224,180,92,.18)';g.lineWidth=1*DPR;g.beginPath();g.arc(cx,cy,2*L+6*DPR,0,7);g.stroke();
+ for(let a=0;a<360;a+=15){const r0=2*L+6*DPR,r1=r0+(a%90?4:9)*DPR,t=a*Math.PI/180;g.beginPath();g.moveTo(cx+Math.sin(t)*r0,cy+Math.cos(t)*r0);g.lineTo(cx+Math.sin(t)*r1,cy+Math.cos(t)*r1);g.stroke()}
+ g.fillStyle='rgba(255,120,90,.85)';g.beginPath();g.moveTo(cx,cy-2*L-7*DPR);g.lineTo(cx-4*DPR,cy-2*L-14*DPR);g.lineTo(cx+4*DPR,cy-2*L-14*DPR);g.closePath();g.fill();
+ // chart bay
+ g.fillStyle='rgba(6,5,4,.55)';rr(g,m,sq+8*DPR,w-2*m,h-sq-8*DPR-m,10*DPR);g.fill();g.strokeStyle='rgba(224,180,92,.25)';rr(g,m,sq+8*DPR,w-2*m,h-sq-8*DPR-m,10*DPR);g.stroke();
+ return c}
+const sqL=(w,sq)=>Math.min(w-20*DPR,sq-10*DPR)*.205;
+function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function rod(g,x0,y0,x1,y1,wd,ghost){g.lineCap='round';
+ if(ghost){g.strokeStyle='rgba(156,207,255,.62)';g.lineWidth=wd*.72;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();g.strokeStyle='rgba(225,240,255,.55)';g.lineWidth=wd*.2;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();return}
+ g.strokeStyle='#3a2408';g.lineWidth=wd+2*DPR;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+ const gr=g.createLinearGradient(x0-(y1-y0)*.08,y0+(x1-x0)*.08,x0+(y1-y0)*.08,y0-(x1-x0)*.08);gr.addColorStop(0,'#8a5a1c');gr.addColorStop(.45,'#f3d58a');gr.addColorStop(1,'#a8742a');
+ g.strokeStyle=gr;g.lineWidth=wd;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke()}
+function screw(g,x,y,r,ghost){g.fillStyle=ghost?'rgba(200,228,255,.7)':'#2a1b08';g.beginPath();g.arc(x,y,r+1*DPR,0,7);g.fill();if(ghost)return;
+ const gr=g.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r);gr.addColorStop(0,'#fff0c0');gr.addColorStop(1,'#a87a30');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();
+ g.strokeStyle='#4a3010';g.lineWidth=1*DPR;g.beginPath();g.moveTo(x-r*.6,y);g.lineTo(x+r*.6,y);g.stroke()}
+function drawCase(){const w=cc.width,h=cc.height,g=cx2;const sq=Math.round(Math.min(w,h*.6));if(!caseBg)caseBg=makeCaseBg(w,h,sq);g.drawImage(caseBg,0,0);
+ const m=10*DPR,cx=w/2,cy=m+(sq-m)/2,L=sqL(w,sq),wd=Math.max(5,L*.13);
+ g.font=`500 ${10*DPR}px 'DM Mono',monospace`;g.textAlign='left';g.fillStyle='rgba(239,231,214,.6)';
+ if(!sel){g.textAlign='center';g.fillText('click the map to hang',cx,cy-6*DPR);g.fillText('a pendulum here',cx,cy+10*DPR);return}
+ // trails
+ for(const [tr,col] of[[sel.trailV,'156,207,255'],[sel.trailU,'240,200,120']]){for(let k=1;k<tr.length;k++){g.strokeStyle=`rgba(${col},${(k/tr.length*.55).toFixed(3)})`;g.lineWidth=1.6*DPR;g.beginPath();
+  g.moveTo(cx+tr[k-1][0]*L,cy+tr[k-1][1]*L);g.lineTo(cx+tr[k][0]*L,cy+tr[k][1]*L);g.stroke()}}
+ const pos=Y=>{const x1=cx+Math.sin(Y[0])*L,y1=cy+Math.cos(Y[0])*L;return[x1,y1,x1+Math.sin(Y[1])*L,y1+Math.cos(Y[1])*L]};
+ const U=pos(sel.U),V=pos(sel.V);
+ rod(g,cx,cy,U[0],U[1],wd,false);rod(g,U[0],U[1],U[2],U[3],wd,false);screw(g,U[0],U[1],wd*.42,false);
+ rod(g,cx,cy,V[0],V[1],wd,true);rod(g,V[0],V[1],V[2],V[3],wd,true);screw(g,V[0],V[1],wd*.28,true);
+ // pivot bracket
+ g.fillStyle='#5b3d14';rr(g,cx-wd*1.6,cy-wd*1.4,wd*3.2,wd*1.1,2*DPR);g.fill();screw(g,cx,cy,wd*.55,false);
+ // labels
+ const t=sel.n*DT;g.textAlign='left';g.fillStyle='#ffe2a0';g.font=`500 ${13*DPR}px 'DM Mono',monospace`;g.fillText('t = '+t.toFixed(2),m+9*DPR,m+19*DPR);
+ g.font=`400 ${9.5*DPR}px 'DM Mono',monospace`;g.fillStyle='rgba(239,231,214,.55)';g.fillText('√(l/g)',m+9*DPR,m+32*DPR);
+ g.textAlign='right';g.fillStyle='#f0c878';g.fillText('brass · 53 bits',w-m-9*DPR,m+18*DPR);g.fillStyle='#9ccfff';g.fillText(`ghost · ${sel.p} bits`,w-m-9*DPR,m+31*DPR);
+ g.textAlign='left';const lines=[];
+ lines.push([sel.sep>=0?`parted at t = ${tf(sel.sep)}`:'swinging together',sel.sep>=0?'#ffb08a':'rgba(239,231,214,.7)']);
+ const fl=(f,who,col)=>{if(f>0)lines.push([`${who} flipped ${tf(f)}`,col]);else if(f===-2)lines.push([`${who}: cannot flip`,col])};
+ fl(sel.fu,'brass','#f0c878');fl(sel.fv,'ghost','#9ccfff');
+ g.font=`500 ${10*DPR}px 'DM Mono',monospace`;lines.forEach(([tx,col],k)=>{g.fillStyle=col;g.fillText(tx,m+9*DPR,sq-12*DPR-(lines.length-1-k)*13*DPR)});
+ drawDiv(g,m,sq+8*DPR,w-2*m,h-sq-8*DPR-m)}
+// log10 of the twins' distance against time
+function drawDiv(g,x0,y0,w,h){const pl=34*DPR,pr=10*DPR,pt=26*DPR,pb=24*DPR,X=x0+pl,Y=y0+pt,Wc=w-pl-pr,Hc=h-pt-pb;if(Hc<30)return;
+ const tmax=Math.max(60,Math.ceil((sel.n*DT+5)/20)*20),yl=-10,yh=1;const px=t=>X+t/tmax*Wc,py=v=>Y+(yh-clamp(v,yl,yh))/(yh-yl)*Hc;
+ g.font=`500 ${9*DPR}px 'DM Mono',monospace`;g.textAlign='left';g.fillStyle='#e0b45c';g.fillText('HOW FAR APART · RAD',x0+9*DPR,y0+15*DPR);
+ g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=1;g.fillStyle='rgba(239,231,214,.45)';g.font=`400 ${8.5*DPR}px 'DM Mono',monospace`;g.textAlign='right';
+ for(let v=yl;v<=yh;v+=1){if(v%2&&v!==1&&v!==-1)continue;const y=py(v);g.beginPath();g.moveTo(X,y);g.lineTo(X+Wc,y);g.stroke();g.fillText(v===0?'1':v===1?'10':'1e'+v,X-4*DPR,y+3*DPR)}
+ g.textAlign='center';for(let t=0;t<=tmax;t+=tmax>100?40:20){const x=px(t);g.fillText(String(t),x,Y+Hc+13*DPR)}
+ const yp=py(-1);g.strokeStyle='rgba(255,150,110,.55)';g.setLineDash([4*DPR,3*DPR]);g.beginPath();g.moveTo(X,yp);g.lineTo(X+Wc,yp);g.stroke();g.setLineDash([]);
+ g.fillStyle='rgba(255,170,130,.8)';g.textAlign='left';g.fillText('0.1: parted',X+4*DPR,yp-4*DPR);
+ for(const [f,c] of[[sel.fu,'240,200,120'],[sel.fv,'156,207,255']])if(f>0&&f<=sel.n){const x=px(f*DT);g.strokeStyle=`rgba(${c},.6)`;g.beginPath();g.moveTo(x,Y);g.lineTo(x,Y+Hc);g.stroke()}
+ // the curve
+ g.strokeStyle='#f3e3c0';g.lineWidth=1.4*DPR;g.beginPath();const n=sel.n,stp=Math.max(1,Math.floor(n/(Wc/1.2)));
+ let first=true;for(let k=0;k<=n;k+=stp){const v=sel.hist[k];if(v<=-11.9){continue}const x=px(k*DT),y=py(v);if(first){g.moveTo(x,y);first=false}else g.lineTo(x,y)}g.stroke();
+ }
+// reduced motion: play the twins with a timer only after the visitor asks
+let twinPumpT=null;function pumpTwin(){if(twinPumpT)return;const go=()=>{twinPumpT=null;if(!sel||!sel.playing||sel.n>=NMAX)return;twinStep(Math.max(1,Math.round(twinSps/DT/20)));drawCase();twinPumpT=setTimeout(go,50)};twinPumpT=setTimeout(go,0)}
+
+/* ---------- panel ---------- */
+function syncControls(){$$('#mode button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===mode)));$$('#bits button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===bits)));
+ $$('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===twinSps)));
+ $('#modev').textContent=['GPU, single precision','CPU, double precision','single vs double','single, differences marked'][mode].replace('GPU, single',PATH==='gpu'?'GPU, single':'CPU, single').replace('single precision',bits===24?'single precision':bits+'-bit');
+ $('#bitsv').textContent=bits===24?'24 · IEEE single':bits+' bits';
+ $('#pathv').textContent=(PATH==='gpu'?'GPU':'CPU')+' · '+(bits===24?'float32':bits+'-bit')}
+let lastPanel=-1;
+function panel(){const t=simDone?TMAX:nNow*DT;
+ $('#rt').textContent=PATH==='gpu'?t.toFixed(t<10?2:1):(simDone?'200':'…');$('#rts').textContent=PATH==='gpu'?'of 200 √(l/g)':(simDone?'all computed':`computing · ${pct(cDone/Math.max(1,vTotal))}`);
+ $('#rf').textContent=simDone?comma(flippedCount):'…';$('#rfs').textContent=`of ${comma(vTotal)} able to`;
+ $('#rsp').textContent=spsGPU?big(spsGPU):'–';$('#rsps').textContent=PATH==='gpu'?'pendulum-steps / s':'computed on the CPU';
+ $('#vprog').textContent=vDone>=vTotal?'all':pct(vDone/Math.max(1,vTotal));$('#vck').textContent=comma(vDone);
+ if(cmp){$('#vdf').textContent=comma(cmp.differ);$('#vdfs').textContent=cmp.checked?pct(cmp.differ/cmp.checked)+' of checked':'–';$('#vfirst').textContent=cmp.first!=null?cmp.first.toFixed(2):'–'}
+ else{$('#vdf').textContent='…';$('#vdfs').textContent=simDone?'comparing':'map still running';$('#vfirst').textContent='–'}
+ const sp=$('#winv');sp.textContent=(W.cx===0&&W.cy===0&&W.hw===Math.PI)?'−π … π, both':`θ₁ ${fmtAng(W.cx-W.hw)}…${fmtAng(W.cx+W.hw)}`;
+ if(OG&&cmp)$('#ogchips').innerHTML=`${comma(NG*NG)} pendulums · RK4, step 0.01<br>first flip, up to t = 200 √(l/g)<br>${comma(cmp.differ)} of ${comma(cmp.checked)} differ in double`;
+ drawVChart();twinPanel();if(lDirty)drawLChart();panelDirty=false}
+function twinPanel(){const el=$('#twin');if(!sel){el.innerHTML='Click any pixel of the map: its pendulum and a twin with fewer bits swing in the case.';$('#selv').textContent='click the map';return}
+ $('#selv').textContent=`θ₁ ${sel.a.toFixed(4)} · θ₂ ${sel.b.toFixed(4)}`;const k=(sel.j>=0&&sel.j<NG&&sel.i>=0&&sel.i<NG)?sel.j*NG+sel.i:-1;
+ const f=x=>x==null?'…':x>=0?tf(x):x===-1?'not by 200':x===-2?'cannot':'…';
+ const tw=sel.twinRes,g=gflip&&k>=0?gflip[k]:null,v=vflip&&k>=0?vflip[k]:null;
+ el.innerHTML=`<table><tr><td class="gp">map pixel, ${PATH==='gpu'?'GPU':'CPU'} ${sel.p} bits</td><td>${g==null?'running':f(g)}</td></tr>
+ <tr><td class="gh">ghost, CPU ${sel.p} bits</td><td>${tw?f(tw.fv):'…'}</td></tr><tr><td class="br">brass, CPU 53 bits</td><td>${tw?f(tw.fu):(v!=null&&v>-3?f(v):'…')}</td></tr>
+ <tr><td>twins part at</td><td>${tw?(tw.sep>=0?tf(tw.sep):'not by 200'):'…'}</td></tr></table>`;
+ $('#playb').textContent=sel.playing?'Pause':'Play'}
+function setupCanvas(c){const g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);return g}
+function drawVChart(){const c=$('#vchart'),g=setupCanvas(c),w=c.width,h=c.height,pl=8*DPR,pr=8*DPR,pt=16*DPR,pb=18*DPR,X=pl,Wc=w-pl-pr,Hc=h-pt-pb;
+ const B=BANDS,n=B.length,bw=Wc/n;g.font=`400 ${8.5*DPR}px 'DM Mono',monospace`;g.textAlign='center';
+ const ref=STATS.c32.bands;
+ for(let k=0;k<n;k++){const x=X+k*bw;g.fillStyle='rgba(255,255,255,.04)';g.fillRect(x+3*DPR,pt,bw-6*DPR,Hc);
+  const r=ref[k],fr=r.n?r.dis/r.n:0;
+  if(cmp&&W.hw===Math.PI&&W.cx===0&&W.cy===0||cmp){const b=cmp.bands[k],v=b.n?b.dis/b.n:0;g.fillStyle='#46e6ff';const bh=v*Hc;g.fillRect(x+3*DPR,pt+Hc-bh,bw-6*DPR,bh);
+   g.fillStyle='#e9fbff';g.fillText(b.n?pct(v):'–',x+bw/2,pt+Hc-bh-4*DPR<pt+8*DPR?pt+10*DPR:pt+Hc-bh-4*DPR)}
+  if(W.hw===Math.PI&&W.cx===0&&W.cy===0&&bits===24){g.fillStyle='#ffe2a0';g.beginPath();g.arc(x+bw/2,pt+Hc-fr*Hc,2.6*DPR,0,7);g.fill()}
+  g.fillStyle='rgba(239,231,214,.55)';g.fillText(`${B[k][0]}–${B[k][1]}`,x+bw/2,h-5*DPR)}
+ g.textAlign='left';g.fillStyle='#e0b45c';g.font=`500 ${8.5*DPR}px 'DM Mono',monospace`;g.fillText('DIFFER · BY FLIP TIME',X,11*DPR)}
+function drawLChart(){const c=$('#lchart'),g=setupCanvas(c),w=c.width,h=c.height,pl=30*DPR,pr=10*DPR,pt=12*DPR,pb=20*DPR,X=pl,Y=pt,Wc=w-pl-pr,Hc=h-pt-pb;
+ const xb=b=>X+(b-8)/(53-8)*Wc,yt=t=>Y+Hc-clamp(t,0,110)/110*Hc;const L=STATS.ladder;
+ g.font=`400 ${8.5*DPR}px 'DM Mono',monospace`;g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=1;g.fillStyle='rgba(239,231,214,.5)';g.textAlign='right';
+ for(let t=0;t<=100;t+=20){const y=yt(t);g.beginPath();g.moveTo(X,y);g.lineTo(X+Wc,y);g.stroke();g.fillText(String(t),X-4*DPR,y+3*DPR)}
+ g.textAlign='center';for(const b of[8,16,24,32,40,48,53]){g.fillText(String(b),xb(b),Y+Hc+13*DPR)}
+ // step-size horizon
+ g.strokeStyle='rgba(255,150,110,.6)';g.setLineDash([3*DPR,3*DPR]);g.beginPath();g.moveTo(X,yt(L.half));g.lineTo(X+Wc,yt(L.half));g.stroke();g.setLineDash([]);
+ g.fillStyle='rgba(255,170,130,.85)';g.textAlign='left';g.fillText(`step 0.01 vs 0.005: ${L.half.toFixed(1)}`,X+4*DPR,yt(L.half)-4*DPR);
+ // IQR band and median
+ g.fillStyle='rgba(224,180,92,.14)';g.beginPath();L.ps.forEach((p,k)=>{const x=xb(p),y=yt(L.q75[k]);k?g.lineTo(x,y):g.moveTo(x,y)});for(let k=L.ps.length-1;k>=0;k--)g.lineTo(xb(L.ps[k]),yt(L.q25[k]));g.closePath();g.fill();
+ g.strokeStyle='#e0b45c';g.lineWidth=1.6*DPR;g.beginPath();L.ps.forEach((p,k)=>{const x=xb(p),y=yt(L.med[k]);k?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();
+ g.setLineDash([4*DPR,3*DPR]);g.beginPath();g.moveTo(xb(48),yt(L.med[L.med.length-1]));g.lineTo(xb(53),yt(L.pred53));g.stroke();g.setLineDash([]);
+ g.fillStyle='#e0b45c';g.beginPath();g.arc(xb(53),yt(L.pred53),2.4*DPR,0,7);g.fill();g.textAlign='right';g.fillText(`≈${L.pred53.toFixed(0)}?`,xb(53)-5*DPR,yt(L.pred53)+3*DPR);
+ // this pendulum
+ if(sel&&sel.ladder){const {ps,sep}=sel.ladder;for(let k=0;k<ps.length;k++){const t=sep[k]<0?null:sep[k]*DT,x=xb(ps[k]);
+  g.fillStyle=ps[k]===sel.p?'#9ccfff':'#fff3d6';g.strokeStyle='#1a1208';g.lineWidth=1.2*DPR;
+  if(t==null){g.beginPath();g.moveTo(x,Y+2*DPR);g.lineTo(x-3.5*DPR,Y+8*DPR);g.lineTo(x+3.5*DPR,Y+8*DPR);g.closePath();g.fill()}
+  else{g.beginPath();g.arc(x,yt(t),3.1*DPR,0,7);g.fill();g.stroke()}}
+  const s24=sel.ladder.sep[PS.indexOf(24)];$('#lv').textContent=s24>=0?`this one: ${tf(s24)} at 24 bits`:'this one: not by 200 at 24'}
+ else $('#lv').textContent=`median ${L.med[L.ps.indexOf(24)].toFixed(1)} at 24 bits`;
+ g.fillStyle='rgba(239,231,214,.5)';g.textAlign='right';g.fillText('bits',X+Wc,Y+Hc-4*DPR);lDirty=false}
+
+/* ---------- captions ---------- */
+let capT=null;
+function cap(html){const el=$('#caption'),sp=el.firstElementChild;capText=html.replace(/<[^>]+>/g,'');if(capT){clearTimeout(capT);capT=null}
+ if(STATIC||FIXED||!sp.innerHTML){sp.innerHTML=html;el.classList.remove('fade');return}
+ el.classList.add('fade');capT=setTimeout(()=>{sp.innerHTML=html;el.classList.remove('fade')},240)}
+const S_=STATS;
+const CAP={
+ swing:()=>`Every pixel is a <b>double pendulum</b>: two brass rods let go from rest at the angles on the axes. ${PATH==='gpu'?`${m(comma(NG*NG))} of them swing at once on your GPU`:`${m(comma(NG*NG))} of them are computed on your CPU's cores (this browser draws in software)`}, and a pixel takes its colour the moment either rod first swings <b>over the top</b>.`,
+ bands:()=>`<span class="g">Green</span> flipped within 10 time units, <span class="r">red</span> within 100, <span class="p">purple</span> by 200; <b>white</b> never did. Inside the black curve no rod can flip: there is not enough energy (${m('3 cos θ₁ + cos θ₂ > 2')}). This is Heyl's double pendulum fractal.`,
+ twins:()=>{const s=sel&&sel.twinRes;return`Its pendulum hangs in the case: <span class="br">brass</span> in double precision, the <span class="gh">ghost</span> in single, as on the GPU. They swing as one, then ${s&&s.sep>=0?`part at ${m('t = '+tf(s.sep))}`:'part'}: a rounding error of 10<sup>−8</sup> grew to 0.1 rad. Brass flips at ${m(s?tf(s.fu):'…')}, the ghost at ${m(s?tf(s.fv):'…')}.`},
+ verdict:()=>cmp?`Your CPU has redone every pendulum in <b>double precision</b>. <span class="c">Cyan</span>: the ${m(comma(cmp.differ))} (${pct(cmp.differ/Math.max(1,cmp.checked))}) whose flip time comes out different. None flip before ${m('t = '+(cmp.first!=null?cmp.first.toFixed(1):'…'))}: the green is physics, the speckled red is partly arithmetic.`:`Your CPU is redoing every pendulum in double precision…`,
+ bits0:()=>`Now every number on the map keeps only <b>${bits} bits</b> of significand instead of 24…`,
+ bits:()=>cmp?`Now every number on the map keeps only <b>${bits} bits</b>. The <span class="c">cyan</span> floods the red band (${m(pct(cmp.differ/Math.max(1,cmp.checked)))} differ, ${m(pct(bandFr(0)))} of the green); the twins part at ${m('t = '+(sel&&sel.twinRes&&sel.twinRes.sep>=0?tf(sel.twinRes.sep):'…'))}.`:`Now every number on the map keeps only <b>${bits} bits</b>…`,
+ ladder:()=>`Each bit buys the twins about ${m(S_.ladder.slope.toFixed(1))} time units together (panel chart): median ${m(S_.ladder.med[4].toFixed(1))} at 24 bits, ${m(S_.ladder.med[10].toFixed(1))} at 48. Errors grow e-fold every ${m((1/S_.ladder.lam).toFixed(1))}. And the step itself is worth only ~${S_.ladder.halfBits.toFixed(0)} bits: past ${m('t ≈ '+S_.ladder.half.toFixed(0))} neither map is the true pendulum.`,
+ zoom:()=>{const r=sel&&sel.twinRes,l=sel&&sel.ladder,s12=l?l.sep[1]:null;return`Heyl's own enlargement, ${m('θ₁ 0.9–1.4, θ₂ 1.75–2.25')}: a white island that never flips, edged with ever finer filigree (his <b>fat fractal</b>). Inside the island the motion is regular: this pendulum's single-precision twin ${r?(r.sep<0?'is still with it at t = 200':'parts at '+m('t = '+tf(r.sep))):'…'}, and even a 12-bit twin ${s12==null?'…':s12<0?'never parts':'holds until '+m('t = '+tf(s12))}.`},
+ you:()=>`Your turn. Click a pixel to hang its pendulum, drag a box to zoom, switch between single and double precision, or take bits away.`,
+ still:()=>`Reduced motion: the map is computed in place. Click a pixel to see its pendulum and twin (press Play to swing them), drag a box to zoom, change the bits.`,
+ err:e=>`This exhibit needs WebGL2 or Web Workers, which this browser did not provide (${e}).`};
+function bandFr(k){return cmp&&cmp.bands[k].n?cmp.bands[k].dis/cmp.bands[k].n:0}
+
+/* ---------- tour ---------- */
+function run(gen){script=gen;swait=0;swaitFn=null}
+function tickScript(dt){if(!script)return;if(swait>0){swait-=dt;if(swait>0)return}if(swaitFn){if(!swaitFn())return;swaitFn=null}
+ for(let guard=0;guard<50;guard++){const r=script.next();if(r.done){script=null;return}if(typeof r.value==='function'){if(!r.value()){swaitFn=r.value;return}}else{swait=r.value||0;if(swait>0)return}}}
+const TOUR_TWIN_T=34;    // ?fixed: the twins have just parted
+function* tour(start){
+ tourOn=true;tourDone=false;live=!start;
+ const mark=(k,pre)=>{tourMark=k;if(!live&&k===start){live=true;if(pre)pre()}};
+ if(W.cx!==FULL.cx||W.cy!==FULL.cy||W.hw!==FULL.hw||NG!==baseNG)newWindow(FULL,'tour');
+ if(bits!==24){bits=24;restartMap('tour')}
+ else if(nNow>0||simDone){restartMap('tour')}
+ mode=0;paceMul=1;sel=null;ovDirty=true;syncControls();
+ mark('swing',()=>runTo(1500));cap(CAP.swing());if(live)yield 7.5;
+ mark('bands',()=>runTo(9000));cap(CAP.bands());if(live){yield ()=>simDone;yield 3}else runToEnd();
+ tourMark='→';selectAB(TA,TB,'tour');sel.playing=true;twinSps=6;syncControls();
+ mark('twins',()=>{runToEnd();twinTo(Math.round(TOUR_TWIN_T/DT))});cap(CAP.twins());
+ if(live){yield ()=>sel&&sel.twinRes;cap(CAP.twins());yield ()=>{const r=sel&&sel.twinRes;return!r||sel.n>=Math.max(r.fu,r.fv,r.sep)+60};yield 1.5}
+ tourMark='→';mode=OG?3:2;syncControls();
+ mark('verdict',()=>twinTo(Math.round(42/DT)));if(live){yield ()=>cmp&&vDone>=vTotal*.24}cap(CAP.verdict());if(live){for(let k=0;k<12;k++){yield .5;if(cmpDirty){cap(CAP.verdict())}}}
+ tourMark='→';mode=0;syncControls();setBits(12,'tour');paceMul=3;cap(CAP.bits0());
+ if(live){yield ()=>simDone&&cmp}else runToEnd();
+ mode=OG?3:2;syncControls();
+ mark('bits',()=>{runToEnd();twinTo(Math.round(16/DT))});if(live){yield ()=>sel&&sel.twinRes}cap(CAP.bits());if(live)yield 7.5;
+ tourMark='→';setBits(24,'tour');paceMul=3;mode=0;syncControls();scrollPanel('#lchart');
+ mark('ladder',()=>{runToEnd()});cap(CAP.ladder());if(live)yield 9;
+ tourMark='→';newWindow(HEYL3,'tour');paceMul=2;mode=0;selectAB(ISLE[0],ISLE[1],'tour');twinSps=20;syncControls();
+ mark('zoom',()=>{runToEnd();twinTo(Math.round(60/DT))});cap(CAP.zoom());if(live){yield ()=>simDone&&sel&&sel.ladder&&sel.twinRes;cap(CAP.zoom());yield 7}
+ tourOn=false;tourDone=true;tourMark='end';cap(CAP.you())}
+function scrollPanel(sel_){if(FIXED||innerWidth<=820)return;const el=$(sel_),p=$('#panel');if(el&&p)p.scrollTo({top:Math.max(0,el.offsetTop-p.clientHeight*.35),behavior:'smooth'})}
+function poke(){if(tourOn){script=null;tourOn=false;tourDone=true;paceMul=2;cap(CAP.you());return true}return false}
+
+/* ---------- frame loop ---------- */
+let last=0,ivs=[],baseNG=512;window.__frame=0;
+// tour pace: t = 3.95 (e^{0.36 tau} - 1): green by ~3.5 s, t = 200 by ~11 s
+function targetSteps(){const tau=(simT-simStart)*paceMul;return Math.min(NMAX,Math.ceil(3.95*(Math.exp(.36*tau)-1)/DT))}
+function adapt(raw){if(FIXED||STATIC||!raw||raw>500)return;ivs.push(raw);if(ivs.length<20)return;const s=ivs.slice().sort((a,b)=>a-b),med=s[s.length>>1];ivs=[];
+ if(med>26&&Kmax>8)Kmax=Math.max(8,Kmax>>1);else if(med<19&&Kmax<4000)Kmax=Math.round(Kmax*1.5)}
+function frame(ts,skipDraw){
+ if(!FIXED&&!STATIC)requestAnimationFrame(frame);
+ const now=FIXED?last+1000/60:(ts||performance.now()),raw=now-last,dt=FIXED?1/60:clamp(raw/1000,0,.1);last=now;window.__frame++;simT+=dt;
+ try{
+  tickScript(dt);
+  if(PATH==='gpu'&&!simDone){const want=FIXED?nNow+40:targetSteps();const K=Math.min(Kmax,want-nNow);if(K>0){simPass(K);if(!FIXED&&raw>0&&raw<500){spsGPU=lerp(spsGPU||K*NG*NG/(raw/1000),K*NG*NG/(raw/1000),.2)}}}
+  if(sel&&sel.playing&&sel.n<NMAX)twinStep(FIXED?10:Math.max(1,Math.round(twinSps*dt/DT)));
+  if(cmpDirty&&simDone&&(FIXED||simT-lastCmp>.4)){lastCmp=simT;cmpDirty=false;compare()}
+  adapt(raw);pulse=.5+.5*Math.sin(simT*3.2);
+  if(!skipDraw){display();if(ovDirty)drawOverlay();drawCase();if(panelDirty||FIXED||simT-lastPanel>.2){lastPanel=simT;panel()}}
+ }catch(e){fails++;frameErr=String(e&&e.message||e);if(fails<4)console.warn(e)}
+ window.__state={t:+simT.toFixed(3),frame:window.__frame,tour:tourOn,mark:tourMark,n:nNow,done:simDone,vDone,twin:sel?sel.n:-1}}
+// reduced motion: run the map with a timer, show twice a second
+let pumpT=null,lastShow=0;
+function pump(){if(pumpT)return;const go=()=>{pumpT=null;if(PATH==='gpu'&&!simDone){const t0=performance.now();while(performance.now()-t0<40&&!simDone)simPass(400);gl.flush()}
+ if(cmpDirty&&simDone){cmpDirty=false;compare()}
+ if(performance.now()-lastShow>500||simDone){lastShow=performance.now();display();drawOverlay();drawCase();panel()}
+ if(!simDone||vDone<vTotal||busy)pumpT=setTimeout(go,simDone?250:8)};pumpT=setTimeout(go,0)}
+function kick(){if(STATIC){display();drawOverlay();drawCase();panel();pump()}else if(FIXED){display();drawOverlay();drawCase();panel()}}
+
+/* ---------- start ---------- */
+function startStatic(){script=null;tourOn=false;tourDone=true;tourMark='final';
+ if(W.cx!==0||W.cy!==0||W.hw!==Math.PI)newWindow(FULL,'static');mode=0;syncControls();
+ selectAB(TA,TB,'tour');sel.playing=false;twinStep(Math.round(TOUR_TWIN_T/DT));cap(CAP.still());pump()}
+async function start(){
+ try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,EMBED?0:600))])}catch(e){}
+ hook();
+ try{initGL()}catch(e){glErr=String(e.message||e);gl=null;PATH='cpu'}
+ if(PATH==='cpu'){NG=SOFT||!gl?(FIXED?256:192):256;if(Q.has('ng'))NG=+Q.get('ng');if(!gl){c2.style.display='block';cv.style.display='none';c2d=c2.getContext('2d')}}
+ else if(Q.has('ng'))NG=+Q.get('ng');
+ baseNG=NG;if(gl)VTEX=tex('r',NG,NG,null);
+ if(typeof Worker==='undefined'){cap(CAP.err('no Web Workers'));$('#msg').style.display='flex';$('#msg').textContent=CAP.err('no Web Workers');ready=true;return}
+ startWorkers();fit();newWindow(FULL,'start');syncControls();
+ if(STATIC){startStatic()}
+ else{const target=FIXED?(Q.get('mark')||'twins'):null;run(tour(target));tickScript(0)}
+ if(OG){runToEnd();mode=3;$('#ogchips').innerHTML=`${comma(NG*NG)} pendulums · RK4, step 0.01<br>first flip, up to t = 200 √(l/g)<br>${PATH==='gpu'?'GPU float32':'CPU float32'} vs CPU float64`}
+ ready=true;panel();
+ document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>{caseBg=null;fit();panelDirty=true;lDirty=true;kick()})}
+window.step=n=>{if(!FIXED)return;n=n||1;for(let i=0;i<n;i++)frame(0,i<n-1)}; // only the last stepped frame is drawn
+window.pendulumAtlas={
+ state:()=>{if(!ready)return{ready:false};return{ready:true,path:PATH,gl:!!gl,glErr,renderer,soft:SOFT,lite:LITE,fixed:FIXED,static:STATIC,embed:EMBED,workers:WN,
+  N:NG,win:{...W},bits,mode,n:nNow,done:simDone,flipped:flippedCount,Kmax,sps:spsGPU,
+  verdict:{done:vDone,total:vTotal,complete:vDone>=vTotal,busy,queue:queue.length},cmp:cmp?JSON.parse(JSON.stringify(cmp)):null,
+  sel:sel?{a:sel.a,b:sel.b,i:sel.i,j:sel.j,p:sel.p,n:sel.n,fu:sel.fu,fv:sel.fv,sep:sel.sep,playing:sel.playing,ladder:sel.ladder,twin:sel.twinRes,U:Array.from(sel.U),V:Array.from(sel.V)}:null,
+  tour:tourOn,tourDone,mark:tourMark,caption:capText,log:JSON.parse(JSON.stringify(LOG)),vSample:vSample.slice(),frameErr,fails,
+  view:{size:VS_,dpr:DPR,canvas:cv.width,caseW:CW,caseH:CH}}},
+ gpuFlips:()=>gflip?Array.from(gflip):null,
+ verdict:()=>Array.from(vflip),
+ forbidden:()=>Array.from(forb),
+ grid:()=>({th1:Array.from(th1),th2:Array.from(th2)}),
+ runToEnd:()=>{runToEnd();return simDone},
+ select:(i,j)=>{poke();selectIJ(i,j,'api');return{a:sel.a,b:sel.b}},
+ set:o=>{poke();if('bits'in o)setBits(o.bits,'api');if('mode'in o){mode=o.mode;syncControls()}if('win'in o)newWindow(o.win,'api');kick();return{bits,mode,win:{...W}}},
+ pxOf:(a,b)=>{const [x,y]=toPx(a,b),r=ov.getBoundingClientRect();return[r.left+x/ov.width*r.width,r.top+y/ov.height*r.height]},
+ twinTo:n=>{twinTo(n);drawCase();return sel?sel.n:-1}};
+(async()=>{await start();if(FIXED){frame()}else if(!STATIC){last=performance.now();requestAnimationFrame(frame)}})();
+
+</script>
+</body>
+</html>

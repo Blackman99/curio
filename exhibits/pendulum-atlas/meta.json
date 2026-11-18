@@ -1,0 +1,11 @@
+{
+ "slug": "pendulum-atlas",
+ "title": "Pendulum Atlas",
+ "no": "050",
+ "date": "2026-11-18",
+ "kind": "Chaos · WebGL2 + Web Workers",
+ "blurb": "262,144 double pendulums swing at once on your GPU, each pixel coloured by when it first flips over the top, as in Heyl's double pendulum fractal. Your CPU redoes every one in double precision and marks where the arithmetic, not the physics, picked the colour. Click a pixel to watch its pendulum part from its twin.",
+ "color": "#cc6cfc",
+ "exhibit": "pendulumAtlas",
+ "lane": "science"
+}
