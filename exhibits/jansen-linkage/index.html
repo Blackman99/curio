@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Beach Walker — breed a walking leg the way Theo Jansen found his</title>
+<meta name="description" content="A twelve-legged walking machine of white tubes strides along a windy beach at noon. Each leg is eleven rods and one crank, and every joint is two circles meeting. Breed your own leg the way Theo Jansen found his: 1,500 random legs, keep the best 100, repeat. Then send it down the sand and share it as a link.">
+<meta property="og:title" content="Beach Walker">
+<meta property="og:description" content="Eleven rods turn one crank into a stride. Breed 1,500 random legs the way Theo Jansen did, watch your best one walk the beach, and share it as a link.">
+<meta property="og:image" content="https://blackman99.github.io/curio/jansen-linkage/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Beach Walker">
+<meta name="twitter:description" content="A white-tube walking machine on a windy beach. Breed your own leg from 1,500 random ones, keep the best 100, repeat, and send it down the sand.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/jansen-linkage/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f2b3d;--ink2:#3d5a6c;--ink3:#7c8f9a;--coral:#f2613f;--coral2:#d94b2b;--coralsoft:#fde3da;--sea:#1f7a99;--sand:#f4e8cf;--card:rgba(255,252,246,.95);--line:rgba(15,43,61,.14);--benchH:252px}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+html{background:#cfe8f6;-webkit-text-size-adjust:100%}
+body{color:var(--ink);font-family:'Figtree',system-ui,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+a{color:inherit}
+#stage{position:fixed;inset:0;z-index:0;touch-action:none;cursor:grab}
+#stage.drag{cursor:grabbing}
+#stage canvas{display:block;width:100%;height:100%}
+/* title over the sky */
+#top{position:fixed;left:28px;top:20px;z-index:2;max-width:470px;pointer-events:none}
+#top>*{pointer-events:auto}
+.crumbs{display:flex;gap:14px;align-items:center;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:var(--ink2)}
+.crumbs a{text-decoration:none;color:var(--ink);background:rgba(255,255,255,.78);padding:4px 11px 5px;border-radius:99px}
+.crumbs a:hover{background:#fff;color:var(--coral2)}
+.crumbs .no b{color:var(--coral2)}
+h1{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:66px;line-height:.92;letter-spacing:-.035em;margin:14px 0 10px;font-variation-settings:'opsz' 96}
+h1 span{color:var(--coral)}
+.lead{margin:0;font-size:16px;line-height:1.45;color:var(--ink);max-width:430px;text-shadow:0 0 18px rgba(220,240,252,.9)}
+.lead b{font-weight:700}
+#whatbtn{margin-top:12px;border:0;background:var(--ink);color:#fff;border-radius:99px;padding:7px 15px 8px;font-size:13.5px;font-weight:600;cursor:pointer}
+#whatbtn:hover{background:var(--coral2)}
+/* beast control, top right */
+#beast{position:fixed;right:24px;top:22px;z-index:2;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.82);border-radius:99px;padding:5px 6px 5px 14px;font-size:13px;font-weight:600;box-shadow:0 6px 20px -12px rgba(15,43,61,.5)}
+#beast .seg{display:flex;gap:2px}
+#beast .seg button{border:0;background:transparent;border-radius:99px;min-width:32px;height:30px;padding:0 7px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;font-variant-numeric:tabular-nums}
+#beast .seg button:hover{background:rgba(15,43,61,.07)}
+#beast .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+#pause{border:0;background:var(--coralsoft);color:var(--coral2);border-radius:99px;height:30px;padding:0 12px;font-weight:700;cursor:pointer}
+/* the breeding bench */
+#bench{position:fixed;z-index:2;left:50%;bottom:18px;transform:translateX(-50%);width:min(1180px,calc(100vw - 40px));height:var(--benchH);background:var(--card);border-radius:22px;box-shadow:0 24px 50px -28px rgba(15,43,61,.55),0 0 0 1px rgba(15,43,61,.06);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr) 372px;gap:0;overflow:hidden}
+.pane{position:relative;padding:14px 18px 12px;min-width:0;display:flex;flex-direction:column}
+.pane+.pane{border-left:1px solid var(--line)}
+.ph{display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.ph .v{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink2);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.ph .v b{color:var(--coral2)}
+.who{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em;line-height:1.1;margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#legsvg{flex:1 1 0;min-height:0;height:0;width:100%;display:block;margin-top:2px}
+.legacts{display:flex;gap:6px;justify-content:flex-start;flex-wrap:wrap}
+.legacts button{border:0;background:rgba(15,43,61,.06);border-radius:99px;padding:4px 10px 5px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink)}
+.legacts button:hover{background:var(--coralsoft);color:var(--coral2)}
+#popbox{flex:1;min-height:0;position:relative;margin-top:6px;border-radius:12px;background:linear-gradient(#fbf6ea,#f4ead3);overflow:hidden}
+#pop{position:absolute;inset:0;width:100%;height:100%;display:block}
+#poplab{position:absolute;left:10px;bottom:8px;font-size:12.5px;color:var(--ink2);font-variant-numeric:tabular-nums;pointer-events:none}
+#poplab b{color:var(--ink)}
+.key{position:absolute;right:10px;top:8px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:11.5px;color:var(--ink2);pointer-events:none}
+.key i{display:inline-block;width:18px;height:0;border-top:2.5px solid var(--coral);vertical-align:middle;margin-right:5px}
+.key i.j{border-top:2px dashed var(--ink)}
+.key i.p{border-top:1.5px solid rgba(31,122,153,.55)}
+/* controls pane */
+.ctl{gap:9px}
+.mode{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink2)}
+.mode .seg{display:flex;background:rgba(15,43,61,.06);border-radius:99px;padding:3px}
+.mode .seg button{border:0;background:transparent;border-radius:99px;padding:4px 11px 5px;font-weight:600;font-size:13px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+.mode .seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(15,43,61,.18)}
+.go{display:flex;gap:8px;align-items:stretch}
+#evolve{flex:1;border:0;background:var(--coral);color:#fff;border-radius:14px;padding:9px 14px 10px;font-weight:700;font-size:15.5px;cursor:pointer;text-align:left;line-height:1.15;box-shadow:0 8px 18px -10px rgba(217,75,43,.9)}
+#evolve small{display:block;font-weight:500;font-size:12px;opacity:.9}
+#evolve:hover{background:var(--coral2)}
+#evolve.run{background:var(--ink);box-shadow:none}
+#seedbtn{border:0;background:rgba(15,43,61,.07);border-radius:14px;padding:0 12px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink2);font-variant-numeric:tabular-nums}
+.scorerow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:end}
+.score{display:flex;flex-direction:column;gap:3px;min-width:0}
+.score .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:36px;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.cmp{font-size:12.5px;color:var(--ink2);line-height:1.3;margin-top:-3px}
+.cmp b{color:var(--ink)}
+#bars{display:flex;gap:4px;align-items:flex-end;height:40px}
+#bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:0}
+#bars .col{position:relative;width:100%;height:27px;border-radius:4px 4px 2px 2px;background:rgba(15,43,61,.06);overflow:hidden}
+#bars .col i{position:absolute;left:0;right:0;bottom:0;background:var(--coral);border-radius:3px 3px 0 0}
+#bars .col u{position:absolute;left:-1px;right:-1px;height:0;border-top:2px dashed var(--ink);text-decoration:none}
+#bars .b span{font-size:10.5px;font-weight:600;color:var(--ink3);font-variant-numeric:tabular-nums}
+#bars .b.on span{color:var(--ink)}
+#bars .b.on .col{box-shadow:0 0 0 1.5px var(--ink)}
+.acts{display:flex;flex-wrap:wrap;gap:6px}
+.acts button{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:5px 11px 6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.acts button:hover{border-color:var(--ink)}
+.acts button.hot{border-color:var(--coral);color:var(--coral2)}
+.acts button:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+/* a caption above the bench: one thing at a time */
+#say{position:fixed;z-index:3;left:50%;top:22px;transform:translateX(-50%);width:max-content;max-width:min(440px,calc(100vw - 980px));min-width:min(300px,calc(100vw - 40px));background:var(--ink);color:#fff;border-radius:16px;padding:8px 16px 9px;font-size:14.5px;line-height:1.35;font-weight:500;text-align:center;opacity:0;transition:opacity .45s;pointer-events:none}
+#say.on{opacity:1}
+#say b{color:#ffc2ae}
+/* tweak popover */
+#tweak{position:fixed;z-index:3;left:50%;bottom:calc(var(--benchH) + 26px);transform:translateX(-50%);width:min(560px,calc(100vw - 40px));background:#fff;border-radius:18px;box-shadow:0 20px 50px -20px rgba(15,43,61,.6);padding:14px 18px 12px;display:none}
+#tweak.on{display:block}
+#tweak .ph{margin-bottom:6px}
+#tweak .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 22px}
+#tweak label{display:grid;grid-template-columns:16px 1fr 46px;gap:8px;align-items:center;font-size:13px;font-weight:600}
+#tweak label span{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:500}
+#tweak input[type=range]{width:100%;accent-color:var(--coral)}
+#tweak .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12.5px;color:var(--ink2)}
+#tweak .row button{border:0;background:var(--ink);color:#fff;border-radius:99px;padding:5px 12px;font-weight:600;cursor:pointer}
+/* what is this */
+#what{position:fixed;z-index:4;inset:0;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;background:rgba(15,43,61,.32);overflow:auto}
+#what.on{display:flex}
+#what article{position:relative;max-width:760px;background:#fffdf8;border-radius:22px;padding:30px 36px 28px;box-shadow:0 30px 70px -30px rgba(15,43,61,.7)}
+#what h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;letter-spacing:-.02em;margin:0 0 10px;line-height:1}
+#what h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:19px;margin:20px 0 4px}
+#what p,#what li{font-size:15px;line-height:1.55;color:#1d3a4b}
+#what ul{padding-left:20px;margin:6px 0}
+#what .x{position:absolute;right:18px;top:16px;border:0;background:rgba(15,43,61,.08);width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer}
+#what table{border-collapse:collapse;font-size:13.5px;margin:6px 0 4px;font-variant-numeric:tabular-nums}
+#what td,#what th{padding:3px 12px 3px 0;text-align:left;border-bottom:1px solid var(--line)}
+#what th{font-weight:700;color:var(--ink2)}
+#what code{font-size:13px;background:rgba(15,43,61,.06);padding:1px 5px;border-radius:5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+html.fixed *,html.static *{transition:none!important}
+/* og: only the beach and the title */
+html.og #bench,html.og #beast,html.og #say,html.og #whatbtn,html.og .lead{display:none}
+html.og #top{left:64px;top:52px;max-width:none}
+html.og h1{font-size:118px;margin-top:22px}
+html.og .crumbs{font-size:19px}
+html.og .ogline{display:block}
+.ogline{display:none;margin-top:6px;font-size:27px;font-weight:600;color:var(--ink);max-width:640px;line-height:1.3;text-shadow:0 0 22px rgba(220,240,252,.95)}
+.ogline b{color:var(--coral2)}
+/* short desktop windows (the gallery viewer is ~1297 x 717) */
+@media (min-width:761px) and (max-height:800px){
+  :root{--benchH:214px}
+  h1{font-size:50px;margin:10px 0 8px}
+  .lead{font-size:14.5px;max-width:390px}
+  #whatbtn{margin-top:8px;padding:5px 13px 6px}
+  .pane{padding:11px 15px 10px}
+  .who{font-size:18px}
+  .score .big{font-size:30px}
+  #bars{height:34px}
+  #bars .col{height:22px}
+  .ctl{gap:7px}
+  #evolve{padding:7px 12px 8px;font-size:14.5px}
+  #evolve small{font-size:11.5px}
+  .acts button{padding:4px 10px 5px;font-size:12.5px}
+}
+@media (min-width:761px) and (max-width:1220px){
+  #say{top:auto;bottom:calc(var(--benchH) + 30px);max-width:min(560px,calc(100vw - 40px))}
+}
+@media (min-width:761px) and (max-width:1100px){
+  #bench{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 336px}
+  .pane:nth-child(1) .who{font-size:17px}
+}
+/* phone: title, beach, bench, in reading order */
+@media (max-width:760px){
+  body{overflow:auto;overflow-x:hidden;height:auto}
+  html,body{height:auto}
+  #top{position:relative;left:auto;top:auto;padding:16px 18px 10px;max-width:none}
+  h1{font-size:46px;margin:12px 0 8px}
+  .lead{font-size:15px}
+  #stage{position:relative;inset:auto;height:56vh;min-height:320px;border-radius:0}
+  #beast{position:absolute;right:10px;top:auto;margin-top:-46px;padding:3px 4px 3px 10px;font-size:12px;gap:4px}
+  #beast .seg button{min-width:26px;height:28px;padding:0 4px;font-size:12px}
+  #pause{height:28px;padding:0 9px}
+  #bench{position:relative;left:auto;bottom:auto;transform:none;width:auto;height:auto;margin:12px 12px 20px;grid-template-columns:1fr;border-radius:18px}
+  .pane+.pane{border-left:0;border-top:1px solid var(--line)}
+  #legsvg{height:210px;flex:none}
+  #popbox{height:190px;flex:none}
+  #say{position:fixed;top:auto;bottom:16px;max-width:calc(100vw - 32px);min-width:0}
+  #tweak{position:fixed;bottom:12px}
+  #what{padding:12px}
+  #what article{padding:22px 20px}
+}
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="crumbs"><a href="../">← Curio</a><span class="no">Curio · No. <b>052</b> · Linkage walker</span></div>
+  <h1>Beach Walker<span>.</span></h1>
+  <p class="lead">Eleven rods turn one crank into a stride. Theo Jansen found his lengths by evolution: <b>1,500 random legs, keep the best 100, breed, repeat.</b> Do the same here, then send your leg down the sand.</p>
+  <p class="ogline">Breed <b>1,500 random legs</b>, keep the best 100, repeat — and send the winner down the beach.</p>
+  <button id="whatbtn" type="button">What is this?</button>
+</header>
+<div id="stage" aria-label="A twelve-legged walking machine on a beach. Drag to look around, scroll or pinch to zoom."></div>
+<div id="beast" role="group" aria-label="Number of legs on the beach"><span>Legs</span><div class="seg" id="legsseg"></div><button id="pause" type="button">Pause</button></div>
+<div id="say" role="status" aria-live="polite"></div>
+<section id="bench" aria-label="Breeding bench">
+  <div class="pane">
+    <div class="ph">On the beach <span class="v" id="legnote"></span></div>
+    <div class="who" id="who">Jansen's 1990 numbers</div>
+    <svg id="legsvg" viewBox="-130 -46 200 158" role="img" aria-label="The leg on the beach, its eleven rods and the path its foot draws"></svg>
+    <div class="legacts"><button type="button" id="tweakbtn">Tweak rods</button><button type="button" id="share">Copy link</button><button type="button" id="card">Save card</button></div>
+  </div>
+  <div class="pane">
+    <div class="ph">Evolution <span class="v" id="popnote"></span></div>
+    <div id="popbox"><canvas id="pop"></canvas>
+      <div class="key"><span><i class="p"></i>a leg that can walk</span><span><i></i>best of this generation</span><span><i class="j"></i>Jansen's foot path</span></div>
+      <div id="poplab"></div></div>
+  </div>
+  <div class="pane ctl">
+    <div class="mode"><span>Breed for</span><div class="seg" id="modeseg"><button type="button" data-m="this" aria-pressed="true">this beast</button><button type="button" data-m="any" aria-pressed="false">every beast</button></div></div>
+    <div class="go"><button id="evolve" type="button">Evolve 1,500 legs<small id="evsub">from random rods, 60 generations</small></button><button id="seedbtn" type="button" title="Start again from other random legs">seed 7</button></div>
+    <div class="scorerow"><div class="score"><div class="big" id="scorebig">96</div></div><div id="bars" aria-label="Walk score of this leg on beasts with 6 to 24 legs"></div></div>
+    <div class="cmp" id="scorecmp"></div>
+    <div class="acts"><button type="button" id="walkit" class="hot" disabled>Put it on the beach</button><button type="button" id="holy">Jansen's leg</button></div>
+  </div>
+</section>
+<div id="tweak" role="dialog" aria-label="Tweak the rod lengths"><div class="ph">Rod lengths, cm <span class="v" id="tweaknote"></span></div><div class="grid" id="tweakgrid"></div><div class="row"><span>Frame fixed: a 38, l 7.8, crank m 15</span><button type="button" id="tweakdone">Done</button></div></div>
+<div id="what" role="dialog" aria-label="What is this?"><article><button class="x" type="button" aria-label="Close">×</button><h2>What is this?</h2>
+<p>A walking machine in the manner of Theo Jansen's beach animals: one crankshaft, and on every crank throw a leg and its mirror image. Each leg is the frame (<i>a</i>, <i>l</i>), the crank (<i>m</i>) and ten rods (<i>b</i>–<i>k</i>). Every joint sits where two circles meet, so one turn of the crank is five circle intersections per angle, computed here 120 times a turn for the score and every frame for the 3D model.</p>
+
+<h3>How Jansen found his numbers</h3>
+<p>In his own words on strandbeest.com: <i>“Fifteen hundred legs with rods of random length were generated in the computer. It then assessed which of these approached the ideal walking curve. Out of the 1500, the computer selected the best 100. These were awarded the privilege of reproduction.”</i> The ideal was a curve with a flat base and rounded corners: while the foot is on the base it carries the animal along a straight line, like the axle of a wheel, so <i>“the beach animal doesn't lurch.”</i> The result, after weeks of computing in 1990, was his holy numbers: a 38, b 41.5, c 39.3, d 40.1, e 55.8, f 39.4, g 36.7, h 65.7, i 49, j 50, k 61.9, l 7.8, m 15.</p>
+
+<h3>How a leg is scored here</h3>
+<p>Jansen never published his yardstick, so this page uses its own, built from his description:</p>
+<ul>
+<li><b>The beast.</b> With 2&nbsp;×&nbsp;<i>P</i> legs it has <i>P</i> crank throws spread evenly round the crank. The body rides on its lowest foot and moves with that foot without slipping.</li>
+<li><b>Stride</b> is how far the body travels in one turn of the crank. <b>Lurch</b> is the furthest the body strays from rolling straight at constant speed, up–down or forward–back, in cm.</li>
+<li><b>Walk score</b> = stride ÷ (1 + lurch / 0.5&nbsp;cm), scaled down if the feet lift less than 15&nbsp;cm or more than 45&nbsp;cm.</li>
+<li>A leg scores 0 if any joint cannot close or comes within about 3° of folding flat (where real linkages jam), if the foot meets the sand less than 85 or more than 100&nbsp;cm below the crank, or if a knee comes within 5&nbsp;cm of the sand.</li>
+</ul>
+<p>Jansen's leg on 12 legs: the crank sits 91.8&nbsp;cm above the sand, the feet lift 22.5&nbsp;cm, the body moves 141&nbsp;cm a turn and lurches 0.24&nbsp;cm (0.08 up–down): score 96. Its weakest beast is the 6-legged one (39).</p>
+
+<h3>The evolution on this page</h3>
+<p>Jansen's recipe with small numbers filled in: 1,500 legs with rods drawn at random between 20 and 80&nbsp;cm (frame and crank stay his); the best 100 breed; each child takes every rod from one of two parents and nudges 30% of them by a random amount (spread 0.3 or 2&nbsp;cm); the best leg passes on unchanged. One press runs 60 generations. <b>Breed for this beast</b> scores legs on the beast now on the beach; <b>every beast</b> scores a leg by its worst result on the 6- to 24-legged beasts.</p>
+
+<h3>What 30 runs show</h3>
+<p>Node ran this page's engine for 30 seeds in each mode, 60 generations each.</p>
+<ul>
+<li>Of 1,500 random legs, a median of 41 (between 28 and 55) can turn the crank and walk at all.</li>
+<li><b>Bred for the 12-legged beast</b>, the best leg passes Jansen's 96 by generation 2.5 (median; every run by 5) and ends at 128 (107–159). Moved to the other beasts, 16 of the 30 do worse somewhere than Jansen's leg does on its weakest beast; on 6 legs the median lurch is 1.6&nbsp;cm and the worst 44&nbsp;cm.</li>
+<li><b>Bred for every beast</b>, all 30 beat Jansen's weakest beast (39): median 53. On 12 legs they reach a median of 88, and 11 of 30 pass his 96.</li>
+<li>No run comes back to his numbers. The rods of the best legs differ from his by 13&nbsp;cm on average (median; the closest run 6.2&nbsp;cm): many quite different legs walk.</li>
+</ul>
+<p>So the evolution does what it is told. A leg bred for one beast is fitted to that beast; Jansen's leg, bred for the shape of one foot path, walks every beast here between 39 and 96.</p>
+
+<h3>What is real, what is not</h3>
+<ul>
+<li><b>Computed:</b> the linkage (Jansen's published lengths, five circle intersections), the gait, the score and the evolution, all in 64-bit floats with a fixed order of operations and a counted random generator. A numpy reference reproduces them bit for bit: 3,780 values including whole evolution runs, plus the page's own logs.</li>
+<li><b>Not modelled:</b> forces, weight, balance (the body never tips), sand, and the wind: the crank simply turns at 0.4 turns a second. The arrangement of the legs (evenly spread throws, each with a mirrored pair) is this page's, not a copy of any of Jansen's animals.</li>
+<li>Sizes are true to scale in cm; the 3D beast is drawn from the same numbers as the score.</li>
+</ul>
+
+<h3>Make one and keep it</h3>
+<p><b>Copy link</b> puts the ten rod lengths and the number of legs in the address; anyone who opens it sees your leg on that beast. <b>Save card</b> downloads a picture of the leg, its foot path and its numbers. <b>Tweak rods</b> lets you change one rod at a time and see the score move.</p>
+
+<h3>Sources</h3>
+<p>Theo Jansen, “Leg system”, strandbeest.com, archived 22 February 2016: <a href="https://web.archive.org/web/20160222001806/http://www.strandbeest.com/beests_leg.php">web.archive.org/…/beests_leg.php</a>. The beach, the beast and the scoring are this page's own; it is not affiliated with Jansen.</p></article></div>
+<script>
+// Beach Walker engine. Theo Jansen's leg is five circle-circle intersections per crank angle;
+// a beast with P crank throws carries 2P legs (each throw drives a leg and its mirror image);
+// the body rides on its lowest foot. The walk score and the 1,500-leg evolution are written so
+// that ref.py (numpy) reproduces every number bit for bit: own cos(pi t), fixed operation order,
+// counter RNG, sums in sample order.
+function makeBW() {
+  'use strict';
+  const N = 120, POP = 1500, KEEP = 100, SLOTS = 160;
+  const FA = 38, FL = 7.8, FM = 15;                       // frame a, l and crank m (cm), Jansen's
+  const LO = 20, HI = 80;                                  // rod lengths the evolution may use (cm)
+  const HOLY = [41.5, 39.3, 40.1, 55.8, 39.4, 36.7, 65.7, 49, 50, 61.9];   // b c d e f g h i j k
+  const NAMES = ['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'];
+  const PAIRS = [3, 4, 5, 6, 8, 10, 12];                    // crank throws; legs = 2 x throws
+  const MARGIN = 0.0025, HMIN = 85, HMAX = 100, CLEAR = 5, LIFT0 = 15, LIFT1 = 45, LURCH0 = 0.5;
+  // ---- counter RNG (mulberry32 as a hash of seed + n) -----------------------------------
+  function rndU(seed, n) {
+    let a = (seed + Math.imul(n + 1, 0x6D2B79F5)) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  // ---- cos(pi t) from fixed Taylor polynomials (V8 and libm differ in the last bit) ------
+  const SC = [], CC = [];
+  { let f = 1; for (let k = 1; k <= 20; k++) { f = f * k; if (k % 2 === 1) SC.push(((k >> 1) % 2 ? -1 : 1) / f); else CC.push(((k >> 1) % 2 ? -1 : 1) / f); } }
+  const PI = 3.141592653589793;
+  function sinpoly(x) { const x2 = x * x; let p = SC[9]; for (let k = 8; k >= 0; k--) p = SC[k] + x2 * p; return x * p; }
+  function cospoly(x) { const x2 = x * x; let p = CC[9]; for (let k = 8; k >= 0; k--) p = CC[k] + x2 * p; return 1 + x2 * p; }
+  function cospi(t) {
+    t = Math.abs(t);
+    t = t - 2 * Math.floor(t * 0.5);
+    if (t > 1) t = 2 - t;
+    let s = 1;
+    if (t > 0.5) { t = 1 - t; s = -1; }
+    if (t > 0.25) return s * sinpoly((0.5 - t) * PI);
+    return s * cospoly(t * PI);
+  }
+  // crank pin A at the N sample angles (turn fraction n/N, counter-clockwise)
+  const AX = new Float64Array(N), AY = new Float64Array(N);
+  for (let n = 0; n < N; n++) { AX[n] = FM * cospi(n / 60); AY[n] = FM * cospi(n / 60 - 0.5); }
+  // ---- one joint: the intersection of circle(P, r1) and circle(Q, r2) left (s=1) or right of P->Q
+  let IX = 0, IY = 0;
+  function isect(px, py, r1, qx, qy, r2, s) {
+    const dx = qx - px, dy = qy - py, d2 = dx * dx + dy * dy, d = Math.sqrt(d2);
+    const a = (r1 * r1 - r2 * r2 + d2) / (2 * d);
+    const h2 = r1 * r1 - a * a;
+    const rm = r1 > r2 ? r1 : r2;
+    const h = h2 > 0 ? Math.sqrt(h2) : 0;
+    const ex = dx / d, ey = dy / d;
+    IX = px + a * ex - s * h * ey;
+    IY = py + a * ey + s * h * ex;
+    return h2 / (rm * rm);                 // (triangle height / longest side)^2; < 0: cannot close
+  }
+  // joints C D E F G for crank pin (ax, ay); J gets [Cx,Cy,Dx,Dy,Ex,Ey,Fx,Fy,Gx,Gy], returns margin
+  function legAt(R, ax, ay, J) {
+    let mg = isect(-FA, -FL, R[0], ax, ay, R[8], 1); J[0] = IX; J[1] = IY;           // C: b, j
+    mg = Math.min(mg, isect(-FA, -FL, R[1], ax, ay, R[9], -1)); J[2] = IX; J[3] = IY; // D: c, k
+    mg = Math.min(mg, isect(-FA, -FL, R[2], J[0], J[1], R[3], 1)); J[4] = IX; J[5] = IY; // E: d, e
+    mg = Math.min(mg, isect(J[4], J[5], R[4], J[2], J[3], R[5], -1)); J[6] = IX; J[7] = IY; // F: f, g
+    mg = Math.min(mg, isect(J[6], J[7], R[6], J[2], J[3], R[7], -1)); J[8] = IX; J[9] = IY; // G: h, i
+    return mg;
+  }
+  // a pose at any crank angle (turn fraction u) for drawing and the 3D model
+  function pose(R, u) {
+    const ax = FM * cospi(2 * u), ay = FM * cospi(2 * u - 0.5), J = new Float64Array(10);
+    const mg = legAt(R, ax, ay, J);
+    return { O: [0, 0], A: [ax, ay], B: [-FA, -FL], C: [J[0], J[1]], D: [J[2], J[3]], E: [J[4], J[5]], F: [J[6], J[7]], G: [J[8], J[9]], margin: mg };
+  }
+  // ---- the foot path and the walk ---------------------------------------------------------
+  const GX = new Float64Array(N), GY = new Float64Array(N), J = new Float64Array(10), XS = new Float64Array(N);
+  function trace(R) {                       // fills GX, GY; returns {mg, y0, ymax, kmin}
+    let mg = Infinity, kmin = Infinity;
+    for (let n = 0; n < N; n++) {
+      mg = Math.min(mg, legAt(R, AX[n], AY[n], J));
+      GX[n] = J[8]; GY[n] = J[9];
+      kmin = Math.min(kmin, Math.min(Math.min(J[1], J[3]), Math.min(J[5], J[7])));
+    }
+    let y0 = Infinity, ymax = -Infinity;
+    for (let n = 0; n < N; n++) { y0 = Math.min(y0, GY[n]); ymax = Math.max(ymax, GY[n]); }
+    return { mg, y0, ymax, kmin };
+  }
+  // P throws spaced N/P samples; throw p's leg uses sample n+s, its mirror is the leg mirrored in
+  // x = 0 at sample 60-n-s. Body height = -(lowest foot); body moves with the lowest foot (no slip).
+  function gait(P, lf) {
+    const sh = N / P;
+    let X = 0, hmin = Infinity, hmax = -Infinity;
+    for (let n = 0; n < N; n++) {
+      let best = Infinity, x0 = 0, x1 = 0;
+      for (let p = 0; p < P; p++) {
+        const s = p * sh;
+        const q = (n + s) % N;
+        if (GY[q] < best) { best = GY[q]; x0 = GX[q]; x1 = GX[(q + 1) % N]; }
+        const r = ((60 - n - s) % N + N) % N;
+        if (GY[r] < best) { best = GY[r]; x0 = -GX[r]; x1 = -GX[(r + N - 1) % N]; }
+      }
+      const hg = -best;
+      hmin = Math.min(hmin, hg); hmax = Math.max(hmax, hg);
+      XS[n] = X; X = X + (x1 - x0);
+    }
+    const T = X;
+    let hl = 0;
+    for (let n = 0; n < N; n++) hl = Math.max(hl, Math.abs(XS[n] - n * T / N));
+    const vl = hmax - hmin, L = Math.max(vl, hl);
+    return { P, T, vl, hl, L, score: Math.abs(T) * lf / (1 + L / LURCH0) };
+  }
+  function liftFactor(lift) { return lift < LIFT0 ? lift / LIFT0 : (lift > LIFT1 ? LIFT1 / lift : 1); }
+  // full report for one leg on the beasts in ps (score = the worst of them; 0 if the leg fails)
+  function evaluate(R, ps) {
+    const t = trace(R);
+    const H = -t.y0, lift = t.ymax - t.y0, clear = t.kmin - t.y0, lf = liftFactor(lift);
+    const why = !(t.mg >= MARGIN) ? (t.mg < 0 || t.mg !== t.mg ? 'jams' : 'folds flat')
+      : !(H >= HMIN) ? 'too short' : !(H <= HMAX) ? 'too tall' : !(clear >= CLEAR) ? 'knee drags' : '';
+    const gaits = why ? [] : ps.map(P => gait(P, lf));
+    let score = 0;
+    if (!why) { score = Infinity; for (const g of gaits) score = Math.min(score, g.score); }
+    return { score, valid: !why, why, margin: t.mg, H, lift, clear, lf, gaits, path: { x: Array.from(GX), y: Array.from(GY) } };
+  }
+  function score(R, ps) {                   // the GA's inner loop: same numbers, no objects
+    const t = trace(R);
+    const H = -t.y0, lift = t.ymax - t.y0, clear = t.kmin - t.y0;
+    if (!(t.mg >= MARGIN) || !(H >= HMIN) || !(H <= HMAX) || !(clear >= CLEAR)) return 0;
+    const lf = liftFactor(lift);
+    let sc = Infinity;
+    for (let k = 0; k < ps.length; k++) sc = Math.min(sc, gait(ps[k], lf).score);
+    return sc;
+  }
+  // ---- Jansen's evolution: 1,500 legs, the best 100 breed 1,500 new ones -------------------
+  function round2(x) { return Math.floor(x * 100 + 0.5) / 100; }
+  function makeGA(seed, ps) {
+    seed = seed | 0;
+    let pop = new Float64Array(POP * 10), nxt = new Float64Array(POP * 10);
+    const sc = new Float64Array(POP), order = new Int32Array(POP), R = new Float64Array(10);
+    const paths = new Float32Array(POP * 60);           // every 4th sample, for the drawing
+    let gen = 0, evaluated = 0;
+    for (let c = 0; c < POP; c++) for (let r = 0; r < 10; r++)
+      pop[c * 10 + r] = round2(LO + (HI - LO) * rndU(seed, c * SLOTS + r));
+    function evalSome(k) {                  // evaluate up to k legs of the current generation
+      const end = Math.min(POP, evaluated + k);
+      for (let c = evaluated; c < end; c++) {
+        for (let r = 0; r < 10; r++) R[r] = pop[c * 10 + r];
+        sc[c] = score(R, ps);
+        for (let q = 0; q < 30; q++) { paths[c * 60 + q * 2] = GX[q * 4]; paths[c * 60 + q * 2 + 1] = GY[q * 4]; }
+      }
+      evaluated = end;
+      if (evaluated === POP) {
+        for (let c = 0; c < POP; c++) order[c] = c;
+        const o = Array.from(order).sort((a, b) => (sc[b] - sc[a]) || (a - b));
+        for (let c = 0; c < POP; c++) order[c] = o[c];
+      }
+      return evaluated === POP;
+    }
+    function breed() {                      // needs the current generation evaluated
+      const g = gen + 1;
+      const best = order[0];
+      for (let r = 0; r < 10; r++) nxt[r] = pop[best * 10 + r];
+      for (let c = 1; c < POP; c++) {
+        const base = (g * POP + c) * SLOTS;
+        const pa = order[Math.floor(rndU(seed, base) * KEEP)], pb = order[Math.floor(rndU(seed, base + 1) * KEEP)];
+        const sig = rndU(seed, base + 2) < 0.5 ? 0.3 : 2.0;
+        for (let r = 0; r < 10; r++) {
+          let x = rndU(seed, base + 3 + r) < 0.5 ? pop[pa * 10 + r] : pop[pb * 10 + r];
+          if (rndU(seed, base + 13 + r) < 0.3) {
+            let s = 0;
+            for (let k = 0; k < 12; k++) s += rndU(seed, base + 40 + r * 12 + k);
+            x = x + (s - 6) * sig;
+          }
+          x = x < LO ? LO : (x > HI ? HI : x);
+          nxt[c * 10 + r] = round2(x);
+        }
+      }
+      const t = pop; pop = nxt; nxt = t;
+      gen = g; evaluated = 0;
+    }
+    function bestRods() { const b = order[0]; return Array.from(pop.subarray(b * 10, b * 10 + 10)); }
+    function nValid() { let v = 0; for (let c = 0; c < POP; c++) if (sc[c] > 0) v++; return v; }
+    return {
+      seed, ps: ps.slice(), evalSome, breed, bestRods, nValid,
+      get gen() { return gen; }, get done() { return evaluated === POP; },
+      get best() { return sc[order[0]]; }, scores: () => sc, order: () => order, pop: () => pop, paths: () => paths,
+      runSync(gens) { while (!evalSome(POP)) {} while (gen < gens) { breed(); evalSome(POP); } return this; }
+    };
+  }
+  // 32-bit-word polynomial hash of a Float64Array (numpy: uint32 words * 0x9E3779B1^k)
+  function hash(arr) {
+    const a = arr instanceof Float64Array ? arr : Float64Array.from(arr);
+    const u = new Uint32Array(a.buffer, a.byteOffset, a.length * 2);
+    let h = 0, m = 1;
+    for (let k = 0; k < u.length; k++) { h = (h + Math.imul(u[k], m)) >>> 0; m = Math.imul(m, 0x9E3779B1) >>> 0; }
+    return h >>> 0;
+  }
+  return { N, POP, KEEP, FA, FL, FM, LO, HI, HOLY, NAMES, PAIRS, MARGIN, HMIN, HMAX, CLEAR, LIFT0, LIFT1, LURCH0,
+    rndU, cospi, pose, evaluate, score, makeGA, round2, hash, AX, AY };
+}
+
+</script>
+<script>window.__STATS = {"holy12": 95.73602921018892, "holyWorst": 38.53202903813098, "valid0": 41.0};</script>
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+const BW = makeBW();
+const ST = window.__STATS || {};
+const Q = new URLSearchParams(location.search);
+const FIXED = Q.has('fixed'), OG = Q.has('og');
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STATIC = RM && !FIXED;
+const HTML = document.documentElement;
+if (FIXED) HTML.classList.add('fixed');
+if (STATIC) HTML.classList.add('static');
+if (OG) HTML.classList.add('og');
+const $ = s => document.querySelector(s);
+const fmt = (x, d = 0) => Number(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const S = 0.01;                         // cm -> m
+const THROW = 0.2;                     // spacing of crank throws along the shaft (m)
+const ZC = -0.3;                        // the beast walks the wet sand at z = -0.3
+const SPEED = 0.4;                      // crank turns per second
+const BEASTS = BW.PAIRS;                // throws: 3..12 -> 6..24 legs
+const LOG = [];
+function log(e) { LOG.push(e); if (LOG.length > 400) LOG.shift(); }
+
+// ---------------------------------------------------------------- the leg on the beach
+const HOLY = BW.HOLY.slice();
+const holyEval = BW.evaluate(HOLY, BEASTS);
+let leg = { rods: HOLY.slice(), kind: 'holy', name: "Jansen's 1990 numbers" };
+let legEval = holyEval;
+let P = 6;
+{ // shared link: ?leg=b,c,...&legs=12
+  const L = Q.get('legs'); if (L && BEASTS.includes(+L / 2)) P = +L / 2;
+  const s = Q.get('leg');
+  if (s) {
+    const r = s.split(',').map(Number);
+    if (r.length === 10 && r.every(x => isFinite(x) && x >= 1 && x <= 200)) {
+      const e = BW.evaluate(r, BEASTS);
+      if (e.valid) { leg = { rods: r.map(BW.round2), kind: 'shared', name: 'A leg someone bred' }; legEval = BW.evaluate(leg.rods, BEASTS); }
+    }
+  }
+}
+const pIdx = p => BEASTS.indexOf(p);
+const scoreOn = (ev, p) => ev.valid ? ev.gaits[pIdx(p)].score : 0;
+const worstOf = ev => ev.valid ? Math.min(...ev.gaits.map(g => g.score)) : 0;
+const strideDir = () => (legEval.valid && legEval.gaits[pIdx(P)].T < 0) ? 1 : -1;
+let dir = strideDir();
+log({ ev: 'leg', kind: leg.kind, rods: leg.rods.slice(), P });
+
+// ---------------------------------------------------------------- three.js scene
+const stage = $('#stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: FIXED });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 900);
+const SUN = new THREE.Vector3(0.28, 0.86, -0.43).normalize();
+
+// sky: a dome that follows the camera; symmetric in |y| so that wet sand "reflects" it
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, depthTest: false, toneMapped: false,
+  uniforms: { sun: { value: SUN }, time: { value: 0 } },
+  vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position = p.xyww; }`,
+  fragmentShader: `uniform vec3 sun; uniform float time; varying vec3 vDir;
+    float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+    float nz(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h2(i),h2(i+vec2(1,0)),f.x), mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),f.x), f.y); }
+    float fbm(vec2 p){ float a=.5, s=0.; for(int k=0;k<4;k++){ s+=a*nz(p); p=p*2.03+vec2(5.2,1.3); a*=.5; } return s; }
+    void main(){
+      vec3 d = normalize(vDir); float y = abs(d.y);
+      vec3 c = mix(vec3(.88,.94,.97), vec3(.60,.80,.93), smoothstep(0.,.22,y));
+      c = mix(c, vec3(.30,.58,.86), smoothstep(.22,.95,y));
+      vec2 cp = d.xz / max(y,.07) * .55 + vec2(time*.006, 0.);
+      float cl = smoothstep(.56,.82, fbm(cp)) * smoothstep(.03,.2,y) * (1.-smoothstep(.55,.9,y));
+      c = mix(c, vec3(.99,.995,1.), cl*.9);
+      vec3 dm = vec3(d.x, y, d.z); float s = max(dot(dm, sun), 0.);
+      c += vec3(1.,.96,.86) * (pow(s, 1400.)*3. + pow(s, 18.)*.16);
+      gl_FragColor = vec4(c, 1.);
+    }`
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 48, 24), skyMat);
+sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
+
+// lights: noon sun from the sea side, sky and sand bounce
+const hemi = new THREE.HemisphereLight(0xd8eeff, 0xf2e6cf, 1.35); scene.add(hemi);
+const sunL = new THREE.DirectionalLight(0xfff4e2, 2.9);
+sunL.castShadow = true; sunL.shadow.mapSize.set(2048, 2048);
+Object.assign(sunL.shadow.camera, { left: -3.2, right: 3.2, top: 3.2, bottom: -3.2, near: 1, far: 40 });
+sunL.shadow.bias = -0.0004; sunL.shadow.normalBias = 0.02; sunL.shadow.radius = 3;
+scene.add(sunL); scene.add(sunL.target);
+
+// sand: one long strip; wet near the sea (darker, glossy, partly see-through to the mirrored beast and sky)
+function sandTexture() {
+  const n = 512, c = document.createElement('canvas'); c.width = c.height = n;
+  const g = c.getContext('2d'), im = g.createImageData(n, n);
+  let s = 12345; const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const rip = Math.sin((x / n) * Math.PI * 2 * 9 + Math.sin((y / n) * Math.PI * 2 * 2) * 1.6 + Math.sin((y / n) * Math.PI * 2 * 5) * .35);
+    const v = 222 + rip * 9 + (rnd() - .5) * 26;
+    const k = (y * n + x) * 4; im.data[k] = v; im.data[k + 1] = v * .91; im.data[k + 2] = v * .76; im.data[k + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const sandTex = sandTexture();
+sandTex.repeat.set(4000 / 3.2, 60 / 3.2);
+const sandMat = new THREE.MeshStandardMaterial({ map: sandTex, bumpMap: sandTex, bumpScale: 0.6, roughness: 1, transparent: true, depthWrite: false });
+sandMat.onBeforeCompile = sh => {
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp;')
+    .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWp = (modelMatrix * vec4(transformed,1.0)).xyz;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp;\nfloat wetK(){ return 1.0 - smoothstep(0.35, 1.7, vWp.z + 0.25*sin(vWp.x*0.7) + 0.12*sin(vWp.x*2.3)); }')
+    .replace('#include <map_fragment>', '#include <map_fragment>\nfloat wk = wetK(); diffuseColor.rgb *= mix(1.0, 0.56, wk); diffuseColor.a = mix(1.0, 0.5, wk);')
+    .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(0.96, 0.18, wetK());');
+};
+const sand = new THREE.Mesh(new THREE.PlaneGeometry(4000, 60), sandMat);
+sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0, 10); sand.receiveShadow = true; sand.renderOrder = 1;
+scene.add(sand);
+
+// the sea: from the waterline out to the horizon; the waterline washes in and out
+const seaMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, toneMapped: false,
+  uniforms: { time: { value: 0 }, shore: { value: -2.4 }, sun: { value: SUN }, xo: { value: 0 } },
+  vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `uniform float time, shore, xo; uniform vec3 sun; varying vec3 vW;
+    float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+    float nz(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h2(i),h2(i+vec2(1,0)),f.x), mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),f.x), f.y); }
+    void main(){
+      vec2 p = vec2(vW.x + xo, vW.z);
+      float edge = shore + (nz(p*vec2(.9,.9) + vec2(time*.15,0.)) - .5)*.5;
+      float dz = edge - vW.z;
+      if (dz < 0.) discard;
+      float far = clamp((-vW.z - 4.)/120., 0., 1.);
+      vec3 c = mix(vec3(.50,.76,.77), vec3(.20,.46,.60), smoothstep(0., 14., dz));
+      c = mix(c, vec3(.62,.78,.88), pow(far, .55));
+      float sw = sin(vW.z*2.1 + time*1.3 + nz(p*.35)*5.) * .5 + .5;
+      c += vec3(.07,.09,.09) * sw * (1.-far);
+      float foam = 1. - smoothstep(.0, .28 + .18*nz(p*2.5 + time*.4), dz);
+      float lines = smoothstep(.72,.95, nz(vec2(p.x*.7, p.y*3.2 - time*.9))) * (1. - smoothstep(.0, 6., dz)) * (1.-far);
+      c = mix(c, vec3(.97,.99,1.), max(foam*.92, lines*.55));
+      vec3 v = normalize(cameraPosition - vW);
+      vec3 n = normalize(vec3((nz(p*4. + time*.7)-.5)*.5, 1., (nz(p*4.3 - time*.6)-.5)*.5));
+      float sp = pow(max(dot(reflect(-sun, n), v), 0.), 160.);
+      c += vec3(1.,.97,.9) * sp * 1.4;
+      float a = mix(.38, .93, smoothstep(0., 2.2, dz));
+      a = max(a, foam*.95);
+      gl_FragColor = vec4(c, a);
+    }`
+});
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 400), seaMat);
+sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.006, -199); sea.renderOrder = 3; scene.add(sea);
+
+// marram grass on the dry sand, tiled along the beach; it sways in the wind (vertex shader)
+const grassU = { time: { value: 0 } };
+let grass;
+{
+  const g = new THREE.PlaneGeometry(0.018, 0.5, 1, 4); g.translate(0, 0.25, 0);
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); pos.setX(i, pos.getX(i) * (1 - y / 0.55)); }
+  const m = new THREE.MeshStandardMaterial({ color: 0xa7a35e, roughness: .9, side: THREE.DoubleSide });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.time = grassU.time;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float time;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vec4 ip = instanceMatrix * vec4(0.,0.,0.,1.);
+        float bend = position.y * position.y * 1.3;
+        transformed.x += bend * (0.16 + 0.1*sin(time*2.6 + ip.x*1.7 + ip.z*2.3));`);
+  };
+  const count = 60 * 22;
+  grass = new THREE.InstancedMesh(g, m, count);
+  const M = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), p = new THREE.Vector3();
+  let s = 99; const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  let k = 0;
+  for (let c = 0; c < 60; c++) {
+    const cx = (rnd() - .5) * 90, cz = 2.6 + rnd() * 9;
+    for (let b = 0; b < 22; b++) {
+      p.set(cx + (rnd() - .5) * .35, 0, cz + (rnd() - .5) * .35);
+      e.set((rnd() - .5) * .5, rnd() * Math.PI * 2, (rnd() - .5) * .5); q.setFromEuler(e);
+      const h = .55 + rnd() * .75; sc.set(1, h, 1);
+      grass.setMatrixAt(k++, M.compose(p, q, sc));
+    }
+  }
+  grass.castShadow = true; grass.receiveShadow = true; grass.frustumCulled = false;
+  scene.add(grass);
+}
+
+// footprints: flat ovals pressed into the sand, recycled oldest first
+const PRINTS = 1400;
+const printTex = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 96;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 50, 4, 32, 48, 30);
+  gr.addColorStop(0, 'rgba(62,44,24,.72)'); gr.addColorStop(.62, 'rgba(74,54,30,.56)'); gr.addColorStop(.86, 'rgba(255,248,232,.55)'); gr.addColorStop(1, 'rgba(255,248,230,0)');
+  g.save(); g.translate(32, 48); g.scale(.72, 1); g.translate(-32, -48); g.fillStyle = gr; g.beginPath(); g.arc(32, 48, 30, 0, 7); g.fill(); g.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const prints = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.095, 0.135).rotateX(-Math.PI / 2).rotateY(Math.PI / 2),
+  new THREE.MeshBasicMaterial({ map: printTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false }), PRINTS);
+prints.frustumCulled = false; prints.renderOrder = 2; prints.count = 0; scene.add(prints);
+const printT = new Float64Array(PRINTS), printX = new Float64Array(PRINTS), printZ = new Float64Array(PRINTS);
+let printN = 0, printHead = 0;
+function stamp(x, z, t) {
+  const k = printHead; printHead = (printHead + 1) % PRINTS; printN = Math.min(PRINTS, printN + 1);
+  printT[k] = t; printX[k] = x; printZ[k] = z;
+  prints.count = printN;
+}
+const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _Y = new THREE.Vector3(0, 1, 0), _d = new THREE.Vector3();
+function updatePrints(t) {
+  for (let k = 0; k < printN; k++) {
+    const age = t - printT[k];
+    const f = age < 50 ? 1 : Math.max(0, 1 - (age - 50) / 25);
+    _p.set(printX[k], 0.002, printZ[k]); _s.set(f, 1, f);
+    prints.setMatrixAt(k, _m.compose(_p, _q.identity(), _s));
+  }
+  prints.instanceMatrix.needsUpdate = true;
+}
+
+// blowing sand: a few hundred grains skimming the beach
+const GRAINS = 420;
+const grainGeo = new THREE.BufferGeometry();
+grainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(GRAINS * 3), 3));
+const grains = new THREE.Points(grainGeo, new THREE.PointsMaterial({ color: 0xefe0bd, size: 0.012, transparent: true, opacity: .7, depthWrite: false }));
+grains.frustumCulled = false; scene.add(grains);
+const grainSeed = new Float32Array(GRAINS * 3);
+{ let s = 7; const r = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff); for (let i = 0; i < GRAINS * 3; i++) grainSeed[i] = r(); }
+
+// ---------------------------------------------------------------- the beast: white tubes
+const MAXP = 12, MAXLEGS = MAXP * 2;
+const BARS = [['A', 'C'], ['A', 'D'], ['B', 'C'], ['B', 'D'], ['B', 'E'], ['C', 'E'], ['E', 'F'], ['D', 'F'], ['F', 'G'], ['D', 'G']];
+const BAR_ROD = ['j', 'k', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+const NB_LEG = BARS.length + 1;                     // ten rods + the crank arm O-A
+const NB_FRAME = 64;
+const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 10, 1, false);
+const tubeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .5, metalness: 0 });
+const jointMat = new THREE.MeshStandardMaterial({ color: 0xc9cdcf, roughness: .5 });
+const footMat = new THREE.MeshStandardMaterial({ color: 0x3b4146, roughness: .8 });
+const bars = new THREE.InstancedMesh(tubeGeo, tubeMat, MAXLEGS * NB_LEG + NB_FRAME);
+const joints = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 12).rotateX(Math.PI / 2), jointMat, MAXLEGS * 6 + 40);
+const feet = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 8), footMat, MAXLEGS);
+for (const m of [bars, joints, feet]) { m.castShadow = true; m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); }
+// the mirror image under the wet sand shares the same instance matrices
+const mirror = new THREE.Group(); mirror.scale.set(1, -1, 1); scene.add(mirror);
+const mirrorMeshes = [bars, joints, feet].map(m => {
+  const r = new THREE.InstancedMesh(m.geometry, m.material, m.count);
+  r.instanceMatrix = m.instanceMatrix; r.frustumCulled = false; mirror.add(r); return r;
+});
+// a coral flag on a mast at the front end
+const flagGeo = new THREE.PlaneGeometry(0.28, 0.16, 16, 6); flagGeo.translate(0.14, 0, 0);
+const flagBase = Float32Array.from(flagGeo.attributes.position.array);
+const flagMat = new THREE.MeshStandardMaterial({ color: 0xff6a45, emissive: 0x5a1a0a, roughness: .8, side: THREE.DoubleSide });
+const flag = new THREE.Mesh(flagGeo, flagMat); flag.castShadow = true; scene.add(flag);
+const flagR = new THREE.Mesh(flagGeo, flagMat); mirror.add(flagR);
+
+let nBars = 0, nJoints = 0, legStart = 0;
+function tube(a, b, r) {                         // world points a, b (Vector3), radius r
+  _d.subVectors(b, a); const len = _d.length();
+  _p.addVectors(a, b).multiplyScalar(0.5);
+  _q.setFromUnitVectors(_Y, _d.multiplyScalar(1 / (len || 1)));
+  _s.set(r, len, r);
+  bars.setMatrixAt(nBars++, _m.compose(_p, _q, _s));
+}
+function pin(a, r, w) {                          // a hinge pin along z at world point a
+  _s.set(r, r, w); joints.setMatrixAt(nJoints++, _m.compose(a, _q.identity(), _s));
+}
+const V = () => new THREE.Vector3();
+const va = V(), vb = V(), vc = V(), vd = V();
+const body = { x: 0, y: 0.9, u: 0, t: 0 };
+const feetPrev = new Float64Array(MAXLEGS), feetNow = new Float64Array(MAXLEGS), feetY = new Float64Array(MAXLEGS), contact = new Uint8Array(MAXLEGS);
+const feetZ = new Float64Array(MAXLEGS);
+let poses = [];
+function legZ(p) { return ZC + (p - (P - 1) / 2) * THROW; }
+// leg-frame point (cm) of throw p, side sd (+1 leg, -1 mirror) to world
+function W(out, pt, sd, z) { return out.set(body.x + dir * sd * pt[0] * S, body.y + pt[1] * S, z); }
+function computePoses(u) {
+  const out = [];
+  for (let p = 0; p < P; p++) {
+    const f = BW.pose(leg.rods, u + p / P), m = BW.pose(leg.rods, 0.5 - (u + p / P));
+    out.push(f, m);
+  }
+  return out;
+}
+let footMin = 0;
+function stepBody(u1, t) {                       // advance the crank to u1; the body rides its lowest foot
+  const ps = computePoses(u1);
+  let k0 = 0, ymin = Infinity;
+  for (let k = 0; k < 2 * P; k++) {
+    const sd = k % 2 ? -1 : 1, G = ps[k].G;
+    feetNow[k] = sd * G[0]; feetY[k] = G[1];
+    if (G[1] < ymin) { ymin = G[1]; k0 = k; }
+  }
+  if (poses.length === 2 * P) body.x -= dir * (feetNow[k0] - feetPrev[k0]) * S;
+  body.y = -ymin * S; footMin = ymin;
+  for (let k = 0; k < 2 * P; k++) {
+    const on = feetY[k] - ymin < 0.35;
+    if (on && !contact[k] && poses.length === 2 * P) stamp(body.x + dir * feetNow[k] * S, legZ(k >> 1) + (k % 2 ? 0.035 : -0.035), t);
+    contact[k] = on ? 1 : 0;
+    feetPrev[k] = feetNow[k];
+  }
+  poses = ps; body.u = u1;
+}
+function buildBeast(t) {
+  nBars = 0; nJoints = 0;
+  const L = (P - 1) / 2 * THROW + 0.09;
+  const zf = ZC - L, zb = ZC + L;
+  const O = [0, 0], B1 = [-BW.FA, -BW.FL], B2 = [BW.FA, -BW.FL];
+  // shaft and the two pivot rails, with end frames, a ridge and a mast
+  W(va, O, 1, zf); W(vb, O, 1, zb); tube(va, vb, 0.014);
+  W(va, B1, 1, zf); W(vb, B1, 1, zb); tube(va, vb, 0.013);
+  W(va, B2, 1, zf); W(vb, B2, 1, zb); tube(va, vb, 0.013);
+  const R = [0, 26];
+  W(va, R, 1, zf); W(vb, R, 1, zb); tube(va, vb, 0.012);
+  for (const z of [zf, zb]) {             // an A-frame at each end: rails up to the ridge
+    W(va, B1, 1, z); W(vb, B2, 1, z); tube(va, vb, 0.012);
+    W(vc, R, 1, z); tube(va, vc, 0.012); tube(vb, vc, 0.012);
+  }
+  // legs
+  legStart = nBars;
+  let fk = 0;
+  for (let p = 0; p < P; p++) {
+    const z = legZ(p);
+    for (let sd = 1; sd >= -1; sd -= 2) {
+      const ps = poses[p * 2 + (sd > 0 ? 0 : 1)], zz = z + (sd > 0 ? -0.035 : 0.035);
+      const pt = k => ps[k];
+      W(va, ps.O, 1, zz); W(vb, pt('A'), sd, zz); tube(va, vb, 0.016);
+      for (const [a, b] of BARS) { W(va, pt(a), sd, zz); W(vb, pt(b), sd, zz); tube(va, vb, 0.0105); }
+      for (const k of ['A', 'C', 'D', 'E', 'F', 'B']) { W(va, pt(k), sd, zz); pin(va, 0.0125, 0.034); }
+      W(va, pt('G'), sd, zz); _s.set(0.03, 0.017, 0.04); feet.setMatrixAt(fk++, _m.compose(va, _q.identity(), _s));
+    }
+    W(va, poses[p * 2].A, 1, z - 0.035); W(vb, poses[p * 2].A, 1, z + 0.035); tube(va, vb, 0.013);
+  }
+  for (const m of [bars, joints, feet]) m.instanceMatrix.needsUpdate = true;
+  bars.count = mirrorMeshes[0].count = nBars;
+  joints.count = mirrorMeshes[1].count = nJoints;
+  feet.count = mirrorMeshes[2].count = fk;
+  // flag on a mast at the front end, flapping downwind (+x)
+  W(va, R, 1, zf); vb.copy(va); vb.y += 0.34; tube(va, vb, 0.008);
+  bars.count = mirrorMeshes[0].count = nBars;
+  const pos = flagGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = flagBase[i * 3], y = flagBase[i * 3 + 1];
+    pos.setXYZ(i, x, y, Math.sin(x * 26 - t * 9) * 0.03 * (x / 0.28) + Math.sin(y * 13 + t * 5) * 0.008 * (x / 0.28));
+  }
+  pos.needsUpdate = true; flagGeo.computeVertexNormals();
+  flag.position.set(vb.x, vb.y - 0.08, vb.z); flag.rotation.y = 0; flagR.position.copy(flag.position);
+}
+function resetWalk() {
+  poses = []; body.x = 0; printN = 0; printHead = 0; prints.count = 0; contact.fill(0);
+  stepBody(body.u, body.t);
+}
+
+// ---------------------------------------------------------------- camera
+const view = { yaw: 0.6, pitch: 0.05, dist: 6.6, tx: 0, ty: 0.55, tz: ZC };
+if (OG) Object.assign(view, { yaw: 0.78, pitch: 0.1, dist: 4.3 });
+const camT = new THREE.Vector3(body.x, 0.55, ZC);
+let W0 = 1, H0 = 1;
+function layout() {
+  const w = stage.clientWidth || innerWidth, h = stage.clientHeight || innerHeight;
+  W0 = w; H0 = h;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // keep the beast clear of the bench and the title: shift the picture's centre
+  const bench = $('#bench'), mobile = innerWidth <= 760;
+  const bh = (!mobile && !OG && bench) ? bench.offsetHeight + 18 : 0;
+  const sx = OG ? -0.18 * w : (!mobile && w > 1000 ? -0.07 * w : 0);
+  camera.setViewOffset(w, h + bh, sx, bh * (OG ? 0.2 : 0.7), w, h);
+  camera.updateProjectionMatrix();
+  if (FIXED || STATIC) render();
+}
+function placeCamera(dt) {
+  const len = P * THROW;
+  const dist = view.dist * (0.8 + 0.22 * len / 1.2) * (camera.aspect < 1 ? 0.74 : 1);
+  const k = (dt > 0 && !FIXED) ? 1 - Math.exp(-dt * 3) : 1;
+  camT.x += (body.x - camT.x) * k; camT.y += (body.y * 0.62 + 0.08 - camT.y) * k; camT.z = ZC + 0.1;
+  const cp = Math.cos(view.pitch);
+  camera.position.set(camT.x + dist * Math.sin(view.yaw) * cp, camT.y + dist * Math.sin(view.pitch) + 0.1, camT.z + dist * Math.cos(view.yaw) * cp);
+  camera.lookAt(camT);
+  camera.updateMatrixWorld();
+  sky.position.copy(camera.position);
+  sunL.position.copy(camT).addScaledVector(SUN, 20); sunL.target.position.copy(camT);
+  grass.position.x = Math.floor(camT.x / 90) * 90; if (camT.x - grass.position.x > 45) grass.position.x += 90;
+}
+// drag to look around, wheel / pinch to zoom
+{
+  let drag = null; const pts = new Map(); let pinch = 0;
+  stage.addEventListener('pointerdown', e => { pts.set(e.pointerId, [e.clientX, e.clientY]); stage.setPointerCapture(e.pointerId); drag = [e.clientX, e.clientY, view.yaw, view.pitch]; stage.classList.add('drag'); touched('drag'); });
+  stage.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) view.dist = Math.min(9, Math.max(2.2, view.dist * pinch / d)); pinch = d; return; }
+    if (!drag) return;
+    view.yaw = drag[2] - (e.clientX - drag[0]) * 0.006;
+    view.pitch = Math.min(1.1, Math.max(0.03, drag[3] + (e.clientY - drag[1]) * 0.004));
+    if (FIXED || STATIC) render();
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; if (!pts.size) { drag = null; stage.classList.remove('drag'); } };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  stage.addEventListener('wheel', e => { e.preventDefault(); view.dist = Math.min(9, Math.max(2.2, view.dist * Math.exp(e.deltaY * 0.0012))); touched('zoom'); if (FIXED || STATIC) render(); }, { passive: false });
+}
+let userTouched = false;
+function touched(what) { userTouched = true; }
+
+// ---------------------------------------------------------------- the bench: leg drawing
+const NS = 'http://www.w3.org/2000/svg';
+const svg = $('#legsvg');
+const svgEl = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+let svgParts = null;
+function legBounds(rods) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let q = 0; q < 24; q++) {
+    const p = BW.pose(rods, q / 24);
+    for (const k of ['O', 'A', 'B', 'C', 'D', 'E', 'F', 'G']) { x0 = Math.min(x0, p[k][0]); x1 = Math.max(x1, p[k][0]); y0 = Math.min(y0, p[k][1]); y1 = Math.max(y1, p[k][1]); }
+  }
+  return [x0, x1, y0, y1];
+}
+function drawLegStatic() {
+  svg.textContent = '';
+  const [x0, x1, y0, y1] = legBounds(leg.rods);
+  const pad = 9, w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad + 6;
+  svg.setAttribute('viewBox', `${x0 - pad} ${-y1 - pad} ${w} ${h}`);
+  svgEl('line', { x1: x0 - pad, x2: x1 + pad, y1: legEval.H, y2: legEval.H, stroke: '#e2cfa4', 'stroke-width': 2.4 });
+  const ev = legEval, path = ev.path;
+  let d = '';
+  for (let n = 0; n < 120; n++) d += (n ? 'L' : 'M') + path.x[n].toFixed(2) + ' ' + (-path.y[n]).toFixed(2);
+  svgEl('path', { d: d + 'Z', fill: 'rgba(242,97,63,.08)', stroke: '#f2613f', 'stroke-width': 1.6, 'stroke-linejoin': 'round' });
+  const g = svgEl('g', {});
+  const lines = BARS.map((_, i) => svgEl('line', { stroke: '#0f2b3d', 'stroke-width': 1.7, 'stroke-linecap': 'round' }, g));
+  const crank = svgEl('line', { stroke: '#0f2b3d', 'stroke-width': 3, 'stroke-linecap': 'round' }, g);
+  svgEl('circle', { cx: 0, cy: 0, r: 15, fill: 'none', stroke: 'rgba(15,43,61,.25)', 'stroke-dasharray': '2 2.5', 'stroke-width': .8 }, g);
+  const dots = ['A', 'B', 'C', 'D', 'E', 'F'].map(k => svgEl('circle', { r: 2.1, fill: '#fff', stroke: '#0f2b3d', 'stroke-width': 1.2 }, g));
+  const foot = svgEl('circle', { r: 3.3, fill: '#f2613f' }, g);
+  svgEl('circle', { cx: 0, cy: 0, r: 2.6, fill: '#0f2b3d' }, g);
+  svgEl('rect', { x: -BW.FA - 4, y: BW.FL - 4, width: 8, height: 8, fill: '#0f2b3d', rx: 1.5 }, g);
+  const labels = BAR_ROD.map(r => svgEl('text', { 'font-size': 7.5, 'font-weight': 600, fill: '#7c8f9a', 'text-anchor': 'middle', 'font-family': 'Figtree, sans-serif' }, g));
+  labels.forEach((t, i) => t.textContent = BAR_ROD[i]);
+  svgParts = { lines, crank, dots, foot, labels };
+}
+function drawLegLive(u) {
+  if (!svgParts) return;
+  const p = BW.pose(leg.rods, u);
+  BARS.forEach(([a, b], i) => {
+    const l = svgParts.lines[i];
+    l.setAttribute('x1', p[a][0].toFixed(2)); l.setAttribute('y1', (-p[a][1]).toFixed(2)); l.setAttribute('x2', p[b][0].toFixed(2)); l.setAttribute('y2', (-p[b][1]).toFixed(2));
+    const t = svgParts.labels[i]; const mx = (p[a][0] + p[b][0]) / 2, my = -(p[a][1] + p[b][1]) / 2;
+    const dx = p[b][0] - p[a][0], dy = -(p[b][1] - p[a][1]), L = Math.hypot(dx, dy) || 1;
+    t.setAttribute('x', (mx - dy / L * 5.2).toFixed(1)); t.setAttribute('y', (my + dx / L * 5.2 + 2.6).toFixed(1));
+  });
+  const c = svgParts.crank; c.setAttribute('x1', 0); c.setAttribute('y1', 0); c.setAttribute('x2', p.A[0].toFixed(2)); c.setAttribute('y2', (-p.A[1]).toFixed(2));
+  ['A', 'B', 'C', 'D', 'E', 'F'].forEach((k, i) => { svgParts.dots[i].setAttribute('cx', p[k][0].toFixed(2)); svgParts.dots[i].setAttribute('cy', (-p[k][1]).toFixed(2)); });
+  svgParts.foot.setAttribute('cx', p.G[0].toFixed(2)); svgParts.foot.setAttribute('cy', (-p.G[1]).toFixed(2));
+}
+
+// ---------------------------------------------------------------- the bench: evolution
+const popC = $('#pop'), popG = popC.getContext('2d');
+let ga = null, gaSeed = (Q.get('seed') | 0) || 7, gaMode = 'this', gaTarget = 0, gaRunning = false, gaHist = [], gaBeatAt = -1, gaShownGen = -1, gaHolyRef = 0;
+let gaEver = false;
+const PF = { x0: -130, x1: 55, y0: -103, y1: -40 };
+function popFrame() {
+  const r = popC.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+  if (popC.width !== w || popC.height !== h) { popC.width = w; popC.height = h; }
+  return { w, h, dpr };
+}
+function drawPop() {
+  const { w, h, dpr } = popFrame();
+  const g = popG; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
+  const padT = 34 * dpr, padB = 26 * dpr;
+  const sc = Math.min((w - 20 * dpr) / (PF.x1 - PF.x0), (h - padT - padB) / (PF.y1 - PF.y0));
+  const ox = w / 2 - (PF.x0 + PF.x1) / 2 * sc, oy = padT + (PF.y1) * sc;
+  const X = x => ox + x * sc, Y = y => oy - y * sc;
+  // sand line at Jansen's ground
+  g.strokeStyle = 'rgba(15,43,61,.12)'; g.lineWidth = dpr; g.beginPath(); g.moveTo(0, Y(-91.83)); g.lineTo(w, Y(-91.83)); g.stroke();
+  if (ga && ga.gen >= 0) {
+    const sc_ = ga.scores(), paths = ga.paths(), order = ga.order(), done = ga.done;
+    g.strokeStyle = 'rgba(31,122,153,.13)'; g.lineWidth = 1 * dpr; g.beginPath();
+    const lim = done ? BW.POP : 0;
+    let drawn = 0;
+    for (let c = 0; c < lim; c++) {
+      if (!(sc_[c] > 0)) continue;
+      for (let q = 0; q < 30; q++) { const x = X(paths[c * 60 + q * 2]), y = Y(paths[c * 60 + q * 2 + 1]); if (q) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.closePath(); if (++drawn > 700) break;
+    }
+    g.stroke();
+    if (done && sc_[order[0]] > 0) {
+      const b = order[0];
+      g.strokeStyle = '#f2613f'; g.lineWidth = 2.6 * dpr; g.lineJoin = 'round'; g.beginPath();
+      for (let q = 0; q < 30; q++) { const x = X(paths[b * 60 + q * 2]), y = Y(paths[b * 60 + q * 2 + 1]); if (q) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.closePath(); g.stroke();
+    }
+  }
+  const hp = holyEval.path;
+  g.setLineDash([5 * dpr, 4 * dpr]); g.strokeStyle = '#0f2b3d'; g.lineWidth = 1.5 * dpr; g.beginPath();
+  for (let n = 0; n < 120; n += 2) { const x = X(hp.x[n]), y = Y(hp.y[n]); if (n) g.lineTo(x, y); else g.moveTo(x, y); }
+  g.closePath(); g.stroke(); g.setLineDash([]);
+}
+function popLabel() {
+  const lab = $('#poplab'), note = $('#popnote');
+  if (!ga) { lab.innerHTML = 'Press <b>Evolve</b> to start from 1,500 random legs.'; note.textContent = 'not started'; return; }
+  const v = ga.done ? ga.nValid() : null;
+  lab.innerHTML = `Generation <b>${ga.gen}</b>` + (v !== null ? ` · <b>${fmt(v)}</b> of 1,500 can walk` : ' · scoring…');
+  note.innerHTML = `seed ${ga.seed} · ${ga.ps.length === 1 ? `bred for ${2 * ga.ps[0]} legs` : 'bred for every beast'}` + (ga.done && ga.best > 0 ? ` · best <b>${fmt(ga.best)}</b>` : '');
+}
+function newGA() {                               // a fresh generation 0, scored at once (about 20 ms)
+  ga = BW.makeGA(gaSeed, gaMode === 'this' ? [P] : BEASTS.slice()); ga.key = gaModeKey();
+  ga.evalSome(BW.POP);
+  gaHist = [ga.best]; gaBeatAt = -1; gaShownGen = 0; gaTarget = 0;
+  gaHolyRef = gaMode === 'this' ? scoreOn(holyEval, P) : worstOf(holyEval);
+  drawPop(); popLabel();
+}
+function gaStart() {
+  if (!ga || ga.seed !== gaSeed || gaModeKey() !== ga.key) newGA();
+  gaTarget = Math.min(300, Math.max(gaTarget, ga.gen) + 60);
+  log({ ev: 'gaStart', seed: ga.seed, ps: ga.ps, gen: ga.gen, target: gaTarget, holy: gaHolyRef });
+  if (ga.gen === 0) say(`Of 1,500 random legs, only <b>${fmt(ga.nValid())}</b> can turn the crank and reach the sand.`, 4);
+  gaRunning = true; gaEver = true; syncEvolve();
+}
+function gaModeKey() { return gaMode + ':' + (gaMode === 'this' ? P : 'all'); }
+function gaPump(budgetMs, maxGens = 1e9) {
+  let gens = 0;
+  if (!ga || !gaRunning) return;
+  const t0 = performance.now();
+  for (;;) {
+    if (!ga.done) { ga.evalSome(FIXED || STATIC ? BW.POP : 120); if (!ga.done) { if (performance.now() - t0 > budgetMs) break; continue; } }
+    // a generation is scored
+    if (gaShownGen !== ga.gen) {
+      gaShownGen = ga.gen; gaHist.push(ga.best);
+      if (gaBeatAt < 0 && ga.best > gaHolyRef) { gaBeatAt = ga.gen; if (ga.gen > 0) say(gaMode === 'this' ? `Generation ${ga.gen}: the best leg now beats Jansen's on this beast.` : `Generation ${ga.gen}: the best leg beats Jansen's worst beast.`, 5); }
+      drawPop(); popLabel();
+    }
+    if (ga.gen >= gaTarget) { gaFinish(); break; }
+    if (++gens > maxGens) break;
+    ga.breed();
+    if (performance.now() - t0 > budgetMs) break;
+  }
+}
+function gaFinish() {
+  gaRunning = false; syncEvolve();
+  const rods = ga.bestRods();
+  log({ ev: 'ga', seed: ga.seed, ps: ga.ps, gen: ga.gen, best: ga.best, rods, valid: ga.nValid(), popHash: BW.hash(ga.pop()), hist: gaHist.slice() });
+  if (ga.best > 0) putOnBeach(rods, { kind: 'bred', name: `Your leg · seed ${ga.seed}, gen ${ga.gen}`, seed: ga.seed, gen: ga.gen, mode: gaMode });
+}
+function syncEvolve() {
+  const b = $('#evolve'), sub = $('#evsub');
+  b.classList.toggle('run', gaRunning);
+  if (gaRunning) { b.firstChild.nodeValue = 'Pause evolution'; sub.textContent = `generation ${ga ? ga.gen : 0} of ${gaTarget}`; }
+  else if (ga && ga.gen > 0 && ga.key === gaModeKey() && ga.seed === gaSeed) { b.firstChild.nodeValue = 'Keep evolving'; sub.textContent = `60 more generations (now ${ga.gen})`; }
+  else { b.firstChild.nodeValue = 'Evolve 1,500 legs'; sub.textContent = 'from random rods, 60 generations'; }
+  $('#seedbtn').textContent = `seed ${gaSeed}`;
+  $('#walkit').disabled = !(ga && ga.done && ga.best > 0 && !sameRods(ga.bestRods(), leg.rods));
+}
+const sameRods = (a, b) => a.every((x, i) => x === b[i]);
+
+// ---------------------------------------------------------------- putting a leg on the beach
+function putOnBeach(rods, info) {
+  const ev = BW.evaluate(rods, BEASTS);
+  if (!ev.valid) { say(`That leg can't walk: ${ev.why}.`, 4); return false; }
+  leg = Object.assign({ rods: rods.map(Number) }, info); legEval = ev;
+  dir = strideDir();
+  log({ ev: 'leg', kind: leg.kind, rods: leg.rods.slice(), P, score: scoreOn(ev, P) });
+  resetWalk(); prewalk(6);
+  drawLegStatic(); updateScore(); syncEvolve(); syncTweak();
+  if (info.kind === 'bred') say(`Your leg is on the beach. Try it on beasts with other numbers of legs.`, 6);
+  if (info.kind === 'holy') say(`Back to Jansen's 1990 numbers.`, 3);
+  return true;
+}
+function updateScore() {
+  const s = scoreOn(legEval, P), hs = scoreOn(holyEval, P);
+  $('#scorebig').textContent = fmt(s);
+  const g = legEval.valid ? legEval.gaits[pIdx(P)] : null;
+  $('#scorecmp').innerHTML = leg.kind === 'holy'
+    ? `walk score on ${2 * P} legs<br>stride <b>${fmt(Math.abs(g.T))} cm</b> a turn · lurch <b>${fmt(g.L, 2)} cm</b>`
+    : `walk score on ${2 * P} legs · Jansen's <b>${fmt(hs)}</b><br>stride <b>${fmt(Math.abs(g.T))} cm</b> a turn · lurch <b>${fmt(g.L, 2)} cm</b>`;
+  $('#who').textContent = leg.name;
+  $('#legnote').innerHTML = `${2 * P} legs`;
+  const bars = $('#bars'); bars.textContent = '';
+  const top = 200;
+  BEASTS.forEach((p, i) => {
+    const sc = scoreOn(legEval, p), h = scoreOn(holyEval, p);
+    const b = document.createElement('div'); b.className = 'b' + (p === P ? ' on' : ''); b.title = `${2 * p} legs: ${fmt(sc)} (Jansen's ${fmt(h)})`;
+    b.innerHTML = `<div class="col"><i style="height:${Math.min(100, sc / top * 100).toFixed(1)}%"></i><u style="bottom:${Math.min(100, h / top * 100).toFixed(1)}%"></u></div><span>${2 * p}</span>`;
+    b.addEventListener('click', () => setBeast(p));
+    bars.appendChild(b);
+  });
+}
+function setBeast(p) {
+  if (p === P) return;
+  P = p; dir = strideDir();
+  log({ ev: 'beast', P, score: scoreOn(legEval, P) });
+  resetWalk(); prewalk(4);
+  $('#legsseg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.p === P)));
+  updateScore(); syncEvolve(); popLabel();
+  if (leg.kind !== 'holy') {
+    const s = scoreOn(legEval, P), h = scoreOn(holyEval, P);
+    say(s < h ? `On ${2 * P} legs this leg lurches more than Jansen's.` : `On ${2 * P} legs this leg still beats Jansen's.`, 4);
+  }
+  if (FIXED || STATIC) render();
+}
+// a few seconds of walking at once (lays a trail of footprints)
+function prewalk(sec) {
+  const n = Math.round(sec * 60);
+  for (let i = 0; i < n; i++) { body.t += 1 / 60; stepBody(body.u + SPEED / 60, body.t); }
+}
+
+// ---------------------------------------------------------------- caption
+let sayT = 0;
+function say(html, sec) { const e = $('#say'); e.innerHTML = html; e.classList.add('on'); sayT = (FIXED ? fixedT : performance.now() / 1000) + sec; state.caption = e.textContent; }
+
+// ---------------------------------------------------------------- tweak rods
+const tweakGrid = $('#tweakgrid');
+const sliders = BW.NAMES.map((nm, i) => {
+  const l = document.createElement('label');
+  l.innerHTML = `<b>${nm}</b><input type="range" min="20" max="80" step="0.1" aria-label="rod ${nm}"><span></span>`;
+  tweakGrid.appendChild(l);
+  const inp = l.querySelector('input');
+  inp.addEventListener('input', e => {
+    const v = +e.target.value; const rods = leg.rods.slice(); rods[i] = BW.round2(v);
+    const ev = BW.evaluate(rods, BEASTS);
+    if (!ev.valid) { $('#tweaknote').innerHTML = `<b>${nm} ${fmt(v, 1)}</b>: ${ev.why}`; l.querySelector('span').textContent = fmt(v, 1); return; }
+    putOnBeach(rods, { kind: 'tweak', name: 'Your tweaked leg' });
+  });
+  return l;
+});
+function syncTweak() {
+  sliders.forEach((l, i) => { const v = leg.rods[i]; l.querySelector('input').value = v; l.querySelector('span').textContent = fmt(v, 2); });
+  $('#tweaknote').textContent = legEval.valid ? '' : legEval.why;
+}
+
+// ---------------------------------------------------------------- buttons
+{
+  const seg = $('#legsseg');
+  BEASTS.forEach(p => { const b = document.createElement('button'); b.type = 'button'; b.dataset.p = p; b.textContent = 2 * p; b.setAttribute('aria-pressed', String(p === P)); b.addEventListener('click', () => { touched('beast'); setBeast(p); }); seg.appendChild(b); });
+}
+let paused = false;
+$('#pause').addEventListener('click', () => { paused = !paused; $('#pause').textContent = paused ? 'Walk' : 'Pause'; touched('pause'); });
+$('#modeseg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  gaMode = b.dataset.m; $('#modeseg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  gaRunning = false; newGA(); syncEvolve(); touched('mode'); if (STATIC && window.walker.redraw) window.walker.redraw();
+}));
+$('#evolve').addEventListener('click', () => { touched('evolve'); if (gaRunning) { gaRunning = false; syncEvolve(); log({ ev: 'gaPause', gen: ga.gen }); return; } gaStart(); if (STATIC) staticPump(); });
+function staticPump() { if (!gaRunning) return; gaPump(60); if (window.walker.redraw) window.walker.redraw(); if (gaRunning) { syncEvolve(); setTimeout(staticPump, 0); } }
+$('#seedbtn').addEventListener('click', () => { touched('seed'); gaSeed = gaSeed + 1; gaRunning = false; newGA(); syncEvolve(); say(`Seed ${gaSeed}: another 1,500 random legs, <b>${fmt(ga.nValid())}</b> of them can walk.`, 3); });
+$('#walkit').addEventListener('click', () => { if (ga && ga.done && ga.best > 0) putOnBeach(ga.bestRods(), { kind: 'bred', name: `Your leg · seed ${ga.seed}, gen ${ga.gen}`, seed: ga.seed, gen: ga.gen, mode: gaMode }); });
+$('#holy').addEventListener('click', () => { touched('holy'); putOnBeach(HOLY.slice(), { kind: 'holy', name: "Jansen's 1990 numbers" }); });
+$('#tweakbtn').addEventListener('click', () => { touched('tweak'); syncTweak(); $('#tweak').classList.toggle('on'); });
+$('#tweakdone').addEventListener('click', () => $('#tweak').classList.remove('on'));
+function shareURL() {
+  const u = new URL(location.href); u.search = '';
+  u.searchParams.set('leg', leg.rods.map(x => +x.toFixed(2)).join(',')); u.searchParams.set('legs', String(2 * P));
+  return u.toString().replace(/%2C/g, ',');
+}
+$('#share').addEventListener('click', async () => {
+  touched('share'); const url = shareURL(); let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) { }
+  try { history.replaceState(null, '', url); } catch (e) { }
+  state.shared = url; log({ ev: 'share', url });
+  say(ok ? 'Link copied: it opens this leg on this beast.' : 'The link is in the address bar now.', 4);
+});
+$('#card').addEventListener('click', () => { touched('card'); const url = cardPNG(); state.card = url.length; const a = document.createElement('a'); a.href = url; a.download = 'beach-walker-leg.png'; document.body.appendChild(a); a.click(); a.remove(); log({ ev: 'card', bytes: url.length }); });
+$('#whatbtn').addEventListener('click', () => $('#what').classList.add('on'));
+$('#what').addEventListener('click', e => { if (e.target.id === 'what' || e.target.classList.contains('x')) $('#what').classList.remove('on'); });
+addEventListener('keydown', e => { if (e.key === 'Escape') { $('#what').classList.remove('on'); $('#tweak').classList.remove('on'); } });
+
+// a card to keep: the leg, its foot path, its numbers
+function cardPNG() {
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 675; const g = c.getContext('2d');
+  g.fillStyle = '#fbf6ea'; g.fillRect(0, 0, 1200, 675);
+  g.fillStyle = '#0f2b3d'; g.font = '800 54px "Bricolage Grotesque", sans-serif'; g.fillText('Beach Walker', 60, 100);
+  g.font = '500 24px Figtree, sans-serif'; g.fillStyle = '#3d5a6c'; g.fillText(leg.name, 60, 140);
+  const [x0, x1, y0, y1] = legBounds(leg.rods); const sc = Math.min(560 / (x1 - x0), 380 / (y1 - y0));
+  const X = x => 80 + (x - x0) * sc, Y = y => 180 + (y1 - y) * sc;
+  g.strokeStyle = '#e2cfa4'; g.lineWidth = 4; g.beginPath(); g.moveTo(60, Y(y0)); g.lineTo(700, Y(y0)); g.stroke();
+  const p = legEval.path; g.strokeStyle = '#f2613f'; g.lineWidth = 3; g.beginPath(); for (let n = 0; n < 120; n++) n ? g.lineTo(X(p.x[n]), Y(p.y[n])) : g.moveTo(X(p.x[n]), Y(p.y[n])); g.closePath(); g.stroke();
+  const ps = BW.pose(leg.rods, 0.15); g.strokeStyle = '#0f2b3d'; g.lineWidth = 3.2; g.lineCap = 'round';
+  for (const [a, b] of BARS) { g.beginPath(); g.moveTo(X(ps[a][0]), Y(ps[a][1])); g.lineTo(X(ps[b][0]), Y(ps[b][1])); g.stroke(); }
+  g.lineWidth = 6; g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(ps.A[0]), Y(ps.A[1])); g.stroke();
+  g.font = '600 22px Figtree, sans-serif'; g.fillStyle = '#0f2b3d';
+  BW.NAMES.forEach((nm, i) => g.fillText(`${nm}  ${leg.rods[i].toFixed(2)} cm`, 780, 200 + i * 34));
+  g.fillStyle = '#3d5a6c'; g.fillText('a 38 · l 7.8 · crank m 15', 780, 200 + 10 * 34 + 8);
+  g.font = '800 46px "Bricolage Grotesque", sans-serif'; g.fillStyle = '#f2613f'; g.fillText(fmt(scoreOn(legEval, P)), 780, 120);
+  g.font = '500 20px Figtree, sans-serif'; g.fillStyle = '#3d5a6c'; g.fillText(`walk score on ${2 * P} legs`, 780, 146);
+  g.fillStyle = '#7c8f9a'; g.font = '500 18px Figtree, sans-serif'; g.fillText('Curio · No. 052 · blackman99.github.io/curio/jansen-linkage/', 60, 645);
+  return c.toDataURL('image/png');
+}
+
+// ---------------------------------------------------------------- frame loop
+let fixedT = 0, frame = 0, last = performance.now(), lite = false;
+const dts = [];
+function render() { placeCamera(0); renderer.render(scene, camera); }
+function tick(dt, t) {
+  if (!paused && !STATIC) { body.t += dt; stepBody(body.u + SPEED * dt, body.t); }
+  buildBeast(t);
+  updatePrints(body.t);
+  skyMat.uniforms.time.value = t; seaMat.uniforms.time.value = t; grassU.time.value = t;
+  seaMat.uniforms.shore.value = -2.55 + 0.42 * Math.sin(t * 2 * Math.PI / 9) + 0.18 * Math.sin(t * 2 * Math.PI / 4.3 + 1);
+  // grains blowing downwind past the beast
+  if (!lite) {
+    const a = grainGeo.attributes.position.array;
+    for (let i = 0; i < GRAINS; i++) {
+      const s0 = grainSeed[i * 3], s1 = grainSeed[i * 3 + 1], s2 = grainSeed[i * 3 + 2];
+      const x = ((t * (1.6 + s0 * 1.4) + s1 * 24) % 24) - 12;
+      a[i * 3] = camT.x + x; a[i * 3 + 1] = 0.01 + s2 * s2 * 0.16 + Math.sin(t * 3 + s0 * 9) * 0.01; a[i * 3 + 2] = ZC - 3 + s2 * 7 + Math.sin(t + s1 * 6) * 0.2;
+    }
+    grainGeo.attributes.position.needsUpdate = true;
+  }
+  placeCamera(dt);
+  drawLegLive(body.u);
+  if (gaRunning) { if (FIXED) gaPump(1e9, 1); else gaPump(lite ? 12 : 7); if (gaRunning) syncEvolve(); }
+  const now = FIXED ? fixedT : performance.now() / 1000;
+  if (sayT && now > sayT) { $('#say').classList.remove('on'); sayT = 0; }
+  renderer.render(scene, camera);
+  frame++;
+  window.__frame = frame; window.__state = { t, frame, u: body.u, x: body.x };
+}
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now(); let dt = (now - last) / 1000; last = now;
+  if (dt > 0.1) dt = 0.1;
+  dts.push(dt); if (dts.length > 30) dts.shift();
+  if (!lite && dts.length === 30) { const m = dts.slice().sort((a, b) => a - b)[15]; if (m > 0.045) goLite(); }
+  tick(dt, now / 1000);
+}
+function goLite() {
+  lite = true; renderer.setPixelRatio(Math.min(0.75, devicePixelRatio || 1)); renderer.shadowMap.enabled = false; sunL.castShadow = false;
+  grass.visible = false; grains.visible = false; layout(); state.lite = true;
+  scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+}
+
+// ---------------------------------------------------------------- state for tests
+const state = { caption: '', lite: false };
+function probe() {                                 // world endpoints of leg 0's rods, read back from the instance matrices
+  const out = [], m = new THREE.Matrix4(), a = new THREE.Vector3(), b = new THREE.Vector3();
+  const first = legStart;
+  for (let i = 0; i < NB_LEG; i++) {
+    bars.getMatrixAt(first + i, m); a.set(0, -0.5, 0).applyMatrix4(m); b.set(0, 0.5, 0).applyMatrix4(m);
+    out.push([a.x, a.y, a.z, b.x, b.y, b.z]);
+  }
+  return out;
+}
+window.walker = {
+  state() {
+    if (!svgParts) return { ready: false };
+    return {
+      ready: true, P, legs: 2 * P, u: body.u, t: body.t, body: { x: body.x, y: body.y }, dir, footMin,
+      leg: { kind: leg.kind, name: leg.name, rods: leg.rods.slice(), seed: leg.seed, gen: leg.gen },
+      score: scoreOn(legEval, P), holyScore: scoreOn(holyEval, P), scores: BEASTS.map(p => scoreOn(legEval, p)), holyScores: BEASTS.map(p => scoreOn(holyEval, p)),
+      gait: legEval.valid ? legEval.gaits[pIdx(P)] : null, lift: legEval.lift, H: legEval.H, valid: legEval.valid,
+      ga: ga ? { seed: ga.seed, ps: ga.ps, gen: ga.gen, done: ga.done, best: ga.done ? ga.best : null, valid: ga.done ? ga.nValid() : null, running: gaRunning, target: gaTarget, mode: gaMode, rods: ga.done ? ga.bestRods() : null, hist: gaHist.slice(), beatAt: gaBeatAt, holyRef: gaHolyRef } : null,
+      prints: printN, contact: Array.from(contact.subarray(0, 2 * P)), caption: $('#say').classList.contains('on') ? $('#say').textContent : '',
+      lite, fixed: FIXED, static: STATIC, touched: userTouched, paused, frame, log: LOG.slice(), shared: state.shared || null, card: state.card || 0,
+      tris: renderer.info.render.triangles, calls: renderer.info.render.calls, view: Object.assign({}, view), legZ0: legZ(0) - 0.035
+    };
+  },
+  probe, pose: (u) => BW.pose(leg.rods, u), engine: BW, shareURL, setBeast, putOnBeach,
+  camSet(y, p, d) { if (y != null) view.yaw = y; if (p != null) view.pitch = p; if (d != null) view.dist = d; render(); },
+};
+
+// ---------------------------------------------------------------- start
+newGA();
+drawLegStatic(); updateScore(); syncEvolve(); syncTweak(); popLabel();
+layout();
+new ResizeObserver(() => { layout(); drawPop(); }).observe(stage);
+addEventListener('resize', () => { layout(); drawPop(); });
+document.fonts && document.fonts.ready.then(() => { drawPop(); });
+body.u = 0.07;
+resetWalk(); prewalk(14);
+if (FIXED) {
+  fixedT = 0;
+  window.step = n => { for (let i = 0; i < n; i++) { fixedT += 1 / 60; if (i < n - 1) { if (!paused) { body.t += 1 / 60; stepBody(body.u + SPEED / 60, body.t); } if (gaRunning) gaPump(1e9, 1); frame++; window.__frame = frame; } else tick(1 / 60, fixedT); } return window.__state; };
+  placeCamera(0); tick(0, 0);
+} else if (STATIC) {
+  placeCamera(0); tick(0, 3.2);
+  // reduced motion: draw again when something changes; the GA runs to the end at once
+  const re = () => { placeCamera(0); tick(0, 3.2); };
+  window.walker.redraw = re;
+  for (const id of ['#legsseg', '#bars', '#holy', '#walkit', '#evolve', '#tweakgrid']) document.querySelector(id).addEventListener('click', () => setTimeout(re, 0));
+  $('#tweakgrid').addEventListener('input', () => setTimeout(re, 0));
+} else {
+  placeCamera(0);
+  requestAnimationFrame(loop);
+  setTimeout(() => { if (!userTouched && !gaEver) say(`This is Jansen's leg. Press <b>Evolve</b> to breed your own.`, 6); }, 2200);
+}
+drawPop();
+
+</script>
+</body>
+</html>
