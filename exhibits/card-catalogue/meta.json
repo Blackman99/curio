@@ -1,0 +1,11 @@
+{
+ "slug": "card-catalogue",
+ "title": "Card Catalogue",
+ "no": "053",
+ "date": "2026-11-21",
+ "kind": "View Transitions · live DOM",
+ "blurb": "Every Nobel laureate in literature, 1901–2026, on a pop-art index card. Re-file all 123 by surname, year, birthplace or deathplace: the page only rewrites the DOM, and the browser's View Transitions API flies every card. Freeze a flight mid-air and scrub it, or make the same move across a full page load.",
+ "color": "#ff0070",
+ "exhibit": "cardCatalogue",
+ "lane": "web"
+}

@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Card Catalogue — 123 Nobel laureates re-filed by View Transitions</title>
+<meta name="description" content="Every Nobel laureate in literature, 1901 to 2026, on a pop-art index card. Re-file all 123 by surname, by year, by birthplace or by deathplace: the page only changes the DOM, and the browser's View Transitions API flies every card to its new place. Slow it down, freeze it mid-flight and scrub through the snapshots, or make the same move across a full page load.">
+<meta property="og:title" content="Card Catalogue">
+<meta property="og:description" content="123 Nobel laureates in literature on pop-art index cards. One click re-files them all; the browser's View Transitions API does the flying. Freeze it mid-flight and scrub.">
+<meta property="og:image" content="https://blackman99.github.io/curio/card-catalogue/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Card Catalogue">
+<meta name="twitter:description" content="Every Nobel laureate in literature on a pop-art index card. Re-file all 123 by name, year, birthplace or deathplace and watch the browser fly them.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/card-catalogue/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="expect" href="#end" blocking="render">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bowlby+One&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+/* runs before first paint: a cross-document transition lands straight in the asked-for view */
+(function(){var q=new URLSearchParams(location.search),v=q.get('view');
+document.documentElement.dataset.view=/^(az|year|born|died)$/.test(v||'')?v:(q.has('fixed')||q.has('og')||matchMedia('(prefers-reduced-motion: reduce)').matches?'az':'deck');
+if(q.has('fixed')||q.has('og'))document.documentElement.classList.add('fixed');})();
+</script>
+<style>
+@view-transition{navigation:auto}
+:root{--pink:#ff2e93;--dot:#ef1782;--yel:#ffff1f;--cy:#18d4ff;--ink:#121212;--paper:#fff;--land:rgba(255,255,255,.6);
+  --hd:'Bowlby One',Impact,sans-serif;--cd:'Anton',Impact,'Arial Narrow',sans-serif;--tx:'Space Grotesk',system-ui,sans-serif;--azfs:22px;--sfs:12px}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+html{background:var(--pink);-webkit-text-size-adjust:100%}
+body{font-family:var(--tx);color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  background:radial-gradient(circle at 50% 50%,var(--dot) 0 1.6px,transparent 2.1px) 0 0/9px 9px,var(--pink);
+  display:grid;grid-template-rows:auto 1fr auto;height:100dvh;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+/* ---------- head ---------- */
+#head{display:grid;grid-template-columns:1fr auto;gap:6px 28px;align-items:end;padding:14px 22px 10px}
+#crumbs{grid-column:1/-1;display:flex;gap:12px;align-items:center;font:700 12px/1 var(--tx);letter-spacing:.06em;text-transform:uppercase}
+#crumbs .home{display:inline-block;background:var(--ink);color:var(--yel);text-decoration:none;padding:6px 10px 5px;transform:rotate(-2deg);box-shadow:3px 3px 0 var(--paper)}
+#crumbs .home:hover{background:var(--paper);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+#crumbs .no{color:var(--ink)}
+#titlebox{min-width:0}
+h1{margin:0;font:400 clamp(30px,4.3vw,64px)/.92 var(--hd);letter-spacing:-.01em;color:var(--ink);text-transform:uppercase;text-shadow:4px 4px 0 var(--yel)}
+#lede{margin:8px 0 0;max-width:720px;font:500 15px/1.35 var(--tx)}
+#views{display:flex;gap:10px}
+#views button{font:400 26px/1 var(--cd);letter-spacing:.02em;text-transform:uppercase;background:var(--paper);border:3px solid var(--ink);padding:9px 16px 8px;box-shadow:5px 5px 0 var(--ink);transition:transform .12s,box-shadow .12s}
+#views button:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
+#views button[aria-pressed=true]{background:var(--ink);color:var(--yel);box-shadow:5px 5px 0 var(--cy)}
+/* ---------- board ---------- */
+#board{position:relative;margin:0 22px;min-height:0;container-type:size}
+#map{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0}
+html[data-view=born] #map,html[data-view=died] #map{opacity:1}
+#deck{position:absolute;inset:0;overflow:hidden}
+.card{position:absolute;margin:0;border:2px solid var(--ink);padding:0;background:var(--yel);color:var(--ink);overflow:hidden;
+  view-transition-class:card;display:flex;align-items:center;justify-content:center;gap:.25em;font:400 var(--azfs)/1 var(--cd);text-transform:uppercase;white-space:nowrap}
+.card.am{background:var(--cy)}.card.as{background:var(--paper)}.card.af{background:var(--ink);color:var(--paper)}
+.card .nm{display:block}
+.card .yr{font:700 .44em/1 var(--tx);letter-spacing:.02em;align-self:flex-start;margin-top:.12em}
+.card:focus-visible{outline:3px solid var(--paper);outline-offset:2px;z-index:5}
+/* deck: a messy pile in the middle */
+html[data-view=deck] .card{font-size:24px;box-shadow:4px 4px 0 var(--ink)}
+/* A-Z: a flowing index, letter tabs between */
+html[data-view=az] #deck{display:flex;flex-wrap:wrap;align-content:flex-start;gap:calc(var(--azfs)*.26);overflow:hidden}
+html[data-view=az] .card{position:relative;left:auto!important;top:auto!important;width:auto!important;height:auto!important;padding:.16em .34em .12em;transform:none!important}
+.tab{display:none}
+html[data-view=az] .tab{display:flex;align-items:center;justify-content:center;font:400 var(--azfs)/1 var(--hd);background:var(--ink);color:var(--yel);padding:.16em .3em .1em;min-width:1.5em;border:2px solid var(--ink)}
+/* shelves */
+html[data-view=year] .card{writing-mode:vertical-rl;font-size:var(--sfs);justify-content:flex-start;padding:.35em 0;border-width:1.5px}
+html[data-view=year] .card .yr{display:none}
+html.thin .card .nm,html[data-view=year] .card.nar .nm{visibility:hidden}
+html[data-view=born] .card,html[data-view=died] .card{border-width:1.5px;font-size:1px}
+html[data-view=born] .card .nm,html[data-view=died] .card .nm,html[data-view=born] .card .yr,html[data-view=died] .card .yr,html[data-view=deck] .card .yr{display:none}
+.lab{position:absolute;font:400 13px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);pointer-events:none;white-space:nowrap}
+.lab.big{font:400 15px/1 var(--cd);background:var(--ink);color:var(--paper);padding:3px 5px 2px}
+.lab.top{transform:translate(-50%,-100%)}
+.lab.tick{font:700 11px/1 var(--tx);letter-spacing:.03em}
+.lab.gap{font:700 10px/1 var(--tx);color:var(--paper);background:var(--ink);padding:2px 2px 1px;text-align:center}
+.plank{position:absolute;background:var(--ink);height:5px;pointer-events:none}
+#hover{position:absolute;z-index:20;pointer-events:none;background:var(--ink);color:var(--paper);font:400 16px/1 var(--cd);letter-spacing:.03em;text-transform:uppercase;padding:5px 7px 4px;white-space:nowrap;display:none;box-shadow:3px 3px 0 var(--yel)}
+/* ---------- foot ---------- */
+#foot{display:flex;align-items:center;gap:14px 20px;padding:10px 22px 14px;flex-wrap:wrap}
+#say{flex:1 1 360px;min-width:0;font:700 17px/1.25 var(--tx);margin:0;transition:opacity .25s}
+#say.fade{opacity:0}
+#tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:2.5px solid var(--ink);background:var(--paper)}
+.seg button,.tool{font:700 13px/1 var(--tx);letter-spacing:.04em;text-transform:uppercase;border:0;background:var(--paper);padding:8px 10px 7px}
+.seg button+button{border-left:2.5px solid var(--ink)}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--cy)}
+.tool{border:2.5px solid var(--ink);text-decoration:none;display:inline-block}
+.tool[aria-pressed=true]{background:var(--cy)}
+.tool:hover,.seg button:hover{background:var(--yel)}
+.seg button[aria-pressed=true]:hover{background:var(--ink)}
+/* ---------- x-ray ---------- */
+#xr{position:fixed;left:22px;bottom:74px;z-index:30;width:min(440px,calc(100vw - 44px));background:var(--ink);color:var(--paper);padding:12px 14px 12px;font:500 12.5px/1.45 var(--tx);display:none;box-shadow:6px 6px 0 var(--cy)}
+html.xray #xr{display:block}
+#xr h3{margin:0 0 6px;font:400 19px/1 var(--cd);letter-spacing:.04em;text-transform:uppercase;color:var(--cy)}
+#xr pre{margin:0 0 8px;font:500 12px/1.42 var(--tx);white-space:pre;overflow:hidden;color:#f2f2f2}
+#xr pre b{color:var(--yel);font-weight:700}
+#xr .row{display:flex;gap:10px;align-items:center}
+#xr input[type=range]{flex:1;accent-color:var(--cy)}
+#xr button{font:700 12px/1 var(--tx);text-transform:uppercase;letter-spacing:.04em;background:var(--cy);color:var(--ink);border:0;padding:7px 10px 6px}
+html.xray::view-transition-old(*.card),html.xray #board::view-transition-old(*.card){outline:2px dashed var(--ink);outline-offset:-2px;opacity:.55!important}
+html.xray::view-transition-new(*.card),html.xray #board::view-transition-new(*.card){outline:2px solid var(--paper);outline-offset:-2px}
+html.xray::view-transition-group(*.card),html.xray #board::view-transition-group(*.card){outline:1px dotted rgba(18,18,18,.55)}
+/* ---------- the pulled card ---------- */
+#pull{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(18,18,18,.38);padding:18px}
+#pull.on{display:flex}
+#big{position:relative;width:min(560px,100%);background:var(--paper);border:4px solid var(--ink);box-shadow:10px 10px 0 var(--ink);padding:0 0 18px}
+#big .band{height:20px;background:var(--yel);border-bottom:4px solid var(--ink)}
+#big.am .band{background:var(--cy)}#big.as .band{background:var(--pink)}#big.af .band{background:var(--ink)}
+#big h2{margin:14px 20px 2px;font:400 clamp(40px,9vw,66px)/.95 var(--cd);text-transform:uppercase;letter-spacing:.01em}
+#big .full{margin:0 20px 12px;font:700 15px/1.3 var(--tx)}
+#big dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 20px 12px;font:500 14.5px/1.35 var(--tx)}
+#big dt{font:700 11px/1.7 var(--tx);letter-spacing:.08em;text-transform:uppercase}
+#big dd{margin:0}
+#big blockquote{margin:0 20px 10px;padding:10px 0 0;border-top:2px solid var(--ink);font:500 16px/1.4 var(--tx)}
+#big .src{margin:0 20px;font:500 12.5px/1.3 var(--tx)}
+#big .x{position:absolute;right:10px;top:28px;width:38px;height:38px;border:3px solid var(--ink);background:var(--paper);font:700 20px/1 var(--tx)}
+#big .x:hover{background:var(--yel)}
+/* ---------- what is this ---------- */
+#what{position:fixed;inset:0;z-index:50;display:none;overflow:auto;background:var(--paper);padding:28px 22px 60px}
+#what.on{display:block}
+#what .in{max-width:760px;margin:0 auto;font:400 16px/1.55 var(--tx)}
+#what h2{font:400 40px/1 var(--hd);text-transform:uppercase;margin:0 0 14px;text-shadow:3px 3px 0 var(--yel)}
+#what h3{font:400 24px/1.05 var(--cd);text-transform:uppercase;letter-spacing:.02em;margin:26px 0 8px}
+#what table{border-collapse:collapse;font-size:14.5px;margin:8px 0}
+#what td,#what th{border:2px solid var(--ink);padding:5px 9px;text-align:left}
+#what th{background:var(--yel)}
+#what code{font:500 .92em var(--tx);background:#f1f1f1;padding:0 .2em}
+#what .close{position:sticky;top:0;float:right;font:700 13px/1 var(--tx);text-transform:uppercase;letter-spacing:.04em;border:2.5px solid var(--ink);background:var(--yel);padding:9px 12px 8px}
+#toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:45;max-width:min(560px,calc(100vw - 30px));background:var(--ink);color:var(--paper);font:500 14.5px/1.35 var(--tx);padding:11px 14px;box-shadow:5px 5px 0 var(--yel);display:none}
+#toast.on{display:block}
+#toast b{color:var(--yel)}
+/* ---------- og ---------- */
+html.og #foot,html.og #crumbs,html.og #views{display:none}
+html.og #lede{font-size:19px;max-width:900px}
+html.og #head{padding:26px 34px 6px}
+html.og h1{font-size:72px}
+html.og #board{margin:0 34px 26px}
+/* ---------- flight ---------- */
+::view-transition-group(*.card){animation-duration:var(--dur,1000ms);animation-timing-function:cubic-bezier(.3,.0,.2,1)}
+::view-transition-group(root){animation-duration:420ms}
+
+html.fixed *,html.fixed *::before,html.fixed *::after{transition:none!important}
+/* ---------- phone ---------- */
+@media (max-width:760px){
+  #head{grid-template-columns:1fr;padding:10px 12px 8px;gap:6px}
+  h1{font-size:34px;text-shadow:3px 3px 0 var(--yel)}
+  #lede{font-size:13px;margin-top:4px}
+  #views{gap:6px}
+  #views button{flex:1;font-size:19px;padding:8px 4px 7px;box-shadow:3px 3px 0 var(--ink)}
+  #board{margin:0 12px}
+  #foot{padding:8px 12px 12px;gap:8px}
+  #say{flex-basis:100%;font-size:14px}
+  .seg button,.tool{font-size:11.5px;padding:7px 7px 6px}
+  #xr{left:12px;bottom:118px;width:calc(100vw - 24px)}
+  .lab{font-size:10px}.lab.big{font-size:11px}
+}
+@media (min-width:761px) and (max-height:800px){
+  #head{padding:10px 22px 8px}
+  h1{font-size:44px}
+  #lede{font-size:13.5px;margin-top:5px}
+  #views button{font-size:22px;padding:7px 13px 6px}
+  #foot{padding:8px 22px 10px}
+  #say{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){
+  #views button,#say{transition:none}
+}
+</style>
+</head>
+<body>
+<header id="head">
+  <nav id="crumbs"><a class="home" href="../">← Curio</a><span class="no">Curio · No. 053 · View Transitions</span></nav>
+  <div id="titlebox">
+    <h1>Card Catalogue</h1>
+    <p id="lede">All 123 Nobel laureates in literature, 1901–2026, on index cards. Pick a filing order: the page only rewrites the DOM, and the browser flies every card to its new place.</p>
+  </div>
+  <div id="views" role="group" aria-label="File the cards by">
+    <button data-v="az" aria-pressed="false">A–Z</button><button data-v="year" aria-pressed="false">Year</button><button data-v="born" aria-pressed="false">Born</button><button data-v="died" aria-pressed="false">Died</button>
+  </div>
+</header>
+<main id="board" aria-label="The catalogue">
+  <canvas id="map" aria-hidden="true"></canvas>
+  <div id="deck"></div>
+  <div id="hover"></div>
+</main>
+<footer id="foot">
+  <p id="say" aria-live="polite">Shuffling the deck…</p>
+  <div id="tools">
+    <div class="seg" role="group" aria-label="Speed"><button data-s="1" aria-pressed="true">1×</button><button data-s="0.25" aria-pressed="false">¼×</button><button data-s="0.1" aria-pressed="false">⅒×</button></div>
+    <button class="tool" id="xray" aria-pressed="false" title="Freeze the next move mid-flight and scrub it">X-ray</button>
+    <a class="tool" id="reload" href="?view=born" title="Make the same move across a full page load">↻ As a page load</a>
+    <button class="tool" id="whatbtn">What is this?</button>
+  </div>
+</footer>
+<section id="xr" aria-label="The view-transition pseudo-element tree">
+  <h3>Mid-flight</h3>
+  <pre id="tree"></pre>
+  <div class="row"><input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Scrub the transition"><button id="play">Play</button></div>
+</section>
+<div id="pull" role="dialog" aria-modal="true" aria-label="Index card"><article id="big"><div class="band"></div><button class="x" aria-label="Put the card back">×</button><h2></h2><p class="full"></p><dl></dl><blockquote></blockquote><p class="src"></p></article></div>
+<div id="toast" role="status"></div>
+<div id="what" role="dialog" aria-label="What is this?"><div class="in"><button class="close">Close ×</button>
+<details open><summary hidden>What is this?</summary>
+<h2>What is this?</h2>
+<p>A card catalogue of all 123 people who have won the Nobel Prize in Literature, 1901 to 2026, one pop-art index card each. Yellow cards were born in Europe, cyan in the Americas, white in Asia, black in Africa. Four filing orders: <b>A–Z</b> by surname, <b>Year</b> as a shelf of spines (each as tall as the writer was old at the prize), <b>Born</b> and <b>Died</b> stacked on a world map.</p>
+<p>The page never animates a card. Changing the filing order rewrites the cards' positions in the DOM (in A–Z they sit in an ordinary wrapping flex row; in the other three they are absolutely placed), and that rewrite is handed to <code>document.startViewTransition()</code>. The browser photographs every card that has a <code>view-transition-name</code> (here <code>card-&lt;Nobel id&gt;</code>) before and after, builds a tree of pseudo-elements — <code>::view-transition-group(card-…)</code> holding an old and a new snapshot — and animates each group from the old box to the new one while it crossfades the two snapshots. The only thing the page adds is timing: a per-card delay so the cards leave in a wave (A to Z, year by year, or west to east from the birthplace), and a playback rate for the slow-motion buttons. Both are set on the browser's own animations through the Web Animations API once <code>transition.ready</code> resolves.</p>
+
+<h3>Why it needs view transitions</h3>
+<p>None of these moves is something CSS transitions can do: a card going from a line of flowing text to an absolute spot on a map, letter tabs that exist in one order and not in another, an element whose <code>writing-mode</code> flips. A JavaScript "FLIP" animation could fake it within one page by measuring all 123 cards before and after. It cannot follow the cards across a page load. <b>↻ As a page load</b> navigates to a brand-new document — the old page's scripts and DOM are gone — and both documents opt in with <code>@view-transition { navigation: auto }</code>, so the browser carries the snapshots across and the cards still fly. The new page reads the <code>pagereveal</code> event to add its own wave. The A–Z wave you see on first load is a transition too, from a shuffled deck.</p>
+
+<h3>X-ray</h3>
+<p>Switch X-ray on and pick an order: the flight freezes at take-off and the slider sets <code>currentTime</code> on every one of the browser's animations, so you scrub the real thing. Old snapshots get a dashed outline, new ones a solid one. During an ordinary document-wide transition the browser sends every pointer event to the root, so nothing on the page can be clicked until the flight ends. That is why the x-ray flight runs in a transition scoped to the card board, <code>board.startViewTransition()</code> (Chrome 147 and later): the rest of the page, slider included, stays live. Without scoped transitions X-ray plays the flight at 1/12 speed instead.</p>
+
+<h3>What it costs (measured)</h3>
+<ul>
+<li>For every flight in the test run, the browser's keyframes for all 123 groups match the boxes the page measured before and after the change: widths and heights within 0.01 px. Positions are rounded to whole pixels — snapshots are placed on the pixel grid.</li>
+<li>Chrome 153 on an M4 Pro: median frame 17 ms during flights (60 fps; 90th percentile 20–33 ms), at device pixel ratio 1 and 2. Take-off costs one long frame of 160–200 ms; <code>ready</code> resolves 45–82 ms after the call. In software rendering (SwiftShader) the median frame is 17–50 ms.</li>
+<li>The cost grows faster than the number of cards. On a bare test page with plain named boxes: 100 boxes 17.3 ms a frame and 29 ms to <code>ready</code>; 200 boxes 49.5 ms and 94 ms; 400 boxes 123.4 ms and 360 ms, and a 2-second flight took 5.5 s. A trace at 200 boxes spent most of each frame recalculating the style of the pseudo-element tree. That is why this catalogue is one prize, not all six.</li>
+<li>Scoped transitions measured slower here (90th percentile up to 62 ms, the A–Z flight at a 43 ms median), so only X-ray uses them.</li>
+<li>Jamming the main thread for 800 ms mid-flight: the screen kept getting new frames (40 of them) only because the snapshot crossfades run on the compositor; with crossfades switched off, 0 new frames. The card movement itself waits for the main thread.</li>
+</ul>
+
+<h3>Which browsers</h3>
+<table>
+<tr><th>Feature</th><th>Chrome</th><th>Safari</th><th>Firefox</th></tr>
+<tr><td>View transitions in one page</td><td>111</td><td>18</td><td>144</td></tr>
+<tr><td><code>view-transition-class</code></td><td>125</td><td>18.2</td><td>144</td></tr>
+<tr><td>Across a page load (<code>@view-transition</code>)</td><td>126</td><td>18.2</td><td>Nightly only</td></tr>
+<tr><td>Scoped to an element</td><td>147</td><td>no</td><td>no</td></tr>
+</table>
+<p>From MDN's browser-compat-data as of 20 November 2026. Tested here in Chrome 153 (real GPU), Chrome 147 with software rendering, Firefox 148 and WebKit 26.4 (Playwright builds; WebKit was also handed a transition across a page load). Without view transitions the cards jump straight to their new places; with reduced motion turned on they always do.</p>
+
+<h3>The data</h3>
+<p>Everything comes from the Nobel Foundation's own API (api.nobelprize.org v2.1, CC0), fetched 20 November 2026, including the prize motivations on the pulled-out cards. Places are the API's present-day names. The API leaves a few places blank or without coordinates: Abdulrazak Gurnah's birthplace (Zanzibar, from his Nobel biography), Eyvind Johnson's and John Galsworthy's birthplaces, and five deathplaces; their coordinates are from Wikidata. Ages are counted on 10 December of the prize year, the ceremony. Boris Pasternak (1958, made to decline) and Jean-Paul Sartre (1964, declined) are on the list, as the Foundation keeps them. The map is a plain latitude–longitude grid of land from Natural Earth (1:110 m, public domain), one dot per 1.2°.</p>
+<ul>
+<li>83 of the 123 were born in Europe; 19 are women.</li>
+<li>They were born in 112 different places but the 103 who have died, died in 72. Paris leads both lists: 6 births and 8 deaths. 36 died in a different country from the one they were born in.</li>
+<li>7 years had no prize: 1914, 1918, 1935 and 1940–1943. The youngest at the ceremony was Rudyard Kipling (41), the oldest Doris Lessing (88).</li>
+</ul>
+</details></div></div>
+<script>
+const DATA=[{"id":569,"n":"Sully Prudhomme","f":"Prudhomme","k":"prudhomme sully prudhomme","L":"P","y":1901,"so":1,"aw":"1901-11-14","bd":"1839-03-16","bc":"Paris","bk":"France","blat":48.8601,"blon":2.356,"c":"Europe","g":"male","st":"received","m":"in special recognition of his poetic composition, which gives evidence of lofty idealism, artistic perfection and a rare combination of the qualities of both heart and intellect","dy":1907,"dc":"Châtenay","dk":"France","dlat":48.7653,"dlon":2.2781},{"id":571,"n":"Theodor Mommsen","f":"Mommsen","k":"mommsen theodor mommsen","L":"M","y":1902,"so":1,"aw":"1902-11-13","bd":"1817-11-30","bc":"Garding","bk":"Germany","blat":54.3299,"blon":8.786,"c":"Europe","g":"male","st":"received","m":"the greatest living master of the art of historical writing, with special reference to his monumental work, <I>A history of Rome</I>","dy":1903,"dc":"Charlottenburg","dk":"Germany","dlat":52.5166,"dlon":13.3041},{"id":572,"n":"Bjørnstjerne Bjørnson","f":"Bjørnson","k":"bjørnson bjørnstjerne bjørnson","L":"B","y":1903,"so":1,"aw":"1903-11-19","bd":"1832-12-08","bc":"Kvikne","bk":"Norway","blat":62.5622,"blon":10.3347,"c":"Europe","g":"male","st":"received","m":"as a tribute to his noble, magnificent and versatile poetry, which has always been distinguished by both the freshness of its inspiration and the rare purity of its spirit","dy":1910,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":573,"n":"Frédéric Mistral","f":"Mistral","k":"mistral frederic mistral","L":"M","y":1904,"so":1,"aw":"1904-11-17","bd":"1830-09-08","bc":"Maillane","bk":"France","blat":43.8325,"blon":4.7825,"c":"Europe","g":"male","st":"received","m":"in recognition of the fresh originality and true inspiration of his poetic production, which faithfully reflects the natural scenery and native spirit of his people, and, in addition, his significant work as a Proven&ccedil;al philologist","dy":1914,"dc":"Maillane","dk":"France","dlat":43.8325,"dlon":4.7825},{"id":574,"n":"José Echegaray","f":"Echegaray","k":"echegaray jose echegaray","L":"E","y":1904,"so":2,"aw":"1904-11-17","bd":"1832-04-19","bc":"Madrid","bk":"Spain","blat":40.4232,"blon":-3.694,"c":"Europe","g":"male","st":"received","m":"in recognition of the numerous and brilliant compositions which, in an individual and original manner, have revived the great traditions of the Spanish drama","dy":1916,"dc":"Madrid","dk":"Spain","dlat":40.4232,"dlon":-3.694},{"id":575,"n":"Henryk Sienkiewicz","f":"Sienkiewicz","k":"sienkiewicz henryk sienkiewicz","L":"S","y":1905,"so":1,"aw":"1905-11-09","bd":"1846-05-05","bc":"Wola Okrzejska","bk":"Poland","blat":51.7494,"blon":22.1336,"c":"Europe","g":"male","st":"received","m":"because of his outstanding merits as an epic writer","dy":1916,"dc":"Vevey","dk":"Switzerland","dlat":46.4628,"dlon":6.8419},{"id":576,"n":"Giosuè Carducci","f":"Carducci","k":"carducci giosue carducci","L":"C","y":1906,"so":1,"aw":"1906-11-08","bd":"1835-07-27","bc":"Val di Castello","bk":"Italy","blat":44.4938,"blon":11.3426,"c":"Europe","g":"male","st":"received","m":"not only in consideration of his deep learning and critical research, but above all as a tribute to the creative energy, freshness of style, and lyrical force which characterize his poetic masterpieces","dy":1907,"dc":"Bologna","dk":"Italy","dlat":44.4939,"dlon":11.3428},{"id":577,"n":"Rudyard Kipling","f":"Kipling","k":"kipling rudyard kipling","L":"K","y":1907,"so":1,"aw":"1907-11-07","bd":"1865-12-30","bc":"Mumbai","bk":"India","blat":19.0758,"blon":72.8775,"c":"Asia","g":"male","st":"received","m":"in consideration of the power of observation, originality of imagination, virility of ideas and remarkable talent for narration which characterize the creations of this world-famous author","dy":1936,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":578,"n":"Rudolf Eucken","f":"Eucken","k":"eucken rudolf eucken","L":"E","y":1908,"so":1,"aw":"1908-11-12","bd":"1846-01-05","bc":"Aurich","bk":"Germany","blat":53.4729,"blon":7.4793,"c":"Europe","g":"male","st":"received","m":"in recognition of his earnest search for truth, his penetrating power of thought, his wide range of vision, and the warmth and strength in presentation with which in his numerous works he has vindicated and developed an idealistic philosophy of life","dy":1926,"dc":"Jena","dk":"Germany","dlat":50.9272,"dlon":11.5864},{"id":579,"n":"Selma Lagerlöf","f":"Lagerlöf","k":"lagerlof selma lagerlof","L":"L","y":1909,"so":1,"aw":"1909-11-11","bd":"1858-11-20","bc":"Mårbacka","bk":"Sweden","blat":59.781,"blon":13.2334,"c":"Europe","g":"female","st":"received","m":"in appreciation of the lofty idealism, vivid imagination and spiritual perception that characterize her writings","dy":1940,"dc":"Mårbacka","dk":"Sweden","dlat":59.781,"dlon":13.2334},{"id":580,"n":"Paul Heyse","f":"Heyse","k":"heyse paul heyse","L":"H","y":1910,"so":1,"aw":"1910-11-10","bd":"1830-03-15","bc":"Berlin","bk":"Germany","blat":52.5223,"blon":13.4069,"c":"Europe","g":"male","st":"received","m":"as a tribute to the consummate artistry, permeated with idealism, which he has demonstrated during his long productive career as a lyric poet, dramatist, novelist and writer of world-renowned short stories","dy":1914,"dc":"Munich","dk":"Germany","dlat":48.1347,"dlon":11.582},{"id":581,"n":"Maurice Maeterlinck","f":"Maeterlinck","k":"maeterlinck maurice maeterlinck","L":"M","y":1911,"so":1,"aw":"1911-11-09","bd":"1862-08-29","bc":"Ghent","bk":"Belgium","blat":51.047,"blon":3.7352,"c":"Europe","g":"male","st":"received","m":"in appreciation of his many-sided literary activities, and especially of his dramatic works, which are distinguished by a wealth of imagination and by a poetic fancy, which reveals, sometimes in the guise of a fairy tale, a deep inspiration, while in a mysterious way they appeal to the readers' own feelings and stimulate their imaginations","dy":1949,"dc":"Nice","dk":"France","dlat":43.7096,"dlon":7.2611},{"id":582,"n":"Gerhart Hauptmann","f":"Hauptmann","k":"hauptmann gerhart hauptmann","L":"H","y":1912,"so":1,"aw":"1912-11-14","bd":"1862-11-15","bc":"Bad Salzbrunn","bk":"Poland","blat":50.8035,"blon":16.2566,"c":"Europe","g":"male","st":"received","m":"primarily in recognition of his fruitful, varied and outstanding production in the realm of dramatic art","dy":1946,"dc":"Jagniatków","dk":"Poland","dlat":50.8169,"dlon":15.6094},{"id":583,"n":"Rabindranath Tagore","f":"Tagore","k":"tagore rabindranath tagore","L":"T","y":1913,"so":1,"aw":"1913-11-13","bd":"1861-05-07","bc":"Calcutta","bk":"India","blat":22.5799,"blon":88.3681,"c":"Asia","g":"male","st":"received","m":"because of his profoundly sensitive, fresh and beautiful verse, by which, with consummate skill, he has made his poetic thought, expressed in his own English words, a part of the literature of the West","dy":1941,"dc":"Calcutta","dk":"India","dlat":22.5799,"dlon":88.3681},{"id":584,"n":"Romain Rolland","f":"Rolland","k":"rolland romain rolland","L":"R","y":1915,"so":1,"aw":"1916-11-09","bd":"1866-01-29","bc":"Clamecy","bk":"France","blat":47.4639,"blon":3.7419,"c":"Europe","g":"male","st":"received","m":"as a tribute to the lofty idealism of his literary production and to the sympathy and love of truth with which he has described different types of human beings","dy":1944,"dc":"Vézelay","dk":"France","dlat":47.4637,"dlon":3.7431},{"id":585,"n":"Verner von Heidenstam","f":"von Heidenstam","k":"von heidenstam verner von heidenstam","L":"V","y":1916,"so":1,"aw":"1916-11-09","bd":"1859-07-06","bc":"Olshammar","bk":"Sweden","blat":58.7571,"blon":14.7891,"c":"Europe","g":"male","st":"received","m":"in recognition of his significance as the leading representative of a new era in our literature","dy":1940,"dc":"Övralid","dk":"Sweden","dlat":58.6076,"dlon":14.9441},{"id":586,"n":"Karl Gjellerup","f":"Gjellerup","k":"gjellerup karl gjellerup","L":"G","y":1917,"so":1,"aw":"1917-11-08","bd":"1857-06-02","bc":"Roholte","bk":"Denmark","blat":55.195,"blon":12.09,"c":"Europe","g":"male","st":"received","m":"for his varied and rich poetry, which is inspired by lofty ideals","dy":1919,"dc":"Klotzsche","dk":"Germany","dlat":51.1151,"dlon":13.7889},{"id":587,"n":"Henrik Pontoppidan","f":"Pontoppidan","k":"pontoppidan henrik pontoppidan","L":"P","y":1917,"so":2,"aw":"1917-11-08","bd":"1857-07-24","bc":"Fredericia","bk":"Denmark","blat":55.5644,"blon":9.7597,"c":"Europe","g":"male","st":"received","m":"for his authentic descriptions of present-day life in Denmark","dy":1943,"dc":"Ordrup","dk":"Denmark","dlat":55.7647,"dlon":12.5831},{"id":588,"n":"Carl Spitteler","f":"Spitteler","k":"spitteler carl spitteler","L":"S","y":1919,"so":1,"aw":"1920-11-11","bd":"1845-04-24","bc":"Liestal","bk":"Switzerland","blat":47.4839,"blon":7.735,"c":"Europe","g":"male","st":"received","m":"in special appreciation of his epic, <I>Olympian Spring</I>","dy":1924,"dc":"Lucerne","dk":"Switzerland","dlat":47.0502,"dlon":8.3093},{"id":589,"n":"Knut Hamsun","f":"Hamsun","k":"hamsun knut hamsun","L":"H","y":1920,"so":1,"aw":"1920-11-11","bd":"1859-08-04","bc":"Lom","bk":"Norway","blat":61.8392,"blon":8.5659,"c":"Europe","g":"male","st":"received","m":"for his monumental work, <I>Growth of the Soil</I>","dy":1952,"dc":"Grimstad","dk":"Norway","dlat":58.3417,"dlon":8.5937},{"id":590,"n":"Anatole France","f":"France","k":"france anatole france","L":"F","y":1921,"so":1,"aw":"1921-11-10","bd":"1844-04-16","bc":"Paris","bk":"France","blat":48.8601,"blon":2.356,"c":"Europe","g":"male","st":"received","m":"in recognition of his brilliant literary achievements, characterized as they are by a nobility of style, a profound human sympathy, grace, and a true Gallic temperament","dy":1924,"dc":"Saint-Cyr-sur-Loire","dk":"France","dlat":47.4,"dlon":0.6667},{"id":592,"n":"Jacinto Benavente","f":"Benavente","k":"benavente jacinto benavente","L":"B","y":1922,"so":1,"aw":"1922-11-09","bd":"1866-08-12","bc":"Madrid","bk":"Spain","blat":40.4232,"blon":-3.694,"c":"Europe","g":"male","st":"received","m":"for the happy manner in which he has continued the illustrious traditions of the Spanish drama","dy":1954,"dc":"Madrid","dk":"Spain","dlat":40.4232,"dlon":-3.694},{"id":593,"n":"William Butler Yeats","f":"Yeats","k":"yeats william butler yeats","L":"Y","y":1923,"so":1,"aw":"1923-11-14","bd":"1865-06-13","bc":"Dublin","bk":"Ireland","blat":53.3517,"blon":-6.2615,"c":"Europe","g":"male","st":"received","m":"for his always inspired poetry, which in a highly artistic form gives expression to the spirit of a whole nation","dy":1939,"dc":"Roquebrune-Cap-Martin","dk":"France","dlat":43.7578,"dlon":7.4738},{"id":594,"n":"Władysław Reymont","f":"Reymont","k":"reymont władysław reymont","L":"R","y":1924,"so":1,"aw":"1924-11-13","bd":"1867-05-07","bc":"Kobiele Wielkie","bk":"Poland","blat":51.0422,"blon":19.5568,"c":"Europe","g":"male","st":"received","m":"for his great national epic, <I>The Peasants</I>","dy":1925,"dc":"Warsaw","dk":"Poland","dlat":52.23,"dlon":21.012},{"id":596,"n":"George Bernard Shaw","f":"Shaw","k":"shaw george bernard shaw","L":"S","y":1925,"so":1,"aw":"1926-11-11","bd":"1856-07-26","bc":"Dublin","bk":"Ireland","blat":53.3517,"blon":-6.2615,"c":"Europe","g":"male","st":"received","m":"for his work which is marked by both idealism and humanity, its stimulating satire often being infused with a singular poetic beauty","dy":1950,"dc":"Ayot St. Lawrence","dk":"United Kingdom","dlat":51.8333,"dlon":-0.25},{"id":597,"n":"Grazia Deledda","f":"Deledda","k":"deledda grazia deledda","L":"D","y":1926,"so":1,"aw":"1927-11-10","bd":"1871-09-27","bc":"Nuoro, Sardinia","bk":"Italy","blat":40.3203,"blon":9.3261,"c":"Europe","g":"female","st":"received","m":"for her idealistically inspired writings which with plastic clarity picture the life on her native island and with depth and sympathy deal with human problems in general","dy":1936,"dc":"Rome","dk":"Italy","dlat":41.9023,"dlon":12.5065},{"id":600,"n":"Henri Bergson","f":"Bergson","k":"bergson henri bergson","L":"B","y":1927,"so":1,"aw":"1928-11-13","bd":"1859-10-18","bc":"Paris","bk":"France","blat":48.8601,"blon":2.356,"c":"Europe","g":"male","st":"received","m":"in recognition of his rich and vitalizing ideas and the brilliant skill with which they have been presented","dy":1941,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":601,"n":"Sigrid Undset","f":"Undset","k":"undset sigrid undset","L":"U","y":1928,"so":1,"aw":"1928-11-13","bd":"1882-05-20","bc":"Kalundborg","bk":"Denmark","blat":55.6856,"blon":11.0919,"c":"Europe","g":"female","st":"received","m":"principally for her powerful descriptions of Northern life during the Middle Ages","dy":1949,"dc":"Lillehammer","dk":"Norway","dlat":61.1153,"dlon":10.4668},{"id":602,"n":"Thomas Mann","f":"Mann","k":"mann thomas mann","L":"M","y":1929,"so":1,"aw":"1929-11-12","bd":"1875-06-06","bc":"Lübeck","bk":"Germany","blat":53.8697,"blon":10.6864,"c":"Europe","g":"male","st":"received","m":"principally for his great novel, <I>Buddenbrooks</I>, which has won steadily increased recognition as one of the classic works of contemporary literature","dy":1955,"dc":"Zurich","dk":"Switzerland","dlat":47.3769,"dlon":8.5417},{"id":603,"n":"Sinclair Lewis","f":"Lewis","k":"lewis sinclair lewis","L":"L","y":1930,"so":1,"aw":"1930-11-05","bd":"1885-02-07","bc":"Sauk Centre, MN","bk":"USA","blat":45.7364,"blon":-94.9542,"c":"North America","g":"male","st":"received","m":"for his vigorous and graphic art of description and his ability to create, with wit and humour, new types of characters","dy":1951,"dc":"Rome","dk":"Italy","dlat":41.9023,"dlon":12.5065},{"id":604,"n":"Erik Axel Karlfeldt","f":"Karlfeldt","k":"karlfeldt erik axel karlfeldt","L":"K","y":1931,"so":1,"aw":"1931-11-08","bd":"1864-07-20","bc":"Karlbo","bk":"Sweden","blat":60.1167,"blon":16.2333,"c":"Europe","g":"male","st":"received","m":"The poetry of Erik Axel Karlfeldt","dy":1931,"dc":"Stockholm","dk":"Sweden","dlat":59.3254,"dlon":18.0708},{"id":605,"n":"John Galsworthy","f":"Galsworthy","k":"galsworthy john galsworthy","L":"G","y":1932,"so":1,"aw":"1932-11-10","bd":"1867-08-14","bc":"Kingston Hill","bk":"United Kingdom","blat":51.4217,"blon":-0.2772,"c":"Europe","g":"male","st":"received","m":"for his distinguished art of narration which takes its highest form in <I>The Forsyte Saga</I>","dy":1933,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":606,"n":"Ivan Bunin","f":"Bunin","k":"bunin ivan bunin","L":"B","y":1933,"so":1,"aw":"1933-11-09","bd":"1870-10-22","bc":"Voronezh","bk":"Russia","blat":51.6648,"blon":39.1952,"c":"Europe","g":"male","st":"received","m":"for the strict artistry with which he has carried on the classical Russian traditions in prose writing","dy":1953,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":607,"n":"Luigi Pirandello","f":"Pirandello","k":"pirandello luigi pirandello","L":"P","y":1934,"so":1,"aw":"1934-11-08","bd":"1867-06-28","bc":"Agrigento, Sicily","bk":"Italy","blat":37.3111,"blon":13.5765,"c":"Europe","g":"male","st":"received","m":"for his bold and ingenious revival of dramatic and scenic art","dy":1936,"dc":"Rome","dk":"Italy","dlat":41.9023,"dlon":12.5065},{"id":608,"n":"Eugene O'Neill","f":"O'Neill","k":"o'neill eugene o'neill","L":"O","y":1936,"so":1,"aw":"1936-11-12","bd":"1888-10-16","bc":"New York, NY","bk":"USA","blat":40.7158,"blon":-74.0113,"c":"North America","g":"male","st":"received","m":"for the power, honesty and deep-felt emotions of his dramatic works, which embody an original concept of tragedy","dy":1953,"dc":"Boston, MA","dk":"USA","dlat":42.3604,"dlon":-71.0568},{"id":609,"n":"Roger Martin du Gard","f":"Martin du Gard","k":"martin du gard roger martin du gard","L":"M","y":1937,"so":1,"aw":"1937-11-11","bd":"1881-03-23","bc":"Neuilly-sur-Seine","bk":"France","blat":48.8872,"blon":2.2675,"c":"Europe","g":"male","st":"received","m":"for the artistic power and truth with which he has depicted human conflict as well as some fundamental aspects of contemporary life in his novel-cycle <I>Les Thibault</I>","dy":1958,"dc":"Bellême","dk":"France","dlat":48.3764,"dlon":0.5606},{"id":610,"n":"Pearl Buck","f":"Buck","k":"buck pearl buck","L":"B","y":1938,"so":1,"aw":"1938-11-10","bd":"1892-06-26","bc":"Hillsboro, WV","bk":"USA","blat":38.1381,"blon":-80.2125,"c":"North America","g":"female","st":"received","m":"for her rich and truly epic descriptions of peasant life in China and for her biographical masterpieces","dy":1973,"dc":"Danby, VT","dk":"USA","dlat":43.3548,"dlon":-73.0476},{"id":613,"n":"Frans Eemil Sillanpää","f":"Sillanpää","k":"sillanpaa frans eemil sillanpaa","L":"S","y":1939,"so":1,"aw":"1939-11-10","bd":"1888-09-16","bc":"Hämeenkyrö","bk":"Finland","blat":61.6333,"blon":23.2,"c":"Europe","g":"male","st":"received","m":"for his deep understanding of his country's peasantry and the exquisite art with which he has portrayed their way of life and their relationship with Nature","dy":1964,"dc":"Helsinki","dk":"Finland","dlat":60.1679,"dlon":24.9582},{"id":614,"n":"Johannes V. Jensen","f":"Jensen","k":"jensen johannes v. jensen","L":"J","y":1944,"so":1,"aw":"1944-11-09","bd":"1873-01-20","bc":"Farsø","bk":"Denmark","blat":56.7722,"blon":9.3397,"c":"Europe","g":"male","st":"received","m":"for the rare strength and fertility of his poetic imagination with which is combined an intellectual curiosity of wide scope and a bold, freshly creative style","dy":1950,"dc":"Copenhagen","dk":"Denmark","dlat":55.6781,"dlon":12.5725},{"id":615,"n":"Gabriela Mistral","f":"Mistral","k":"mistral gabriela mistral","L":"M","y":1945,"so":1,"aw":"1945-11-15","bd":"1889-04-07","bc":"Vicuña","bk":"Chile","blat":-30.0327,"blon":-70.708,"c":"South America","g":"female","st":"received","m":"for her lyric poetry which, inspired by powerful emotions, has made her name a symbol of the idealistic aspirations of the entire Latin American world","dy":1957,"dc":"Hempstead, NY","dk":"USA","dlat":40.7062,"dlon":-73.6187},{"id":617,"n":"Hermann Hesse","f":"Hesse","k":"hesse hermann hesse","L":"H","y":1946,"so":1,"aw":"1946-11-14","bd":"1877-07-02","bc":"Calw","bk":"Germany","blat":48.7137,"blon":8.7432,"c":"Europe","g":"male","st":"received","m":"for his inspired writings which, while growing in boldness and penetration, exemplify the classical humanitarian ideals and high qualities of style","dy":1962,"dc":"Montagnola","dk":"Switzerland","dlat":45.983,"dlon":8.9169},{"id":618,"n":"André Gide","f":"Gide","k":"gide andre gide","L":"G","y":1947,"so":1,"aw":"1947-11-13","bd":"1869-11-22","bc":"Paris","bk":"France","blat":48.8601,"blon":2.356,"c":"Europe","g":"male","st":"received","m":"for his comprehensive and artistically significant writings, in which human problems and conditions have been presented with a fearless love of truth and keen psychological insight","dy":1951,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":619,"n":"T.S. Eliot","f":"Eliot","k":"eliot t.s. eliot","L":"E","y":1948,"so":1,"aw":"1948-11-04","bd":"1888-09-26","bc":"St. Louis, MO","bk":"USA","blat":38.6281,"blon":-90.2122,"c":"North America","g":"male","st":"received","m":"for his outstanding, pioneer contribution to present-day poetry","dy":1965,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":620,"n":"William Faulkner","f":"Faulkner","k":"faulkner william faulkner","L":"F","y":1949,"so":1,"aw":"1950-11-10","bd":"1897-09-25","bc":"New Albany, MS","bk":"USA","blat":34.4943,"blon":-89.0078,"c":"North America","g":"male","st":"received","m":"for his powerful and artistically unique contribution to the modern American novel","dy":1962,"dc":"Byhalia, MS","dk":"USA","dlat":34.8723,"dlon":-89.6906},{"id":621,"n":"Bertrand Russell","f":"Russell","k":"russell bertrand russell","L":"R","y":1950,"so":1,"aw":"1950-11-10","bd":"1872-05-18","bc":"Trelleck","bk":"United Kingdom","blat":51.745,"blon":-2.7256,"c":"Europe","g":"male","st":"received","m":"in recognition of his varied and significant writings in which he champions humanitarian ideals and freedom of thought","dy":1970,"dc":"Penrhyndeudraeth","dk":"United Kingdom","dlat":52.9292,"dlon":-4.0671},{"id":622,"n":"Pär Lagerkvist","f":"Lagerkvist","k":"lagerkvist par lagerkvist","L":"L","y":1951,"so":1,"aw":"1951-11-15","bd":"1891-05-23","bc":"Växjö","bk":"Sweden","blat":56.889,"blon":14.8028,"c":"Europe","g":"male","st":"received","m":"for the artistic vigour and true independence of mind with which he endeavours in his poetry to find answers to the eternal questions confronting mankind","dy":1974,"dc":"Stockholm","dk":"Sweden","dlat":59.3254,"dlon":18.0708},{"id":623,"n":"François Mauriac","f":"Mauriac","k":"mauriac francois mauriac","L":"M","y":1952,"so":1,"aw":"1952-11-06","bd":"1885-10-11","bc":"Bordeaux","bk":"France","blat":44.8378,"blon":-0.5794,"c":"Europe","g":"male","st":"received","m":"for the deep spiritual insight and the artistic intensity with which he has in his novels penetrated the drama of human life","dy":1970,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":624,"n":"Winston Churchill","f":"Churchill","k":"churchill winston churchill","L":"C","y":1953,"so":1,"aw":"1953-10-15","bd":"1874-11-30","bc":"Woodstock","bk":"United Kingdom","blat":51.845,"blon":-1.3539,"c":"Europe","g":"male","st":"received","m":"for his mastery of historical and biographical description as well as for brilliant oratory in defending exalted human values","dy":1965,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":625,"n":"Ernest Hemingway","f":"Hemingway","k":"hemingway ernest hemingway","L":"H","y":1954,"so":1,"aw":"1954-10-28","bd":"1899-07-21","bc":"Oak Park, IL","bk":"USA","blat":41.8883,"blon":-87.7894,"c":"North America","g":"male","st":"received","m":"for his mastery of the art of narrative, most recently demonstrated in <I>The Old Man and the Sea,</I> and for the influence that he has exerted on contemporary style","dy":1961,"dc":"Ketchum, ID","dk":"USA","dlat":43.6807,"dlon":-114.3637},{"id":626,"n":"Halldór Laxness","f":"Laxness","k":"laxness halldor laxness","L":"L","y":1955,"so":1,"aw":"1955-10-27","bd":"1902-04-23","bc":"Reykjavik","bk":"Iceland","blat":64.1458,"blon":-21.9436,"c":"Europe","g":"male","st":"received","m":"for his vivid epic power which has renewed the great narrative art of Iceland","dy":1998,"dc":"Reykjavik","dk":"Iceland","dlat":64.1458,"dlon":-21.9436},{"id":627,"n":"Juan Ramón Jiménez","f":"Jiménez","k":"jimenez juan ramon jimenez","L":"J","y":1956,"so":1,"aw":"1956-10-25","bd":"1881-12-24","bc":"Moguer","bk":"Spain","blat":37.2748,"blon":-6.8371,"c":"Europe","g":"male","st":"received","m":"for his lyrical poetry, which in Spanish language constitutes an example of high spirit and artistical purity","dy":1958,"dc":"San Juan","dk":"Puerto Rico","dlat":18.4655,"dlon":-66.1057},{"id":628,"n":"Albert Camus","f":"Camus","k":"camus albert camus","L":"C","y":1957,"so":1,"aw":"1957-10-17","bd":"1913-11-07","bc":"Mondovi","bk":"Algeria","blat":44.3951,"blon":7.8195,"c":"Africa","g":"male","st":"received","m":"for his important literary production, which with clear-sighted earnestness illuminates the problems of the human conscience in our times","dy":1960,"dc":"Sens","dk":"France","dlat":48.1972,"dlon":3.2833},{"id":629,"n":"Boris Pasternak","f":"Pasternak","k":"pasternak boris pasternak","L":"P","y":1958,"so":1,"aw":"1958-10-28","bd":"1890-02-10","bc":"Moscow","bk":"Russia","blat":55.7414,"blon":37.6189,"c":"Europe","g":"male","st":"restricted","m":"for his important achievement both in contemporary lyrical poetry and in the field of the great Russian epic tradition","dy":1960,"dc":"Peredelkino","dk":"Russia","dlat":55.6556,"dlon":37.3325},{"id":630,"n":"Salvatore Quasimodo","f":"Quasimodo","k":"quasimodo salvatore quasimodo","L":"Q","y":1959,"so":1,"aw":"1959-10-22","bd":"1901-08-20","bc":"Modica","bk":"Italy","blat":36.8672,"blon":14.7614,"c":"Europe","g":"male","st":"received","m":"for his lyrical poetry, which with classical fire expresses the tragic experience of life in our own times","dy":1968,"dc":"Naples","dk":"Italy","dlat":40.8518,"dlon":14.2681},{"id":631,"n":"Saint-John Perse","f":"Perse","k":"perse saint-john perse","L":"P","y":1960,"so":1,"aw":"1960-10-26","bd":"1887-05-31","bc":"Pointe-à-Pitre","bk":"Guadeloupe, France","blat":16.2411,"blon":-61.5331,"c":"North America","g":"male","st":"received","m":"for the soaring flight and the evocative imagery of his poetry which in a visionary fashion reflects the conditions of our time","dy":1975,"dc":"Presqu'île-de-Giens","dk":"France","dlat":43.0381,"dlon":6.1266},{"id":633,"n":"Ivo Andrić","f":"Andrić","k":"andric ivo andric","L":"A","y":1961,"so":1,"aw":"1961-10-26","bd":"1892-10-10","bc":"Dolac","bk":"Bosnia and Herzegovina","blat":44.2207,"blon":17.6713,"c":"Europe","g":"male","st":"received","m":"for the epic force with which he has traced themes and depicted human destinies drawn from the history of his country","dy":1975,"dc":"Belgrade","dk":"Serbia","dlat":44.7866,"dlon":20.4489},{"id":634,"n":"John Steinbeck","f":"Steinbeck","k":"steinbeck john steinbeck","L":"S","y":1962,"so":1,"aw":"1962-10-05","bd":"1902-02-27","bc":"Salinas, CA","bk":"USA","blat":36.6778,"blon":-121.6556,"c":"North America","g":"male","st":"received","m":"for his realistic and imaginative writings, combining as they do sympathetic humour and keen social perception","dy":1968,"dc":"New York, NY","dk":"USA","dlat":40.7158,"dlon":-74.0113},{"id":635,"n":"Giorgos Seferis","f":"Seferis","k":"seferis giorgos seferis","L":"S","y":1963,"so":1,"aw":"1963-10-24","bd":"1900-03-13","bc":"Izmir","bk":"Turkey","blat":38.4,"blon":27.1667,"c":"Asia","g":"male","st":"received","m":"for his eminent lyrical writing, inspired by a deep feeling for the Hellenic world of culture","dy":1971,"dc":"Athens","dk":"Greece","dlat":37.9834,"dlon":23.7286},{"id":637,"n":"Jean-Paul Sartre","f":"Sartre","k":"sartre jean-paul sartre","L":"S","y":1964,"so":1,"aw":"1964-10-22","bd":"1905-06-21","bc":"Paris","bk":"France","blat":48.8601,"blon":2.356,"c":"Europe","g":"male","st":"declined","m":"for his work which, rich in ideas and filled with the spirit of freedom and the quest for truth, has exerted a far-reaching influence on our age","dy":1980,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":638,"n":"Mikhail Sholokhov","f":"Sholokhov","k":"sholokhov mikhail sholokhov","L":"S","y":1965,"so":1,"aw":"1965-10-15","bd":"1905-05-24","bc":"Veshenskaya","bk":"Russia","blat":49.629,"blon":41.7251,"c":"Europe","g":"male","st":"received","m":"for the artistic power and integrity with which, in his epic of the Don, he has given expression to a historic phase in the life of the Russian people","dy":1984,"dc":"Veshenskaya","dk":"Russia","dlat":49.629,"dlon":41.7251},{"id":639,"n":"Shmuel Agnon","f":"Agnon","k":"agnon shmuel agnon","L":"A","y":1966,"so":1,"aw":"1966-10-20","bd":"1888-07-17","bc":"Buchach","bk":"Ukraine","blat":49.0667,"blon":25.3833,"c":"Europe","g":"male","st":"received","m":"for his profoundly characteristic narrative art with motifs from the life of the Jewish people","dy":1970,"dc":"Rehovot","dk":"Israel","dlat":31.8928,"dlon":34.8113},{"id":640,"n":"Nelly Sachs","f":"Sachs","k":"sachs nelly sachs","L":"S","y":1966,"so":2,"aw":"1966-10-20","bd":"1891-12-10","bc":"Berlin","bk":"Germany","blat":52.5223,"blon":13.4069,"c":"Europe","g":"female","st":"received","m":"for her outstanding lyrical and dramatic writing, which interprets Israel's destiny with touching strength","dy":1970,"dc":"Stockholm","dk":"Sweden","dlat":59.3254,"dlon":18.0708},{"id":641,"n":"Miguel Angel Asturias","f":"Asturias","k":"asturias miguel angel asturias","L":"A","y":1967,"so":1,"aw":"1967-10-19","bd":"1899-10-19","bc":"Guatemala City","bk":"Guatemala","blat":14.6099,"blon":-90.5252,"c":"North America","g":"male","st":"received","m":"for his vivid literary achievement, deep-rooted in the national traits and traditions of Indian peoples of Latin America","dy":1974,"dc":"Madrid","dk":"Spain","dlat":40.4232,"dlon":-3.694},{"id":642,"n":"Yasunari Kawabata","f":"Kawabata","k":"kawabata yasunari kawabata","L":"K","y":1968,"so":1,"aw":"1968-10-17","bd":"1899-06-11","bc":"Osaka","bk":"Japan","blat":34.6938,"blon":135.5015,"c":"Asia","g":"male","st":"received","m":"for his narrative mastery, which with great sensibility expresses the essence of the Japanese mind","dy":1972,"dc":"Zushi","dk":"Japan","dlat":35.2956,"dlon":139.5803},{"id":643,"n":"Samuel Beckett","f":"Beckett","k":"beckett samuel beckett","L":"B","y":1969,"so":1,"aw":"1969-10-23","bd":"1906-04-13","bc":"Dublin","bk":"Ireland","blat":53.3517,"blon":-6.2615,"c":"Europe","g":"male","st":"received","m":"for his writing, which - in new forms for the novel and drama - in the destitution of modern man acquires its elevation","dy":1989,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":644,"n":"Aleksandr Solzhenitsyn","f":"Solzhenitsyn","k":"solzhenitsyn aleksandr solzhenitsyn","L":"S","y":1970,"so":1,"aw":"1970-10-08","bd":"1918-12-11","bc":"Kislovodsk","bk":"Russia","blat":43.907,"blon":42.7158,"c":"Europe","g":"male","st":"received","m":"for the ethical force with which he has pursued the indispensable traditions of Russian literature","dy":2008,"dc":"Troitse-Lykovo","dk":"Russia","dlat":55.7919,"dlon":37.4006},{"id":645,"n":"Pablo Neruda","f":"Neruda","k":"neruda pablo neruda","L":"N","y":1971,"so":1,"aw":"1971-10-21","bd":"1904-07-12","bc":"Parral","bk":"Chile","blat":-36.15,"blon":-71.8333,"c":"South America","g":"male","st":"received","m":"for a poetry that with the action of an elemental force brings alive a continent's destiny and dreams","dy":1973,"dc":"Santiago","dk":"Chile","dlat":-33.4489,"dlon":-70.6693},{"id":647,"n":"Heinrich Böll","f":"Böll","k":"boll heinrich boll","L":"B","y":1972,"so":1,"aw":"1972-10-19","bd":"1917-12-21","bc":"Cologne","bk":"Germany","blat":50.9386,"blon":6.9577,"c":"Europe","g":"male","st":"received","m":"for his writing which through its combination of a broad perspective on his time and a sensitive skill in characterization has contributed to a renewal of German literature","dy":1985,"dc":"Kreuzau","dk":"Germany","dlat":50.747,"dlon":6.4907},{"id":648,"n":"Patrick White","f":"White","k":"white patrick white","L":"W","y":1973,"so":1,"aw":"1973-10-25","bd":"1912-05-28","bc":"London","bk":"United Kingdom","blat":51.5102,"blon":-0.1209,"c":"Europe","g":"male","st":"received","m":"for an epic and psychological narrative art which has introduced a new continent into literature","dy":1990,"dc":"Sydney","dk":"Australia","dlat":-33.8548,"dlon":151.2165},{"id":649,"n":"Eyvind Johnson","f":"Johnson","k":"johnson eyvind johnson","L":"J","y":1974,"so":1,"aw":"1974-10-03","bd":"1900-07-29","bc":"Svartbjörnsbyn","bk":"Sweden","blat":65.8601,"blon":21.6922,"c":"Europe","g":"male","st":"received","m":"for a narrative art, far-seeing in lands and ages, in the service of freedom","dy":1976,"dc":"Stockholm","dk":"Sweden","dlat":59.3254,"dlon":18.0708},{"id":650,"n":"Harry Martinson","f":"Martinson","k":"martinson harry martinson","L":"M","y":1974,"so":2,"aw":"1974-10-03","bd":"1904-05-06","bc":"Jämshög","bk":"Sweden","blat":56.2411,"blon":14.5341,"c":"Europe","g":"male","st":"received","m":"for writings that catch the dewdrop and reflect the cosmos","dy":1978,"dc":"Stockholm","dk":"Sweden","dlat":59.3254,"dlon":18.0708},{"id":651,"n":"Eugenio Montale","f":"Montale","k":"montale eugenio montale","L":"M","y":1975,"so":1,"aw":"1975-10-23","bd":"1896-10-12","bc":"Genoa","bk":"Italy","blat":44.4058,"blon":8.9489,"c":"Europe","g":"male","st":"received","m":"for his distinctive poetry which, with great artistic sensitivity, has interpreted human values under the sign of an outlook on life with no illusions","dy":1981,"dc":"Milan","dk":"Italy","dlat":45.4602,"dlon":9.1817},{"id":652,"n":"Saul Bellow","f":"Bellow","k":"bellow saul bellow","L":"B","y":1976,"so":1,"aw":"1976-10-21","bd":"1915-06-10","bc":"Montreal","bk":"Canada","blat":45.5028,"blon":-73.5691,"c":"North America","g":"male","st":"received","m":"for the human understanding and subtle analysis of contemporary culture that are combined in his work","dy":2005,"dc":"Brookline, MA","dk":"USA","dlat":42.3318,"dlon":-71.1212},{"id":653,"n":"Vicente Aleixandre","f":"Aleixandre","k":"aleixandre vicente aleixandre","L":"A","y":1977,"so":1,"aw":"1977-10-06","bd":"1898-04-26","bc":"Sevilla","bk":"Spain","blat":37.3891,"blon":-5.9845,"c":"Europe","g":"male","st":"received","m":"for a creative poetic writing which illuminates man's condition in the cosmos and in present-day society, at the same time representing the great renewal of the traditions of Spanish poetry between the wars","dy":1984,"dc":"Madrid","dk":"Spain","dlat":40.4232,"dlon":-3.694},{"id":654,"n":"Isaac Bashevis Singer","f":"Singer","k":"singer isaac bashevis singer","L":"S","y":1978,"so":1,"aw":"1978-10-05","bd":"1904-07-14","bc":"Leoncin","bk":"Poland","blat":52.3936,"blon":20.5338,"c":"Europe","g":"male","st":"received","m":"for his impassioned narrative art which, with roots in a Polish-Jewish cultural tradition, brings universal human conditions to life","dy":1991,"dc":"Surfside, FL","dk":"USA","dlat":25.8784,"dlon":-80.1256},{"id":655,"n":"Odysseus Elytis","f":"Elytis","k":"elytis odysseus elytis","L":"E","y":1979,"so":1,"aw":"1979-10-18","bd":"1911-11-02","bc":"Iráklion","bk":"Greece","blat":35.3403,"blon":25.1344,"c":"Europe","g":"male","st":"received","m":"for his poetry, which, against the background of Greek tradition, depicts with sensuous strength and intellectual clear-sightedness modern man's struggle for freedom and creativeness","dy":1996,"dc":"Athens","dk":"Greece","dlat":37.9834,"dlon":23.7286},{"id":657,"n":"Czesław Miłosz","f":"Miłosz","k":"miłosz czesław miłosz","L":"M","y":1980,"so":1,"aw":"1980-10-09","bd":"1911-06-30","bc":"Śeteniai","bk":"Lithuania","blat":55.3947,"blon":24.0328,"c":"Europe","g":"male","st":"received","m":"who with uncompromising clear-sightedness voices man's exposed condition in a world of severe conflicts","dy":2004,"dc":"Kraków","dk":"Poland","dlat":50.0647,"dlon":19.945},{"id":658,"n":"Elias Canetti","f":"Canetti","k":"canetti elias canetti","L":"C","y":1981,"so":1,"aw":"1981-10-15","bd":"1905-07-25","bc":"Ruse","bk":"Bulgaria","blat":43.8445,"blon":25.9539,"c":"Europe","g":"male","st":"received","m":"for writings marked by a broad outlook, a wealth of ideas and artistic power","dy":1994,"dc":"Zurich","dk":"Switzerland","dlat":47.3769,"dlon":8.5417},{"id":659,"n":"Gabriel García Márquez","f":"García Márquez","k":"garcia marquez gabriel garcia marquez","L":"G","y":1982,"so":1,"aw":"1982-10-21","bd":"1927-03-06","bc":"Aracataca","bk":"Colombia","blat":10.5911,"blon":-74.185,"c":"South America","g":"male","st":"received","m":"for his novels and short stories, in which the fantastic and the realistic are combined in a richly composed world of imagination, reflecting a continent's life and conflicts","dy":2014,"dc":"Mexico City","dk":"Mexico","dlat":19.432,"dlon":-99.1346},{"id":660,"n":"William Golding","f":"Golding","k":"golding william golding","L":"G","y":1983,"so":1,"aw":"1983-10-27","bd":"1911-09-19","bc":"Newquay","bk":"United Kingdom","blat":50.412,"blon":-5.0757,"c":"Europe","g":"male","st":"received","m":"for his novels which, with the perspicuity of realistic narrative art and the diversity and universality of myth, illuminate the human condition in the world of today","dy":1993,"dc":"Perranarworthal","dk":"United Kingdom","dlat":50.2081,"dlon":-5.1189},{"id":661,"n":"Jaroslav Seifert","f":"Seifert","k":"seifert jaroslav seifert","L":"S","y":1984,"so":1,"aw":"1984-11-27","bd":"1901-09-23","bc":"Prague","bk":"Czech Republic","blat":50.0751,"blon":14.4299,"c":"Europe","g":"male","st":"received","m":"for his poetry which endowed with freshness, sensuality and rich inventiveness provides a liberating image of the indomitable spirit and versatility of man","dy":1986,"dc":"Prague","dk":"Czech Republic","dlat":50.0751,"dlon":14.4299},{"id":662,"n":"Claude Simon","f":"Simon","k":"simon claude simon","L":"S","y":1985,"so":1,"aw":"1985-11-27","bd":"1913-10-10","bc":"Antananarivo","bk":"Madagascar","blat":-18.9386,"blon":47.5214,"c":"Africa","g":"male","st":"received","m":"who in his novel combines the poet's and the painter's creativeness with a deepened awareness of time in the depiction of the human condition","dy":2005,"dc":"Paris","dk":"France","dlat":48.8601,"dlon":2.356},{"id":663,"n":"Wole Soyinka","f":"Soyinka","k":"soyinka wole soyinka","L":"S","y":1986,"so":1,"aw":"1986-10-16","bd":"1934-07-13","bc":"Abeokuta","bk":"Nigeria","blat":7.1453,"blon":3.359,"c":"Africa","g":"male","st":"received","m":"who in a wide cultural perspective and with poetic overtones fashions the drama of existence"},{"id":664,"n":"Joseph Brodsky","f":"Brodsky","k":"brodsky joseph brodsky","L":"B","y":1987,"so":1,"aw":"1987-10-22","bd":"1940-05-24","bc":"St. Petersburg","bk":"Russia","blat":59.9567,"blon":30.3335,"c":"Europe","g":"male","st":"received","m":"for an all-embracing authorship, imbued with clarity of thought and poetic intensity","dy":1996,"dc":"New York, NY","dk":"USA","dlat":40.7158,"dlon":-74.0113},{"id":665,"n":"Naguib Mahfouz","f":"Mahfouz","k":"mahfouz naguib mahfouz","L":"M","y":1988,"so":1,"aw":"1988-10-13","bd":"1911-12-11","bc":"Cairo","bk":"Egypt","blat":30.0444,"blon":31.2357,"c":"Africa","g":"male","st":"received","m":"who, through works rich in nuance - now clear-sightedly realistic, now evocatively ambiguous - has formed an Arabian narrative art that applies to all mankind","dy":2006,"dc":"Cairo","dk":"Egypt","dlat":30.0444,"dlon":31.2357},{"id":666,"n":"Camilo José Cela","f":"Cela","k":"cela camilo jose cela","L":"C","y":1989,"so":1,"aw":"1989-10-09","bd":"1916-05-11","bc":"Iria Flavia","bk":"Spain","blat":42.7459,"blon":-8.6556,"c":"Europe","g":"male","st":"received","m":"for a rich and intensive prose, which with restrained compassion forms a challenging vision of man's vulnerability","dy":2002,"dc":"Madrid","dk":"Spain","dlat":40.4232,"dlon":-3.694},{"id":667,"n":"Octavio Paz","f":"Paz","k":"paz octavio paz","L":"P","y":1990,"so":1,"aw":"1990-10-11","bd":"1914-03-31","bc":"Mexico City","bk":"Mexico","blat":19.432,"blon":-99.1346,"c":"North America","g":"male","st":"received","m":"for impassioned writing with wide horizons, characterized by sensuous intelligence and humanistic integrity","dy":1998,"dc":"Mexico City","dk":"Mexico","dlat":19.432,"dlon":-99.1346},{"id":668,"n":"Nadine Gordimer","f":"Gordimer","k":"gordimer nadine gordimer","L":"G","y":1991,"so":1,"aw":"1991-10-03","bd":"1923-11-20","bc":"Springs","bk":"South Africa","blat":-26.2547,"blon":28.4428,"c":"Africa","g":"female","st":"received","m":"who through her magnificent epic writing has - in the words of Alfred Nobel - been of very great benefit to humanity","dy":2014,"dc":"Johannesburg","dk":"South Africa","dlat":-26.2054,"dlon":28.0455},{"id":669,"n":"Derek Walcott","f":"Walcott","k":"walcott derek walcott","L":"W","y":1992,"so":1,"aw":"1992-10-08","bd":"1930-01-23","bc":"Castries","bk":"Saint Lucia","blat":14.0167,"blon":-60.9833,"c":"North America","g":"male","st":"received","m":"for a poetic oeuvre of great luminosity, sustained by a historical vision, the outcome of a multicultural commitment","dy":2017,"dc":"Gros-Islet","dk":"Saint Lucia","dlat":14.079,"dlon":-60.9478},{"id":670,"n":"Toni Morrison","f":"Morrison","k":"morrison toni morrison","L":"M","y":1993,"so":1,"aw":"1993-10-07","bd":"1931-02-18","bc":"Lorain, OH","bk":"USA","blat":41.4528,"blon":-82.1824,"c":"North America","g":"female","st":"received","m":"who in novels characterized by visionary force and poetic import, gives life to an essential aspect of American reality","dy":2019,"dc":"New York, NY","dk":"USA","dlat":40.7158,"dlon":-74.0113},{"id":671,"n":"Kenzaburo Oe","f":"Oe","k":"oe kenzaburo oe","L":"O","y":1994,"so":1,"aw":"1994-10-13","bd":"1935-01-31","bc":"Uchiko","bk":"Japan","blat":33.533,"blon":132.6583,"c":"Asia","g":"male","st":"received","m":"who with poetic force creates an imagined world, where life and myth condense to form a disconcerting picture of the human predicament today","dy":2023,"dc":"Tokyo","dk":"Japan","dlat":35.6802,"dlon":139.7694},{"id":672,"n":"Seamus Heaney","f":"Heaney","k":"heaney seamus heaney","L":"H","y":1995,"so":1,"aw":"1995-10-05","bd":"1939-04-13","bc":"Casteldàwson","bk":"Northern Ireland","blat":54.7781,"blon":-6.5561,"c":"Europe","g":"male","st":"received","m":"for works of lyrical beauty and ethical depth, which exalt everyday miracles and the living past","dy":2013,"dc":"Dublin","dk":"Ireland","dlat":53.3517,"dlon":-6.2615},{"id":673,"n":"Wisława Szymborska","f":"Szymborska","k":"szymborska wisława szymborska","L":"S","y":1996,"so":1,"aw":"1996-10-03","bd":"1923-07-02","bc":"Kórnik","bk":"Poland","blat":52.2468,"blon":17.0901,"c":"Europe","g":"female","st":"received","m":"for poetry that with ironic precision allows the historical and biological context to come to light in fragments of human reality","dy":2012,"dc":"Kraków","dk":"Poland","dlat":50.0647,"dlon":19.945},{"id":674,"n":"Dario Fo","f":"Fo","k":"fo dario fo","L":"F","y":1997,"so":1,"aw":"1997-10-09","bd":"1926-03-24","bc":"Leggiuno-Sangiano","bk":"Italy","blat":45.875,"blon":8.6217,"c":"Europe","g":"male","st":"received","m":"who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the downtrodden","dy":2016,"dc":"Milan","dk":"Italy","dlat":45.4602,"dlon":9.1817},{"id":675,"n":"José Saramago","f":"Saramago","k":"saramago jose saramago","L":"S","y":1998,"so":1,"aw":"1998-10-08","bd":"1922-11-16","bc":"Azinhaga","bk":"Portugal","blat":39.3499,"blon":-8.5328,"c":"Europe","g":"male","st":"received","m":"who with parables sustained by imagination, compassion and irony continually enables us once again to apprehend an elusory reality","dy":2010,"dc":"Lanzarote","dk":"Spain","dlat":29.035,"dlon":-13.635},{"id":676,"n":"Günter Grass","f":"Grass","k":"grass gunter grass","L":"G","y":1999,"so":1,"aw":"1999-09-30","bd":"1927-10-16","bc":"Gdansk","bk":"Poland","blat":54.3522,"blon":18.644,"c":"Europe","g":"male","st":"received","m":"whose frolicsome black fables portray the forgotten face of history","dy":2015,"dc":"Lübeck","dk":"Germany","dlat":53.8697,"dlon":10.6864},{"id":734,"n":"Gao Xingjian","f":"Gao","k":"gao gao xingjian","L":"G","y":2000,"so":1,"aw":"2000-10-12","bd":"1940-01-04","bc":"Ganzhou","bk":"China","blat":25.8289,"blon":114.9338,"c":"Asia","g":"male","st":"received","m":"for an œuvre of universal validity, bitter insights and linguistic ingenuity, which has opened new paths for the Chinese novel and drama"},{"id":747,"n":"V. S. Naipaul","f":"Naipaul","k":"naipaul v. s. naipaul","L":"N","y":2001,"so":1,"aw":"2001-10-11","bd":"1932-08-17","bc":"Chaguanas","bk":"Trinidad and Tobago","blat":10.5444,"blon":-61.4085,"c":"North America","g":"male","st":"received","m":"for having united perceptive narrative and incorruptible scrutiny in works that compel us to see the presence of suppressed histories","dy":2018,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":761,"n":"Imre Kertész","f":"Kertész","k":"kertesz imre kertesz","L":"K","y":2002,"so":1,"aw":"2002-10-10","bd":"1929-11-09","bc":"Budapest","bk":"Hungary","blat":47.4978,"blon":19.0383,"c":"Europe","g":"male","st":"received","m":"for writing that upholds the fragile experience of the individual against the barbaric arbitrariness of history","dy":2016,"dc":"Budapest","dk":"Hungary","dlat":47.4978,"dlon":19.0383},{"id":763,"n":"J. M. Coetzee","f":"Coetzee","k":"coetzee j. m. coetzee","L":"C","y":2003,"so":1,"aw":"2003-10-02","bd":"1940-02-09","bc":"Cape Town","bk":"South Africa","blat":-33.9351,"blon":18.4289,"c":"Africa","g":"male","st":"received","m":"who in innumerable guises portrays the surprising involvement of the outsider"},{"id":782,"n":"Elfriede Jelinek","f":"Jelinek","k":"jelinek elfriede jelinek","L":"J","y":2004,"so":1,"aw":"2004-10-07","bd":"1946-10-20","bc":"Mürzzuschlag","bk":"Austria","blat":47.6054,"blon":15.6724,"c":"Europe","g":"female","st":"received","m":"for her musical flow of voices and counter-voices in novels and plays that with extraordinary linguistic zeal reveal the absurdity of society's clich&eacute;s and their subjugating power"},{"id":801,"n":"Harold Pinter","f":"Pinter","k":"pinter harold pinter","L":"P","y":2005,"so":1,"aw":"2005-10-13","bd":"1930-10-10","bc":"London","bk":"United Kingdom","blat":51.5102,"blon":-0.1209,"c":"Europe","g":"male","st":"received","m":"who in his plays uncovers the precipice under everyday prattle and forces entry into oppression's closed rooms","dy":2008,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":808,"n":"Orhan Pamuk","f":"Pamuk","k":"pamuk orhan pamuk","L":"P","y":2006,"so":1,"aw":"2006-10-12","bd":"1952-06-07","bc":"Istanbul","bk":"Turkey","blat":41.0092,"blon":28.9662,"c":"Asia","g":"male","st":"received","m":"who in the quest for the melancholic soul of his native city has discovered new symbols for the clash and interlacing of cultures"},{"id":817,"n":"Doris Lessing","f":"Lessing","k":"lessing doris lessing","L":"L","y":2007,"so":1,"aw":"2007-10-11","bd":"1919-10-22","bc":"Kermanshah","bk":"Iran","blat":34.331,"blon":47.0777,"c":"Asia","g":"female","st":"received","m":"that epicist of the female experience, who with scepticism, fire and visionary power has subjected a divided civilisation to scrutiny","dy":2013,"dc":"London","dk":"United Kingdom","dlat":51.5102,"dlon":-0.1209},{"id":832,"n":"Jean-Marie Gustave Le Clézio","f":"Le Clézio","k":"le clezio jean-marie gustave le clezio","L":"L","y":2008,"so":1,"aw":"2008-10-09","bd":"1940-04-13","bc":"Nice","bk":"France","blat":43.7096,"blon":7.2611,"c":"Europe","g":"male","st":"received","m":"author of new departures, poetic adventure and sensual ecstasy, explorer of a humanity beyond and below the reigning civilization"},{"id":844,"n":"Herta Müller","f":"Müller","k":"muller herta muller","L":"M","y":2009,"so":1,"aw":"2009-10-08","bd":"1953-08-17","bc":"Nitzkydorf, Banat","bk":"Romania","blat":45.5786,"blon":21.5363,"c":"Europe","g":"female","st":"received","m":"who, with the concentration of poetry and the frankness of prose, depicts the landscape of the dispossessed"},{"id":854,"n":"Mario Vargas Llosa","f":"Vargas Llosa","k":"vargas llosa mario vargas llosa","L":"V","y":2010,"so":1,"aw":"2010-10-07","bd":"1936-03-28","bc":"Arequipa","bk":"Peru","blat":-16.3989,"blon":-71.537,"c":"South America","g":"male","st":"received","m":"for his cartography of structures of power and his trenchant images of the individual's resistance, revolt, and defeat","dy":2025,"dc":"Lima","dk":"Peru","dlat":-12.06,"dlon":-77.0375},{"id":868,"n":"Tomas Tranströmer","f":"Tranströmer","k":"transtromer tomas transtromer","L":"T","y":2011,"so":1,"aw":"2011-10-06","bd":"1931-04-15","bc":"Stockholm","bk":"Sweden","blat":59.3254,"blon":18.0708,"c":"Europe","g":"male","st":"received","m":"because, through his condensed, translucent images, he gives us fresh access to reality","dy":2015,"dc":"Stockholm","dk":"Sweden","dlat":59.3254,"dlon":18.0708},{"id":880,"n":"Mo Yan","f":"Yan","k":"yan mo yan","L":"Y","y":2012,"so":1,"aw":"2012-10-11","bd":"1956-03-25","bc":"Gaomi","bk":"China","blat":36.3654,"blon":119.8005,"c":"Asia","g":"male","st":"received","m":"who with hallucinatory realism merges folk tales, history and the contemporary"},{"id":892,"n":"Alice Munro","f":"Munro","k":"munro alice munro","L":"M","y":2013,"so":1,"aw":"2013-10-10","bd":"1931-07-10","bc":"Wingham","bk":"Canada","blat":43.8875,"blon":-81.3103,"c":"North America","g":"female","st":"received","m":"master of the contemporary short story","dy":2024,"dc":"Port Hope","dk":"Canada","dlat":43.95,"dlon":-78.3},{"id":912,"n":"Patrick Modiano","f":"Modiano","k":"modiano patrick modiano","L":"M","y":2014,"so":1,"aw":"2014-10-09","bd":"1945-07-30","bc":"Paris","bk":"France","blat":48.8601,"blon":2.356,"c":"Europe","g":"male","st":"received","m":"for the art of memory with which he has evoked the most ungraspable human destinies and\r\nuncovered the life-world of the occupation"},{"id":924,"n":"Svetlana Alexievich","f":"Alexievich","k":"alexievich svetlana alexievich","L":"A","y":2015,"so":1,"aw":"2015-10-08","bd":"1948-05-31","bc":"Ivano-Frankivsk","bk":"Ukraine","blat":48.9225,"blon":24.7103,"c":"Europe","g":"female","st":"received","m":"for her polyphonic writings, a monument to suffering and courage in our time"},{"id":937,"n":"Bob Dylan","f":"Dylan","k":"dylan bob dylan","L":"D","y":2016,"so":1,"aw":"2016-10-13","bd":"1941-05-24","bc":"Duluth, MN","bk":"USA","blat":46.7729,"blon":-92.1251,"c":"North America","g":"male","st":"received","m":"for having created new poetic expressions within the great American song tradition"},{"id":947,"n":"Kazuo Ishiguro","f":"Ishiguro","k":"ishiguro kazuo ishiguro","L":"I","y":2017,"so":1,"aw":"2017-10-05","bd":"1954-11-08","bc":"Nagasaki","bk":"Japan","blat":32.7502,"blon":129.8781,"c":"Asia","g":"male","st":"received","m":"who, in novels of great emotional force, has uncovered the abyss beneath our illusory sense of connection with the world"},{"id":979,"n":"Olga Tokarczuk","f":"Tokarczuk","k":"tokarczuk olga tokarczuk","L":"T","y":2018,"so":1,"aw":"2019-10-10","bd":"1962-01-29","bc":"Sulechów","bk":"Poland","blat":52.0926,"blon":15.6181,"c":"Europe","g":"female","st":"received","m":"for a narrative imagination that with encyclopedic passion represents the crossing of boundaries as a form of life"},{"id":980,"n":"Peter Handke","f":"Handke","k":"handke peter handke","L":"H","y":2019,"so":1,"aw":"2019-10-10","bd":"1942-12-06","bc":"Griffen","bk":"Austria","blat":46.7044,"blon":14.7328,"c":"Europe","g":"male","st":"received","m":"for an influential work that with linguistic ingenuity has explored the periphery and the specificity of human experience"},{"id":993,"n":"Louise Glück","f":"Glück","k":"gluck louise gluck","L":"G","y":2020,"so":1,"aw":"2020-10-08","bd":"1943-04-22","bc":"New York, NY","bk":"USA","blat":40.7158,"blon":-74.0113,"c":"North America","g":"female","st":"received","m":"for her unmistakable poetic voice that with austere beauty makes individual existence universal","dy":2023,"dc":"Cambridge, MA","dk":"USA","dlat":42.374,"dlon":-71.1073},{"id":1004,"n":"Abdulrazak Gurnah","f":"Gurnah","k":"gurnah abdulrazak gurnah","L":"G","y":2021,"so":1,"aw":"2021-10-07","bd":"1948-00-00","bc":"Zanzibar","bk":"Tanzania","blat":-6.1667,"blon":39.2,"c":"Africa","g":"male","st":"received","m":"for his uncompromising and compassionate penetration of the effects of colonialism and the fate of the refugee in the gulf between cultures and continents"},{"id":1017,"n":"Annie Ernaux","f":"Ernaux","k":"ernaux annie ernaux","L":"E","y":2022,"so":1,"aw":"2022-10-06","bd":"1940-09-01","bc":"Lillebonne","bk":"France","blat":49.5208,"blon":0.5375,"c":"Europe","g":"female","st":"received","m":"for the courage and clinical acuity with which she uncovers the roots, estrangements and  collective restraints of personal memory"},{"id":1032,"n":"Jon Fosse","f":"Fosse","k":"fosse jon fosse","L":"F","y":2023,"so":1,"aw":"2023-10-05","bd":"1959-09-29","bc":"Haugesund","bk":"Norway","blat":59.4102,"blon":5.2755,"c":"Europe","g":"male","st":"received","m":"for his innovative plays and prose which give voice to the unsayable"},{"id":1042,"n":"Han Kang","f":"Han","k":"han han kang","L":"H","y":2024,"so":1,"aw":"2024-10-10","bd":"1970-11-27","bc":"Gwangju","bk":"South Korea","blat":35.1653,"blon":126.8486,"c":"Asia","g":"female","st":"received","m":"for her intense poetic prose that confronts historical traumas and exposes the fragility of human life"},{"id":1056,"n":"László Krasznahorkai","f":"Krasznahorkai","k":"krasznahorkai laszlo krasznahorkai","L":"K","y":2025,"so":1,"aw":"2025-10-09","bd":"1954-01-05","bc":"Gyula","bk":"Hungary","blat":46.65,"blon":21.2833,"c":"Europe","g":"male","st":"received","m":"for his compelling and visionary oeuvre that, in the midst of apocalyptic terror, reaffirms the power of art"},{"id":1067,"n":"Anne Carson","f":"Carson","k":"carson anne carson","L":"C","y":2026,"so":1,"aw":"2026-10-08","bd":"1950-06-21","bc":"Toronto","bk":"Canada","blat":43.6542,"blon":-79.385,"c":"North America","g":"female","st":"received","m":"for her bold and inventive oeuvre that, in playful dialogue with the classical tradition, has created new forms for contemporary literature"}];
+const MASK={"lon0":-128,"lon1":156,"lat0":-40,"lat1":70,"step":1.2,"cols":237,"rows":92,"b64":"f/wfdzj4B0D//z8AAAAA/H8AAOB4/////////////+DAPgf9APj/fwAAAADg//8w7P/e/////////////////wH/AP//AQAAAAD//3/m///9////////////////A/AZ4P8DwB4AAPDff/j///////////////////+/4/4A+B8A8AcAAP/4b/////////////////////8QgD8A/gEAAAAA+M///////////////////////wdIDwGAHwAAAADgf/z/////////////////////fwDgDwDgAwAAAAD8j///////////////////////DwD8EQAAAAAAAID/A/j////////////////n////A4B/BwAAAAAACHA++P//////////////PwD8////AOD/AQAAAAAAB4CD/v//////////////AYD/////Afw/AAAAAABgAHf4//////////////8PAPj/////4/8/AAAAAAA9QAH///////////////8AAP////9//P8PAAAAAHAOeP////////////////8FwP////+f//8DAAAAAObz/////////////////78A+P///////z8AAAAAAHj+/////////////////xcA////////xwgAAAAAQPD//////////////////waA/v////9/gwcAAAAAwP//////////////////XwCg//////87+AEAAAAA/v//////////////////CQD8//////8fAAAAAAAA////d/7H//////////8fAYD///////8PAAAAAADA//1/3D/4//////////8BAPD//////ycAAAAAAAD4P/8P8Mf//////////x8MAP7/////PwAAAAAAAP4Hjv8A+PD/////////v+ABwP//////BwAAAAAAwP8gxx8GP/r/////////AwQA+P////8fAAAAAAAA+AeEe/n/j////////38/gAEA//////8DAAAAAAAAf4Agxv//8f///////ycDMADA/////z8AAAAAAADgDwDC+f8f/v//////f+AAAgDw/////wMAAAAAAAD0gAIQ/v+P/////////xh4AAD8/////wAAAAAAAADA/wAA4P//////////BwcPAID/////BwAAAAAAAMD/DwAA/P////////9/ID4AAID///9/AAAAAAAAAPz/AwDA//////////8foAEAAPD///8DAAAAAAAAwP//wwH4//////////8HBAAAAPT//38AAAAAAAAA+P//+bv///////////8AAAAAgPz/Hw0AAAAAAAAA/////////P///////x8AAAAAgP8fAAEAAAAAAAD4//////2f/////////wMAAAAAzP8BYAAAAAAAAID/////v//H////////PwAAAAAA8j8ADAAAAAAAAPj/////5//g////////BwAAAABA/gMABAAAAAAAgP//////+X8G+P////9/AAAAAAAQfwAAAAAAAAAA+P////8//v8B/v////8nAAAAAADgDwAHAAAAAAAA///////P/38A///9/x8EAAAAAAD4AwIGAAAAAADw///////7/w/g/4f/XwAAAAAAAAB/cIADAAAAAAD8/////3/+/wDw/+D/AAAAAAAAAMAfDgAHAAAAAID//////4//HwD+B/ifAQAAAAAAAOD/AAAAAAAAAPD//////+P/AIB/AP8DQAAAAAAAAPAfAAAAAAAAAP7/////f/wHAPAHYP8AGAAAAAAAAMA/AAAAAAAAwP//////n38AAD4A4D8AAQAAAAAAAPAHAAAAAAAA/P//////5wEAgAcA/A9gAAAAAAAAAOAAAAAAAAAA////////BQAA8AEA/QEUAAAAAAAAABhAAQAAAADg//////8/AAAAHgAgPwAAAAAAAAAAAAN+HQAAAAD4///////vAwCAAwDAAWAAAAAAAAAAgOT/AwAAAAD+//////9/AADwAAAQACAAAAAAAAAAYP//AAAAAID///////8HAAA0ABAAAAcAAAAAAAAAwP8/AAAAAOD///////8AAAAGAAQAUAAAAAAAAAAA+P9/AAAAAPgP/////w8AAAAAgAEwAAAAAAAAAAAA//8fAAAAAARg/////wEAAAAAcwAHAAAAAAAAAADg//8HAAAAAADA////HwAAAACADPAAAAAAAAAAAAD+//8AAAAAAAD4////AQAAAAAwgR8AAAAAAAAAAOD//z8AAAAAAAD///8PAAAAAAAc+JcEAAAAAAAAAPz//w8AAAAAAPD///8AAAAAAAAHfwEAAAAAAAAAwP///w8AAAAAAP7//x8AAAAAAODh54ABAAAAAAAA8P///wcAAAAAgP///wAAAAAAAHj8DGAPEAAAAAAA/////w8AAAAA4P//HwAAAAAAAA6YAvwPAAAAAADg/////wMAAAAA+P//AQAAAAAAgAEQAPiDAAAAAAD8/////wAAAAAA//8/AAAAAAAAQAAAIP4FAAAAAAD/////PwAAAADg//8HAAAAAAAA8AEAwB8AAAAAAMD/////AwAAAAD4//8AAAAAAAAAgDYDYAQAAAAAAPj///9/AAAAAAD//z8AAAAAAAAAABEAAAMAAAAAAP7///8HAAAAAOD//wcAAAAAAAAAAAAAAQAAAAAAwP///38AAAAAAPz//wAAAAAAAAAAAOAhAAAAAAAA8P///wcAAAAAwP//HxAAAAAAAAAAAB8EAAAAAAAA/v///wAAAAAA+P//BwMAAAAAAAAA5oMBAAAAAAAA////HwAAAACA//9/8AAAAAAAAADg/3AAAAAAAACA////AwAAAADw//8HDwAAAAAAAAD8Pw8AAAAAAADg//9/AAAAAAD8/z/wAQAAAAAAAMD//wEAAAAAAAD8//8PAAAAAID//wMcAAAAAAAAAPz/fwAAAAAAAID///8AAAAAAOD/f8ADAAAAAAAA8P//PwAAAAAAAPD//x8AAAAAAPz/D3gAAAAAAADA////BwAAAAAAAP7//wAAAAAAAP//AQcAAAAAAAD4////AQAAAAAAwP//AwAAAAAA4P8/4AAAAAAAAID///9/AAAAAAAA+P8/AAAAAAAA/P8BCAAAAAAAAOD///8fAAAAAAAA//8DAAAAAACA/z8AAAAAAAAAAP7///8DAAAAAADg/38AAAAAAADg/wcAAAAAAAAAgP///38AAAAAAAD+/w8AAAAAAAD8fwAAAAAAAAAA8P///x8AAAAAAMD//wAAAAAAAAD/BwAAAAAAAAAA/P///wEAAAAAAPj/DwAAAAAAAMB/AAAAAAAAAACA////PwAAAAAAAP//AAAAAAAAAPgHAAAAAAAAAADwD/D/BwAAAAAA4P8PAAAAAAAAAD8AAAAAAAAAAAD+AP5/AAAAAAAA/j8AAAAAAAAAAAAAAAAAAAAAAIAAAP4HAAAAAADA/wcAAAAAAAAAAAAAAAAAAAAAAAAAgP8AAAAAAAD8/wAAAAAAAAAAAAAAAAAAAAAAAAAA8B8AAAAAAID/DwAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAPA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","land":9254};
+const FACTS={"n":123,"europe":83,"dead":103,"alive":20,"abroad":36,"gaps":[1914,1918,1935,1940,1941,1942,1943],"women":19,"youngest":["Rudyard Kipling",41],"oldest":["Doris Lessing",88],"shared":[1904,1917,1966,1974],"first":1901,"last":2026,"bornCities":112,"deathCities":72,"topBorn":["Paris",6],"topDied":["Paris",8]};
+'use strict';
+(function () {
+const Q = new URLSearchParams(location.search);
+const OG = Q.has('og'), FIXED = Q.has('fixed') || OG;
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const HAS_VT = typeof document.startViewTransition === 'function' && !Q.has('novt');
+const XDOC = 'onpagereveal' in window && !Q.has('novt');
+/* Chrome 147+: a view transition scoped to one element; the rest of the page stays live during the flight */
+const SCOPED = HAS_VT && typeof Element.prototype.startViewTransition === 'function' && !Q.has('noscope');
+const HTML = document.documentElement;
+if (OG) HTML.classList.add('og');
+const $ = s => document.querySelector(s);
+const board = $('#board'), deck = $('#deck'), mapC = $('#map'), say = $('#say'), hover = $('#hover');
+const N = DATA.length, LON0 = MASK.lon0, LON1 = MASK.lon1, LAT0 = MASK.lat0, LAT1 = MASK.lat1;
+const VIEWS = ['az', 'year', 'born', 'died'];
+const r2 = v => Math.floor(v * 100 + .5) / 100;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const cls = c => c === 'Europe' ? 'eu' : (c === 'North America' || c === 'South America') ? 'am' : c === 'Asia' ? 'as' : 'af';
+function ageAt(d) {
+  /* age on 10 December of the prize year, the ceremony (the Nobel Foundation counts ages this way) */
+  const b = d.bd.split('-').map(Number);
+  return d.y - b[0] - ((12 < b[1] || (12 === b[1] && 10 < b[2])) ? 1 : 0);
+}
+const Y0 = 1901, Y1 = DATA.reduce((m, d) => Math.max(m, d.y), 0), NY = Y1 - Y0 + 1;
+const AGE = DATA.map(ageAt);
+const byId = new Map(DATA.map((d, i) => [d.id, i]));
+const AZ = [...DATA.keys()].sort((a, b) => DATA[a].k < DATA[b].k ? -1 : DATA[a].k > DATA[b].k ? 1 : 0);
+const AZPOS = new Array(N); AZ.forEach((i, p) => AZPOS[i] = p);
+
+/* ---------- facts (the same sums are done in Python and asserted) ---------- */
+function computeFacts() {
+  const dead = DATA.filter(d => d.dy), yrs = new Set(DATA.map(d => d.y)), gaps = [];
+  for (let y = Y0; y <= Y1; y++) if (!yrs.has(y)) gaps.push(y);
+  let yi = 0, oi = 0; AGE.forEach((a, i) => { if (a < AGE[yi]) yi = i; if (a > AGE[oi]) oi = i; });
+  const cnt = m => { const c = new Map(); for (const k of m) c.set(k, (c.get(k) || 0) + 1); return c; };
+  const top = c => [...c.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+  return {
+    n: N, europe: DATA.filter(d => d.c === 'Europe').length, dead: dead.length, alive: N - dead.length,
+    abroad: dead.filter(d => d.dk !== d.bk).length,
+    bornCities: new Set(DATA.map(d => d.bc + '|' + d.bk)).size, deathCities: new Set(dead.map(d => d.dc + '|' + d.dk)).size,
+    topBorn: top(cnt(DATA.map(d => d.bc))), topDied: top(cnt(dead.map(d => d.dc))),
+    gaps, women: DATA.filter(d => d.g === 'female').length,
+    youngest: [DATA[yi].n, AGE[yi]], oldest: [DATA[oi].n, AGE[oi]],
+    shared: [...cnt(DATA.map(d => d.y)).entries()].filter(e => e[1] > 1).map(e => e[0])
+  };
+}
+const F = computeFacts();
+
+/* ---------- build the deck (DOM order = A to Z, letter tabs between) ---------- */
+const cards = new Array(N);
+let lastL = '';
+for (const i of AZ) {
+  const d = DATA[i];
+  if (d.L !== lastL) { const t = document.createElement('div'); t.className = 'tab'; t.textContent = d.L; t.setAttribute('aria-hidden', 'true'); deck.append(t); lastL = d.L; }
+  const el = document.createElement('button');
+  el.className = 'card ' + cls(d.c); el.dataset.i = i;
+  el.style.viewTransitionName = 'card-' + d.id;
+  el.innerHTML = '<b class="nm">' + esc(d.f) + '</b><i class="yr">' + d.y + '</i>';
+  el.setAttribute('aria-label', d.n + ', ' + d.y);
+  deck.append(el); cards[i] = el;
+}
+const labs = document.createElement('div'); labs.id = 'labs'; labs.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+board.insertBefore(labs, hover);
+
+/* ---------- layouts: pure functions of (view, W, H); Python re-implements them ---------- */
+function hash(id) { return Math.imul(id, 2654435761) >>> 0; }
+function layout(view, W, H) {
+  const pos = new Array(N), lab = [], plank = []; let sfs = 0;
+  if (view === 'deck') {
+    const w = r2(Math.min(200, W * .44)), h = r2(w * .34);
+    for (let i = 0; i < N; i++) {
+      const s = hash(DATA[i].id);
+      pos[i] = [r2(W / 2 - w / 2 + (s % 61) - 30), r2(H / 2 - h / 2 + ((s >>> 6) % 41) - 20), w, h, ((s >>> 12) % 15) - 7];
+    }
+  } else if (view === 'year') {
+    const S = W >= 700 ? 2 : 4, C = Math.ceil(NY / S), sw = W / C, sh = H / S, labH = W >= 700 ? 22 : 21, top = 4;
+    const maxH = sh - labH - 5 - top;
+    sfs = r2(Math.min(14, sw * .6));
+    const groups = new Map();
+    for (let i = 0; i < N; i++) { const y = DATA[i].y; if (!groups.has(y)) groups.set(y, []); groups.get(y).push(i); }
+    for (let y = Y0; y <= Y1; y++) {
+      const idx = y - Y0, s = Math.floor(idx / C), col = idx % C, x0 = col * sw + sw * .08, inner = sw * .84;
+      const g = groups.get(y);
+      if (y % 10 === 0 || y === Y0) lab.push({ t: String(y), x: r2(col * sw + (y === Y0 ? sw * .08 : 0)), y: r2(s * sh + top + maxH + 8), c: 'tick' });
+      if (!g) { lab.push({ t: '×', x: r2(x0), y: r2(s * sh + top + maxH - inner), w: r2(inner), c: 'gap' }); continue; }
+      const k = g.length;
+      g.forEach((i, j) => {
+        const f = Math.min(1, Math.max(0, (AGE[i] - 38) / 52)), h = maxH * (.36 + .64 * f);
+        pos[i] = [r2(x0 + j * inner / k), r2(s * sh + top + maxH - h), r2(inner / k - (k > 1 ? 1 : 0)), r2(h), 0];
+      });
+    }
+    for (let s = 0; s < S; s++) plank.push([0, r2(s * sh + top + maxH), r2(W)]);
+  } else {
+    const A = (LON1 - LON0) / (LAT1 - LAT0);
+    let mw = W, mh = W / A; if (mh > H) { mh = H; mw = H * A; }
+    const mx = (W - mw) / 2, my = (H - mh) / 2, dz = Math.max(4, mw / 118), gp = Math.max(1, dz * .16);
+    const P = (lat, lon) => [mx + (lon - LON0) / (LON1 - LON0) * mw, my + (LAT1 - lat) / (LAT1 - LAT0) * mh];
+    const born = view === 'born', stack = new Map(), tops = new Map();
+    let t = 0;
+    for (let i = 0; i < N; i++) {
+      const d = DATA[i];
+      if (!born && !d.dy) {
+        const tz = dz * 1.25, [ax, ay] = P(-14, -124), c = t % 5, r = Math.floor(t / 5); t++;
+        pos[i] = [r2(ax + c * (tz + gp)), r2(ay + r * (tz + gp)), r2(tz), r2(tz), 0];
+        continue;
+      }
+      const key = born ? d.bc + '|' + d.bk : d.dc + '|' + d.dk, k = stack.get(key) || 0; stack.set(key, k + 1);
+      const [px, py] = born ? P(d.blat, d.blon) : P(d.dlat, d.dlon);
+      pos[i] = [r2(px - dz / 2), r2(py - dz / 2 - k * (dz + gp)), r2(dz), r2(dz), 0];
+      tops.set(key, [px, py - dz / 2 - k * (dz + gp), k + 1, born ? d.bc : d.dc]);
+    }
+    for (const [, v] of tops) if (v[2] >= 3) lab.push({ t: v[3].replace(/,.*$/, '') + ' ' + v[2], x: r2(v[0]), y: r2(v[1] - 4), c: 'big top' });
+    if (!born) { const [ax, ay] = P(-14, -124); lab.push({ t: 'Still writing · ' + F.alive, x: r2(ax), y: r2(ay - 20), c: 'big' }); }
+    return { pos, lab, plank, sfs, map: [mx, my, mw, mh] };
+  }
+  return { pos, lab, plank, sfs };
+}
+
+/* ---------- applying a view (this is the whole "state change") ---------- */
+let VIEW = HTML.dataset.view, W = 0, H = 0, AZFS = 22, LAST = null;
+const T = { log: [], last: null };
+function fitAZ() {
+  let lo = 8, hi = 46;
+  for (let k = 0; k < 11; k++) {
+    const m = (lo + hi) / 2; deck.style.setProperty('--azfs', m + 'px');
+    if (deck.scrollHeight <= deck.clientHeight + .5) lo = m; else hi = m;
+  }
+  AZFS = Math.floor(lo * 4) / 4; deck.style.setProperty('--azfs', AZFS + 'px');
+}
+let mapKey = '';
+function drawMap(m) {
+  if (!m) return;
+  const dpr = Math.min(2, devicePixelRatio || 1), key = [W, H, dpr].join('x');
+  if (key === mapKey) return;
+  mapKey = key; T.mapDraws = (T.mapDraws || 0) + 1;
+  mapC.width = Math.round(W * dpr); mapC.height = Math.round(H * dpr);
+  const g = mapC.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const [mx, my, mw, mh] = m, cell = mw * MASK.step / (LON1 - LON0), r = cell * .32;
+  const bytes = Uint8Array.from(atob(MASK.b64), c => c.charCodeAt(0));
+  g.fillStyle = getComputedStyle(HTML).getPropertyValue('--land') || '#fff';
+  g.beginPath();
+  for (let row = 0, b = 0; row < MASK.rows; row++) for (let col = 0; col < MASK.cols; col++, b++) {
+    if (!(bytes[b >> 3] >> (b & 7) & 1)) continue;
+    const x = mx + (col + .5) * cell, y = my + (row + .5) * mh / MASK.rows;
+    g.moveTo(x + r, y); g.arc(x, y, r, 0, Math.PI * 2);
+  }
+  g.fill();
+}
+function apply(view) {
+  VIEW = view; HTML.dataset.view = view;
+  W = board.clientWidth; H = board.clientHeight;
+  labs.replaceChildren();
+  if (view === 'az') {
+    for (const el of cards) { el.style.left = el.style.top = el.style.width = el.style.height = el.style.transform = ''; el.classList.remove('nar'); }
+    HTML.classList.remove('thin'); fitAZ(); drawMap(null); LAST = null;
+  } else {
+    const L = layout(view, W, H); LAST = L;
+    if (L.sfs) board.style.setProperty('--sfs', L.sfs + 'px');
+    cards.forEach((el, i) => {
+      const p = L.pos[i]; el.style.left = p[0] + 'px'; el.style.top = p[1] + 'px'; el.style.width = p[2] + 'px'; el.style.height = p[3] + 'px';
+      el.style.transform = p[4] ? 'rotate(' + p[4] + 'deg)' : '';
+      el.classList.toggle('nar', view === 'year' && p[2] < 11);
+    });
+    HTML.classList.toggle('thin', view === 'year' && L.sfs < 8);
+    for (const b of L.lab) {
+      const s = document.createElement('span'); s.className = 'lab ' + b.c; s.textContent = b.t;
+      s.style.left = b.x + 'px'; s.style.top = b.y + 'px';
+      if (b.w) { s.style.width = b.w + 'px'; s.style.height = b.w + 'px'; s.style.fontSize = Math.max(7, Math.min(11, b.w * .7)) + 'px'; s.style.lineHeight = b.w + 'px'; s.style.padding = '0'; }
+      labs.append(s);
+    }
+    for (const p of L.plank) { const s = document.createElement('i'); s.className = 'plank'; s.style.left = p[0] + 'px'; s.style.top = p[1] + 'px'; s.style.width = p[2] + 'px'; labs.append(s); }
+    drawMap(L.map || null);
+  }
+  for (const b of document.querySelectorAll('#views button')) b.setAttribute('aria-pressed', String(b.dataset.v === view));
+  const nx = VIEWS[(VIEWS.indexOf(view) + 1) % 4] || 'az', u = new URL(location.href); u.searchParams.set('view', nx);
+  for (const k of ['fixed', 'og', 'mark']) u.searchParams.delete(k);
+  $('#reload').href = u.pathname + u.search;
+  caption(CAP[view]());
+}
+const CAP = {
+  deck: () => 'Shuffling the deck…',
+  az: () => 'Filed by surname, A to Y. Click any card to pull it out.',
+  year: () => 'Each spine is as tall as its author was old at the prize. The gaps are years without one.',
+  born: () => F.europe + ' of them were born in Europe.',
+  died: () => F.abroad + ' died in a different country from the one they were born in.'
+};
+let capT = 0;
+function caption(t) {
+  if (say.textContent === t) return;
+  if (FIXED || RM) { say.textContent = t; return; }
+  say.classList.add('fade'); clearTimeout(capT);
+  capT = setTimeout(() => { say.textContent = t; say.classList.remove('fade'); }, 180);
+}
+function rects() {
+  const B = board.getBoundingClientRect();
+  return cards.map(el => { const r = el.getBoundingClientRect(); return [r2(r.left - B.left), r2(r.top - B.top), r2(r.width), r2(r.height)]; });
+}
+
+/* ---------- flying ---------- */
+let speed = 1, xray = false, cur = null, fx = null, frame = 0, held = null, pulled = -1, revealVT = null;
+const vtAnims = () => document.getAnimations().filter(a => a.effect && a.effect.pseudoElement && a.effect.pseudoElement.indexOf('::view-transition') === 0);
+const nameOf = a => { const m = /\(([^)]+)\)/.exec(a.effect.pseudoElement); return m ? m[1] : ''; };
+function delayFor(view, i) {
+  const d = DATA[i];
+  if (view === 'az') return AZPOS[i] * 7;
+  if (view === 'year') return (d.y - Y0) * 7;
+  return Math.round((d.blon - LON0) / (LON1 - LON0) * 800);
+}
+function tune(anims, view) {
+  let end = 0;
+  const kinds = { group: 0, 'image-pair': 0, old: 0, new: 0 };
+  for (const a of anims) {
+    const nm = nameOf(a), k = /::view-transition-([a-z-]+)/.exec(a.effect.pseudoElement)[1];
+    if (k in kinds && nm !== 'root') kinds[k]++;
+    if (nm.indexOf('card-') === 0 && view) {
+      const i = byId.get(+nm.slice(5));
+      if (i !== undefined) a.effect.updateTiming({ delay: delayFor(view, i), fill: 'both' });
+    }
+    if (speed !== 1) a.updatePlaybackRate(speed);
+    const t = a.effect.getComputedTiming(); end = Math.max(end, t.endTime);
+  }
+  return { end, kinds };
+}
+function tree(rec, anims) {
+  const names = [...new Set(anims.map(nameOf))], cardsN = names.filter(n => n.indexOf('card-') === 0);
+  const show = cardsN.slice(0, 3).map(n => { const d = DATA[byId.get(+n.slice(5))]; return [n, d.f]; });
+  let s = (rec.scoped ? '#board' : 'document') + '.startViewTransition(update)\n  <b>' + rec.ready.toFixed(0) + ' ms</b> to snapshot ' + cardsN.length + ' cards, twice\n' + (rec.scoped ? '#board' : 'html') + '::view-transition\n';
+  s += '├─ ::view-transition-group(root)\n│    └─ image-pair → old · new\n';
+  for (const [n, f] of show) s += '├─ ::view-transition-group(<b>' + n + '</b>)  ' + esc(f) + '\n│    └─ image-pair → <b>old</b> · <b>new</b>\n';
+  s += '└─ … ' + (cardsN.length - show.length) + ' more groups · ' + anims.length + ' animations';
+  $('#tree').innerHTML = s;
+}
+async function go(view, opt) {
+  opt = opt || {};
+  if (pulled >= 0) await unpull(true);
+  if (view === VIEW && !opt.force) return;
+  hover.style.display = 'none';
+  if (cur) { try { cur.skipTransition(); } catch (e) {} await cur.finished.catch(() => {}); }
+  const rec = { from: VIEW, to: view, t0: performance.now(), speed, xray, before: rects() };
+  if (!HAS_VT || RM) { apply(view); rec.mode = 'instant'; rec.after = rects(); rec.done = 0; log(rec); return rec; }
+  /* x-ray needs the slider live mid-flight, so it flies in a transition scoped to the board (Chrome 147+);
+     everything else uses the whole-document transition, which measured smoother here */
+  const scoped = SCOPED && xray; let vt; const host = scoped ? board : document;
+  try { vt = host.startViewTransition({ update: () => apply(view), types: ['to-' + view] }); }
+  catch (e) { vt = host.startViewTransition(() => apply(view)); }
+  cur = vt; rec.mode = 'vt'; rec.scoped = scoped;
+  try { await vt.ready; } catch (e) { rec.err = String(e); cur = null; log(rec); return rec; }
+  rec.ready = performance.now() - rec.t0; rec.after = rects(); { const B = board.getBoundingClientRect(); rec.B = scoped ? [0, 0] : [B.left, B.top]; }
+  const anims = vtAnims(), tu = tune(anims, view);
+  rec.anims = anims.length; rec.kinds = tu.kinds; rec.end = tu.end; rec.groups = tu.kinds.group;
+  rec.keys = anims.filter(a => /::view-transition-group\(card-/.test(a.effect.pseudoElement)).slice(0, 400).map(a => {
+    const kf = a.effect.getKeyframes(); return [nameOf(a), kf[0].transform, kf[0].width, kf[0].height, kf[kf.length - 1].transform, kf[kf.length - 1].width, kf[kf.length - 1].height, a.effect.getTiming().delay];
+  });
+  if (FIXED) { for (const a of anims) a.pause(); fx = { anims, t: 0, end: tu.end }; }
+  else if (xray && !SCOPED) { for (const a of anims) a.updatePlaybackRate(.08); tree(rec, anims); caption('X-ray at 1/12 speed. (Scrubbing needs scoped view transitions, Chrome 147+.)'); }
+  else if (xray) { for (const a of anims) a.pause(); held = { anims, end: tu.end }; $('#scrub').value = 0; $('#play').textContent = 'Play'; tree(rec, anims); caption('Frozen at take-off. Drag the slider: you are scrubbing the browser’s own animation.'); }
+  T.last = rec;
+  try { await vt.finished; } catch (e) {}
+  if (cur === vt) cur = null; held = null;
+  rec.done = performance.now() - rec.t0; log(rec);
+  if (xray) caption(CAP[VIEW]());
+  return rec;
+}
+function log(rec) { const r = Object.assign({}, rec); T.log.push(r); if (T.log.length > 40) T.log.shift(); T.last = r; }
+
+/* ---------- x-ray scrubbing ---------- */
+function scrubTo(p) {
+  if (!held) return;
+  for (const a of held.anims) { a.pause(); a.currentTime = Math.min(p * held.end, a.effect.getComputedTiming().endTime); }
+}
+$('#scrub').addEventListener('input', e => { const v = +e.target.value; if (held) scrubTo(v / 1000); });
+$('#play').addEventListener('click', () => {
+  if (!held) return;
+  if (+$('#scrub').value >= 1000) { for (const a of held.anims) a.finish(); return; }
+  for (const a of held.anims) a.play(); $('#play').textContent = 'Playing…';
+});
+$('#xray').addEventListener('click', e => {
+  xray = !xray; HTML.classList.toggle('xray', xray); e.currentTarget.setAttribute('aria-pressed', String(xray));
+  if (xray) { $('#tree').innerHTML = 'Pick another filing order:\nthe flight will freeze at take-off.'; caption('X-ray on. Pick a filing order: the flight freezes at take-off.'); }
+  else { if (held) for (const a of held.anims) a.finish(); caption(CAP[VIEW]()); }
+});
+for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => {
+  speed = +b.dataset.s;
+  for (const o of document.querySelectorAll('.seg button')) o.setAttribute('aria-pressed', String(o === b));
+  if (cur && !held && !fx) for (const a of vtAnims()) a.updatePlaybackRate(speed);
+});
+for (const b of document.querySelectorAll('#views button')) b.addEventListener('click', () => go(b.dataset.v));
+
+/* ---------- pull one card out ---------- */
+const pull = $('#pull'), big = $('#big');
+function fillBig(i) {
+  const d = DATA[i];
+  big.className = cls(d.c);
+  big.querySelector('h2').textContent = d.f;
+  big.querySelector('.full').textContent = d.n + ' · Nobel Prize in Literature ' + d.y + (d.st === 'declined' ? ' (declined)' : d.st === 'restricted' ? ' (made to decline)' : '');
+  const dl = big.querySelector('dl');
+  dl.innerHTML = '<dt>Born</dt><dd>' + d.bd.slice(0, 4) + ' · ' + esc(d.bc) + ', ' + esc(d.bk) + '</dd>' +
+    (d.dy ? '<dt>Died</dt><dd>' + d.dy + ' · ' + esc(d.dc) + ', ' + esc(d.dk) + '</dd>' : '<dt>Died</dt><dd>Still writing</dd>') +
+    '<dt>Age</dt><dd>' + AGE[i] + ' at the ceremony, December ' + d.y + '</dd>';
+  big.querySelector('blockquote').textContent = '“' + d.m.replace(/^"|"$/g, '') + '”';
+  big.querySelector('.src').innerHTML = 'The Nobel Foundation’s words. <a href="' + 'https://www.nobelprize.org/laureate/' + d.id + '" target="_blank" rel="noopener">nobelprize.org ↗</a>';
+}
+async function pullOut(i) {
+  if (pulled >= 0 || cur) return;
+  const el = cards[i]; fillBig(i); pulled = i; hover.style.display = 'none';
+  if (!HAS_VT || RM) { pull.classList.add('on'); big.querySelector('.x').focus(); return; }
+  HTML.classList.add('quiet'); el.classList.add('keep');
+  const vt = document.startViewTransition(() => { pull.classList.add('on'); el.classList.remove('keep'); big.style.viewTransitionName = 'card-' + DATA[i].id; });
+  T.lastPull = { id: DATA[i].id };
+  try { await vt.ready; T.lastPull.anims = vtAnims().length; } catch (e) { T.lastPull.err = String(e); }
+  await vt.finished.catch(() => {});
+  big.querySelector('.x').focus({ preventScroll: true });
+}
+async function unpull(instant) {
+  if (pulled < 0) return;
+  const el = cards[pulled]; pulled = -1;
+  if (!HAS_VT || RM || instant) { pull.classList.remove('on'); big.style.viewTransitionName = 'none'; HTML.classList.remove('quiet'); return; }
+  const vt = document.startViewTransition(() => { pull.classList.remove('on'); big.style.viewTransitionName = 'none'; el.classList.add('keep'); });
+  await vt.finished.catch(() => {});
+  el.classList.remove('keep'); HTML.classList.remove('quiet');
+  el.focus({ preventScroll: true });
+}
+deck.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) pullOut(+c.dataset.i); });
+pull.addEventListener('click', e => { if (e.target === pull || e.target.closest('.x')) unpull(); });
+addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if ($('#what').classList.contains('on')) { $('#what').classList.remove('on'); return; }
+  unpull();
+});
+const st = document.createElement('style');
+st.textContent = 'html.quiet .card:not(.keep){view-transition-name:none!important}';
+document.head.append(st);
+
+/* ---------- hover label ---------- */
+deck.addEventListener('pointerover', e => {
+  const c = e.target.closest('.card'); if (!c || VIEW === 'az' || e.pointerType === 'touch') return;
+  const d = DATA[+c.dataset.i], B = board.getBoundingClientRect(), r = c.getBoundingClientRect();
+  hover.textContent = d.f + ' · ' + d.y; hover.style.display = 'block';
+  const hw = hover.offsetWidth;
+  hover.style.left = Math.max(0, Math.min(W - hw, r.left - B.left + r.width / 2 - hw / 2)) + 'px';
+  hover.style.top = Math.max(0, r.top - B.top - 32) + 'px';
+});
+deck.addEventListener('pointerout', e => { if (e.target.closest('.card')) hover.style.display = 'none'; });
+
+/* ---------- what is this ---------- */
+$('#whatbtn').addEventListener('click', () => { $('#what').classList.add('on'); $('#what .close').focus(); });
+$('#what .close').addEventListener('click', () => $('#what').classList.remove('on'));
+
+/* ---------- across a page load ---------- */
+let loads = 1;
+try { loads = +(sessionStorage.getItem('cc-loads') || 0) + 1; sessionStorage.setItem('cc-loads', String(loads)); } catch (e) {}
+let navFrom = null;
+try { navFrom = sessionStorage.getItem('cc-nav'); sessionStorage.removeItem('cc-nav'); } catch (e) {}
+$('#reload').addEventListener('click', () => { try { sessionStorage.setItem('cc-nav', VIEW); } catch (e) {} });
+addEventListener('pagereveal', e => {
+  revealVT = !!e.viewTransition;
+  if (e.viewTransition) e.viewTransition.ready.then(() => { const a = vtAnims(); tune(a, VIEW); T.reveal = { anims: a.length }; }).catch(() => {});
+});
+function toast(html) { const t = $('#toast'); t.innerHTML = html; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 7000); }
+
+/* ---------- ?fixed driver ---------- */
+window.step = function (n) {
+  n = n || 1;
+  for (let k = 0; k < n; k++) { frame++; if (fx) fx.t += 1000 / 60; }
+  if (fx) {
+    for (const a of fx.anims) a.currentTime = Math.min(fx.t, a.effect.getComputedTiming().endTime);
+    if (fx.t >= fx.end) { for (const a of fx.anims) a.finish(); fx = null; }
+  }
+  window.__frame = frame; window.__state = { t: frame / 60, frame, view: VIEW, flying: !!fx };
+  return window.__state;
+};
+
+/* ---------- start ---------- */
+let ready = false;
+function onResize() { if (cur || pulled >= 0) return; const w = board.clientWidth, h = board.clientHeight; if (w !== W || h !== H) apply(VIEW); }
+apply(VIEW);
+window.__frame = 0; window.__state = { t: 0, frame: 0, view: VIEW, flying: false };
+(document.fonts ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve()).then(() => {
+  if (VIEW === 'az') fitAZ();
+  ready = true;
+  setTimeout(() => { if (!cur) drawMap(layout('born', W, H).map); }, VIEW === 'deck' ? 2900 : 60);
+  if (VIEW === 'deck') setTimeout(() => go('az'), 650);
+  if (navFrom) {
+    if (revealVT) toast('That was a <b>full page load</b> (number ' + loads + ' this visit): a new document, the old page’s scripts gone. The cards still flew, because both pages say <b>@view-transition { navigation: auto }</b>.');
+    else toast('That was a <b>full page load</b>. This browser does not animate across documents yet (Chrome 126+ and Safari 18.2+ do), so the cards just appeared.');
+  }
+});
+if (document.fonts) document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => { if (VIEW === 'az' && !cur) fitAZ(); });
+new ResizeObserver(() => requestAnimationFrame(onResize)).observe(board);
+if (!HAS_VT && !FIXED) setTimeout(() => caption(CAP[VIEW]() + ' (This browser has no View Transitions, so the cards jump.)'), 900);
+
+window.catalogue = {
+  state() {
+    if (!cards[0]) return { ready: false };
+    return { ready, view: VIEW, vt: HAS_VT, xdoc: XDOC, scoped: SCOPED, rm: RM, fixed: FIXED, speed, xray, W, H, azfs: AZFS, frame,
+      rects: rects(), held: !!held, flying: !!cur, pulled, loads, revealVT, navFrom, facts: F, caption: say.textContent,
+      mapDraws: T.mapDraws || 0, last: T.last, log: T.log, lastPull: T.lastPull || null, reveal: T.reveal || null, labs: [...labs.querySelectorAll('.lab')].map(s => s.textContent) };
+  },
+  layout, go, pullOut, unpull, scrubTo, ages: AGE, order: AZ, years: [Y0, Y1]
+};
+})();
+
+</script>
+<span id="end"></span>
+</body>
+</html>
