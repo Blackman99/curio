@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rose Window — drawn with a compass, followed by the sun</title>
+<meta name="description" content="A twelve-metre rose window drawn step by step with compass and straightedge, glazed, and raised twenty metres into a wall. Its coloured light is traced back through every point of the sun's disc onto the floor, with the sun placed by NOAA's solar position formulas for any city and day. On the equinox the patch runs along a straight line.">
+<meta property="og:title" content="Rose Window">
+<meta property="og:description" content="Draw a rose window with a compass, glaze it, and follow its coloured light across the floor through a day. The sun is real: NOAA's formulas, any city, any date.">
+<meta property="og:image" content="https://blackman99.github.io/curio/rose-window/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Rose Window">
+<meta name="twitter:description" content="A rose window drawn with compass and straightedge, then lit by the real sun: its colours walk across the floor, in a straight line on the equinox.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/rose-window/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gloock&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,700;1,400&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>(function(){var q=new URLSearchParams(location.search),h=document.documentElement;
+if(q.has('fixed'))h.classList.add('fixed');if(q.has('og'))h.classList.add('og');
+if(matchMedia('(prefers-reduced-motion: reduce)').matches)h.classList.add('still');})();</script>
+<style>
+:root{--stone:#e9e3d8;--ink:#1c1b22;--soft:#57534c;--ultra:#2b3cc4;--ultra2:#1d2a99;--card:rgba(250,248,243,.93);--line:rgba(28,27,34,.14);
+  --hd:'Gloock',Georgia,serif;--tx:'Hanken Grotesk',system-ui,sans-serif;--mn:'Red Hat Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+html{background:var(--stone);-webkit-text-size-adjust:100%}
+body{margin:0;font:400 17px/1.5 var(--tx);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ultra)}
+button,select,input{font:inherit;color:inherit}
+html.fixed *,html.still *{transition:none!important;animation:none!important}
+/* ---------- fixed picture ---------- */
+#gl,#ink{position:fixed;inset:0;width:100vw;height:100vh;height:100lvh;display:block}
+#gl{background:#d9d2c6}
+#ink{pointer-events:none}
+/* ---------- crumbs + clock ---------- */
+#crumbs{position:fixed;z-index:5;left:18px;top:14px;display:flex;gap:10px;align-items:center;font:500 12.5px/1 var(--mn);letter-spacing:.02em}
+#crumbs .home{background:var(--ink);color:#fff;text-decoration:none;border-radius:999px;padding:7px 12px 7px 10px}
+#crumbs .home:hover{background:var(--ultra)}
+#crumbs .no{background:var(--card);border-radius:999px;padding:7px 11px;color:var(--soft)}
+#clock{position:fixed;z-index:5;right:18px;top:14px;font:500 12.5px/1 var(--mn);background:var(--card);border-radius:999px;padding:7px 12px;color:var(--ink);
+  display:flex;gap:10px;align-items:center;white-space:nowrap}
+#clock b{font-weight:500;color:var(--ultra)}
+#clock .sep{width:1px;height:12px;background:var(--line)}
+/* ---------- story ---------- */
+#story,#story2{position:relative;z-index:2}
+.ch{position:relative;min-height:100vh;display:flex;align-items:center;padding:16vh 4vw;pointer-events:none}
+.ch.tall{min-height:150vh}
+.ch.short{min-height:85vh}
+.card{pointer-events:auto;max-width:400px;background:var(--card);border-radius:18px;padding:20px 22px 18px;box-shadow:0 10px 40px rgba(40,30,20,.14)}
+.ch.right{justify-content:flex-end}
+.card h2{margin:0 0 8px;font:400 30px/1.08 var(--hd);letter-spacing:-.005em}
+.card p{margin:0}
+.card p+p{margin-top:10px}
+.card .k{font-family:var(--mn);font-size:.9em;color:var(--ultra2);white-space:nowrap}
+.card .step{display:block;margin-bottom:10px;font:500 11.5px/1 var(--mn);letter-spacing:.08em;text-transform:uppercase;color:var(--ultra)}
+.hero{min-height:100vh;align-items:flex-end;padding-bottom:9vh}
+.hero .card{max-width:560px;background:none;box-shadow:none;padding:0}
+.hero h1{margin:0;font:400 clamp(58px,9vw,128px)/.9 var(--hd);letter-spacing:-.02em;color:#fff;text-shadow:0 2px 28px rgba(20,18,30,.35)}
+.hero .lede{margin-top:16px;max-width:470px;font:500 19px/1.42 var(--tx);color:var(--ink);background:var(--card);border-radius:16px;padding:14px 18px}
+.hero .hint{margin-top:12px;font:500 12.5px/1 var(--mn);color:#fff;letter-spacing:.06em;text-shadow:0 1px 10px rgba(20,18,30,.5)}
+.hero .hint::after{content:' ↓'}
+/* ---------- play ---------- */
+.play{flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:14px;padding-bottom:150px;min-height:120vh}
+#what{pointer-events:auto;max-width:640px;background:var(--card);border-radius:18px;padding:14px 22px;box-shadow:0 10px 40px rgba(40,30,20,.14)}
+#what summary{cursor:pointer;font:400 22px/1.2 var(--hd);list-style:none}
+#what summary::before{content:'+ ';color:var(--ultra)}
+#what[open] summary::before{content:'− '}
+#what h3{font:500 12px/1 var(--mn);letter-spacing:.08em;text-transform:uppercase;color:var(--ultra);margin:18px 0 6px}
+#what p,#what li{font-size:15px;line-height:1.5}
+#what ul{padding-left:18px;margin:6px 0}
+#tools{position:fixed;z-index:6;left:50%;bottom:14px;transform:translate(-50%,0);display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;
+  max-width:min(1180px,calc(100vw - 20px));background:var(--card);border-radius:18px;padding:10px 14px;box-shadow:0 10px 40px rgba(40,30,20,.18);
+  font:500 13px/1 var(--mn);opacity:0;pointer-events:none;transition:opacity .35s}
+html.play #tools{opacity:1;pointer-events:auto}
+#tools .grp{display:flex;align-items:center;gap:5px}
+#tools .lab{color:var(--soft);margin-right:2px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+#tools button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 9px;cursor:pointer;min-width:30px}
+#tools button[aria-pressed=true]{background:var(--ultra);border-color:var(--ultra);color:#fff}
+#tools select,#tools input[type=date]{border:1px solid var(--line);background:#fff;border-radius:10px;padding:5px 7px;font:500 13px/1 var(--mn)}
+#tools input[type=range]{width:180px;accent-color:var(--ultra)}
+#tools .t{min-width:44px;color:var(--ultra2)}
+#tools .note{flex-basis:100%;text-align:center;color:var(--soft);font:400 13px/1.3 var(--tx)}
+noscript p{position:fixed;z-index:9;top:40%;left:10%;right:10%;font:500 20px/1.4 var(--tx);background:var(--card);padding:20px;border-radius:16px}
+/* ---------- og ---------- */
+html.og #crumbs,html.og #clock,html.og .ch:not(.hero),html.og .hero .hint,html.og #tools{display:none!important}
+html.og .hero{min-height:100vh;padding:0 0 60px 64px}
+html.og .hero h1{font-size:150px}
+html.og .hero .lede{font-size:21px;max-width:520px}
+/* ---------- iframe / short screens ---------- */
+@media (max-height:760px) and (min-width:761px){.hero h1{font-size:clamp(54px,7vw,96px)}.hero .lede{font-size:17px}.card{max-width:370px;padding:16px 18px}.card h2{font-size:26px}.card p{font-size:15.5px}}
+/* ---------- phone ---------- */
+@media (max-width:760px){
+  body{font-size:16px}
+  #crumbs{left:10px;top:10px;font-size:11.5px}#crumbs .no{display:none}
+  #clock{right:10px;top:10px;font-size:11px;padding:6px 9px;gap:7px}#clock .opt{display:none}
+  .ch{padding:12vh 12px;align-items:flex-end}
+  .ch.right{justify-content:flex-start}
+  .card{max-width:none;width:100%;padding:16px 16px 14px}
+  .card h2{font-size:25px}
+  .hero{align-items:flex-start;padding-top:62px;padding-bottom:0}
+  .hero h1{font-size:56px}
+  .hero .lede{font-size:15.5px;margin-top:10px;padding:12px 14px}
+  .play{padding-bottom:300px;align-items:stretch}
+  #what{max-width:none}
+  #v-play{display:none}
+  #tools{bottom:8px;gap:7px 9px;padding:9px 10px;font-size:12px;width:calc(100vw - 16px)}
+  #tools input[type=range]{width:min(52vw,220px)}
+  #tools .lab{font-size:10.5px}
+  #tools button{padding:5px 7px;min-width:26px}
+}
+</style>
+</head>
+<body>
+<nav id="crumbs"><a class="home" href="../">← Curio</a><span class="no">Curio · No. 054 · Compass, glass &amp; sunlight</span></nav>
+<div id="clock" aria-live="off"><span id="ck-place">Chartres</span><span class="sep"></span><span id="ck-date" class="opt">16 Apr</span><span class="sep opt"></span><b id="ck-time">15:30</b><span class="sep"></span><span id="ck-sun">sun 38°</span></div>
+<main id="story">
+  <section class="ch hero" data-ch="hero" id="top">
+    <div class="card">
+      <h1>Rose Window</h1>
+      <p class="lede">A twelve-metre rose window lays its colours on the floor whenever the sun comes round. Scroll to draw one with a compass, glaze it, and follow its light through a day.</p>
+      <p class="hint">Scroll</p>
+    </div>
+  </section>
+</main>
+<canvas id="gl" aria-label="A stone transept lit through a rose window; coloured light falls on the floor"></canvas>
+<canvas id="ink" aria-hidden="true"></canvas>
+<main id="story2" class="story2">
+  <section class="ch" data-ch="blur"><div class="card"><span class="step">Sunlight</span><h2>The sun is not a point</h2>
+    <p>If it were, the floor would carry a sharp copy of every pane, lead lines and all. It is half a degree wide, so each point of the glass lands as a soft disc <span class="k" id="v-pen">28&nbsp;cm</span> across, and only the big shapes survive.</p></div></section>
+  <section class="ch tall" data-ch="c1"><div class="card"><span class="step">Drawing · 1</span><h2>One circle, then the radius six times</h2>
+    <p>A rose is drawn before it is cut: full size, on a plaster tracing floor. Keep the compass at the radius and step it round the rim. It fits exactly six times.</p></div></section>
+  <section class="ch tall right" data-ch="c2"><div class="card"><span class="step">Drawing · 2</span><h2>Halve, and halve again</h2>
+    <p>Two arcs struck from neighbouring points cross on the line that halves them. Halving the six steps gives the twelve spokes; halving again finds the middle of each sector.</p></div></section>
+  <section class="ch tall" data-ch="c3"><div class="card"><span class="step">Drawing · 3</span><h2>The circle that touches three lines</h2>
+    <p>The tangent at the middle of the rim cuts both spokes into a triangle. Bisect one corner: the bisector crosses the middle line at the centre of the only circle that touches both spokes and the rim. That is Euclid, Book IV, proposition 4.</p></div></section>
+  <section class="ch tall right" data-ch="c4"><div class="card"><span class="step">Drawing · 4</span><h2>Walk it round, then shrink it</h2>
+    <p>The same moves give all twelve petals. The ring inside is the same figure turned half a sector and shrunk by <span class="k" id="v-q">0.589</span>, the number fixed by twelve: (1 − sin 15°) / (1 + sin 15°).</p></div></section>
+  <section class="ch tall" data-ch="c5"><div class="card"><span class="step">Drawing · 5</span><h2>Foils</h2>
+    <p>Inside a petal the trick runs again with four spokes instead of twelve. Four circles, each touching its neighbours and the petal, make a quatrefoil.</p></div></section>
+  <section class="ch tall right" data-ch="c6"><div class="card"><span class="step">Drawing · 6</span><h2>Filling the gaps</h2>
+    <p>Each gap left between petals takes the one circle touching three others, Apollonius's problem. A six-lobed eye goes in the middle, and the drawing is done.</p></div></section>
+  <section class="ch tall" data-ch="glaze"><div class="card"><span class="step">Glass</span><h2>Glaze it, raise it</h2>
+    <p>The tracery goes into the wall with its centre twenty metres up, and <span class="k" id="v-open">49</span> openings take coloured glass, deep blue first.</p></div></section>
+  <section class="ch tall right" data-ch="day"><div class="card"><span class="step">One day</span><h2>The colours walk</h2>
+    <p>Scroll the sun across <span id="v-dayname">16 April</span>. As it swings west the patch slides east along the floor, stretching as the sun drops. <span class="k" id="v-daytime">15:30</span></p></div></section>
+  <section class="ch tall" data-ch="dial"><div class="card"><span class="step">A year</span><h2>A sundial nobody meant to build</h2>
+    <p>On the equinox the patch runs along a straight line <span class="k" id="v-eq">21.4&nbsp;m</span> from the wall: twenty metres times the tangent of the latitude, less the wall. In June it stays close to the wall; in December it lands far down the floor.</p></div></section>
+  <section class="ch play" data-ch="play"><div class="card"><span class="step">Yours</span><h2>Make your own rose</h2>
+    <p>Change the petals, the foils, the wall it faces, the city and the day. The sun is placed by the same formulas for any date from 1900 to 2100.</p><p id="v-play" class="k" style="white-space:normal"></p></div>
+    <details id="what"><summary>What is this?</summary>
+<p>A rose window twelve metres across, its centre twenty metres up a south-facing wall at the latitude of Chartres. It is not a copy of any real window: the tracery is drawn by the page with compass and straightedge, and the glass is a made-up mosaic of medieval colours. The sunlight is computed for the real sky.</p>
+<h3>The drawing is real geometry</h3>
+<p>The page's construction engine knows two moves, a circle through a point and a line through two points, and how to intersect them. From one circle it steps out the hexagon (or the square, or the decagon, whose side is R(√5 − 1)/2, Euclid XIII.9), halves arcs, draws the tangent at the middle of a sector and bisects a corner of the triangle it makes (Euclid IV.4) to get each petal, then repeats inside the petals for the foils. A separate closed form gives the same circles directly: a circle inscribed in a sector of angle 2π/n has radius R·sin(π/n)/(1 + sin(π/n)) and its centre at R/(1 + sin(π/n)). For 6 to 24 petals, 1 to 3 rings and 3, 4 or 6 foils the two agree on 2,865 centres and radii to 1.6×10⁻14 m. With 12 petals each ring is the one outside scaled by 0.5888.</p>
+<p>The small circles in the gaps touch three others (Apollonius's problem). They are placed by formula, not by construction; the page's JavaScript and an independent Python version agree, and every tangency holds to 4×10⁻¹⁵ m. Only constructible petal counts are offered: by the Gauss–Wantzel theorem a 7- or 9-fold rose cannot be drawn with these two tools.</p>
+<h3>The sun</h3>
+<p>Sun positions use NOAA's solar calculation (the Global Monitoring Laboratory's spreadsheet, after Jean Meeus's <i>Astronomical Algorithms</i>), including its refraction model, with the city's time zone and daylight saving taken from the browser. Checked against JPL Horizons (ephemeris DE441) at six sites from Quito to Reykjavík on seven dates from 1250 to 2099: 1,789 positions with the sun above the horizon, worst 0.016°, median 0.0038°. For 2026 to 2099 the worst is 0.0101°, one 53th of the sun's width. The sun's disc is 2 × 959.63″ divided by its distance in astronomical units.</p>
+<h3>The light on the floor</h3>
+<p>Nothing is painted on the floor. Every pixel of floor looks back toward 40 points spread evenly over the sun's disc; each of those rays has to clear the inside edge of the 1.2-m-thick wall, and then takes the colour of the glass where it crosses the window. So the patch is the window sheared and stretched by the angle of the sun, and blurred by the sun's own width: at 14:40 on 16 April the glass is 25.9 m from its patch and each point of it lands as a disc 24 cm across. The beams in the air use the same test at points along each line of sight.</p>
+<p>Checked: the page reads back the floor light the GPU computed on a grid across the patch, and the glass texture it sampled, and a separate float64 version in Python recomputes it. Of 57,600 floor points, 57,500 agree to 10⁻⁴ of full sunlight (median difference 9×10⁻⁹); at the other 100 a ray lands on the far side of a texel edge in single precision, worst 2.3% of the brightest point. The light is also conserved: summed over the floor on a 423×337 grid, the patch carries what the glass lets through to within 0.05% in each colour.</p>
+<h3>A sundial nobody meant to build</h3>
+<p>On an equinox the sun's rays all lie in one plane, parallel to the equator, so the centre of the patch, where that plane meets the floor, runs along a straight line. For a south wall the line is parallel to the wall at 20 m × tan(latitude) minus the wall's thickness: 21.4 m at Chartres. On 20 March 2026 the centre travels 220 m and strays from a straight line by 10 cm, because the sun's declination drifts 0.16° during the 10.0 hours it shines through. Other days trace hyperbolas: on 21 June the patch stays 4–8 m from the wall and is lit for 6.4 hours; on 21 December it lands 60 m out at noon.</p>
+<h3>What is left out</h3>
+<ul>
+<li>The sun is a uniform disc (no limb darkening) in a clear sky; light does not bounce, so the stone is lit by a constant ambient level.</li>
+<li>The glass is a thin sheet with made-up colours; the depth of the tracery bars is ignored, only the wall's thickness clips the beam. The floor goes on for ever.</li>
+<li>Beams and dust are drawn with the same light test but a made-up haze density.</li>
+</ul>
+<h3>Sources</h3>
+<ul>
+<li>NOAA Global Monitoring Laboratory, <a href="https://gml.noaa.gov/grad/solcalc/calcdetails.html">Solar calculation details</a>; J. Meeus, <i>Astronomical Algorithms</i>, 2nd ed., Willmann-Bell, 1998.</li>
+<li>JPL Horizons, <a href="https://ssd.jpl.nasa.gov/horizons/">ssd.jpl.nasa.gov/horizons</a> (used only to check).</li>
+<li>Euclid, <i>Elements</i>, <a href="https://mathcs.clarku.edu/~djoyce/elements/bookIV/propIV4.html">Book IV, prop. 4</a> and <a href="https://mathcs.clarku.edu/~djoyce/elements/bookXIII/propXIII9.html">Book XIII, prop. 9</a>, D. E. Joyce's edition.</li>
+</ul>
+    </details>
+  </section>
+</main>
+<div id="tools" role="group" aria-label="Rose and sky controls">
+  <div class="grp"><span class="lab">Petals</span><span id="t-n"></span></div>
+  <div class="grp"><span class="lab">Rings</span><span id="t-r"></span></div>
+  <div class="grp"><span class="lab">Foils</span><span id="t-k"></span></div>
+  <div class="grp"><span class="lab">Faces</span><span id="t-f"></span></div>
+  <div class="grp"><select id="t-city" aria-label="City"></select><input id="t-date" type="date" min="1900-01-01" max="2100-12-31" aria-label="Date"></div>
+  <div class="grp"><span class="lab">Time</span><input id="t-time" type="range" min="0" max="1439" step="1" aria-label="Local time"><span class="t" id="t-tv">15:30</span></div>
+  <div class="grp"><span class="lab">Sun</span><span id="t-s"></span></div>
+  <div class="note" id="t-note"></div>
+</div>
+<noscript><p>Rose Window needs JavaScript and WebGL 2.</p></noscript>
+<script>
+// Rose Window engine: tracery (closed form + compass-and-straightedge construction), NOAA sun, beam geometry.
+// No DOM. Used by the page and by node (dumpcases.js).
+function makeRose() {
+  const PI = Math.PI, D2R = PI / 180;
+  const RW = 6.0, FRAME = 0.42, BAR = 0.17, H = 20.0, WALL = 1.2;
+
+  // ------------------------------------------------------------------ tracery, closed form
+  function petalRing(Rout, n, phase) {
+    const s = Math.sin(PI / n), r = Rout * s / (1 + s), d = Rout / (1 + s), petals = [];
+    for (let i = 0; i < n; i++) { const a = phase + 2 * PI * i / n; petals.push({ c: [d * Math.cos(a), d * Math.sin(a)], r, ax: a }); }
+    return { petals, r, d };
+  }
+  function outerFiller(R, d, r, n) {
+    const c = Math.cos(PI / n);
+    const rho = (R * R + d * d - 2 * R * d * c - r * r) / (2 * (R + r - d * c));
+    return [R - rho, rho];
+  }
+  function innerFiller(d1, r1, d2, r2, n) {
+    const c = Math.cos(PI / n), k = r1 - d2 - r2;
+    const x = (k * k - d1 * d1) / (-2 * d1 * c - 2 * k);
+    return [x, x - d2 - r2];
+  }
+  function foil(cx, cy, r, k, ax) {
+    const s = Math.sin(PI / k), rf = r * s / (1 + s), df = r / (1 + s), out = [];
+    for (let j = 0; j < k; j++) { const a = ax + 2 * PI * j / k; out.push([[cx + df * Math.cos(a), cy + df * Math.sin(a)], rf]); }
+    return out;
+  }
+  function layout(n = 12, rings = 2, k = 4, kc = null) {
+    if (kc == null) kc = n >= 8 ? n / 2 : n;
+    const R1 = RW - FRAME, s = Math.sin(PI / n), q = (1 - s) / (1 + s);
+    const out = { n, rings, k, kc, q, R: [R1], ring: [], fillOut: [], fillIn: [] };
+    let R = R1, phase = PI / 2, prev = null;
+    for (let l = 0; l < rings; l++) {
+      const pr = petalRing(R, n, phase);
+      out.ring.push({ R, r: pr.r, d: pr.d, phase, petals: pr.petals });
+      if (l === 0) { const [x, rho] = outerFiller(R, pr.d, pr.r, n); out.fillOut.push({ x, rho, phase: phase + PI / n }); }
+      else { const [x, rho] = innerFiller(prev.d, prev.r, pr.d, pr.r, n); out.fillIn.push({ x, rho, phase }); }
+      prev = out.ring[out.ring.length - 1];
+      R = pr.d - pr.r; out.R.push(R); phase += PI / n;
+    }
+    out.Rc = R; out.phaseC = phase;
+    return out;
+  }
+
+  // ------------------------------------------------------------------ construction engine (intersections only)
+  // Records every circle and line it uses, the points it takes from them, and a step tag, so the page can draw it.
+  function Eng() {
+    const E = { prims: [], step: 0, role: 'guide' };
+    E.circle = (c, p, full) => { const C = { t: 'c', c, r: Math.hypot(p[0] - c[0], p[1] - c[1]), step: E.step, role: E.role, full: !!full, marks: [] }; E.prims.push(C); return C; };
+    E.circleR = (c, r, full) => { const C = { t: 'c', c, r, step: E.step, role: E.role, full: !!full, marks: [] }; E.prims.push(C); return C; };
+    E.line = (p, q) => { const L = { t: 'l', p, q, step: E.step, role: E.role, marks: [p, q] }; E.prims.push(L); return L; };
+    return E;
+  }
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  function xLL(L1, L2) {
+    const [x1, y1] = L1.p, [x2, y2] = L1.q, [x3, y3] = L2.p, [x4, y4] = L2.q;
+    const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4), a = x1 * y2 - y1 * x2, b = x3 * y4 - y3 * x4;
+    const P = [(a * (x3 - x4) - (x1 - x2) * b) / den, (a * (y3 - y4) - (y1 - y2) * b) / den];
+    L1.marks.push(P); L2.marks.push(P); return P;
+  }
+  function xLC(L, C, near) {
+    const [x1, y1] = L.p, [x2, y2] = L.q, [cx, cy] = C.c, r = C.r;
+    const dx = x2 - x1, dy = y2 - y1, fx = x1 - cx, fy = y1 - cy;
+    const a = dx * dx + dy * dy, b = 2 * (fx * dx + fy * dy), c = fx * fx + fy * fy - r * r;
+    const disc = Math.sqrt(Math.max(b * b - 4 * a * c, 0));
+    const t1 = (-b - disc) / (2 * a), t2 = (-b + disc) / (2 * a);
+    const p1 = [x1 + t1 * dx, y1 + t1 * dy], p2 = [x1 + t2 * dx, y1 + t2 * dy];
+    const P = dist(p1, near) <= dist(p2, near) ? p1 : p2;
+    L.marks.push(P); C.marks.push(P); return P;
+  }
+  function xCC(C1, C2, near) {
+    const [x1, y1] = C1.c, r1 = C1.r, [x2, y2] = C2.c, r2 = C2.r;
+    const d = Math.hypot(x2 - x1, y2 - y1), a = (r1 * r1 - r2 * r2 + d * d) / (2 * d), h = Math.sqrt(Math.max(r1 * r1 - a * a, 0));
+    const mx = x1 + a * (x2 - x1) / d, my = y1 + a * (y2 - y1) / d;
+    const p1 = [mx + h * (y2 - y1) / d, my - h * (x2 - x1) / d], p2 = [mx - h * (y2 - y1) / d, my + h * (x2 - x1) / d];
+    const P = dist(p1, near) <= dist(p2, near) ? p1 : p2;
+    C1.marks.push(P); C2.marks.push(P); return P;
+  }
+  function bisectArc(E, O, A, B, C0) {
+    const X1 = xCC(E.circle(A, B), E.circle(B, A), [2 * (A[0] + B[0]) - 3 * O[0], 2 * (A[1] + B[1]) - 3 * O[1]]);
+    const M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+    return xLC(E.line(O, X1), C0, [2 * M[0] - O[0], 2 * M[1] - O[1]]);
+  }
+  function divide(E, O, R, n, phase, fullC0 = true, stepBase = null, stepHalve = null) {
+    if (stepBase != null) E.step = stepBase;
+    const A0 = [O[0] + R * Math.cos(phase), O[1] + R * Math.sin(phase)];
+    const C0 = E.circle(O, A0, fullC0);
+    let pts, m;
+    if (n === 6 || n === 12 || n === 24) {
+      pts = [A0];
+      for (let i = 0; i < 5; i++) {
+        const P = pts[pts.length - 1], g = [O[0] + R * Math.cos(phase + (i + 1) * PI / 3), O[1] + R * Math.sin(phase + (i + 1) * PI / 3)];
+        pts.push(xCC(E.circle(P, O), C0, g));
+      }
+      m = 6;
+    } else if (n === 8 || n === 16) {
+      const B = xLC(E.line(O, A0), C0, [2 * O[0] - A0[0], 2 * O[1] - A0[1]]);
+      const X = xCC(E.circle(A0, B), E.circle(B, A0), [O[0] + 3 * R * Math.cos(phase - PI / 2), O[1] + 3 * R * Math.sin(phase - PI / 2)]);
+      const L = E.line(O, X);
+      const P1 = xLC(L, C0, X), P3 = xLC(L, C0, [2 * O[0] - P1[0], 2 * O[1] - P1[1]]);
+      pts = [A0, P3, B, P1]; m = 4;
+    } else if (n === 10 || n === 20) {
+      const B = xLC(E.line(O, A0), C0, [2 * O[0] - A0[0], 2 * O[1] - A0[1]]);
+      const X = xCC(E.circle(A0, B), E.circle(B, A0), [O[0] + 3 * R * Math.cos(phase - PI / 2), O[1] + 3 * R * Math.sin(phase - PI / 2)]);
+      const Lp = E.line(O, X), Ee = xLC(Lp, C0, X), Ew = xLC(Lp, C0, [2 * O[0] - Ee[0], 2 * O[1] - Ee[1]]);
+      const Ca = E.circle(O, Ee), Cb = E.circle(Ee, O);
+      const Y = xCC(Ca, Cb, A0), Y2 = xCC(Ca, Cb, B);
+      const M = xLL(E.line(Y, Y2), Lp);
+      const P = xLC(Lp, E.circle(M, A0), Ew), side = dist(O, P);
+      pts = [A0];
+      for (let i = 0; i < 9; i++) {
+        const Pp = pts[pts.length - 1], g = [O[0] + R * Math.cos(phase + (i + 1) * PI / 5), O[1] + R * Math.sin(phase + (i + 1) * PI / 5)];
+        pts.push(xCC(E.circleR(Pp, side), C0, g));
+      }
+      m = 10;
+    } else throw new Error('n=' + n);
+    if (stepHalve != null) E.step = stepHalve;
+    while (m < n) {
+      const nw = [];
+      for (let i = 0; i < m; i++) { const A = pts[i], B = pts[(i + 1) % m]; nw.push(A, bisectArc(E, O, A, B, C0)); }
+      pts = nw; m *= 2;
+    }
+    return { pts, C0 };
+  }
+  function incircleInSector(E, O, C, T, S1, S2) {
+    const R = C.r, u = [(T[0] - O[0]) / R, (T[1] - O[1]) / R], rho = 0.3 * R;
+    const LOT = E.line(O, T);
+    const Cs = E.circle(T, [T[0] + rho * u[0], T[1] + rho * u[1]]);
+    const P1 = xLC(LOT, Cs, [T[0] + u[0], T[1] + u[1]]), P2 = xLC(LOT, Cs, [T[0] - u[0], T[1] - u[1]]);
+    const Ca = E.circle(P1, P2), Cb = E.circle(P2, P1);
+    const X1 = xCC(Ca, Cb, [T[0] - u[1], T[1] + u[0]]), X2 = xCC(Ca, Cb, [T[0] + u[1], T[1] - u[0]]);
+    const tan = E.line(X1, X2);
+    const A = xLL(tan, E.line(O, S1)), B = xLL(tan, E.line(O, S2));
+    const rr = 0.25 * dist(A, T), Cr = E.circleR(A, rr);
+    const U = xLC({ p: A, q: O, marks: [] }, Cr, [A[0] + (O[0] - A[0]) * 0.1, A[1] + (O[1] - A[1]) * 0.1]);
+    const V = xLC({ p: A, q: B, marks: [] }, Cr, [A[0] + (B[0] - A[0]) * 0.1, A[1] + (B[1] - A[1]) * 0.1]);
+    const W = xCC(E.circle(U, A), E.circle(V, A), [U[0] + V[0] - A[0], U[1] + V[1] - A[1]]);
+    const I = xLL(E.line(A, W), LOT);
+    E.role = 'result'; E.circle(I, T, true); E.role = 'guide';
+    return { I, r: dist(I, T), A, B, T };
+  }
+  // steps: 1 circle + six steps of the radius, 2 halving to 2n directions, 3 incircle of the first petal,
+  // 4 the other petals + next rings, 5 foils, 6 fillers + oculus (closed form, drawn as results)
+  function construct(n = 12, rings = 2, k = 4) {
+    const E = Eng(), O = [0, 0], R1 = RW - FRAME, res = { ring: [], foils: [], Rc: null };
+    let R = R1, phase = PI / 2;
+    for (let l = 0; l < rings; l++) {
+      E.step = l === 0 ? 1 : 4;
+      E.role = l === 0 ? 'outline' : 'guide';
+      if (l === 0) E.circleR(O, RW, true);
+      E.role = 'guide';
+      // boundaries (spokes): hexagon / square / decagon (step 1), then halving (step 2)
+      const dv = divide(E, O, R, n, phase - PI / n, true, l === 0 ? 1 : 4, l === 0 ? 2 : 4);
+      const axes = [];
+      for (let i = 0; i < n; i++) {
+        const A = dv.pts[i], B = dv.pts[(i + 1) % n];
+        E.step = l === 0 ? 2 : 4;
+        const T = bisectArc(E, O, A, B, dv.C0);
+        E.step = l === 0 ? (i === 0 ? 3 : 4) : 4;
+        const ic = incircleInSector(E, O, dv.C0, T, A, B);
+        axes.push(ic);
+      }
+      res.ring.push(axes);
+      E.step = 4;
+      const f = axes[0];
+      const Pin = xLC(E.line(O, f.T), E.circle(f.I, f.T), O);
+      R = dist(O, Pin); phase += PI / n;
+    }
+    res.Rc = R;
+    if (k) {
+      E.step = 5;
+      const f = res.ring[0][0], Cp = E.circleR(f.I, f.r, true);
+      const ax = Math.atan2(f.T[1] - f.I[1], f.T[0] - f.I[0]);
+      const dv = divide(E, f.I, f.r, { 3: 6, 4: 8, 6: 12 }[k], ax - PI / k, true);
+      const bounds = dv.pts.filter((_, i) => i % 2 === 0);
+      for (let j = 0; j < k; j++) {
+        const A = bounds[j], B = bounds[(j + 1) % k];
+        const Tm = bisectArc(E, f.I, A, B, dv.C0);
+        const ic = incircleInSector(E, f.I, dv.C0, Tm, A, B);
+        res.foils.push([ic.I, ic.r]);
+      }
+    }
+    res.prims = E.prims;
+    return res;
+  }
+
+  // ------------------------------------------------------------------ NOAA solar position (GML spreadsheet, after Meeus)
+  function sun(jd, lat, lon) {
+    const T = (jd - 2451545.0) / 36525.0;
+    let L0 = (280.46646 + T * (36000.76983 + T * 0.0003032)) % 360; if (L0 < 0) L0 += 360;
+    const M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+    const e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+    const Mr = M * D2R;
+    const C = Math.sin(Mr) * (1.914602 - T * (0.004817 + 0.000014 * T)) + Math.sin(2 * Mr) * (0.019993 - 0.000101 * T) + Math.sin(3 * Mr) * 0.000289;
+    const trueLong = L0 + C, trueAnom = M + C;
+    const R = (1.000001018 * (1 - e * e)) / (1 + e * Math.cos(trueAnom * D2R));
+    const om = (125.04 - 1934.136 * T) * D2R;
+    const lam = trueLong - 0.00569 - 0.00478 * Math.sin(om);
+    const eps0 = 23 + (26 + ((21.448 - T * (46.815 + T * (0.00059 - T * 0.001813)))) / 60) / 60;
+    const eps = eps0 + 0.00256 * Math.cos(om);
+    const decl = Math.asin(Math.sin(eps * D2R) * Math.sin(lam * D2R)) / D2R;
+    const y = Math.tan(eps * D2R / 2) ** 2, L0r = L0 * D2R;
+    const eqt = 4 / D2R * (y * Math.sin(2 * L0r) - 2 * e * Math.sin(Mr) + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L0r)
+      - 0.5 * y * y * Math.sin(4 * L0r) - 1.25 * e * e * Math.sin(2 * Mr));
+    let f = (jd - 0.5) % 1; if (f < 0) f += 1;
+    let tst = (f * 1440 + eqt + 4 * lon) % 1440; if (tst < 0) tst += 1440;
+    const ha = tst / 4 < 0 ? tst / 4 + 180 : tst / 4 - 180;
+    const latr = lat * D2R, dr = decl * D2R, har = ha * D2R;
+    const cz = Math.min(1, Math.max(-1, Math.sin(latr) * Math.sin(dr) + Math.cos(latr) * Math.cos(dr) * Math.cos(har)));
+    const zen = Math.acos(cz) / D2R, el = 90 - zen, te = Math.tan(el * D2R);
+    const refr = (el > 85 ? 0 : el > 5 ? 58.1 / te - 0.07 / te ** 3 + 0.000086 / te ** 5
+      : el > -0.575 ? 1735 + el * (-518.2 + el * (103.4 + el * (-12.79 + el * 0.711))) : -20.772 / te) / 3600;
+    const sz = Math.sin(zen * D2R);
+    const ca = Math.min(1, Math.max(-1, (Math.sin(latr) * cz - Math.sin(dr)) / (Math.cos(latr) * sz)));
+    const a = Math.acos(ca) / D2R;
+    let az = ha > 0 ? (a + 180) % 360 : (540 - a) % 360;
+    return { decl, eqtime: eqt, zenith: zen, elevAirless: el, refr, elev: el + refr, az, R, semi: (959.63 / 3600) / R, ha };
+  }
+  const jdFromUnix = ms => ms / 86400000 + 2440587.5;
+
+  // ------------------------------------------------------------------ beam geometry (scene coords, see patch.py)
+  function sceneDir(az, el, facing) {
+    const a = az * D2R, e = el * D2R, f = facing * D2R;
+    return [Math.cos(e) * Math.sin(a - f), Math.sin(e), -Math.cos(e) * Math.cos(a - f)];
+  }
+  function toFloor(u, v, d) {           // glass point -> floor point, and whether it clears the inner face
+    const P = [u, H + v, -WALL], t = (H + v) / d[1];
+    const F = [P[0] - t * d[0], P[2] - t * d[2]];
+    const t0 = WALL / (-d[2]), Q = [P[0] - t0 * d[0], P[1] - t0 * d[1]];
+    return { x: F[0], z: F[1], ok: Q[0] * Q[0] + (Q[1] - H) ** 2 < RW * RW, t };
+  }
+  function fromFloor(x, z, d) {
+    const t0 = z / (-d[2]), t1 = (z + WALL) / (-d[2]);
+    return { q0: [x + t0 * d[0], t0 * d[1] - H], q1: [x + t1 * d[0], t1 * d[1] - H], t1 };
+  }
+  // Every sample of the sun's disc: Vogel spiral of N points on the unit disc (equal area).
+  function discSamples(N) {
+    const out = [], g = PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < N; i++) { const r = Math.sqrt((i + 0.5) / N), a = i * g; out.push([r * Math.cos(a), r * Math.sin(a)]); }
+    return out;
+  }
+  function basis(d) {                    // two unit vectors perpendicular to d
+    const up = Math.abs(d[1]) < 0.99 ? [0, 1, 0] : [1, 0, 0];
+    let a = [up[1] * d[2] - up[2] * d[1], up[2] * d[0] - up[0] * d[2], up[0] * d[1] - up[1] * d[0]];
+    const la = Math.hypot(a[0], a[1], a[2]); a = a.map(v => v / la);
+    const b = [d[1] * a[2] - d[2] * a[1], d[2] * a[0] - d[0] * a[2], d[0] * a[1] - d[1] * a[0]];
+    return [a, b];
+  }
+
+  return { RW, FRAME, BAR, H, WALL, layout, construct, foil, sun, jdFromUnix, sceneDir, toFloor, fromFloor, discSamples, basis, outerFiller, innerFiller };
+}
+</script>
+<script>
+(() => {
+'use strict';
+const Q = new URLSearchParams(location.search);
+const FIXED = Q.has('fixed'), OG = Q.has('og');
+const STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EMBED = window.top !== window;
+const R = makeRose();
+const $ = id => document.getElementById(id);
+const PI = Math.PI, D2R = PI / 180;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = (a, b, t) => a + (b - a) * t;
+const LOG = [];
+const log = (ev, data) => { LOG.push(Object.assign({ ev, frame: S.frame }, data || {})); if (LOG.length > 400) LOG.shift(); };
+
+// ------------------------------------------------------------------ places, time
+const CITIES = [
+  ['Chartres', 48.4473, 1.4884, 'Europe/Paris'], ['York', 53.9623, -1.0819, 'Europe/London'], ['León', 42.5994, -5.5669, 'Europe/Madrid'],
+  ['New York', 40.7128, -74.006, 'America/New_York'], ['Quito', -0.1807, -78.4678, 'America/Guayaquil'], ['Cape Town', -33.9249, 18.4241, 'Africa/Johannesburg'],
+  ['Sydney', -33.8688, 151.2093, 'Australia/Sydney'], ['Tokyo', 35.6895, 139.6917, 'Asia/Tokyo'], ['Reykjavík', 64.1466, -21.9426, 'Atlantic/Reykjavik'],
+  ['Tromsø', 69.6492, 18.9553, 'Europe/Oslo']];
+const MON = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+const MONL = 'January February March April May June July August September October November December'.split(' ');
+const fmtCache = {};
+function tzOffsetMin(tz, ms) {
+  const f = fmtCache[tz] || (fmtCache[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }));
+  const p = {}; for (const x of f.formatToParts(new Date(ms))) p[x.type] = x.value;
+  const y = +p.year, asUTC = Date.UTC(y, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
+  const d = new Date(asUTC); if (y < 100) d.setUTCFullYear(y);
+  return Math.round((d.getTime() - ms) / 60000);
+}
+function utcOf(date, minute, tz) {        // local wall clock -> UTC ms; repeated hour -> the first, skipped hour -> the offset before (as Python's fold=0)
+  const g = Date.UTC(date[0], date[1] - 1, date[2], 0, minute);
+  const oB = tzOffsetMin(tz, g - 14 * 3600000), oA = tzOffsetMin(tz, g + 14 * 3600000);
+  const c = [...new Set([oB, oA])].map(o => g - o * 60000).filter(ms => (g - ms) / 60000 === tzOffsetMin(tz, ms)).sort((a, b) => a - b);
+  return c.length ? c[0] : g - oB * 60000;
+}
+const hhmm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+
+// ------------------------------------------------------------------ state
+const STORY = { city: 0, date: [2026, 4, 16], minute: Q.has('min') ? +Q.get('min') : 14 * 60 + 40, facing: 180 };
+const EQX = [2026, 3, 20], JUN = [2026, 6, 21], DEC = [2026, 12, 21];
+const S = {
+  ready: false, frame: 0, t: 0, s: 0, ch: 'hero', mode: 'story',
+  n: 12, rings: 2, k: 4, city: 0, date: STORY.date.slice(), minute: STORY.minute, facing: 180, sunMode: 'real',
+  sunScale: 1, overcast: 0, glaze: 1, lapse: 0, cam: null, draw: { step: 0, p: 0 }, trails: [], lite: 0, scale: 1, ns: 40, vol: 24,
+};
+const play = { n: 12, rings: 2, k: 4, city: 0, date: [2026, 11, 22], minute: 13 * 60, facing: 180, sunMode: 'real', touched: false };
+{ const d = new Date(); if (!FIXED && !OG) play.date = [d.getFullYear(), d.getMonth() + 1, d.getDate()]; }
+
+function sky(date, minute, city, facing) {
+  const C = CITIES[city], ms = utcOf(date, minute, C[3]), jd = R.jdFromUnix(ms);
+  const s = R.sun(jd, C[1], C[2]), d = R.sceneDir(s.az, s.elev, facing);
+  const lit = s.elev > 0 && d[2] < -1e-4;
+  return { ms, jd, sun: s, dir: d, lit, off: tzOffsetMin(C[3], ms) };
+}
+function dayTimes(date, city, facing) {    // first and last minute with the patch on the floor (centre ray clears the wall)
+  let a = -1, b = -1;
+  for (let m = 0; m < 1440; m += 2) {
+    const k = sky(date, m, city, facing);
+    if (k.lit && R.toFloor(0, 0, k.dir).ok) { if (a < 0) a = m; b = m; }
+  }
+  return [a, b];
+}
+function trail(date, city, facing, step = 5) {
+  const pts = [];
+  for (let m = 0; m <= 1440; m += step) {
+    const k = sky(date, m, city, facing);
+    if (!k.lit) { pts.push(null); continue; }
+    const f = R.toFloor(0, 0, k.dir);
+    pts.push(f.ok ? [f.x, f.z, m] : null);
+  }
+  return pts;
+}
+
+// ------------------------------------------------------------------ GL
+const cv = $('gl'), ink = $('ink'), ictx = ink.getContext('2d');
+const gl = cv.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: FIXED, powerPreference: 'high-performance' });
+if (!gl) { document.body.insertAdjacentHTML('beforeend', '<p style="position:fixed;z-index:9;top:40%;left:8%;right:8%;background:#fff;padding:18px;border-radius:14px;font:500 18px/1.4 sans-serif">This exhibit needs WebGL 2, which this browser did not provide.</p>'); window.rose = { state: () => ({ ready: false, nogl: true }) }; return; }
+const rendererName = (() => { const e = gl.getExtension('WEBGL_debug_renderer_info'); const r = gl.getParameter(gl.RENDERER); return (/^(WebKit|Mozilla)/.test(r) && e) ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : r; })();
+const SOFT = /swiftshader|llvmpipe|software|basic render/i.test(rendererName);
+const CBF = !!gl.getExtension('EXT_color_buffer_float');
+const ANI = gl.getExtension('EXT_texture_filter_anisotropic');
+if (SOFT) { S.lite = 2; }
+
+const VS = `#version 300 es
+in vec2 p; out vec2 vUV; void main(){ vUV=p*.5+.5; gl_Position=vec4(p,0,1); }`;
+
+const WIN_FS = `#version 300 es
+precision highp float;
+in vec2 vUV; out vec4 o;
+uniform float uN; uniform int uRings, uK, uKc;
+uniform vec4 uRing[3]; uniform vec3 uFO; uniform vec3 uFI[2]; uniform vec2 uC;
+uniform float uBar, uR1, uExt, uSeed;
+const float PI=3.141592653589793;
+float h12(vec2 p){ vec3 q=fract(vec3(p.xyx)*.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
+vec2 h22(vec2 p){ vec3 q=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973)); q+=dot(q,q.yzx+33.33); return fract((q.xx+q.yz)*q.zy); }
+vec2 rot(vec2 p,float a){ float c=cos(a),s=sin(a); return vec2(c*p.x+s*p.y,-s*p.x+c*p.y); }
+float foilSD(vec2 q,float r,int k){
+  if(k==0) return length(q)-r;
+  float fk=float(k), s=sin(PI/fk), rf=r*s/(1.+s), df=r/(1.+s);
+  float seg=2.*PI/fk, a=atan(q.y,q.x), j=floor(a/seg+.5), aa=j*seg;
+  float d=length(q-df*vec2(cos(aa),sin(aa)))-rf;
+  return min(d,length(q)-df*cos(PI/fk));
+}
+vec3 pal(int i){
+  if(i==0) return vec3(.014,.05,.50);    // deep blue
+  if(i==1) return vec3(.03,.14,.55);     // light blue
+  if(i==2) return vec3(.58,.018,.03);    // ruby
+  if(i==3) return vec3(.70,.43,.055);    // gold
+  if(i==4) return vec3(.075,.30,.11);    // green
+  if(i==5) return vec3(.52,.55,.46);     // white
+  return vec3(.30,.06,.28);              // murrey
+}
+// Voronoi with exact border distance (Quilez)
+vec3 voro(vec2 x, float salt){
+  vec2 n=floor(x), f=fract(x), mg, mr; float md=8.;
+  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){ vec2 g=vec2(i,j), r=g+.15+.7*h22(n+g+salt)-f; float d=dot(r,r); if(d<md){md=d;mr=r;mg=g;} }
+  md=8.;
+  for(int j=-2;j<=2;j++)for(int i=-2;i<=2;i++){ vec2 g=mg+vec2(i,j), r=g+.15+.7*h22(n+g+salt)-f; if(dot(mr-r,mr-r)>1e-5) md=min(md,dot(.5*(mr+r),normalize(r-mr))); }
+  return vec3(md, n+mg);
+}
+vec3 glass(vec2 q,float r,int typ,float oid,float sd){
+  float cs=clamp(r*.2,.07,.22);
+  vec3 v=voro(q/cs, oid*7.31+uSeed);
+  float lead=v.x*cs;
+  float u=h12(v.yz+oid*1.37+uSeed*3.1), w=h12(v.yz*1.7+oid+9.1);
+  float rr=length(q)/r, edge=-sd;
+  int g0,g1,g2;
+  if(typ==0){g0=0;g1=2;g2=3;} else if(typ==1){g0=1;g1=2;g2=5;} else if(typ==2){g0=0;g1=3;g2=2;}
+  else if(typ==3){g0=3;g1=4;g2=5;} else if(typ==4||typ==5){g0=5;g1=2;g2=3;} else {g0=0;g1=5;g2=3;}
+  int pi=g0;
+  if(edge<.07*r+.03){ float ang=atan(q.y,q.x); int b=int(floor((ang+PI)*r/.13))%4; pi=b==0?3:b==2?2:(typ==1?0:1); }
+  else if(rr<.42){ pi = u<.36?g2 : u<.62?g1 : u<.70?5 : u<.9?g0 : 6; }
+  else { pi = u<.68?g0 : u<.82?g1 : u<.9?g2 : u<.94?5 : 4; }
+  vec3 T=pal(pi)*(.78+.3*w);
+  float k=smoothstep(.006,.011,lead)*smoothstep(.008,.016,edge+.002);
+  k*=smoothstep(.009,.016,abs(rr*r-.64*r));
+  return T*k;
+}
+void main(){
+  vec2 p=(vUV*2.-1.)*uExt; float rho=length(p);
+  vec4 res=vec4(0);
+  if(rho<uR1){
+    float phi=atan(p.y,p.x), seg=2.*PI/uN, best=1e9, oid=0.; vec2 lq=vec2(0); float lr=1.; int typ=-1;
+    for(int l=0;l<3;l++){ if(l>=uRings) break; vec4 Rg=uRing[l];
+      float j=floor((phi-Rg.w)/seg+.5), a=Rg.w+j*seg; vec2 q=rot(p-Rg.z*vec2(cos(a),sin(a)),a);
+      float sd=foilSD(q,Rg.y,uK); if(sd<best){best=sd;lq=q;lr=Rg.y;typ=l;oid=float(l)*100.+mod(j,uN);} }
+    { float j=floor((phi-uFO.z)/seg+.5), a=uFO.z+j*seg; vec2 q=rot(p-uFO.x*vec2(cos(a),sin(a)),a);
+      float sd=length(q)-uFO.y; if(sd<best){best=sd;lq=q;lr=uFO.y;typ=3;oid=400.+mod(j,uN);} }
+    for(int l=0;l<2;l++){ if(l>=uRings-1) break; vec3 F=uFI[l];
+      float j=floor((phi-F.z)/seg+.5), a=F.z+j*seg; vec2 q=rot(p-F.x*vec2(cos(a),sin(a)),a);
+      float sd=length(q)-F.y; if(sd<best){best=sd;lq=q;lr=F.y;typ=4+l;oid=500.+float(l)*100.+mod(j,uN);} }
+    { vec2 q=rot(p,uC.y); float sd=foilSD(q,uC.x,uKc); if(sd<best){best=sd;lq=q;lr=uC.x;typ=6;oid=900.;} }
+    if(best<-.5*uBar){ vec3 T=glass(lq,lr,typ,oid,best+.5*uBar); res=vec4(T,1.); }
+  }
+  o=res;
+}`;
+
+const MAIN_FS = `#version 300 es
+precision highp float; precision highp sampler2D;
+out vec4 o;
+uniform sampler2D uWin;
+uniform vec2 uRes; uniform vec3 uPos,uCR,uCU,uCF; uniform float uFocal;
+uniform vec3 uSun; uniform float uSunR, uS, uDay;
+uniform vec2 uDisc[48]; uniform int uNS, uVol, uJit;
+uniform float uH,uRW,uWall,uExt,uTex,uR1,uGlaze,uTime,uExp,uForceLod;
+uniform vec2 uP0,uPd; uniform vec3 uTr; uniform float uTrA;
+const float PI=3.141592653589793, WT=36.;
+float h12(vec2 p){ vec3 q=fract(vec3(p.xyx)*.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
+float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h12(i),h12(i+vec2(1,0)),f.x),mix(h12(i+vec2(0,1)),h12(i+vec2(1,1)),f.x),f.y); }
+float vn3(vec3 p){ return mix(vn(p.xy+floor(p.z)*17.13),vn(p.xy+(floor(p.z)+1.)*17.13),smoothstep(0.,1.,fract(p.z))); }
+vec4 winT(vec2 q,float lod){
+  vec4 t=textureLod(uWin,q/(2.*uExt)+.5,lod);
+  float g=smoothstep(0.,.07,uGlaze*1.12-(1.-length(q)/uR1));
+  t.rgb=mix(vec3(.66,.66,.62)*t.a,t.rgb,g);
+  return t;
+}
+vec3 sunAt(vec3 P,vec3 N,int ns,float lodAdd){
+  if(uS<=0.||P.z<=0.) return vec3(0);
+  vec3 a=normalize(cross(abs(uSun.y)<.99?vec3(0,1,0):vec3(1,0,0),uSun)), b=cross(uSun,a);
+  if(uJit==1){ float th=6.2831853*h12(gl_FragCoord.xy*.731+fract(uTime*.0)); float c=cos(th),s=sin(th); vec3 a2=c*a+s*b; b=-s*a+c*b; a=a2; }
+  float t1c=(P.z+uWall)/max(-uSun.z,1e-4);
+  float sp=2.*t1c*uSunR/sqrt(float(ns));
+  float lod=uForceLod>=0.?uForceLod:log2(max(sp/uTex,1.))+lodAdd;
+  vec3 acc=vec3(0);
+  for(int i=0;i<48;i++){ if(i>=ns) break;
+    vec3 d=normalize(uSun+uSunR*(uDisc[i].x*a+uDisc[i].y*b));
+    if(d.z>=-1e-4) continue;
+    float t0=P.z/(-d.z); vec3 Q0=P+t0*d; vec2 w0=vec2(Q0.x,Q0.y-uH);
+    if(dot(w0,w0)>uRW*uRW) continue;
+    float t1=(P.z+uWall)/(-d.z); vec3 Q1=P+t1*d;
+    acc+=winT(vec2(Q1.x,Q1.y-uH),lod).rgb*max(dot(d,N),0.);
+  }
+  return acc*uS/float(ns);
+}
+vec3 floorAlb(vec2 x){
+  float row=floor(x.y/.92), off=h12(vec2(row,3.1))*2.7, cx=floor((x.x+off)/1.34);
+  vec2 f=vec2(fract((x.x+off)/1.34)*1.34, fract(x.y/.92)*.92);
+  float gr=min(min(f.x,1.34-f.x),min(f.y,.92-f.y));
+  float sl=h12(vec2(cx,row));
+  vec3 base=vec3(.53,.465,.36)*(.9+.14*sl)*(.93+.09*vn(x*2.3)+.04*vn(x*11.));
+  base*=mix(vec3(1),vec3(1.03,1.,.95),step(.82,sl));
+  return base*mix(.62,1.,smoothstep(.006,.016,gr));
+}
+vec3 wallAlb(vec2 x){
+  float row=floor(x.y/.48), off=h12(vec2(row,7.7))*1.9, cx=floor((x.x+off)/1.12);
+  vec2 f=vec2(fract((x.x+off)/1.12)*1.12, fract(x.y/.48)*.48);
+  float gr=min(min(f.x,1.12-f.x),min(f.y,.48-f.y));
+  vec3 base=vec3(.47,.415,.33)*(.9+.14*h12(vec2(cx,row)))*(.94+.08*vn(x*3.1));
+  return base*mix(.7,1.,smoothstep(.008,.018,gr));
+}
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.); }
+void main(){
+#ifdef PROBE
+  vec3 P=vec3(uP0.x+(gl_FragCoord.x)*uPd.x,0.,uP0.y+(gl_FragCoord.y)*uPd.y);
+  o=vec4(sunAt(P,vec3(0,1,0),uNS,0.),1.);
+#else
+  vec2 c=(gl_FragCoord.xy-.5*uRes)/uFocal;
+  vec3 rd=normalize(uCF+c.x*uCR+c.y*uCU), ro=uPos;
+  float tF=rd.y<0.?-ro.y/rd.y:1e9, tW=(rd.z<0.&&ro.z>0.)?-ro.z/rd.z:1e9;
+  vec3 Pw=ro+tW*rd; if(Pw.y>WT||Pw.y<0.) tW=1e9;
+  float amb=mix(.16,.5,uDay), tHit; vec3 col;
+  float Lsky=2.6*uDay+.08;
+  if(tW<tF){
+    tHit=tW; vec2 w=vec2(Pw.x,Pw.y-uH);
+    if(dot(w,w)<uRW*uRW){
+      float t1=(ro.z+uWall)/(-rd.z); vec3 Q1=ro+t1*rd; vec2 q=vec2(Q1.x,Q1.y-uH);
+      if(dot(q,q)<uRW*uRW){
+        float lod=log2(max(t1/uFocal/uTex,1.));
+        vec4 T=winT(q,lod);
+        float cs=dot(rd,uSun);
+        vec3 glow=T.rgb*(Lsky+uS*(.9*exp(-(1.-cs)*900.)+.06*exp(-(1.-cs)*40.)));
+        col=glow+(1.-T.a)*vec3(.09,.085,.08)*amb;
+      } else col=wallAlb(Pw.xy)*.45*amb;
+    } else {
+      float ao=.72+.28*smoothstep(0.,4.,Pw.y);
+      float rim=1.+.25*smoothstep(uRW+1.6,uRW,length(w))-.22*smoothstep(uRW+.75,uRW+.45,length(w))*smoothstep(uRW+.05,uRW+.3,length(w));
+      float px=mod(Pw.x+9.,18.)-9., pil=smoothstep(1.05,.95,abs(px))*(1.-smoothstep(uRW+1.2,uRW+.8,length(w)));
+      float sc=smoothstep(.0,.05,abs(Pw.y-10.6)-.28)+.0, sc2=smoothstep(.0,.05,abs(Pw.y-27.4)-.24);
+      col=wallAlb(Pw.xy)*amb*.82*ao*rim*mix(.8,1.,sc)*mix(.82,1.,sc2)*mix(1.,1.12,pil)*mix(1.,.72,smoothstep(1.12,1.0,abs(px))-smoothstep(1.0,.9,abs(px)));
+    }
+  } else if(tF<1e8){
+    tHit=tF; vec3 P=ro+tF*rd;
+    float ao=.7+.3*smoothstep(0.,5.,P.z);
+    vec3 E=sunAt(P,vec3(0,1,0),uNS,0.);
+    vec3 al=floorAlb(P.xz); vec2 tq=abs(P.xz-uTr.xy)-uTr.z;
+    if(max(tq.x,tq.y)<0.&&uTrA>0.){ al=mix(al,vec3(.66,.64,.595)*(.95+.05*vn(P.xz*4.)+.03*vn(P.xz*23.))*mix(.82,1.,smoothstep(0.,.05,-max(tq.x,tq.y))),uTrA); }
+    col=al*(amb*.95*ao+E);
+  } else { tHit=400.; col=vec3(.30,.285,.26)*amb*(.6+.4*smoothstep(.6,-.2,rd.y)); }
+  if(uVol>0&&uS>0.){
+    float tm=min(tHit,70.), dt=tm/float(uVol), j=h12(gl_FragCoord.xy+fract(uTime*1.7)*31.);
+    float cs=dot(rd,uSun), g=.5, ph=(1.-g*g)/pow(1.+g*g-2.*g*cs,1.5)*.08;
+    vec3 L=vec3(0);
+    for(int i=0;i<64;i++){ if(i>=uVol) break;
+      vec3 P=ro+rd*(dt*(float(i)+j));
+      if(P.y<=0.||P.z<=.05) continue;
+      float den=.55+.9*vn3(P*.33+vec3(uTime*.06,-uTime*.025,uTime*.03));
+      L+=sunAt(P,uSun,2,2.5)*den;
+    }
+    vec3 Lv=L*dt*.017*ph*7.; col+=Lv/(1.+1.1*Lv);
+  }
+  col=mix(col,vec3(.36,.34,.31)*amb,1.-exp(-tHit/320.));
+  col=aces(col*uExp);
+  col=pow(col,vec3(1./2.2))+(h12(gl_FragCoord.xy+.5)-.5)/255.;
+  o=vec4(col,1);
+#endif
+}`;
+
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+function prog(fs) {
+  const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'p'); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const a = gl.getActiveUniform(p, i), nm = a.name.replace(/\[0\]$/, ''); u[nm] = gl.getUniformLocation(p, a.name); }
+  return { p, u };
+}
+const PW = prog(WIN_FS), PM = prog(MAIN_FS), PP = prog(MAIN_FS.replace('out vec4 o;', '#define PROBE\nout vec4 o;'));
+const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const vao = gl.createVertexArray(); gl.bindVertexArray(vao); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+const WTEX = S.lite >= 2 ? 1024 : 2048, EXT = R.RW + 0.05;
+const wtex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, wtex);
+gl.texStorage2D(gl.TEXTURE_2D, Math.log2(WTEX) + 1, gl.RGBA8, WTEX, WTEX);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+if (ANI) gl.texParameterf(gl.TEXTURE_2D, ANI.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+const wfb = gl.createFramebuffer();
+const nearestSampler = gl.createSampler();
+gl.samplerParameteri(nearestSampler, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.samplerParameteri(nearestSampler, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.samplerParameteri(nearestSampler, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.samplerParameteri(nearestSampler, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+let LAY = null, CON = null, winKey = '';
+function design() { return S.mode === 'play' ? play : { n: 12, rings: 2, k: 4 }; }
+function buildWindow(n, rings, k) {
+  const key = n + '/' + rings + '/' + k; if (key === winKey) return;
+  winKey = key; LAY = R.layout(n, rings, k);
+  gl.useProgram(PW.p); const u = PW.u;
+  gl.uniform1f(u.uN, n); gl.uniform1i(u.uRings, rings); gl.uniform1i(u.uK, k); gl.uniform1i(u.uKc, LAY.kc);
+  const ring = new Float32Array(12); LAY.ring.forEach((r, i) => ring.set([r.R, r.r, r.d, r.phase], i * 4));
+  gl.uniform4fv(u.uRing, ring);
+  gl.uniform3f(u.uFO, LAY.fillOut[0].x, LAY.fillOut[0].rho, LAY.fillOut[0].phase);
+  const fi = new Float32Array(6); LAY.fillIn.forEach((f, i) => fi.set([f.x, f.rho, f.phase], i * 3)); gl.uniform3fv(u.uFI, fi);
+  gl.uniform2f(u.uC, LAY.Rc, LAY.phaseC); gl.uniform1f(u.uBar, R.BAR); gl.uniform1f(u.uR1, R.RW - R.FRAME); gl.uniform1f(u.uExt, EXT); gl.uniform1f(u.uSeed, 3.0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, wfb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, wtex, 0);
+  gl.viewport(0, 0, WTEX, WTEX); gl.bindVertexArray(vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindTexture(gl.TEXTURE_2D, wtex); gl.generateMipmap(gl.TEXTURE_2D);
+  S.openings = rings * n + n + (rings - 1) * n + 1;
+  log('window', { n, rings, k });
+}
+
+// ------------------------------------------------------------------ camera
+function camLook(pos, tgt, fov) {
+  const dx = tgt[0] - pos[0], dy = tgt[1] - pos[1], dz = tgt[2] - pos[2];
+  return { pos: pos.slice(), yaw: Math.atan2(dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)), fov };
+}
+function camBasis(c) {
+  const cy = Math.cos(c.yaw), sy = Math.sin(c.yaw), cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
+  const f = [sy * cp, sp, -cy * cp], r = [cy, 0, sy];
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  return { f, r, u };
+}
+function camMix(a, b, t) {
+  let dy = b.yaw - a.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  return { pos: a.pos.map((v, i) => lerp(v, b.pos[i], t)), yaw: a.yaw + dy * t, pitch: lerp(a.pitch, b.pitch, t), fov: lerp(a.fov, b.fov, t) };
+}
+let VW = 1, VH = 1;
+const portrait = () => VW / VH < 0.9;
+function topDown(cx, cz, size, rect, fov = 46) {     // frame a floor square of `size` m inside a screen rect (fractions)
+  const f = (VH / 2) / Math.tan(fov * D2R / 2), pw = (rect[2] - rect[0]) * VW, ph = (rect[3] - rect[1]) * VH;
+  const h = f * size / Math.min(pw, ph);
+  const pxc = (rect[0] + rect[2]) / 2 * VW, pyc = (rect[1] + rect[3]) / 2 * VH;
+  return { pos: [cx - (pxc - VW / 2) * h / f, h, cz - (pyc - VH / 2) * h / f], yaw: 0, pitch: -PI / 2 + 1e-4, fov };
+}
+const TR = [0, 30];                     // where the tracing is drawn on the floor
+const sideRect = side => portrait() ? [0.03, 0.07, 0.97, 0.55] : side < 0 ? [0.36, 0.05, 0.99, 0.95] : [0.01, 0.05, 0.64, 0.95];
+function keys() {
+  const P = portrait();
+  return {
+    hero: Q.has('cam') ? (a => camLook(a.slice(0, 3), a.slice(3, 6), a[6]))(Q.get('cam').split(',').map(Number)) : P ? camLook([-12, 4, 42], [-3, 9.6, 6], 66) : camLook([-22, 6.5, 37], [-2, 7.6, 6], 50),
+    blur: null,
+    day: Q.has('dcam') ? (a => camLook(a.slice(0, 3), a.slice(3, 6), a[6]))(Q.get('dcam').split(',').map(Number)) : P ? camLook([0, 26, 80], [0, 4, 10], 66) : camLook([0, 15, 47], [0, 5, 8], 66),
+    dial: P ? topDown(0, 33, 80, [0.02, 0.06, 0.98, 0.55], 50) : topDown(0, 30, 74, [0.33, 0.04, 0.99, 0.96], 50),
+    glazeEnd: P ? camLook([0, 4, 44], [0, 17, 0], 54) : camLook([4, 3.2, 40], [0, 17.5, 0], 44),
+  };
+}
+function project(c, P) {                  // world -> CSS px; null if behind
+  const B = camBasis(c), d = [P[0] - c.pos[0], P[1] - c.pos[1], P[2] - c.pos[2]];
+  const z = d[0] * B.f[0] + d[1] * B.f[1] + d[2] * B.f[2]; if (z < 0.05) return null;
+  const f = (VH / 2) / Math.tan(c.fov * D2R / 2);
+  return [VW / 2 + f * (d[0] * B.r[0] + d[1] * B.r[1] + d[2] * B.r[2]) / z, VH / 2 - f * (d[0] * B.u[0] + d[1] * B.u[1] + d[2] * B.u[2]) / z];
+}
+
+// ------------------------------------------------------------------ story
+const sections = [...document.querySelectorAll('.ch')];
+const CH = sections.map(s => s.dataset.ch);
+let SEC = null;
+function measure() { SEC = sections.map(el => { const r = el.getBoundingClientRect(); return [r.top + window.scrollY, r.height]; }); }
+function storyPos() {
+  if (!SEC) measure();
+  const a = window.scrollY + innerHeight * 0.5;
+  for (let i = 0; i < sections.length; i++) {
+    const [top, h] = SEC[i];
+    if (a < top + h || i === sections.length - 1) return i + clamp((a - top) / h, 0, 1);
+  }
+  return 0;
+}
+let patchCam = null;
+function scene(s) {
+  const K = keys(), i = Math.floor(s), p = s - i, ch = CH[Math.min(i, CH.length - 1)];
+  const o = { ch, p, date: STORY.date, minute: STORY.minute + (S.lapse || 0), city: STORY.city, facing: STORY.facing, sunScale: 1, overcast: 0, glaze: 1,
+    draw: { step: 0, p: 0 }, trails: [], cam: K.hero, mode: 'story', inkA: 0 };
+  const heroSky = sky(STORY.date, STORY.minute + (S.lapse || 0), STORY.city, STORY.facing);
+  const pc = R.toFloor(0, 0, heroSky.dir);
+  const P = portrait();
+  patchCam = P ? camLook([pc.x + 2, 13, pc.z + 12], [pc.x, 0, pc.z - 2.5], 60) : camLook([pc.x + 3, 8, pc.z + 9.5], [pc.x - 1.4, 0, pc.z - 0.6], 52);
+  const trace = side => { const c = topDown(TR[0], TR[1], 13.4, sideRect(side), 46); return c; };
+  if (ch === 'hero') { o.cam = K.hero; }
+  else if (ch === 'blur') {
+    o.cam = camMix(K.hero, patchCam, sstep(0, 0.45, p));
+    o.sunScale = p < 0.3 ? 1 - sstep(0.02, 0.3, p) : sstep(0.42, 0.88, p);
+  } else if (/^c\d$/.test(ch)) {
+    const k = +ch[1], side = k % 2 ? -1 : 1;
+    o.minute = STORY.minute; o.overcast = 1; o.inkA = 1;
+    if (k === 1) { o.cam = camMix(patchCam, trace(side), sstep(0, 0.32, p)); o.overcast = sstep(0, 0.3, p); o.inkA = sstep(0.2, 0.35, p); o.sunScale = 1; }
+    else { const prev = trace(-side); o.cam = camMix(prev, trace(side), sstep(0, 0.3, p)); }
+    o.draw = { step: k, p: sstep(k === 1 ? 0.3 : 0.12, 0.88, p) }; o.trA = k === 1 ? sstep(0.1, 0.3, p) : 1;
+  } else if (ch === 'glaze') {
+    o.minute = STORY.minute;
+    o.cam = camMix(topDown(TR[0], TR[1], 13.4, sideRect(1), 46), K.glazeEnd, sstep(0.05, 0.5, p));
+    o.overcast = 1 - sstep(0.55, 0.85, p); o.glaze = sstep(0.3, 0.9, p); o.draw = { step: 7, p: 1 }; o.inkA = 1 - sstep(0.05, 0.3, p); o.trA = 1 - sstep(0.1, 0.4, p);
+  } else if (ch === 'day') {
+    const [a, b] = DAYSPAN;
+    o.minute = Math.round(lerp(a, b, sstep(0.12, 0.88, p)));
+    const kd = sky(STORY.date, o.minute, STORY.city, STORY.facing), fd = R.toFloor(0, 0, kd.dir), px = kd.lit && fd.ok ? clamp(fd.x, -45, 45) : 0;
+    const dc = Q.has('dcam') ? K.day : P ? camLook([px * 0.3, 30, 66], [px * 0.7, 0, 12], 64) : camLook([px * 0.3, 23, 45], [px * 0.78, 1.5, 10.5], 62);
+    o.cam = camMix(K.glazeEnd, dc, sstep(0, 0.3, p));
+    o.trails = [{ date: STORY.date, upto: o.minute, a: 1 }]; o.inkA = sstep(0.05, 0.25, p);
+  } else if (ch === 'dial') {
+    o.date = EQX; const [a, b] = EQSPAN; o.minute = Math.round(lerp(a, b, sstep(0.15, 0.9, p)));
+    o.cam = camMix(K.day, K.dial, sstep(0, 0.35, p));
+    o.trails = [{ date: JUN, a: sstep(0.1, 0.3, p), hours: 1 }, { date: EQX, a: 1, hours: 1, upto: 1440 }, { date: DEC, a: sstep(0.1, 0.3, p), hours: 1 }];
+    o.inkA = sstep(0, 0.2, p); o.plan = 1;
+  } else if (ch === 'play') {
+    o.mode = 'play'; o.cam = camMix(K.dial, playCam(), sstep(0, 0.4, p));
+    o.date = play.date; o.minute = play.minute; o.city = play.city; o.facing = play.facing; o.sunScale = play.sunMode === 'point' ? 0 : play.sunMode === 'big' ? 4 : 1;
+    o.trails = [{ date: play.date, a: 0.55 * sstep(0.3, 0.6, p), upto: 1440, hours: 1 }]; o.inkA = 1;
+  }
+  return o;
+}
+let DAYSPAN = [360, 1080], EQSPAN = [360, 1080];
+let pcSmooth = null;
+function playCam() {
+  const k = sky(play.date, play.minute, play.city, play.facing), f = R.toFloor(0, 0, k.dir), P = portrait();
+  let x = 0, z = 14;
+  if (k.lit && f.ok) { x = clamp(f.x, -45, 45); z = clamp(f.z, 4, 75); }
+  const want = [x, z];
+  if (!pcSmooth || FIXED || STILL) pcSmooth = want.slice(); else { const a = 1 - Math.exp(-S.dtLast * 2.5); pcSmooth = pcSmooth.map((v, i) => v + (want[i] - v) * a); }
+  const [px, pz] = pcSmooth;
+  return P ? camLook([px - 12, 9, pz + 24], [px * 0.5, 6, pz * 0.55], 64) : camLook([px - 22, 9.5, pz + 14], [px * 0.62 - 1, 3, pz * 0.7], 54);
+}
+
+// ------------------------------------------------------------------ overlay (construction, trails)
+function drawInk(sc) {
+  const dpr = ink.width / VW;
+  ictx.setTransform(1, 0, 0, 1, 0, 0); ictx.clearRect(0, 0, ink.width, ink.height);
+  if (sc.inkA <= 0) return;
+  ictx.setTransform(dpr, 0, 0, dpr, 0, 0); ictx.lineCap = 'round'; ictx.lineJoin = 'round';
+  const c = S.cam;
+  if (sc.draw.step > 0 && CON) drawConstruction(c, sc.draw.step, sc.draw.p, sc.inkA);
+  for (const t of sc.trails) drawTrail(c, t, sc);
+  if (sc.plan) drawPlan(c, sc.inkA);
+}
+const toF = (u, v) => [TR[0] + u, 0, TR[1] - v];
+function pathPts(c, pts) {                // floor polyline -> one canvas path, breaking behind the camera
+  ictx.beginPath(); let pen = false;
+  for (const P of pts) { const q = P && project(c, P); if (!q) { pen = false; continue; } if (pen) ictx.lineTo(q[0], q[1]); else { ictx.moveTo(q[0], q[1]); pen = true; } }
+}
+function arcPts(cx, cy, r, a0, a1) {
+  const n = Math.max(6, Math.ceil(Math.abs(a1 - a0) * Math.max(8, r * 9))), out = [];
+  for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; out.push(toF(cx + r * Math.cos(a), cy + r * Math.sin(a))); }
+  return out;
+}
+function primSegs(pr) {                    // -> list of polylines in window coords
+  if (pr.t === 'l') {
+    const [x1, y1] = pr.p, [x2, y2] = pr.q, dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+    let lo = 0, hi = L; for (const m of pr.marks) { const s = (m[0] - x1) * ux + (m[1] - y1) * uy; lo = Math.min(lo, s); hi = Math.max(hi, s); }
+    lo -= 0.3; hi += 0.3; return [[[x1 + ux * lo, y1 + uy * lo], [x1 + ux * hi, y1 + uy * hi]]];
+  }
+  if (pr.full) return [[pr.c, pr.r, 0, 2 * PI]];
+  const span = clamp(0.45 / pr.r, 0.1, 0.7), out = [];
+  for (const m of pr.marks) { const a = Math.atan2(m[1] - pr.c[1], m[0] - pr.c[0]); out.push([pr.c, pr.r, a - span, a + span]); }
+  return out;
+}
+const ULTRA = '#2b3cc4';
+function drawConstruction(c, step, p, A) {
+  const pr = CON.prims, f = (VH / 2) / Math.tan(c.fov * D2R / 2) / Math.max(1, c.pos[1]), lw = clamp(f * 0.034, 1.1, 2.6);
+  const res = [];
+  for (let s = 1; s <= Math.min(step, 5); s++) {
+    const list = pr.filter(q => q.step === s), cur = s === step, m = list.length;
+    list.forEach((q, j) => {
+      const fr = cur ? clamp((p - 0.82 * j / Math.max(1, m)) / 0.18, 0, 1) : 1;
+      if (fr <= 0) return;
+      const guide = q.role === 'guide';
+      const alpha = guide ? (cur ? (s === 4 ? 0.3 : 0.72) : 0.26) : 1;
+      ictx.strokeStyle = guide ? `rgba(30,28,38,${alpha * A})` : q.role === 'outline' ? `rgba(28,27,34,${0.92 * A})` : cur || (s === 3 && step === 4) ? ULTRA : `rgba(28,27,34,${0.85 * A})`;
+      ictx.globalAlpha = guide || q.role === 'outline' ? 1 : A;
+      ictx.lineWidth = guide ? lw * 0.85 : lw * 1.9;
+      for (const sg of primSegs(q)) {
+        if (q.t === 'l') { const [a, b] = sg; pathPts(c, [toF(a[0], a[1]), toF(a[0] + (b[0] - a[0]) * fr, a[1] + (b[1] - a[1]) * fr)]); }
+        else { const [cc, r, a0, a1] = sg; pathPts(c, arcPts(cc[0], cc[1], r, a0, a0 + (a1 - a0) * fr)); }
+        ictx.stroke();
+      }
+    });
+  }
+  ictx.globalAlpha = A;
+  // closed-form results that the story draws as finished shapes (other foils, fillers, oculus)
+  if (step >= 5 && LAYS) {
+    const fr5 = step > 5 ? 1 : clamp((p - 0.55) / 0.4, 0, 1);
+    ictx.strokeStyle = step === 5 ? ULTRA : 'rgba(28,27,34,.85)'; ictx.lineWidth = lw * 1.6;
+    if (fr5 > 0) for (const ring of LAYS.ring) ring.petals.forEach((pt, i) => {
+      if (ring === LAYS.ring[0] && i === 0) return;
+      if ((i + (ring === LAYS.ring[0] ? 0 : 0.5)) / LAYS.n > fr5) return;
+      for (const [cc, rf] of R.foil(pt.c[0], pt.c[1], pt.r, 4, pt.ax)) { pathPts(c, arcPts(cc[0], cc[1], rf, 0, 2 * PI)); ictx.stroke(); }
+    });
+    if (step >= 6) {
+      const fr6 = step > 6 ? 1 : p; ictx.strokeStyle = ULTRA;
+      const fo = LAYS.fillOut[0], fi = LAYS.fillIn[0];
+      for (let i = 0; i < LAYS.n; i++) {
+        if (i / LAYS.n < fr6 * 1.6) { const a = fo.phase + 2 * PI * i / LAYS.n; pathPts(c, arcPts(fo.x * Math.cos(a), fo.x * Math.sin(a), fo.rho, 0, 2 * PI)); ictx.stroke(); }
+        if (fi && i / LAYS.n < fr6 * 1.6 - 0.3) { const a = fi.phase + 2 * PI * i / LAYS.n; pathPts(c, arcPts(fi.x * Math.cos(a), fi.x * Math.sin(a), fi.rho, 0, 2 * PI)); ictx.stroke(); }
+      }
+      const fc = clamp(fr6 * 1.6 - 0.6, 0, 1);
+      if (fc > 0) { ictx.globalAlpha = A * fc; for (const [cc, rf] of R.foil(0, 0, LAYS.Rc, LAYS.kc, LAYS.phaseC)) { pathPts(c, arcPts(cc[0], cc[1], rf, 0, 2 * PI)); ictx.stroke(); } }
+    }
+  }
+  ictx.globalAlpha = 1;
+}
+let LAYS = null;
+function trailCache(date, city, facing) {
+  const key = date.join('-') + '/' + city + '/' + facing; trailCache.m = trailCache.m || {};
+  return trailCache.m[key] || (trailCache.m[key] = trail(date, city, facing, 4));
+}
+function drawTrail(c, t, sc) {
+  if (t.a <= 0) return;
+  const pts = trailCache(t.date, sc.city, sc.facing), upto = t.upto == null ? sc.minute : t.upto;
+  const sel = pts.map(P => P && P[2] <= upto ? [P[0], 0.02, P[1]] : null);
+  ictx.globalAlpha = t.a * sc.inkA; ictx.strokeStyle = ULTRA; ictx.lineWidth = 2.4; ictx.setLineDash([2, 6]);
+  pathPts(c, sel); ictx.stroke(); ictx.setLineDash([]);
+  if (t.hours) {
+    ictx.fillStyle = ULTRA; ictx.font = '500 12px "Red Hat Mono", monospace'; ictx.textAlign = 'center';
+    for (const P of pts) if (P && P[2] % 60 === 0 && P[2] <= upto) {
+      const q = project(c, [P[0], 0.02, P[1]]); if (!q || q[0] < -20 || q[0] > VW + 20 || q[1] < -20 || q[1] > VH + 20) continue;
+      ictx.beginPath(); ictx.arc(q[0], q[1], 3.2, 0, 2 * PI); ictx.fill();
+      if (sc.plan || sc.mode === 'play') { ictx.fillStyle = 'rgba(28,27,34,.85)'; ictx.fillText(String(P[2] / 60), q[0], q[1] - 8); ictx.fillStyle = ULTRA; }
+    }
+  }
+  ictx.globalAlpha = 1;
+}
+function drawPlan(c, A) {
+  ictx.globalAlpha = A; ictx.strokeStyle = 'rgba(28,27,34,.9)'; ictx.lineWidth = 2;
+  pathPts(c, [[-80, 0.02, 0], [80, 0.02, 0]]); ictx.stroke();
+  ictx.strokeStyle = ULTRA; ictx.lineWidth = 6; pathPts(c, [[-R.RW, 0.02, 0], [R.RW, 0.02, 0]]); ictx.stroke();
+  ictx.font = '500 12px "Red Hat Mono", monospace'; ictx.fillStyle = 'rgba(28,27,34,.9)'; ictx.textAlign = 'center';
+  const lab = (txt, P, dy = 18) => { const q = project(c, P); if (q && q[1] > 30 && q[1] < VH - 10) ictx.fillText(txt, q[0], q[1] + dy); };
+  lab('wall · rose 20 m up', [0, 0, 0], -10);
+  const tz = (t, P) => lab(t, P, -12);
+  const m = (date) => { const pts = trailCache(date, STORY.city, STORY.facing).filter(Boolean); if (!pts.length) return null; let best = pts[0]; for (const p of pts) if (Math.abs(p[2] - 12 * 60 - 60) < Math.abs(best[2] - 12 * 60 - 60)) best = p; return best; };
+  ictx.textAlign = 'left';
+  const lj = m(JUN), le = m(EQX), ld = m(DEC);
+  const side = (P, txt) => { if (!P) return; const q = project(c, [P[0], 0, P[1]]); if (q) { ictx.fillStyle = ULTRA; ictx.fillText(txt, Math.min(VW - 150, q[0] + 12), q[1] + 18); } };
+  side(lj, '21 June'); side(le, '20 March'); side(ld, '21 December');
+  ictx.globalAlpha = 1; void tz;
+}
+
+// ------------------------------------------------------------------ render
+const DISC = R.discSamples(48);
+function uploadDisc(u, ns) {
+  const d = R.discSamples(ns), a = new Float32Array(96); d.forEach((v, i) => a.set(v, 2 * i)); gl.uniform2fv(u.uDisc, a); gl.uniform1i(u.uNS, ns);
+}
+function setCommon(u, k, sunScale, overcast, glaze) {
+  const semi = k.sun.semi * D2R * sunScale;
+  gl.uniform3f(u.uSun, k.dir[0], k.dir[1], k.dir[2]); gl.uniform1f(u.uSunR, semi);
+  const day = sstep(-6, 4, k.sun.elev);
+  gl.uniform1f(u.uS, k.lit ? 17 * (1 - overcast) : 0); gl.uniform1f(u.uDay, day);
+  gl.uniform1f(u.uH, R.H); gl.uniform1f(u.uRW, R.RW); gl.uniform1f(u.uWall, R.WALL); gl.uniform1f(u.uExt, EXT); gl.uniform1f(u.uTex, 2 * EXT / WTEX);
+  gl.uniform1f(u.uR1, R.RW - R.FRAME); gl.uniform1f(u.uGlaze, glaze); if (u.uTr) { gl.uniform3f(u.uTr, TR[0], TR[1], 7.2); gl.uniform1f(u.uTrA, S.trA || 0); } gl.uniform1f(u.uTime, S.t); gl.uniform1f(u.uExp, 1.0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, wtex); gl.uniform1i(u.uWin, 0);
+}
+let K = null;
+function render() {
+  const sc = S.sc, k = K;
+  const w = Math.max(1, Math.round(VW * S.dpr * S.scale)), h = Math.max(1, Math.round(VH * S.dpr * S.scale));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const B = camBasis(S.cam), f = (h / 2) / Math.tan(S.cam.fov * D2R / 2);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
+  gl.useProgram(PM.p); const u = PM.u;
+  setCommon(u, k, S.sunScale, S.overcast, S.glaze);
+  gl.bindSampler(0, null);
+  gl.uniform2f(u.uRes, w, h); gl.uniform3fv(u.uPos, S.cam.pos); gl.uniform3fv(u.uCR, B.r); gl.uniform3fv(u.uCU, B.u); gl.uniform3fv(u.uCF, B.f); gl.uniform1f(u.uFocal, f);
+  uploadDisc(u, S.ns); gl.uniform1i(u.uVol, S.vol); gl.uniform1i(u.uJit, 1); gl.uniform1f(u.uForceLod, -1);
+  gl.bindVertexArray(vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  drawInk(sc);
+}
+
+// probe: floor irradiance on a grid (RGBA32F), for tests and the patch readout
+let pfb = null, ptex = null, pw = 0, ph = 0;
+function probeGrid(x0, z0, dx, dz, nx, nz, ns = 48, nearest = true, opts = {}) {
+  if (!CBF) return null;
+  if (nx !== pw || nz !== ph) {
+    if (ptex) gl.deleteTexture(ptex); ptex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, ptex); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, nx, nz);
+    pfb = pfb || gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, pfb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, ptex, 0); pw = nx; ph = nz;
+  }
+  const k = opts.sky || K;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, pfb); gl.viewport(0, 0, nx, nz);
+  gl.useProgram(PP.p); const u = PP.u;
+  setCommon(u, k, opts.sunScale ?? S.sunScale, 0, opts.glaze ?? 1);
+  gl.uniform1f(u.uS, k.lit ? 1 : 0);
+  if (nearest) gl.bindSampler(0, nearestSampler);
+  uploadDisc(u, ns); gl.uniform1i(u.uJit, 0); gl.uniform1f(u.uForceLod, nearest ? 0 : -1);
+  gl.uniform2f(u.uP0, x0 - 0.5 * dx, z0 - 0.5 * dz); gl.uniform2f(u.uPd, dx, dz);
+  gl.bindVertexArray(vao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  const out = new Float32Array(nx * nz * 4); gl.readPixels(0, 0, nx, nz, gl.RGBA, gl.FLOAT, out);
+  gl.bindSampler(0, null); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return out;
+}
+function winPixels() {                    // the glass texture, level 0, RGBA8
+  gl.bindFramebuffer(gl.FRAMEBUFFER, wfb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, wtex, 0);
+  const a = new Uint8Array(WTEX * WTEX * 4); gl.readPixels(0, 0, WTEX, WTEX, gl.RGBA, gl.UNSIGNED_BYTE, a);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); return a;
+}
+
+// ------------------------------------------------------------------ frame
+let last = performance.now(), dts = [];
+function resize() {
+  VW = innerWidth; VH = innerHeight; S.dpr = Math.min(devicePixelRatio || 1, 2);
+  ink.width = Math.round(VW * S.dpr); ink.height = Math.round(VH * S.dpr);
+}
+function quality() {
+  const L = [[0.9, 40, 24], [0.7, 24, 14], [0.42, 10, 8], [0.3, 6, 0]];
+  const q = L[S.lite]; S.scale = S.dpr > 1.5 ? q[0] * 0.72 : q[0]; S.ns = q[1]; S.vol = q[2];
+  if (OG) { S.scale = 1; S.ns = 48; S.vol = 40; }
+}
+function update(dt) {
+  S.t += dt; S.dtLast = dt;
+  if (!STILL && !FIXED && !OG && S.s < 0.6) S.lapse = (S.lapse + dt * 1.0) % 150;
+  if (FIXED || OG) S.lapse = S.lapseFixed || 0;
+  S.s = OG ? 0 : storyPos();
+  const sc = scene(S.s); S.sc = sc; S.ch = sc.ch;
+  const was = S.mode; S.mode = sc.mode; document.documentElement.classList.toggle('play', sc.mode === 'play');
+  if (was !== S.mode) log('mode', { mode: S.mode });
+  const d = sc.mode === 'play' ? play : { n: 12, rings: 2, k: 4 };
+  buildWindow(d.n, d.rings, d.k);
+  S.cam = sc.cam; S.trA = sc.trA || 0; S.sunScale = sc.sunScale; S.overcast = sc.overcast; S.glaze = sc.glaze;
+  S.city = sc.city; S.date = sc.date; S.minute = sc.minute; S.facing = sc.facing;
+  K = sky(sc.date, sc.minute, sc.city, sc.facing);
+  readouts();
+}
+function frame(now) {
+  if (!FIXED) requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  try {
+    update(dt); render(); S.frame++; window.__frame = S.frame;
+    window.__state = { t: S.t, frame: S.frame, ch: S.ch, s: S.s };
+    if (!FIXED && !SOFT && S.frame > 30) {
+      dts.push(dt); if (dts.length > 40) dts.shift();
+      if (dts.length === 40) { const md = dts.slice().sort((a, b) => a - b)[20]; if (md > 0.03 && S.lite < 3) { S.lite++; quality(); dts = []; log('lite', { lite: S.lite }); } }
+    } else if (SOFT && !FIXED && S.frame > 20) {
+      dts.push(dt); if (dts.length > 30) dts.shift();
+      if (dts.length === 30) { const md = dts.slice().sort((a, b) => a - b)[15]; if (md > 0.09 && S.lite < 3) { S.lite++; quality(); dts = []; log('lite', { lite: S.lite }); } }
+    }
+  } catch (e) { console.error(e); }
+}
+
+// ------------------------------------------------------------------ readouts
+let lastRO = '';
+function readouts() {
+  const C = CITIES[S.city], k = K;
+  const el = k.sun.elev, sunTxt = el < -0.833 ? 'sun down' : k.lit ? `sun ${Math.round(el)}° up` : 'sun behind wall';
+  const ro = C[0] + '|' + S.date.join('-') + '|' + Math.round(S.minute) + '|' + sunTxt;
+  if (ro === lastRO) return; lastRO = ro;
+  $('ck-place').textContent = C[0];
+  $('ck-date').textContent = S.date[2] + ' ' + MON[S.date[1] - 1] + ' ' + S.date[0];
+  $('ck-time').textContent = hhmm(S.minute);
+  $('ck-sun').textContent = sunTxt;
+  if (S.ch === 'day') $('v-daytime').textContent = hhmm(S.minute);
+  if (S.mode === 'play') playNote();
+}
+function playNote() {
+  const k = K, f = R.toFloor(0, 0, k.dir);
+  let t;
+  if (k.sun.elev < -0.833) t = 'The sun is below the horizon.';
+  else if (!k.lit) t = `The sun is ${Math.round(k.sun.elev)}° up but behind the wall: no patch.`;
+  else if (!f.ok) t = 'The sun is so oblique that the wall’s own thickness swallows the beam.';
+  else t = `Patch centre ${f.z.toFixed(1)} m out from the wall, ${Math.abs(f.x).toFixed(1)} m ${f.x < 0 ? 'left' : 'right'}; sun ${Math.round(k.sun.elev)}° up.`;
+  $('t-note').textContent = t; $('v-play').textContent = t;
+}
+
+// ------------------------------------------------------------------ controls
+function seg(host, items, get, set) {
+  const el = $(host); el.innerHTML = '';
+  for (const [v, txt] of items) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.dataset.v = String(v);
+    b.addEventListener('click', () => { set(v); sync(); });
+    el.appendChild(b);
+  }
+}
+function sync() {
+  for (const [host, val] of [['t-n', play.n], ['t-r', play.rings], ['t-k', play.k], ['t-f', play.facing], ['t-s', play.sunMode]])
+    for (const b of $(host).children) b.setAttribute('aria-pressed', String(b.dataset.v === String(val)));
+  $('t-city').value = String(play.city);
+  $('t-date').value = play.date.map((v, i) => String(v).padStart(i ? 2 : 4, '0')).join('-');
+  $('t-time').value = String(play.minute); $('t-tv').textContent = hhmm(play.minute);
+  if (FIXED) step(1);
+}
+function poke(ev, v) { play.touched = true; log('ctl', { ev, v, n: play.n, rings: play.rings, k: play.k, city: play.city, date: play.date.slice(), minute: play.minute, facing: play.facing, sun: play.sunMode }); }
+function setupControls() {
+  seg('t-n', [6, 8, 10, 12, 16, 20, 24].map(v => [v, String(v)]), () => play.n, v => { play.n = v; poke('n', v); });
+  seg('t-r', [1, 2, 3].map(v => [v, String(v)]), () => play.rings, v => { play.rings = v; poke('rings', v); });
+  seg('t-k', [[0, '○'], [3, '3'], [4, '4'], [6, '6']], () => play.k, v => { play.k = v; poke('k', v); });
+  seg('t-f', [[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']], () => play.facing, v => { play.facing = v; poke('facing', v); });
+  seg('t-s', [['point', 'point'], ['real', 'real'], ['big', '×4']], () => play.sunMode, v => { play.sunMode = v; poke('sun', v); });
+  const cs = $('t-city'); CITIES.forEach((c, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = c[0]; cs.appendChild(o); });
+  cs.addEventListener('change', e => { play.city = +e.target.value; poke('city', play.city); sync(); });
+  $('t-date').addEventListener('change', e => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(e.target.value); if (!m) return; const y = clamp(+m[1], 1900, 2100); play.date = [y, +m[2], +m[3]]; poke('date', play.date.join('-')); sync(); });
+  $('t-time').addEventListener('input', e => { const v = +e.target.value; play.minute = v; poke('time', v); $('t-tv').textContent = hhmm(v); if (FIXED) step(1); });
+  sync();
+}
+
+// ------------------------------------------------------------------ boot
+function step(n = 1) { for (let i = 0; i < n; i++) { update(1 / 60); S.frame++; } render(); window.__frame = S.frame; window.__state = { t: S.t, frame: S.frame, ch: S.ch, s: S.s }; }
+function boot() {
+  resize(); quality(); setupControls();
+  LAYS = R.layout(12, 2, 4); CON = R.construct(12, 2, 4);
+  DAYSPAN = dayTimes(STORY.date, STORY.city, STORY.facing); EQSPAN = dayTimes(EQX, STORY.city, STORY.facing);
+  {
+    const k = sky(STORY.date, STORY.minute, STORY.city, STORY.facing), D = R.toFloor(0, 0, k.dir).t;
+    $('v-pen').textContent = Math.round(2 * D * k.sun.semi * D2R * 100) + ' cm';
+    $('v-q').textContent = LAYS.q.toFixed(3);
+    $('v-open').textContent = String(2 * 12 + 12 + 12 + 1);
+    $('v-dayname').textContent = STORY.date[2] + ' ' + MONL[STORY.date[1] - 1];
+    const ke = sky(EQX, 13 * 60, STORY.city, STORY.facing); $('v-eq').textContent = R.toFloor(0, 0, ke.dir).z.toFixed(1) + ' m';
+  }
+  const mk = Q.get('mark');
+  if (mk) { const i = CH.indexOf(mk.replace(/:.*/, '')); if (i >= 0) { const p = mk.includes(':') ? +mk.split(':')[1] : 0.99; measure(); scrollTo(0, Math.round(SEC[i][0] + p * SEC[i][1] - innerHeight * 0.5)); } }
+  if (Q.has('lapse')) S.lapseFixed = +Q.get('lapse');
+  addEventListener('resize', () => { resize(); measure(); if (FIXED) step(1); });
+  document.fonts && document.fonts.ready.then(() => { measure(); if (FIXED) step(1); });
+  if (FIXED) addEventListener('scroll', () => step(1), { passive: true });
+  S.ready = true;
+  if (FIXED || OG) { step(1); }
+  else requestAnimationFrame(t => { last = t; frame(t); });
+  log('boot', { lite: S.lite, renderer: rendererName });
+}
+
+window.step = n => step(n);
+window.rose = {
+  state() {
+    if (!S.ready) return { ready: false };
+    const k = K, f = R.toFloor(0, 0, k.dir);
+    return {
+      ready: true, frame: S.frame, t: S.t, s: S.s, ch: S.ch, mode: S.mode, fixed: FIXED, still: STILL, lite: S.lite, soft: SOFT, renderer: rendererName,
+      scale: S.scale, ns: S.ns, vol: S.vol, cbf: CBF, wtex: WTEX, design: { ...design() }, winKey,
+      place: CITIES[S.city], city: S.city, date: S.date.slice(), minute: S.minute, facing: S.facing, utc: k.ms, jd: k.jd, off: k.off,
+      sun: { ...k.sun }, dir: k.dir.slice(), lit: k.lit, patch: { x: f.x, z: f.z, ok: f.ok, t: f.t },
+      sunScale: S.sunScale, overcast: S.overcast, glaze: S.glaze, draw: { ...S.sc.draw }, cam: { ...S.cam, pos: S.cam.pos.slice() },
+      openings: S.openings, prims: CON ? CON.prims.length : 0, play: { ...play, date: play.date.slice() }, story: { ...STORY },
+      dayspan: DAYSPAN, eqspan: EQSPAN, log: LOG.slice(),
+    };
+  },
+  probeGrid, winPixels, sky, trail, dayTimes, utcOf, tzOffsetMin, CITIES, engine: R, project: P => project(S.cam, P),
+  construct: (n, r, k) => { const c = R.construct(n, r, k); return { Rc: c.Rc, ring: c.ring.map(a => a.map(x => [x.I[0], x.I[1], x.r])), foils: c.foils, prims: c.prims.length }; },
+  setPlay(o) { Object.assign(play, o); play.touched = true; log('api', o); sync(); },
+};
+boot();
+})();
+</script>
+</body>
+</html>

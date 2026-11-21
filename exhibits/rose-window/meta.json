@@ -1,0 +1,11 @@
+{
+ "slug": "rose-window",
+ "title": "Rose Window",
+ "no": "054",
+ "date": "2026-11-22",
+ "kind": "Compass geometry · sunlight",
+ "blurb": "A twelve-metre rose window drawn step by step with compass and straightedge, glazed and raised into a wall. Every point of floor looks back through the sun's half-degree disc to find its colour, with the sun placed by NOAA's formulas for any city and day. Scroll through one April day, then a year: on the equinox the patch runs dead straight.",
+ "color": "#fc80e0",
+ "exhibit": "roseWindow",
+ "lane": "science"
+}
