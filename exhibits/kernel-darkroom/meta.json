@@ -1,0 +1,11 @@
+{
+ "slug": "kernel-darkroom",
+ "title": "Kernel Darkroom",
+ "no": "055",
+ "date": "2026-11-23",
+ "kind": "Convolution kernels · Canvas 2D",
+ "blurb": "A darkroom under a red safelight where every filter is a grid of numbers. Type your own, expose a print of an Ansel Adams, Lewis Hine or Apollo 11 negative and take home the black-and-white print. Then a tiny network learns the filter behind old prints: one filter recovers a relief, a line drawing needs ReLUs.",
+ "color": "#800804",
+ "exhibit": "kernelDarkroom",
+ "lane": "ml"
+}
