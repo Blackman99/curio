@@ -1,0 +1,1100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Miura Fold · Curio No. 056</title>
+<meta name="description" content="A deployable solar array on a blueprint. Pull one corner and all 80 panels move together: Miura-ori rigid folding in closed form, checked against Koryo Miura's 1985 paper.">
+<meta property="og:title" content="Miura Fold · Curio No. 056">
+<meta property="og:description" content="Pull one corner and the whole folded solar array moves with it. Miura-ori rigid origami, computed in closed form on a live blueprint.">
+<meta property="og:image" content="https://blackman99.github.io/curio/miura-fold/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Miura Fold · Curio No. 056">
+<meta name="twitter:description" content="Pull one corner and the whole folded solar array moves with it. Miura-ori rigid origami on a live blueprint.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/miura-fold/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=B612+Mono:wght@400;700&family=B612:wght@400;700&family=Sofia+Sans+Extra+Condensed:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#2a64a6; --paper2:#2f6bb0; --ink:#ffffff; --ink2:rgba(255,255,255,.72); --ink3:rgba(255,255,255,.42);
+  --line:rgba(255,255,255,.55); --hair:rgba(255,255,255,.22); --or:#ff8a1f; --or2:#ffb36b;
+  --title:"Sofia Sans Extra Condensed", "Arial Narrow", sans-serif; --body:"B612", system-ui, sans-serif; --mono:"B612 Mono", ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;overflow:hidden;
+  background-image:
+    linear-gradient(rgba(255,255,255,.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.075) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+    radial-gradient(120% 90% at 50% 45%, #2f6db2 0%, #2a64a6 55%, #245a97 100%);
+  background-size:60px 60px,60px 60px,12px 12px,12px 12px,100% 100%;
+  background-position:-1px -1px,-1px -1px,-1px -1px,-1px -1px,0 0}
+a{color:inherit}
+#frame{position:fixed;inset:14px;border:1.5px solid var(--line);pointer-events:none;z-index:1}
+#frame::before{content:"";position:absolute;inset:6px;border:1px solid var(--hair)}
+.zone{position:absolute;font:10px var(--mono);color:var(--ink3);letter-spacing:.1em}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;z-index:2;cursor:grab}
+#gl.grab{cursor:grabbing}
+#gl.near{cursor:pointer}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:3}
+.dim{position:absolute;transform:translate(-50%,-50%);font:700 12px/1 var(--mono);color:var(--or);background:var(--paper);padding:3px 5px;white-space:nowrap;letter-spacing:.02em}
+.tag{position:absolute;font:10px/1.2 var(--mono);color:var(--ink2);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+#pull{position:absolute;transform:translate(14px,-50%);font:700 11px/1 var(--mono);color:var(--paper);background:var(--or);padding:4px 7px;letter-spacing:.08em;text-transform:uppercase;transition:opacity .4s}
+#pull.off{opacity:0}
+
+header#hd{position:fixed;left:30px;top:28px;z-index:5;display:flex;gap:10px;align-items:stretch;font:11px/1 var(--mono);letter-spacing:.06em}
+header#hd a.home{display:block;padding:7px 10px;border:1px solid var(--line);text-decoration:none;color:var(--ink);background:var(--paper)}
+header#hd a.home:hover{background:var(--ink);color:var(--paper)}
+header#hd .stamp{display:block;padding:7px 10px;border:1px solid var(--line);color:var(--ink2);background:var(--paper)}
+#intro{position:fixed;left:30px;top:74px;z-index:5;width:330px}
+h1{font:800 64px/.86 var(--title);margin:0;letter-spacing:.01em;text-transform:uppercase}
+h1 small{display:block;font:500 17px/1.2 var(--title);letter-spacing:.14em;color:var(--ink2);margin-top:10px}
+#say{margin:16px 0 0;padding:10px 0 0;border-top:1px solid var(--line);font:15px/1.45 var(--body);min-height:3.2em;max-width:320px;transition:opacity .18s}
+#say.fade{opacity:0}
+#say b{color:var(--or);font-weight:700}
+
+figure{margin:0}
+.view{position:fixed;z-index:5;background:var(--paper);border:1px solid var(--line)}
+.view figcaption{display:flex;justify-content:space-between;gap:8px;font:10px/1 var(--mono);letter-spacing:.1em;color:var(--ink2);padding:7px 9px 5px;border-bottom:1px solid var(--hair);text-transform:uppercase}
+.view figcaption b{color:var(--ink);font-weight:700}
+.view svg{display:block}
+#locus{left:30px;bottom:30px;width:300px}
+#pattern{right:30px;top:28px;width:270px}
+
+#block{position:fixed;right:30px;bottom:30px;z-index:5;width:470px;background:var(--paper);border:1.5px solid var(--line);display:grid;grid-template-columns:1fr 1fr 1fr;font:10px/1.2 var(--mono);letter-spacing:.06em}
+#block>div{border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:7px 9px 8px;min-width:0}
+#block>div:nth-child(3n){border-right:0}
+#block .k{display:block;color:var(--ink3);text-transform:uppercase;font-size:9px;margin-bottom:5px;letter-spacing:.12em}
+#block .v{font:700 15px/1 var(--mono);color:var(--ink)}
+#block .wide{grid-column:span 2}
+#block .full{grid-column:1/-1}
+#block .ttl{font:800 26px/.9 var(--title);text-transform:uppercase;letter-spacing:.03em}
+.row{display:flex;align-items:center;gap:8px}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;width:100%;height:22px;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line)}
+input[type=range]::-moz-range-track{height:2px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:18px;margin-top:-8px;background:var(--or);border:0;border-radius:0}
+input[type=range]::-moz-range-thumb{width:12px;height:18px;background:var(--or);border:0;border-radius:0}
+button,select{font:700 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);background:transparent;border:1px solid var(--line);padding:6px 7px;cursor:pointer;border-radius:0}
+button:hover{background:rgba(255,255,255,.1)}
+button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+button.go{border-color:var(--or);color:var(--or)}
+button.go:hover{background:var(--or);color:var(--paper)}
+select{padding:5px 4px;background:var(--paper)}
+select option{background:#2a64a6;color:#fff}
+.seg{display:flex}
+.seg button+button{border-left:0}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+
+details#what{margin-top:12px;font:13px/1.5 var(--body);position:relative}
+details#what summary{cursor:pointer;list-style:none;font:700 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:8px 10px;background:var(--paper);display:inline-block}
+details#what summary::-webkit-details-marker{display:none}
+details#what[open] summary{background:var(--ink);color:var(--paper)}
+details#what .body{position:absolute;left:0;top:calc(100% + 8px);width:min(560px,calc(100vw - 80px));max-height:calc(100vh - 330px);overflow:auto;background:var(--paper);border:1.5px solid var(--line);padding:16px 18px;box-shadow:0 12px 40px rgba(10,30,70,.45)}
+details#what h2{font:800 26px/1 var(--title);text-transform:uppercase;margin:4px 0 8px;letter-spacing:.02em}
+details#what h3{font:700 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--or);margin:16px 0 6px}
+details#what p,details#what li{margin:0 0 8px;color:var(--ink)}
+details#what ul{padding-left:18px;margin:0 0 8px}
+details#what table{border-collapse:collapse;font:11px/1.3 var(--mono);margin:4px 0 10px}
+details#what td,details#what th{border:1px solid var(--hair);padding:3px 6px;text-align:right}
+details#what th{color:var(--ink2);font-weight:400}
+details#what a{color:var(--or2)}
+
+#ogblock{display:none}
+.og #ogblock{display:block;position:fixed;right:44px;bottom:44px;z-index:5;width:430px;background:var(--paper);border:1.5px solid var(--line);font:10px/1.2 var(--mono)}
+.og #ogblock>div,.og #ogblock .r>div{padding:8px 10px;border-bottom:1px solid var(--hair)}
+.og #ogblock .r{display:grid;grid-template-columns:1fr 1fr;padding:0}
+.og #ogblock .r>div+div{border-left:1px solid var(--hair)}
+.og #ogblock>div:last-child{border-bottom:0}
+.og #ogblock .k{display:block;color:var(--ink3);text-transform:uppercase;font-size:9px;margin-bottom:5px;letter-spacing:.12em}
+.og #ogblock .ttl{font:800 28px/.9 var(--title);text-transform:uppercase}
+.og #ogblock .v{font:700 16px/1 var(--mono)}
+.og #ogblock .n{font:700 12px/1.2 var(--mono);color:var(--or)}
+.nofx *{transition:none!important;animation:none!important}
+.og header#hd,.og #block,.og details#what,.og #pull,.og #pattern{display:none}
+.og #intro{top:46px;left:44px}
+.og h1{font-size:92px}
+.og #say{font-size:18px;max-width:360px}
+.og #locus{left:44px;bottom:44px;width:320px}
+
+@media (max-width:1180px){
+  #intro{width:280px} h1{font-size:54px}
+  #pattern{width:230px}
+  #block{width:430px}
+}
+@media (max-height:760px) and (min-width:761px){
+  #pattern{display:none}
+  #locus{width:260px}
+  h1{font-size:50px}
+  #say{font-size:14px}
+}
+@media (max-width:760px){
+  body{overflow:auto;height:auto;background-attachment:local}
+  html{height:auto}
+  #frame{display:none}
+  header#hd{position:static;padding:14px 14px 0}
+  #intro{position:static;width:auto;padding:14px 14px 0}
+  h1{font-size:46px}
+  #say{max-width:none;font-size:14px;min-height:0}
+  #stagewrap{position:relative;height:min(108vw,460px);margin:10px 0 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+  #gl{position:absolute;inset:0}
+  #labels{position:absolute;inset:0;overflow:hidden}
+  #block{position:static;width:auto;margin:12px 14px 0;grid-template-columns:1fr 1fr}
+  #block>div{border-right:1px solid var(--hair)!important}
+  #block .wide{grid-column:auto}
+  #bDwg{display:none} #bTitle,#bSkew,#bPre{grid-column:1/-1!important}
+  #bTitle{order:1} #bSkew{order:2} #bFold{order:3} #bPan{order:4} #bPre{order:5} #bMove{order:6} #bView{order:7}
+  #bFold,#bMove{border-right:1px solid var(--hair)} #bPan,#bView,#bTitle,#bSkew,#bPre{border-right:0!important}
+  .views{display:grid;grid-template-columns:1fr;gap:12px;padding:12px 14px 0}
+  .view{position:static;width:auto!important}
+  .view svg{width:100%;height:auto}
+  details#what{margin:12px 0 0}
+  details#what .body{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
+}
+</style>
+</head>
+<body>
+<div id="frame" aria-hidden="true"></div>
+<header id="hd"><a class="home" href="../">← Curio</a><span class="stamp">Curio · No. 056 · Miura fold</span></header>
+<section id="intro">
+  <h1>Miura Fold<small>A solar array that opens with one pull</small></h1>
+  <p id="say" aria-live="polite">Eighty panels, one motion.</p>
+  <details id="what"><summary>What is this?</summary><div class="body"><h2>Miura Fold</h2>
+<p>Every panel on this drawing is the same parallelogram, and every crossing joins four creases at the same four angles. In 1985 Koryo Miura of Japan's Institute of Space and Astronautical Science (ISAS) showed that a sheet creased like this folds in two perpendicular directions <em>at once</em>, as a single motion: “the deformation given to a particular fundamental region will propagate over the entire surface in an instant.” ISAS flew the idea as the 2D Array experiment on the Space Flyer Unit (launched 1995): a membrane stowed in Miura-ori and deployed “by simply pulling the ends of the stowed surface”.</p>
+<p>The array here is a generic one: 10 × 8 panels with straight edges ξ = 0.50 m and zigzag edges 0.45 m, the zigzag leaning θ = 6° off square, the value Miura plotted. Flat it measures 5.05 × 3.58 m.</p>
+
+<h3>What you can do</h3>
+<ul>
+<li><b>Drag the orange corner</b>, or any crossing of creases. One corner is bolted to the root fitting. Whatever you hold can only move along its own track (the orange dashed line for the corner): the sheet has one degree of freedom, so the page finds the fold angle ω that puts the crossing closest to your pointer.</li>
+<li><b>Crease skew θ.</b> 0° is a plain grid, like a road map. 6° is Miura's figure. Try 20°.</li>
+<li><b>Panels</b> changes the sheet size; <b>Lines</b> / <b>Panels</b> switch between the drawing (hidden edges dashed) and hardware with cells and hinges. <b>Stow</b> and <b>Deploy</b> run the whole motion. Drag empty space to turn the view, scroll to zoom, double-click to reset.</li>
+</ul>
+
+<h3>What is computed</h3>
+<p>Miura's equations (1)–(2): when every panel stands at angle ω to the original plane, the sheet shortens to S<sub>x</sub> = cos[sin<sup>−1</sup>(cos θ sin ω)] along the straight creases and S<sub>y</sub> = cos ω / cos[sin<sup>−1</sup>(cos θ sin ω)] across them. Crossing (i, j) then sits at x = i ξ S<sub>x</sub> + V·[j odd], y = j η S<sub>y</sub>, z = H·[i odd], with η = 0.45 cos θ, V = 0.45 sin θ / S<sub>x</sub> and H = ξ sin ω cos θ. The <b>Locus</b> chart is that pair (S<sub>x</sub>, S<sub>y</sub>); with an even number of panels each way it is exactly the path of the free corner.</p>
+<p>Every frame the page re-measures every panel from the vertices it draws: both edge lengths, the corner angle, and how far the fourth corner is from the plane of the other three. Worst so far in this visit: <span id="ckv">—</span>.</p>
+<p><b>Checked against an independent fold.</b> A Python script starts from the flat crease pattern and does not use the formulas above: it finds the fold angles at one crossing by requiring the four rotations about its creases to close up, then turns panel after panel about its creases. In 66 configurations (θ 0.5–30°, ω 5–89.5°) its sheet matches the page's to 3×10<sup>−13</sup> m after a rigid move; across all 189 configurations the page's engine matches a numpy transcription of the equations to 7×10<sup>−13</sup> m.</p>
+<p><b>Checked against Miura's Fig. 8.</b> The open circles in the Locus chart are the 13 points read off the scanned figure (θ = 6°, ω = 0°–90°). After calibrating the axes, the largest gap to the equations is 0.005 of full scale, about the width of a printed dot.</p>
+
+<h3>What surprised me</h3>
+<p>One motion, but a lopsided one. With θ = 6°, the last 10° of ω before folded flat take Y from 0 to 86% of its length while X only goes from 10% to 20%; 44% of the corner's whole journey happens there. Miura describes the same “two distinct phases”. The creases show why: the zigzag creases always fold at exactly 2ω, but the straight creases are only at 11.9° when the zigzags reach 90°, and 61° when they reach 160°. One family is nearly closed before the other has started.</p>
+<p>So θ sets how sharp the turn is. At 1° the sheet still has 99.5% of its Y length at ω = 80°; at 0° the turn becomes a corner and the second direction needs a second, separate fold, the road-map problem Miura was escaping. At 20° Y is already down to 46% at ω = 80°: the two directions travel together.</p>
+<table><tr><th>θ</th><th>S<sub>x</sub> at ω = 80°</th><th>S<sub>y</sub> at ω = 80°</th></tr><tr><td>0°</td><td>0.17</td><td>1.00</td></tr><tr><td>1°</td><td>0.17</td><td>1.00</td></tr><tr><td>6°</td><td>0.20</td><td>0.86</td></tr><tr><td>12°</td><td>0.27</td><td>0.65</td></tr><tr><td>20°</td><td>0.38</td><td>0.46</td></tr><tr><td>30°</td><td>0.52</td><td>0.33</td></tr></table>
+
+<h3>What is not real</h3>
+<ul>
+<li>The kinematics are for panels of zero thickness. The drawn panels are 8 mm plates set 12 mm back from every crease, and the motion stops when any two panels come within 2.5° of each other (ω = 88.75°), so the stowed sheet here is a 0.97 × 0.73 × 0.50 m block rather than a flat stack. Real thick panels need offset hinges.</li>
+<li>The cells, hinges and root fitting are illustrative. They are not the hardware of the 2D Array, which was a membrane.</li>
+<li>Needs WebGL. Works in current Chrome, Edge, Firefox and Safari.</li>
+</ul>
+
+<h3>Sources</h3>
+<ul>
+<li>Koryo Miura, “Method of Packaging and Deployment of Large Membranes in Space”, ISAS Report No. 618, December 1985: equations (1)–(2), Fig. 8 and the quotes above (<a href="https://jaxa.repo.nii.ac.jp/records/31382">JAXA repository</a>).</li>
+<li>ISAS, “SFU: 2D Array” (<a href="https://web.archive.org/web/20051125174630/http://www.isas.jaxa.jp/e/enterp/missions/complate/sfu/2dsa.shtml">archived page, 2005</a>).</li>
+</ul></div></details>
+</section>
+<div id="stagewrap"><canvas id="gl" aria-label="Folded solar array. Drag a crease crossing to fold or deploy it; drag empty space to turn the view."></canvas><div id="labels"></div></div>
+<section id="block" aria-label="Title block and controls">
+  <div class="wide" id="bTitle"><span class="k">Title</span><span class="ttl">Deployable array, Miura-ori</span></div>
+  <div id="bDwg"><span class="k">Dwg no.</span><span class="v">056-01</span></div>
+  <div class="wide" id="bSkew"><span class="k">Crease skew θ <span id="thv"></span></span><div class="row"><input id="theta" type="range" min="0" max="30" step="0.5" value="6" aria-label="Crease skew theta in degrees"></div></div>
+  <div id="bFold"><span class="k">Fold ω</span><span class="v" id="omv">0°</span></div>
+  <div class="wide" id="bPre"><span class="k">Skew presets</span><div class="btns"><button data-th="0">0° map</button><button data-th="6">6° Miura</button><button data-th="20">20°</button></div></div>
+  <div id="bPan"><span class="k">Panels</span><div class="row"><select id="nx" aria-label="Panels along X"></select>×<select id="ny" aria-label="Panels along Y"></select></div></div>
+  <div class="wide" id="bMove"><span class="k">Move</span><div class="btns"><button class="go" id="stow">Stow</button><button class="go" id="deploy">Deploy</button></div></div>
+  <div id="bView"><span class="k">View</span><div class="seg"><button id="vDraw" aria-pressed="true">Lines</button><button id="vHard" aria-pressed="false">Panels</button></div></div>
+</section>
+<div id="ogblock" aria-hidden="true"><div><span class="k">Title</span><span class="ttl">Deployable array, Miura-ori</span></div><div class="r"><div><span class="k">Dwg no.</span><span class="v">056-01</span></div><div><span class="k">Sheet</span><span class="v">Curio</span></div></div><div><span class="k">Note</span><span class="n">One degree of freedom · θ = 6° · Miura 1985</span></div></div>
+<div class="views">
+<figure class="view" id="locus"><figcaption><span><b>Locus</b> · free corner</span><span id="locn">○ Miura 1985</span></figcaption><svg id="locsvg" viewBox="0 0 300 250" width="300" height="250" aria-label="Chart of the free corner's shortening ratios"></svg></figure>
+<figure class="view" id="pattern"><figcaption><span><b>Developed</b> pattern</span><span id="patn"></span></figcaption><svg id="patsvg" viewBox="0 0 270 190" width="270" height="190" aria-label="Flat crease pattern"></svg></figure>
+</div>
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+// Miura-ori rigid folding, closed form (Miura 1985, ISAS Report 618, eqs. 1-2).
+// Units: metres and degrees at the interface. Pure functions, no DOM.
+function makeMiura() {
+  const D = Math.PI / 180;
+  // theta: skew of the zigzag creases from square (Miura's theta; sector angle alpha = 90 - theta)
+  // omega: angle between every panel and the original plane (0 = flat, 90 = folded flat)
+  // xi: length of the straight-crease edge, c: length of the zigzag-crease edge
+  function cell(theta, omega, xi, c) {
+    const ct = Math.cos(theta * D), st = Math.sin(theta * D), cw = Math.cos(omega * D), sw = Math.sin(omega * D);
+    const Sx = Math.sqrt(1 - ct * ct * sw * sw);          // Miura (1): cos[asin(cos(theta) sin(omega))]
+    const Sy = Sx > 0 ? cw / Sx : 1;                       // Miura (2): cos(omega) / cos[asin(...)]
+    return {
+      Sx, Sy,
+      Lx: xi * Sx,                                          // X step between zigzag lines
+      H: xi * sw * ct,                                      // height of the corrugation
+      Ys: c * ct * Sy,                                      // Y step between straight lines
+      V: Sx > 0 ? c * st / Sx : 0,                          // plan offset of the zigzag
+    };
+  }
+  // dihedral fold angles (deg, 0 = flat, 180 = closed) across the straight creases and the zigzag creases
+  function folds(theta, omega, xi, c) {
+    const k = cell(theta, omega, xi, c);
+    const a = k.H * k.Ys, b = k.H * k.V, d = k.Lx * k.Ys, n2 = a * a + b * b + d * d;
+    if (!(n2 > 0)) return { straight: 180, zigzag: 180 };
+    const cs = (a * a - b * b + d * d) / n2, cz = (-a * a - b * b + d * d) / n2;
+    const ac = x => Math.acos(Math.max(-1, Math.min(1, x))) / D;
+    return { straight: ac(cs), zigzag: ac(cz) };
+  }
+  // largest omega that leaves every pair of panels at least gapDeg apart
+  function omegaMax(theta, xi, c, gapDeg) {
+    const g = gapDeg == null ? 2.5 : gapDeg;
+    const bad = w => { const f = folds(theta, w, xi, c); return 180 - Math.max(f.straight, f.zigzag) < g; };
+    let lo = 0, hi = 90;
+    if (!bad(hi)) return hi;
+    for (let it = 0; it < 60; it++) { const m = (lo + hi) / 2; if (bad(m)) hi = m; else lo = m; }
+    return lo;
+  }
+  // vertex (i, j): i = 0..nx along X (straight creases), j = 0..ny along Y (zigzag creases)
+  function verts(cfg, omega, out) {
+    const { theta, nx, ny, xi, c } = cfg, k = cell(theta, omega, xi, c);
+    const n = (nx + 1) * (ny + 1), P = out || new Float64Array(n * 3);
+    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
+      const o = 3 * (j * (nx + 1) + i);
+      P[o] = i * k.Lx + (j & 1 ? k.V : 0);
+      P[o + 1] = j * k.Ys;
+      P[o + 2] = i & 1 ? k.H : 0;
+    }
+    return P;
+  }
+  function flat(cfg) {
+    const { theta, nx, ny, xi, c } = cfg, ct = Math.cos(theta * D), st = Math.sin(theta * D);
+    const P = new Float64Array((nx + 1) * (ny + 1) * 3);
+    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
+      const o = 3 * (j * (nx + 1) + i);
+      P[o] = i * xi + (j & 1 ? c * st : 0); P[o + 1] = j * c * ct; P[o + 2] = 0;
+    }
+    return P;
+  }
+  // rigidity check on any vertex array: every panel keeps its edge lengths, its corner angle and stays flat
+  function check(cfg, P) {
+    const { theta, nx, ny, xi, c } = cfg, ca = Math.sin(theta * D);
+    let edge = 0, angle = 0, planar = 0;
+    const g = (i, j) => 3 * (j * (nx + 1) + i);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const p0 = g(i, j), p1 = g(i + 1, j), p2 = g(i + 1, j + 1), p3 = g(i, j + 1);
+      const ex = [P[p1] - P[p0], P[p1 + 1] - P[p0 + 1], P[p1 + 2] - P[p0 + 2]];
+      const ey = [P[p3] - P[p0], P[p3 + 1] - P[p0 + 1], P[p3 + 2] - P[p0 + 2]];
+      const fx = [P[p2] - P[p3], P[p2 + 1] - P[p3 + 1], P[p2 + 2] - P[p3 + 2]];
+      const fy = [P[p2] - P[p1], P[p2 + 1] - P[p1 + 1], P[p2 + 2] - P[p1 + 2]];
+      const L = v => Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+      const lx = L(ex), ly = L(ey);
+      edge = Math.max(edge, Math.abs(lx - xi), Math.abs(ly - c), Math.abs(L(fx) - xi), Math.abs(L(fy) - c));
+      const cosA = (ex[0] * ey[0] + ex[1] * ey[1] + ex[2] * ey[2]) / (lx * ly);
+      angle = Math.max(angle, Math.abs(Math.abs(cosA) - ca));
+      // planarity: distance of the fourth corner from the plane of the other three
+      const nrm = [ex[1] * ey[2] - ex[2] * ey[1], ex[2] * ey[0] - ex[0] * ey[2], ex[0] * ey[1] - ex[1] * ey[0]], nl = L(nrm);
+      const d = [P[p2] - P[p0], P[p2 + 1] - P[p0 + 1], P[p2 + 2] - P[p0 + 2]];
+      planar = Math.max(planar, Math.abs((d[0] * nrm[0] + d[1] * nrm[1] + d[2] * nrm[2]) / nl));
+    }
+    return { edge, angle, planar };
+  }
+  // free corner (nx, ny) traces Miura's locus exactly when nx and ny are even
+  function corner(cfg, omega) {
+    const k = cell(cfg.theta, omega, cfg.xi, cfg.c);
+    return [cfg.nx * k.Lx + (cfg.ny & 1 ? k.V : 0), cfg.ny * k.Ys, cfg.nx & 1 ? k.H : 0];
+  }
+  // a table of the corner path, denser where it turns (near omega max), with arc length for even pacing
+  function path(cfg, wmax, n) {
+    n = n || 1200;
+    const w = new Float64Array(n + 1), x = new Float64Array(n + 1), y = new Float64Array(n + 1), s = new Float64Array(n + 1);
+    for (let k = 0; k <= n; k++) {
+      const t = k / n, u = 1 - Math.pow(1 - t, 3);          // dense near the folded end
+      w[k] = wmax * u;
+      const p = corner(cfg, w[k]); x[k] = p[0]; y[k] = p[1];
+      if (k) s[k] = s[k - 1] + Math.hypot(x[k] - x[k - 1], y[k] - y[k - 1]);
+    }
+    for (let k = 1; k <= n; k++) s[k] /= s[n] || 1;
+    return { w, x, y, s, n };
+  }
+  // omega at a fraction s of the corner's travel (s = 0 flat, 1 folded)
+  function omegaAt(pt, s) {
+    s = Math.max(0, Math.min(1, s));
+    let lo = 0, hi = pt.n;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pt.s[m] <= s) lo = m; else hi = m; }
+    const f = pt.s[hi] > pt.s[lo] ? (s - pt.s[lo]) / (pt.s[hi] - pt.s[lo]) : 0;
+    return pt.w[lo] + (pt.w[hi] - pt.w[lo]) * f;
+  }
+  function sAt(pt, w) {
+    let lo = 0, hi = pt.n;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pt.w[m] <= w) lo = m; else hi = m; }
+    const f = pt.w[hi] > pt.w[lo] ? (w - pt.w[lo]) / (pt.w[hi] - pt.w[lo]) : 0;
+    return pt.s[lo] + (pt.s[hi] - pt.s[lo]) * f;
+  }
+  return { cell, folds, omegaMax, verts, flat, check, corner, path, omegaAt, sAt };
+}
+
+const STATS = {"raw": {"wmax6": 88.74999999999993, "wmax0": 88.74999999999994, "wmax20": 88.74999999999989, "wmax30": 88.74999999999997, "flat": [5.047037808470444, 3.580278823325784, 0], "stow": [0.97439062974323, 0.7316049169743712, 0.497142613044369], "open48": [3.4379502564989224, 3.556394208286984, 0.3695369001834514], "at80": {"0": [0.1736481776669306, 0.9999999999999989], "1": [0.1744966810314924, 0.9951374240498657], "6": [0.20186734259860395, 0.8602093604224783], "12": [0.2684725294477317, 0.6468005424023748], "20": [0.3789513905839901, 0.45823338291311366], "30": [0.5221257197316411, 0.3325792450067026]}, "folds": {"10": {"straight": 2.1118194921628195, "zigzag": 20.00000000000001}, "45": {"straight": 11.934738385407357, "zigzag": 89.99999999999997}, "80": {"straight": 61.31980400364825, "zigzag": 159.99999999999994}, "88": {"straight": 143.0532122270455, "zigzag": 176.00000000000014}}, "travelLast10": 0.436127804607221, "st45": 11.934738385407357}, "check": {"closed": 6.64e-13, "chain": 2.56e-13, "cell": 1.85e-13, "check": 4.81e-14, "folds": 5.55e-16, "corner": 6.64e-13, "wmax": 1.56e-13}, "ncases": 189};
+const FIG8 = {"pts": [{"omega": 90, "fig": [0.1007, 0.0]}, {"omega": 88, "fig": [0.1098, 0.3154]}, {"omega": 86, "fig": [0.1241, 0.5576]}, {"omega": 84, "fig": [0.1426, 0.7094]}, {"omega": 82, "fig": [0.1686, 0.802]}, {"omega": 80, "fig": [0.2009, 0.861]}, {"omega": 70, "fig": [0.3587, 0.965]}, {"omega": 60, "fig": [0.5066, 0.9827]}, {"omega": 50, "fig": [0.6502, 0.9911]}, {"omega": 40, "fig": [0.7673, 0.9936]}, {"omega": 30, "fig": [0.8655, 0.9958]}, {"omega": 20, "fig": [0.9398, 0.9993]}, {"omega": 10, "fig": [0.9815, 0.9998]}, {"omega": 0, "fig": [1.0, 1.0]}]};
+// ---------- Miura Fold app ----------
+const M = makeMiura();
+const Q = new URLSearchParams(location.search);
+const FIXED = Q.has('fixed'), OG = Q.has('og');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EMBED = window.top !== window.self;
+const $ = s => document.querySelector(s);
+const D2R = Math.PI / 180;
+if (FIXED || OG) document.documentElement.classList.add('nofx');
+if (OG) document.documentElement.classList.add('og');
+
+const XI = 0.5, C = 0.45;                       // panel edges, metres
+const NOPTS = [4, 6, 8, 10, 12, 14, 16];
+const clampN = v => NOPTS.includes(v) ? v : null;
+const cfg = { theta: 6, nx: 10, ny: 8, xi: XI, c: C };
+if (Q.has('theta')) cfg.theta = Math.max(0, Math.min(30, Math.round(+Q.get('theta') * 2) / 2 || 0));
+if (Q.has('n')) { const m = /^(\d+)x(\d+)$/.exec(Q.get('n')); if (m) { cfg.nx = clampN(+m[1]) || cfg.nx; cfg.ny = clampN(+m[2]) || cfg.ny; } }
+const OPEN_W = 48;                              // where the opening comes to rest
+let omega = 0, wmax = 89, pt = null, mode = Q.get('view') === 'panels' ? 'hard' : 'draw';
+let frame = 0, simT = 0, anim = null, opening = null, dirty = true, geoDirty = true;
+let grab = null, hover = null, orbit = null, userActed = false, sayKey = '';
+const log = [];
+const worst = { edge: 0, angle: 0, planar: 0, gpu: 0, frames: 0 };
+let lastCheck = { edge: 0, angle: 0, planar: 0 };
+let P = null;                                    // current vertices (Float64)
+
+// ---------- renderer ----------
+const canvas = $('#gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: FIXED });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -100, 100);
+const G = new THREE.Group(); G.rotation.x = -Math.PI / 2; scene.add(G);   // engine (X,Y,Z) -> world (X,Z,-Y)
+let yaw = -0.8, pitch = 0.5, zoomMul = 1;
+if (Q.has('yaw')) yaw = +Q.get('yaw'); if (Q.has('pitch')) pitch = +Q.get('pitch');
+
+// ---------- fat screen-space lines (so 1.5 px stays 1.5 px at any DPR, with real dashes) ----------
+const LINE_VS = `
+attribute vec3 iA; attribute vec3 iB; attribute vec2 iS;
+uniform vec2 res; uniform float width;
+varying float vDist; varying float vWorld;
+void main(){
+  vec4 a = projectionMatrix * modelViewMatrix * vec4(iA, 1.0);
+  vec4 b = projectionMatrix * modelViewMatrix * vec4(iB, 1.0);
+  vec2 sa = a.xy / a.w * res * 0.5, sb = b.xy / b.w * res * 0.5;
+  vec2 d = sb - sa; float L = length(d);
+  vec2 dir = L > 1e-5 ? d / L : vec2(1.0, 0.0); vec2 nr = vec2(-dir.y, dir.x);
+  vec4 p = mix(a, b, position.x);
+  float e = position.x * 2.0 - 1.0;
+  vec2 off = nr * position.y * width * 0.5 + dir * e * width * 0.5;
+  p.xy += off / (res * 0.5) * p.w;
+  vDist = position.x * L + e * width * 0.5;
+  vWorld = iS.x + position.x * iS.y;
+  gl_Position = p;
+}`;
+const LINE_FS = `
+uniform vec3 color; uniform float opacity; uniform float dash; uniform float gap; uniform float wdash; uniform float wgap; uniform float phantom;
+varying float vDist; varying float vWorld;
+void main(){
+  if (dash > 0.0 && mod(vDist, dash + gap) > dash) discard;
+  if (wdash > 0.0) {
+    if (phantom > 0.5) {
+      float g = wgap * 0.6;
+      float u = mod(vWorld, wdash + 5.0 * g);
+      float a = wdash, b = a + g, c = b + g, d = c + g, f = d + g;
+      if ((u > a && u < b) || (u > c && u < d) || u > f) discard;
+    } else if (mod(vWorld, wdash + wgap) > wdash) discard;
+  }
+  gl_FragColor = vec4(color, opacity);
+  #include <colorspace_fragment>
+}`;
+const lineMats = [];
+function mkLines(max, o) {
+  const g = new THREE.InstancedBufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, -1, 0, 1, 1, 0, 0, 1, 0], 3));
+  const A = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3), B = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3);
+  A.setUsage(THREE.DynamicDrawUsage); B.setUsage(THREE.DynamicDrawUsage);
+  const S = new THREE.InstancedBufferAttribute(new Float32Array(max * 2), 2); S.setUsage(THREE.DynamicDrawUsage);
+  g.setAttribute('iA', A); g.setAttribute('iB', B); g.setAttribute('iS', S); g.instanceCount = 0;
+  const m = new THREE.ShaderMaterial({
+    vertexShader: LINE_VS, fragmentShader: LINE_FS, transparent: true, depthWrite: false,
+    depthTest: o.depthTest !== false, depthFunc: o.depthFunc || THREE.LessEqualDepth,
+    uniforms: { res: { value: new THREE.Vector2(1, 1) }, width: { value: o.width || 1.5 }, color: { value: new THREE.Color(o.color || 0xffffff) },
+      opacity: { value: o.opacity == null ? 1 : o.opacity }, dash: { value: o.dash || 0 }, gap: { value: o.gap || 0 },
+      wdash: { value: o.wdash || 0 }, wgap: { value: o.wgap || 0 }, phantom: { value: o.phantom ? 1 : 0 } },
+  });
+  m.userData.css = { width: o.width || 1.5, dash: o.dash || 0, gap: o.gap || 0 };
+  lineMats.push(m);
+  const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = o.order || 2;
+  mesh.userData = { A, B, S, max, n: 0, world: !!o.wdash };
+  return mesh;
+}
+function setLines(mesh, segs) {     // segs: flat array [ax,ay,az,bx,by,bz,...]
+  const u = mesh.userData, n = Math.min(u.max, segs.length / 6), a = u.A.array, b = u.B.array;
+  for (let k = 0; k < n; k++) { for (let q = 0; q < 3; q++) { a[3 * k + q] = segs[6 * k + q]; b[3 * k + q] = segs[6 * k + 3 + q]; } }
+  if (u.world) {
+    // world-space distance along a chain of segments (restarts where the chain breaks)
+    const sd = u.S.array; let acc = 0;
+    for (let k = 0; k < n; k++) {
+      if (k && (a[3 * k] !== b[3 * k - 3] || a[3 * k + 1] !== b[3 * k - 2] || a[3 * k + 2] !== b[3 * k - 1])) acc = 0;
+      const l = Math.hypot(b[3 * k] - a[3 * k], b[3 * k + 1] - a[3 * k + 1], b[3 * k + 2] - a[3 * k + 2]);
+      sd[2 * k] = acc; sd[2 * k + 1] = l; acc += l;
+    }
+    u.S.needsUpdate = true; u.S.addUpdateRange(0, n * 2);
+  }
+  u.n = n; mesh.geometry.instanceCount = n; u.A.needsUpdate = true; u.B.needsUpdate = true;
+  u.A.addUpdateRange(0, n * 3); u.B.addUpdateRange(0, n * 3);
+}
+function lineRes() {
+  const dpr = renderer.getPixelRatio(), w = canvas.clientWidth * dpr, h = canvas.clientHeight * dpr;
+  for (const m of lineMats) { m.uniforms.res.value.set(w, h); const c = m.userData.css; m.uniforms.width.value = c.width * dpr; m.uniforms.dash.value = c.dash * dpr; m.uniforms.gap.value = c.gap * dpr; }
+}
+
+// ---------- drawing view: paper-coloured faces, white visible edges, dashed hidden edges ----------
+const PAPER = new THREE.Color(0x2a64a6);
+const draw = new THREE.Group(); G.add(draw);
+let faceMesh = null, edgesVis = null, edgesHid = null;
+const fitLines = mkLines(64, { color: 0xffffff, width: 1.3, opacity: .9, order: 2 });       // root fitting
+const fitHid = mkLines(64, { color: 0xffffff, width: 1, opacity: .35, dash: 4, gap: 4, depthFunc: THREE.GreaterDepth, order: 3 });
+draw.add(fitLines, fitHid);
+function buildDraw() {
+  if (faceMesh) { draw.remove(faceMesh, edgesVis, edgesHid); faceMesh.geometry.dispose(); }
+  const nf = cfg.nx * cfg.ny, ne = (cfg.ny + 1) * cfg.nx + (cfg.nx + 1) * cfg.ny;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nf * 18), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nf * 18), 3).setUsage(THREE.DynamicDrawUsage));
+  faceMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 2 }));
+  faceMesh.frustumCulled = false; faceMesh.renderOrder = 1;
+  if (!edgesVis) {
+    edgesVis = mkLines(700, { color: 0xffffff, width: 1.5, opacity: .95, order: 2 });
+    edgesHid = mkLines(700, { color: 0xffffff, width: 1, opacity: .38, dash: 5, gap: 4, depthFunc: THREE.GreaterDepth, order: 3 });
+  }
+  draw.add(faceMesh, edgesVis, edgesHid);
+}
+const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpN = new THREE.Vector3();
+const LIGHT = new THREE.Vector3(-0.35, -0.55, 0.76).normalize();
+function updateDraw() {
+  const { nx, ny } = cfg, pos = faceMesh.geometry.attributes.position.array, col = faceMesh.geometry.attributes.color.array;
+  const v = (i, j) => 3 * (j * (nx + 1) + i);
+  let o = 0;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const q = [v(i, j), v(i + 1, j), v(i + 1, j + 1), v(i, j), v(i + 1, j + 1), v(i, j + 1)];
+    tmpA.set(P[q[1]] - P[q[0]], P[q[1] + 1] - P[q[0] + 1], P[q[1] + 2] - P[q[0] + 2]);
+    tmpB.set(P[q[5]] - P[q[0]], P[q[5] + 1] - P[q[0] + 1], P[q[5] + 2] - P[q[0] + 2]);
+    tmpN.crossVectors(tmpA, tmpB).normalize();
+    const l = Math.abs(tmpN.dot(LIGHT)), k = 0.8 + 0.34 * l;
+    for (let r = 0; r < 6; r++) {
+      pos[o] = P[q[r]]; pos[o + 1] = P[q[r] + 1]; pos[o + 2] = P[q[r] + 2];
+      col[o] = PAPER.r * k; col[o + 1] = PAPER.g * k; col[o + 2] = PAPER.b * k; o += 3;
+    }
+  }
+  faceMesh.geometry.attributes.position.needsUpdate = true; faceMesh.geometry.attributes.color.needsUpdate = true;
+  const segs = [];
+  const push = (a, b) => segs.push(P[a], P[a + 1], P[a + 2], P[b], P[b + 1], P[b + 2]);
+  for (let j = 0; j <= ny; j++) for (let i = 0; i < nx; i++) push(v(i, j), v(i + 1, j));
+  for (let i = 0; i <= nx; i++) for (let j = 0; j < ny; j++) push(v(i, j), v(i, j + 1));
+  setLines(edgesVis, segs); setLines(edgesHid, segs);
+}
+// the root fitting at the fixed corner
+const FIT = [[-0.16, -0.16, -0.18], [0.0, 0.0, 0.02]];
+(function () {
+  const [a, b] = FIT, c = [];
+  const X = [a[0], b[0]], Y = [a[1], b[1]], Z = [a[2], b[2]];
+  for (const y of Y) for (const z of Z) c.push(X[0], y, z, X[1], y, z);
+  for (const x of X) for (const z of Z) c.push(x, Y[0], z, x, Y[1], z);
+  for (const x of X) for (const y of Y) c.push(x, y, Z[0], x, y, Z[1]);
+  setLines(fitLines, c); setLines(fitHid, c);
+})();
+const fitFace = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.2), new THREE.MeshBasicMaterial({ color: PAPER, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 2 }));
+fitFace.position.set(-0.08, -0.08, -0.08); fitFace.renderOrder = 1; draw.add(fitFace);
+
+// ---------- panels view: cells, frames, Kapton backs, hinges ----------
+const hard = new THREE.Group(); hard.visible = false; G.add(hard);
+let envReady = false;
+function makeEnv() {
+  if (envReady) return; envReady = true;
+  const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
+  es.background = new THREE.Color(0x4a5a70);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const add = (x, y, z, sx, sy, sz, c) => { const m = box.clone(); m.material = new THREE.MeshBasicMaterial({ color: c }); m.position.set(x, y, z); m.scale.set(sx, sy, sz); es.add(m); };
+  add(0, 6, 0, 8, .2, 8, 0xffffff); add(-6, 2, 2, .2, 4, 6, 0xcfe0ff); add(5, 1, -4, .2, 3, 5, 0xffe2c0); add(0, -4, 0, 12, .2, 12, 0x223047);
+  scene.environment = pm.fromScene(es, 0.03).texture;
+  hard.add(new THREE.HemisphereLight(0xdce9ff, 0x1a2a44, 1.1));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-3, -5, 9); hard.add(sun); hard.add(sun.target);
+}
+function cellTexture() {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 96;
+  const x = cv.getContext('2d');
+  const gr = x.createLinearGradient(0, 0, 128, 96); gr.addColorStop(0, '#16224a'); gr.addColorStop(1, '#0d1634');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 96);
+  x.strokeStyle = 'rgba(190,205,230,.55)'; x.lineWidth = 1;
+  for (let k = 3; k < 96; k += 4) { x.beginPath(); x.moveTo(0, k + .5); x.lineTo(128, k + .5); x.stroke(); }
+  x.fillStyle = '#c9d2de'; x.fillRect(30, 0, 3, 96); x.fillRect(95, 0, 3, 96);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+const MAT = {
+  carbon: new THREE.MeshStandardMaterial({ color: 0x222a33, metalness: .35, roughness: .55 }),
+  alu: new THREE.MeshStandardMaterial({ color: 0xb8c0c8, metalness: .9, roughness: .32 }),
+  kapton: new THREE.MeshStandardMaterial({ color: 0xc98a2a, metalness: .85, roughness: .28, side: THREE.BackSide }),
+  cell: new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: .35, roughness: .22 }),
+  steel: new THREE.MeshStandardMaterial({ color: 0x8f969e, metalness: .95, roughness: .25 }),
+};
+let cellTex = null;
+let hardParts = null;
+const GAP = 0.012, THK = 0.008;
+function panelShape(cosA, sinA, inset) {
+  const u = [1, 0], v = [cosA, sinA];
+  const p = [[0, 0], [XI, 0], [XI + C * cosA, C * sinA], [C * cosA, C * sinA]];
+  const dirs = [[u, v], [[-1, 0], v], [[-1, 0], [-cosA, -sinA]], [u, [-cosA, -sinA]]];
+  const s = new THREE.Shape();
+  p.forEach((q, k) => {
+    const [e1, e2] = dirs[k], f = inset / sinA;
+    const x = q[0] + f * (e1[0] + e2[0]), y = q[1] + f * (e1[1] + e2[1]);
+    k ? s.lineTo(x, y) : s.moveTo(x, y);
+  });
+  s.closePath(); return s;
+}
+function cellLayout(cosA, sinA) {
+  // rectangular cells with cropped corners, packed row by row inside the inset parallelogram
+  const W = 0.072, H = 0.046, PX = 0.077, PY = 0.051, m = GAP + 0.016, cot = cosA / sinA, out = [];
+  const rows = Math.floor((C * sinA - 2 * m) / PY);
+  const y0 = (C * sinA - rows * PY) / 2 + PY / 2;
+  for (let r = 0; r < rows; r++) {
+    const y = y0 + r * PY, yl = y - H / 2, yh = y + H / 2;
+    const L = Math.max(yl * cot, yh * cot) + m / sinA, R = XI + Math.min(yl * cot, yh * cot) - m / sinA;
+    const n = Math.floor((R - L - W) / PX) + 1;
+    if (n < 1) continue;
+    const x0 = (L + R) / 2 - (n - 1) * PX / 2;
+    for (let k = 0; k < n; k++) out.push([x0 + k * PX, y]);
+  }
+  return { out, W, H };
+}
+function cellGeom(W, H) {
+  const k = 0.007, s = new THREE.Shape();
+  s.moveTo(-W / 2 + k, -H / 2); s.lineTo(W / 2 - k, -H / 2); s.lineTo(W / 2, -H / 2 + k); s.lineTo(W / 2, H / 2 - k);
+  s.lineTo(W / 2 - k, H / 2); s.lineTo(-W / 2 + k, H / 2); s.lineTo(-W / 2, H / 2 - k); s.lineTo(-W / 2, -H / 2 + k); s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.0009, bevelEnabled: false });
+  const p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / W + .5, p.getY(i) / H + .5);
+  return g;
+}
+async function buildHard() {
+  if (!hardParts) hardParts = {};
+  for (const k in hardParts) { const o = hardParts[k]; if (o && o.isObject3D) { hard.remove(o); o.geometry && o.geometry.dispose(); } }
+  if (!cellTex) { cellTex = cellTexture(); MAT.cell.map = cellTex; MAT.cell.needsUpdate = true; }
+  const { mergeGeometries } = await addons();
+  const sinA = Math.cos(cfg.theta * D2R), sa = Math.sin(cfg.theta * D2R);
+  const nA = cfg.nx * Math.ceil(cfg.ny / 2), nB = cfg.nx * Math.floor(cfg.ny / 2);
+  const parts = {};
+  let cellsPer = 0;
+  for (const [key, cosA, n] of [['A', sa, nA], ['B', -sa, nB]]) {
+    const shp = panelShape(cosA, sinA, GAP);
+    const sub = new THREE.ExtrudeGeometry(shp, { depth: THK - 0.002, bevelEnabled: true, bevelThickness: 0.001, bevelSize: 0.001, bevelOffset: -0.001, bevelSegments: 1 });
+    sub.translate(0, 0, -(THK - 0.002) / 2);
+    parts['sub' + key] = new THREE.InstancedMesh(sub, [MAT.carbon, MAT.alu], Math.max(1, n));
+    const back = new THREE.ShapeGeometry(panelShape(cosA, sinA, GAP + 0.004)); back.translate(0, 0, -THK / 2 - 0.0004);
+    parts['kap' + key] = new THREE.InstancedMesh(back, MAT.kapton, Math.max(1, n));
+    const lay = cellLayout(cosA, sinA), base = cellGeom(lay.W, lay.H), list = [];
+    for (const [x, y] of lay.out) { const g = base.clone(); g.translate(x, y, THK / 2); list.push(g); }
+    cellsPer = Math.max(cellsPer, lay.out.length);
+    const merged = list.length ? mergeGeometries(list) : new THREE.BufferGeometry();
+    parts['cel' + key] = new THREE.InstancedMesh(merged, MAT.cell, Math.max(1, n));
+    for (const p of ['sub', 'kap', 'cel']) { const im = parts[p + key]; im.count = n; im.frustumCulled = false; hard.add(im); }
+    parts['n' + key] = n; parts['cells' + key] = lay.out.length;
+  }
+  const nh = 2 * ((cfg.nx - 1) * cfg.ny + cfg.nx * (cfg.ny - 1));
+  const hg = new THREE.CylinderGeometry(0.0055, 0.0055, 0.05, 12); hg.rotateZ(Math.PI / 2);
+  parts.hinge = new THREE.InstancedMesh(hg, MAT.steel, Math.max(1, nh)); parts.hinge.count = nh; parts.hinge.frustumCulled = false; hard.add(parts.hinge);
+  parts.nh = nh;
+  const fit = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.2), MAT.alu); fit.position.set(-0.08, -0.08, -0.08); hard.add(fit); parts.fit = fit;
+  hardParts = parts;
+  hardParts.cellCount = parts.cellsA * parts.nA + parts.cellsB * parts.nB;
+  geoDirty = true; dirty = true;
+  if (FIXED) render();
+}
+let addonsP = null;
+function addons() { return addonsP || (addonsP = import('../assets/vendor/three-addons.js')); }
+const mtx = new THREE.Matrix4(), bx = new THREE.Vector3(), by = new THREE.Vector3(), bz = new THREE.Vector3(), org = new THREE.Vector3();
+function updateHard() {
+  if (!hardParts || hardParts.subA === undefined) return;
+  const { nx, ny } = cfg, v = (i, j) => 3 * (j * (nx + 1) + i);
+  let a = 0, b = 0;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const p0 = v(i, j), p1 = v(i + 1, j), p3 = v(i, j + 1);
+    org.set(P[p0], P[p0 + 1], P[p0 + 2]);
+    bx.set(P[p1] - P[p0], P[p1 + 1] - P[p0 + 1], P[p1 + 2] - P[p0 + 2]).normalize();
+    by.set(P[p3] - P[p0], P[p3 + 1] - P[p0 + 1], P[p3 + 2] - P[p0 + 2]);
+    bz.crossVectors(bx, by).normalize(); by.crossVectors(bz, bx);
+    mtx.makeBasis(bx, by, bz).setPosition(org);
+    const key = j & 1 ? 'B' : 'A', k = j & 1 ? b++ : a++;
+    for (const p of ['sub', 'kap', 'cel']) hardParts[p + key].setMatrixAt(k, mtx);
+  }
+  for (const key of ['A', 'B']) for (const p of ['sub', 'kap', 'cel']) hardParts[p + key].instanceMatrix.needsUpdate = true;
+  let h = 0;
+  const hinge = (pa, pb) => {
+    bx.set(P[pb] - P[pa], P[pb + 1] - P[pa + 1], P[pb + 2] - P[pa + 2]).normalize();
+    bz.set(0, 0, 1); if (Math.abs(bz.dot(bx)) > .95) bz.set(0, 1, 0);
+    by.crossVectors(bz, bx).normalize(); bz.crossVectors(bx, by);
+    for (const t of [0.25, 0.75]) {
+      org.set(P[pa] + (P[pb] - P[pa]) * t, P[pa + 1] + (P[pb + 1] - P[pa + 1]) * t, P[pa + 2] + (P[pb + 2] - P[pa + 2]) * t);
+      mtx.makeBasis(bx, by, bz).setPosition(org); hardParts.hinge.setMatrixAt(h++, mtx);
+    }
+  };
+  for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) hinge(v(i, j), v(i + 1, j));
+  for (let i = 1; i < nx; i++) for (let j = 0; j < ny; j++) hinge(v(i, j), v(i, j + 1));
+  hardParts.hinge.instanceMatrix.needsUpdate = true;
+}
+
+// ---------- annotations: the corner's track, overall dimensions ----------
+const ann = new THREE.Group(); G.add(ann);
+const OR = 0xff8a1f;
+const trackL = mkLines(400, { color: OR, width: 1.6, opacity: .95, wdash: 0.07, wgap: 0.055, depthTest: false, order: 5 });
+const ghostL = mkLines(80, { color: 0xffffff, width: 1.1, opacity: .55, wdash: 0.3, wgap: 0.07, phantom: true, depthTest: false, order: 4 });
+ann.add(ghostL);
+const dimL = mkLines(40, { color: OR, width: 1.3, opacity: 1, depthTest: false, order: 5 });
+ann.add(trackL, dimL);
+const labels = $('#labels');
+const mk = (cls, txt) => { const e = document.createElement('div'); e.className = cls; if (txt) e.textContent = txt; labels.appendChild(e); return e; };
+const dimW = mk('dim'), dimD = mk('dim'), tagFit = mk('tag', 'Root · fixed'), pull = mk('', 'Pull');
+pull.id = 'pull';
+const dot = mk(''); dot.style.cssText = 'position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#ff8a1f;box-shadow:0 0 0 3px #2a64a6,0 0 0 4.5px #ff8a1f';
+const hov = mk(''); hov.style.cssText = 'position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid #ff8a1f;display:none';
+function arrow(segs, x, y, dx, dy, s) {   // chevron at (x,y) pointing along (dx,dy) in the Z=0 plane
+  const l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, px = -uy, py = ux;
+  segs.push(x, y, 0, x - s * ux + s * .45 * px, y - s * uy + s * .45 * py, 0, x, y, 0, x - s * ux - s * .45 * px, y - s * uy - s * .45 * py, 0);
+}
+function updateAnn() {
+  const segs = [];
+  // overall width (X) in front of the sheet, overall depth (Y) on the left side
+  const xs = P.filter((_, k) => k % 3 === 0), ys = P.filter((_, k) => k % 3 === 1);
+  const X1 = Math.max(...xs), Y1 = Math.max(...ys), off = 0.42, s = 0.09;
+  segs.push(0, -0.06, 0, 0, -off - .06, 0, X1, -0.06, 0, X1, -off - .06, 0, 0, -off, 0, X1, -off, 0);
+  arrow(segs, 0, -off, -1, 0, s); arrow(segs, X1, -off, 1, 0, s);
+  segs.push(-0.24, 0, 0, -off - .06, 0, 0, -0.06, Y1, 0, -off - .06, Y1, 0, -off, 0, 0, -off, Y1, 0);
+  arrow(segs, -off, 0, 0, -1, s); arrow(segs, -off, Y1, 0, 1, s);
+  setLines(dimL, segs);
+  annPts.w = [X1 / 2, -off, 0]; annPts.d = [-off, Y1 / 2, 0]; annPts.X1 = X1; annPts.Y1 = Y1;
+  dimW.textContent = X1.toFixed(2) + ' m'; dimD.textContent = Y1.toFixed(2) + ' m';
+}
+const annPts = {};
+function updateGhost() {
+  const F = M.flat(cfg), { nx, ny } = cfg, v = (i, j) => 3 * (j * (nx + 1) + i), segs = [];
+  const ring = [];
+  for (let i = 0; i <= nx; i++) ring.push(v(i, 0));
+  for (let j = 1; j <= ny; j++) ring.push(v(nx, j));
+  for (let i = nx - 1; i >= 0; i--) ring.push(v(i, ny));
+  for (let j = ny - 1; j >= 0; j--) ring.push(v(0, j));
+  for (let k = 0; k + 1 < ring.length; k++) segs.push(F[ring[k]], F[ring[k] + 1], -0.002, F[ring[k + 1]], F[ring[k + 1] + 1], -0.002);
+  setLines(ghostL, segs);
+}
+function updateTrack() {
+  updateGhost();
+  const segs = [], n = pt.n, step = Math.max(1, Math.floor(n / 300));
+  let px = pt.x[0], py = pt.y[0];
+  for (let k = step; k <= n; k += step) { segs.push(px, py, 0.001, pt.x[k], pt.y[k], 0.001); px = pt.x[k]; py = pt.y[k]; }
+  if ((n % step) !== 0) segs.push(px, py, 0.001, pt.x[n], pt.y[n], 0.001);
+  setLines(trackL, segs);
+}
+
+// ---------- camera framing ----------
+let W = 1, H = 1, freeR = { x: 0, y: 0, w: 1, h: 1 };
+const mobile = () => innerWidth <= 760;
+function layoutFree() {
+  if (mobile() || OG) {
+    if (OG) return { x: 380, y: 40, w: W - 420, h: H - 60 };
+    return { x: 0, y: 0, w: W, h: H };
+  }
+  const left = Math.min(300, W * .2), right = Math.min(260, W * .18);
+  return { x: left, y: 34, w: W - left - right, h: H - 68 };
+}
+const camPos = new THREE.Vector3(), tgt = new THREE.Vector3();
+function placeCam() {
+  const dX = cfg.nx * XI, dY = cfg.ny * C * Math.cos(cfg.theta * D2R);
+  tgt.set(dX * 0.48, 0, -dY * 0.5);                                  // world coords of the deployed centre
+  camPos.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(30).add(tgt);
+  cam.position.copy(camPos); cam.up.set(0, 1, 0); cam.lookAt(tgt);
+  cam.left = -W / 2; cam.right = W / 2; cam.top = H / 2; cam.bottom = -H / 2;
+  // fit the deployed bounding box into the free rectangle
+  cam.zoom = 1; cam.clearViewOffset(); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+  const pts = [];
+  for (const x of [-0.5, dX + 0.2]) for (const y of [-0.5, dY + 0.1]) for (const z of [-0.2, XI]) pts.push(new THREE.Vector3(x, z, -y));
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const p of pts) { p.project(cam); const sx = p.x * W / 2, sy = p.y * H / 2; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+  freeR = layoutFree();
+  const k = Math.min(freeR.w * .97 / (x1 - x0), freeR.h * .95 / (y1 - y0)) * zoomMul;
+  cam.zoom = k;
+  const cx = (x0 + x1) / 2 * k, cy = (y0 + y1) / 2 * k;           // bbox centre offset from target (px)
+  const wantX = freeR.x + freeR.w / 2 - W / 2, wantY = -(freeR.y + freeR.h / 2 - H / 2);
+  cam.setViewOffset(W, H, -(wantX - cx), (wantY - cy), W, H);
+  cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+}
+function resize() {
+  W = canvas.clientWidth || innerWidth; H = canvas.clientHeight || innerHeight;
+  renderer.setSize(W, H, false); lineRes(); placeCam(); dirty = true;
+  if (FIXED) render();
+}
+const pv = new THREE.Vector3();
+function toScreen(x, y, z) {
+  pv.set(x, y, z).applyMatrix4(G.matrixWorld).project(cam);
+  return [(pv.x + 1) / 2 * W, (1 - pv.y) / 2 * H];
+}
+
+// ---------- the fold state ----------
+function vpos(i, j, w) {
+  const k = M.cell(cfg.theta, w, XI, C);
+  return [i * k.Lx + (j & 1 ? k.V : 0), j * k.Ys, i & 1 ? k.H : 0];
+}
+function setCfg(ch) {
+  const s = pt ? M.sAt(pt, omega) : null;
+  Object.assign(cfg, ch);
+  wmax = M.omegaMax(cfg.theta, XI, C, 2.5);
+  pt = M.path(cfg, wmax, 1500);
+  if (s != null && !ch.keepW) omega = Math.min(wmax, M.omegaAt(pt, s));
+  omega = Math.min(omega, wmax);
+  P = new Float64Array((cfg.nx + 1) * (cfg.ny + 1) * 3); M.verts(cfg, omega, P);
+  buildDraw(); if (mode === 'hard') buildHard();
+  geoDirty = true; dirty = true;
+  placeCam(); updateTrack(); drawLocusBase(); drawPattern(); syncUI();
+}
+function setOmega(w, why) {
+  w = Math.max(0, Math.min(wmax, w));
+  if (w !== omega) { omega = w; dirty = true; geoDirty = true; }
+}
+function refresh() {
+  M.verts(cfg, omega, P);
+  const ck = M.check(cfg, P); lastCheck = ck;
+  worst.edge = Math.max(worst.edge, ck.edge); worst.angle = Math.max(worst.angle, ck.angle); worst.planar = Math.max(worst.planar, ck.planar); worst.frames++;
+  if (mode === 'draw') updateDraw(); else updateHard();
+  updateAnn(); updateLocusDot(); syncOmega();
+  if (worst.frames % 20 === 1 || FIXED) {
+    const e = x => x === 0 ? '0' : x.toExponential(0).replace('e-', '×10⁻').replace(/⁻(\d+)/, (_, d) => '⁻' + d.split('').map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]).join(''));
+    ckv.textContent = `edge lengths ${e(worst.edge)} m, corner angles ${e(worst.angle)} (cosine), flatness ${e(worst.planar)} m, over ${worst.frames} redraws`;
+  }
+  geoDirty = false;
+}
+
+// ---------- locus chart (Miura 1985, Fig. 8 replotted) ----------
+const NS = 'http://www.w3.org/2000/svg';
+const loc = $('#locsvg'), LX0 = 38, LX1 = 286, LY0 = 214, LY1 = 16;
+const lx = v => LX0 + (LX1 - LX0) * v, ly = v => LY0 + (LY1 - LY0) * v;
+function el(tag, at, parent) { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (parent || loc).appendChild(e); return e; }
+let locDot = null, locLbl = null, locCurve = null, locSecond = null, locFig = null;
+function drawLocusBase() {
+  loc.innerHTML = '';
+  for (const v of [0, .25, .5, .75, 1]) {
+    el('line', { x1: lx(v), y1: LY0, x2: lx(v), y2: LY1, stroke: 'rgba(255,255,255,.12)' });
+    el('line', { x1: LX0, y1: ly(v), x2: LX1, y2: ly(v), stroke: 'rgba(255,255,255,.12)' });
+  }
+  el('path', { d: `M${LX0} ${LY1}V${LY0}H${LX1}`, stroke: '#fff', 'stroke-width': 1.2, fill: 'none' });
+  const t = (x, y, s, a, extra) => { const e = el('text', Object.assign({ x, y, fill: 'rgba(255,255,255,.75)', 'font-size': 10, 'font-family': 'B612 Mono, monospace', 'text-anchor': a || 'middle' }, extra || {})); e.textContent = s; return e; };
+  for (const v of [0, .5, 1]) { t(lx(v), LY0 + 14, v === .5 ? '0.5' : String(v)); t(LX0 - 6, ly(v) + 3.5, v === .5 ? '0.5' : String(v), 'end'); }
+  t((LX0 + LX1) / 2, LY0 + 30, 'Sₓ  shortening along X (straight creases)');
+  const ty = t(12, (LY0 + LY1) / 2, 'Sᵧ  along Y', 'middle'); ty.setAttribute('transform', `rotate(-90 12 ${(LY0 + LY1) / 2})`);
+  // Miura's printed points (read off the scanned figure, theta = 6 deg)
+  locFig = el('g', {});
+  for (const p of FIG8.pts) el('circle', { cx: lx(p.fig[0]), cy: ly(p.fig[1]), r: 3.2, fill: 'none', stroke: '#fff', 'stroke-width': 1 }, locFig);
+  locCurve = el('path', { fill: 'none', stroke: '#fff', 'stroke-width': 1.6 });
+  locSecond = el('path', { fill: 'none', stroke: '#fff', 'stroke-width': 1.3, 'stroke-dasharray': '4 4', opacity: .8 });
+  const sxN = cfg.nx * XI, syN = cfg.ny * C * Math.cos(cfg.theta * D2R);
+  const full = M.path(cfg, 90, 600);
+  let dd = '';
+  for (let k = 0; k <= full.n; k++) dd += (k ? 'L' : 'M') + lx(full.x[k] / sxN).toFixed(2) + ' ' + ly(full.y[k] / syN).toFixed(2);
+  el('path', { d: dd, fill: 'none', stroke: '#fff', 'stroke-width': 1, 'stroke-dasharray': '2 3', opacity: .55 });
+  let d = '';
+  for (let k = 0; k <= pt.n; k += 3) d += (k ? 'L' : 'M') + lx(pt.x[k] / sxN).toFixed(2) + ' ' + ly(pt.y[k] / syN).toFixed(2);
+  d += 'L' + lx(pt.x[pt.n] / sxN).toFixed(2) + ' ' + ly(pt.y[pt.n] / syN).toFixed(2);
+  locCurve.setAttribute('d', d);
+  if (cfg.theta === 0) {
+    const x = lx(pt.x[pt.n] / sxN);
+    locSecond.setAttribute('d', `M${x} ${ly(1)}V${ly(0)}`);
+    const tt = t(x + 6, ly(.45), 'second, separate fold', 'start', { fill: 'rgba(255,255,255,.85)' });
+  } else locSecond.setAttribute('d', '');
+  locFig.setAttribute('opacity', Math.abs(cfg.theta - 6) < 0.01 ? 1 : 0.3);
+  $('#locn').textContent = '○ Miura 1985';
+  locDot = el('circle', { r: 5, fill: '#ff8a1f', stroke: '#2a64a6', 'stroke-width': 2 });
+  locLbl = t(0, 0, '', 'start', { fill: '#ff8a1f', 'font-weight': 700 });
+  updateLocusDot();
+}
+function updateLocusDot() {
+  if (!locDot || !pt) return;
+  const k = M.cell(cfg.theta, omega, XI, C);
+  const cx = lx(k.Sx), cy = ly(k.Sy);
+  locDot.setAttribute('cx', cx); locDot.setAttribute('cy', cy);
+  locLbl.setAttribute('x', Math.min(cx + 9, LX1 - 46)); locLbl.setAttribute('y', Math.max(cy + (k.Sy > .9 ? 16 : 4), LY1 + 10));
+  locLbl.textContent = 'ω ' + omega.toFixed(1) + '°';
+}
+
+// ---------- developed crease pattern ----------
+const pat = $('#patsvg');
+function drawPattern() {
+  pat.innerHTML = '';
+  const F = M.flat(cfg), { nx, ny } = cfg, v = (i, j) => 3 * (j * (nx + 1) + i);
+  let xmax = 0, ymax = 0; for (let k = 0; k < F.length; k += 3) { xmax = Math.max(xmax, F[k]); ymax = Math.max(ymax, F[k + 1]); }
+  const sc = Math.min(230 / xmax, 150 / ymax), ox = (270 - xmax * sc) / 2, oy = 190 - (190 - ymax * sc) / 2 - 4;
+  const X = k => ox + F[k] * sc, Y = k => oy - F[k + 1] * sc;
+  const mv = mountains();
+  const line = (a, b, kind) => el('line', { x1: X(a).toFixed(2), y1: Y(a).toFixed(2), x2: X(b).toFixed(2), y2: Y(b).toFixed(2), stroke: '#fff', 'stroke-width': kind === 'edge' ? 1.4 : 1, 'stroke-dasharray': kind === 'V' ? '3 2.5' : '', opacity: kind === 'edge' ? 1 : .85 }, pat);
+  for (let j = 0; j <= ny; j++) for (let i = 0; i < nx; i++) line(v(i, j), v(i + 1, j), j === 0 || j === ny ? 'edge' : mv.s[j * nx + i]);
+  for (let i = 0; i <= nx; i++) for (let j = 0; j < ny; j++) line(v(i, j), v(i, j + 1), i === 0 || i === nx ? 'edge' : mv.z[i * ny + j]);
+  // theta, marked on one zigzag
+  const a = v(2, 0), b = v(2, 1), r = 26;
+  const ax = X(a), ay = Y(a), ang = Math.atan2(Y(b) - ay, X(b) - ax);
+  el('line', { x1: ax, y1: ay, x2: ax, y2: ay - r - 6, stroke: '#ff8a1f', 'stroke-width': 1, 'stroke-dasharray': '2 2' }, pat);
+  if (cfg.theta > 0) {
+    const ex = ax + r * Math.cos(ang), ey = ay + r * Math.sin(ang);
+    el('path', { d: `M${ax} ${ay - r} A${r} ${r} 0 0 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`, stroke: '#ff8a1f', 'stroke-width': 1.4, fill: 'none' }, pat);
+  }
+  const tx = el('text', { x: ax + 5, y: ay - r - 4, fill: '#ff8a1f', 'font-size': 11, 'font-family': 'B612 Mono, monospace', 'font-weight': 700 }, pat);
+  tx.textContent = 'θ ' + fmtDeg(cfg.theta);
+  $('#patn').textContent = nx + ' × ' + ny;
+}
+const fmtDeg = t => (Number.isInteger(t) ? t : t.toFixed(1)) + '°';
+function mountains() {
+  // assign mountain / valley from a slightly folded state: a crease is a mountain when its panels fall away from it
+  const { nx, ny } = cfg, Q = M.verts(cfg, 30), v = (i, j) => 3 * (j * (nx + 1) + i);
+  const nrm = (i, j) => { const o = v(i, j), a = v(i + 1, j), b = v(i, j + 1); const ex = [Q[a] - Q[o], Q[a + 1] - Q[o + 1], Q[a + 2] - Q[o + 2]], ey = [Q[b] - Q[o], Q[b + 1] - Q[o + 1], Q[b + 2] - Q[o + 2]]; return [ex[1] * ey[2] - ex[2] * ey[1], ex[2] * ey[0] - ex[0] * ey[2], ex[0] * ey[1] - ex[1] * ey[0]]; };
+  const cen = (i, j) => { const c = [0, 0, 0]; for (const [di, dj] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { const o = v(i + di, j + dj); c[0] += Q[o] / 4; c[1] += Q[o + 1] / 4; c[2] += Q[o + 2] / 4; } return c; };
+  const kind = (f1, f2, e1, e2) => {
+    const n1 = nrm(...f1), n2 = nrm(...f2), c1 = cen(...f1), c2 = cen(...f2), a = v(...e1), b = v(...e2);
+    const m = [(Q[a] + Q[b]) / 2, (Q[a + 1] + Q[b + 1]) / 2, (Q[a + 2] + Q[b + 2]) / 2];
+    const d = (c1[0] + c2[0]) / 2 - m[0], e = (c1[1] + c2[1]) / 2 - m[1], f = (c1[2] + c2[2]) / 2 - m[2];
+    return d * (n1[0] + n2[0]) + e * (n1[1] + n2[1]) + f * (n1[2] + n2[2]) < 0 ? 'M' : 'V';
+  };
+  const s = [], z = [];
+  for (let j = 0; j <= ny; j++) for (let i = 0; i < nx; i++) s[j * nx + i] = j > 0 && j < ny ? kind([i, j - 1], [i, j], [i, j], [i + 1, j]) : 'edge';
+  for (let i = 0; i <= nx; i++) for (let j = 0; j < ny; j++) z[i * ny + j] = i > 0 && i < nx ? kind([i - 1, j], [i, j], [i, j], [i, j + 1]) : 'edge';
+  return { s, z };
+}
+
+// ---------- captions (one thing at a time) ----------
+const sayEl = $('#say'), ckv = $('#ckv') || document.createElement('span');
+let sayTimer = 0;
+function say(key, html) {
+  if (key === sayKey) return; sayKey = key;
+  if (FIXED || REDUCED) { sayEl.innerHTML = html; return; }
+  sayEl.classList.add('fade'); clearTimeout(sayTimer);
+  sayTimer = setTimeout(() => { sayEl.innerHTML = html; sayEl.classList.remove('fade'); }, 180);
+}
+const panelsN = () => cfg.nx * cfg.ny;
+const NUM = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const words = n => { const t = { 16: 'Sixteen', 24: 'Twenty-four', 32: 'Thirty-two', 36: 'Thirty-six', 40: 'Forty', 48: 'Forty-eight', 56: 'Fifty-six', 60: 'Sixty', 64: 'Sixty-four', 70: 'Seventy', 72: 'Seventy-two', 80: 'Eighty', 84: 'Eighty-four', 96: 'Ninety-six', 100: 'A hundred', 112: 'A hundred and twelve', 120: 'A hundred and twenty', 128: 'A hundred and twenty-eight' }; return t[n] || String(n); };
+function captionFor() {
+  if (OG) return ['og', 'Pull one corner and all <b>' + words(panelsN()).toLowerCase() + '</b> panels move with it.'];
+  if (cfg.theta === 0) return ['square', 'Square creases, like a road map: one pull only folds it <b>one way</b>. The other way needs a second, separate fold.'];
+  const s = M.sAt(pt, omega);
+  if (grab) {
+    const k = M.cell(cfg.theta, omega, XI, C);
+    if (k.Sx < 0.35 && k.Sy < 0.97) return ['knee', 'Near the end it changes direction: <b>along first, then across</b>. Still one motion.'];
+    return ['one', 'Every panel follows the one you hold. The whole sheet has <b>one</b> degree of freedom.'];
+  }
+  if (s > 0.985) return ['stowed', 'Stowed flat against the root fitting. <b>Pull the corner</b> to open it.'];
+  if (omega < 0.5) return ['flat', 'Fully deployed: a flat sheet again, every crease straight.'];
+  if (userActed) return ['idle', 'Grab <b>any</b> crossing of the creases. The fixed corner stays put; the rest is decided.'];
+  return ['open', words(panelsN()) + ' panels, one motion. <b>Drag the orange corner.</b>'];
+}
+
+// ---------- UI ----------
+const thIn = $('#theta'), nxS = $('#nx'), nyS = $('#ny');
+for (const s of [nxS, nyS]) for (const n of NOPTS) { const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); }
+function syncUI() {
+  thIn.value = cfg.theta; $('#thv').textContent = fmtDeg(cfg.theta); nxS.value = cfg.nx; nyS.value = cfg.ny;
+  $('#vDraw').setAttribute('aria-pressed', mode === 'draw'); $('#vHard').setAttribute('aria-pressed', mode === 'hard');
+  document.querySelectorAll('[data-th]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.th === cfg.theta));
+}
+let omvShown = '';
+function syncOmega() { const t = omega.toFixed(1) + '°'; if (t !== omvShown) { $('#omv').textContent = t; omvShown = t; } }
+function act(ev, extra) {
+  userActed = true; opening = null;
+  log.push(Object.assign({ t: +simT.toFixed(3), ev, theta: cfg.theta, nx: cfg.nx, ny: cfg.ny, omega }, extra || {}));
+  if (log.length > 400) log.splice(0, log.length - 400);
+}
+thIn.addEventListener('input', e => { const v = +e.target.value; anim = null; setCfg({ theta: v }); act('theta'); });
+document.querySelectorAll('[data-th]').forEach(b => b.addEventListener('click', () => { anim = null; setCfg({ theta: +b.dataset.th }); act('theta'); }));
+nxS.addEventListener('change', e => { anim = null; setCfg({ nx: +e.target.value }); act('n'); });
+nyS.addEventListener('change', e => { anim = null; setCfg({ ny: +e.target.value }); act('n'); });
+$('#vDraw').addEventListener('click', () => setMode('draw'));
+$('#vHard').addEventListener('click', () => setMode('hard'));
+function setMode(m) {
+  if (m === mode) return; mode = m; act('view');
+  draw.visible = m === 'draw'; hard.visible = m === 'hard';
+  if (m === 'hard') { makeEnv(); buildHard(); }
+  geoDirty = true; dirty = true; syncUI();
+}
+function animateTo(sGoal, dur) {
+  const s0 = M.sAt(pt, omega);
+  if (REDUCED) { setOmega(M.omegaAt(pt, sGoal)); return; }
+  anim = { s0, s1: sGoal, t0: simT, dur: dur || 2.6 * Math.max(.25, Math.abs(sGoal - s0)) };
+}
+$('#stow').addEventListener('click', () => { act('stow'); animateTo(1); });
+$('#deploy').addEventListener('click', () => { act('deploy'); animateTo(0); });
+
+// ---------- pointer: grab a crossing, or turn the view ----------
+function nearestVertex(x, y, rad) {
+  let best = null, bd = rad * rad;
+  for (let j = 0; j <= cfg.ny; j++) for (let i = 0; i <= cfg.nx; i++) {
+    if (!i && !j) continue;
+    const o = 3 * (j * (cfg.nx + 1) + i), s = toScreen(P[o], P[o + 1], P[o + 2]);
+    const d = (s[0] - x) ** 2 + (s[1] - y) ** 2;
+    if (d < bd || (best && d === bd && i + j > best.i + best.j)) { bd = d; best = { i, j }; }
+  }
+  return best;
+}
+function cpos(e) { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function solveDrag(x, y) {
+  // the grabbed crossing can only move along its own track: find the omega whose position is closest to the pointer
+  const { i, j } = grab, n = pt.n;
+  const d2 = w => { const p = vpos(i, j, w), s = toScreen(p[0], p[1], p[2]); return (s[0] - x) ** 2 + (s[1] - y) ** 2; };
+  let kc = 0, bc = 1e18;
+  for (let k = 0; k <= n; k++) { const d = Math.abs(pt.w[k] - omega); if (d < bc) { bc = d; kc = k; } }
+  let bl = kc, dl = d2(pt.w[kc]), bg = kc, dg = dl;
+  const win = Math.round(n * .12);
+  for (let k = 0; k <= n; k++) {
+    const d = d2(pt.w[k]);
+    if (d < dg) { dg = d; bg = k; }
+    if (Math.abs(k - kc) <= win && d < dl) { dl = d; bl = k; }
+  }
+  let k = dg < dl * .25 ? bg : bl;
+  let lo = pt.w[Math.max(0, k - 1)], hi = pt.w[Math.min(n, k + 1)];
+  const g = (Math.sqrt(5) - 1) / 2;
+  for (let it = 0; it < 28; it++) { const a = hi - g * (hi - lo), b = lo + g * (hi - lo); if (d2(a) < d2(b)) hi = b; else lo = a; }
+  return (lo + hi) / 2;
+}
+canvas.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const [x, y] = cpos(e);
+  const v = nearestVertex(x, y, e.pointerType === 'touch' ? 34 : 22);
+  canvas.setPointerCapture(e.pointerId);
+  if (v) { grab = Object.assign(v, { id: e.pointerId }); anim = null; act('grab', { i: v.i, j: v.j }); canvas.classList.add('grab'); }
+  else orbit = { x, y, yaw, pitch, id: e.pointerId };
+  dirty = true;
+});
+canvas.addEventListener('pointermove', e => {
+  const [x, y] = cpos(e);
+  if (grab && e.pointerId === grab.id) { setOmega(solveDrag(x, y)); hover = grab; return; }
+  if (orbit && e.pointerId === orbit.id) {
+    yaw = orbit.yaw - (x - orbit.x) * 0.006; pitch = Math.max(0.12, Math.min(1.35, orbit.pitch + (y - orbit.y) * 0.005));
+    placeCam(); dirty = true; return;
+  }
+  if (e.pointerType !== 'touch') { const v = nearestVertex(x, y, 22); hover = v; canvas.classList.toggle('near', !!v); dirty = true; }
+});
+const endPtr = e => {
+  if (grab && e.pointerId === grab.id) { act('drag', { i: grab.i, j: grab.j }); grab = null; canvas.classList.remove('grab'); }
+  if (orbit && e.pointerId === orbit.id) { if (Math.abs(orbit.yaw - yaw) + Math.abs(orbit.pitch - pitch) > 1e-3) act('turn'); orbit = null; }
+  dirty = true;
+};
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('pointerleave', () => { if (!grab) { hover = null; dirty = true; } });
+canvas.addEventListener('wheel', e => { if (mobile()) return; e.preventDefault(); zoomMul = Math.max(.5, Math.min(3, zoomMul * Math.exp(-e.deltaY * .0012))); placeCam(); dirty = true; }, { passive: false });
+canvas.addEventListener('dblclick', () => { yaw = -0.8; pitch = 0.5; zoomMul = 1; placeCam(); dirty = true; act('turn'); });
+document.addEventListener('pointerdown', e => { const w = $('#what'); if (w.open && !w.contains(e.target)) w.open = false; });
+
+// ---------- labels in screen space ----------
+function placeLabels() {
+  const p = (q, e) => { const s = toScreen(q[0], q[1], q[2]); e.style.left = s[0] + 'px'; e.style.top = s[1] + 'px'; return s; };
+  p(annPts.w, dimW); p(annPts.d, dimD);
+  const fs = toScreen(-0.16, -0.16, -0.18); tagFit.style.left = (fs[0] - 70) + 'px'; tagFit.style.top = (fs[1] + 10) + 'px';
+  const o = 3 * ((cfg.ny) * (cfg.nx + 1) + cfg.nx), cs = toScreen(P[o], P[o + 1], P[o + 2]);
+  dot.style.left = cs[0] + 'px'; dot.style.top = cs[1] + 'px'; pull.style.left = cs[0] + 'px'; pull.style.top = cs[1] + 'px';
+  pull.classList.toggle('off', userActed || OG);
+  if (hover && !(hover.i === cfg.nx && hover.j === cfg.ny)) {
+    const q = 3 * (hover.j * (cfg.nx + 1) + hover.i), hs = toScreen(P[q], P[q + 1], P[q + 2]);
+    hov.style.display = 'block'; hov.style.left = hs[0] + 'px'; hov.style.top = hs[1] + 'px';
+  } else hov.style.display = 'none';
+}
+
+// ---------- frame loop ----------
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function tick(dt) {
+  simT += dt; frame++;
+  if (opening) {
+    const t = (simT - opening.t0) / opening.dur;
+    if (t >= 0) setOmega(M.omegaAt(pt, opening.s0 + (opening.s1 - opening.s0) * ease(Math.min(1, t))));
+    if (t >= 1) opening = null;
+  }
+  if (anim) {
+    const t = Math.min(1, (simT - anim.t0) / anim.dur);
+    setOmega(M.omegaAt(pt, anim.s0 + (anim.s1 - anim.s0) * ease(t)));
+    if (t >= 1) anim = null;
+  }
+  const c = captionFor(); say(c[0], c[1]);
+}
+function render() {
+  if (geoDirty) refresh();
+  G.updateMatrixWorld(true);
+  placeLabels();
+  renderer.render(scene, cam);
+  dirty = false;
+  window.__frame = frame;
+  window.__state = { t: simT, frame, omega, s: pt ? M.sAt(pt, omega) : 0 };
+}
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+  tick(dt);
+  if (dirty || geoDirty || anim || opening) render();
+}
+window.step = n => { for (let k = 0; k < (n || 1); k++) tick(1 / 60); render(); return frame; };
+
+// ---------- state for tests ----------
+function gpuCheck() {
+  // read back what the GPU was given and check rigidity on that (float32)
+  if (mode === 'draw') {
+    const a = edgesVis.userData.A.array, b = edgesVis.userData.B.array, n = edgesVis.userData.n, nS = (cfg.ny + 1) * cfg.nx;
+    let e = 0; for (let k = 0; k < n; k++) { const l = Math.hypot(b[3 * k] - a[3 * k], b[3 * k + 1] - a[3 * k + 1], b[3 * k + 2] - a[3 * k + 2]); e = Math.max(e, Math.abs(l - (k < nS ? XI : C))); }
+    return e;
+  }
+  return null;
+}
+function panelCorners() {
+  // corners of every rendered panel, read back from the instance matrices (engine coordinates)
+  if (!hardParts || !hardParts.subA) return null;
+  const out = [], m = new THREE.Matrix4(), v = new THREE.Vector3(), sinA = Math.cos(cfg.theta * D2R), sa = Math.sin(cfg.theta * D2R);
+  let a = 0, b = 0;
+  for (let j = 0; j < cfg.ny; j++) for (let i = 0; i < cfg.nx; i++) {
+    const key = j & 1 ? 'B' : 'A', k = j & 1 ? b++ : a++, cosA = j & 1 ? -sa : sa;
+    hardParts['sub' + key].getMatrixAt(k, m);
+    const cs = [[0, 0], [XI, 0], [XI + C * cosA, C * sinA], [C * cosA, C * sinA]].map(([x, y]) => { v.set(x, y, 0).applyMatrix4(m); return [v.x, v.y, v.z]; });
+    out.push({ i, j, c: cs });
+  }
+  return out;
+}
+window.miura = {
+  state() {
+    if (!pt || !P) return { ready: false };
+    const k = M.cell(cfg.theta, omega, XI, C), f = M.folds(cfg.theta, omega, XI, C), cn = M.corner(cfg, omega);
+    return {
+      ready: true, cfg: Object.assign({}, cfg), omega, wmax, s: M.sAt(pt, omega), cell: k, folds: f, corner: cn,
+      check: lastCheck, worst: Object.assign({}, worst), gpu: gpuCheck(), mode, frame, t: simT,
+      grab: grab ? { i: grab.i, j: grab.j } : null, anim: !!anim, opening: !!opening, say: sayEl.textContent, sayKey,
+      view: { yaw, pitch, zoom: zoomMul }, dims: { w: annPts.X1, d: annPts.Y1 },
+      parts: hardParts && hardParts.subA ? { panels: hardParts.nA + hardParts.nB, cells: hardParts.cellCount, hinges: hardParts.nh } : null,
+      tris: renderer.info.render.triangles, calls: renderer.info.render.calls, log: log.slice(),
+    };
+  },
+  verts: () => { if (geoDirty) M.verts(cfg, omega, P); return Array.from(P); },
+  screen: (i, j) => { const o = 3 * (j * (cfg.nx + 1) + i); const s = toScreen(P[o], P[o + 1], P[o + 2]); const r = canvas.getBoundingClientRect(); return [s[0] + r.left, s[1] + r.top]; },
+  track: (i, j, ws) => ws.map(w => vpos(i, j, w)),
+  distTo: (i, j, ws, cx, cy) => { const r = canvas.getBoundingClientRect(); return ws.map(w => { const p = vpos(i, j, w), s = toScreen(p[0], p[1], p[2]); return Math.hypot(s[0] + r.left - cx, s[1] + r.top - cy); }); },
+  locus: () => ({ dot: [+locDot.getAttribute('cx'), +locDot.getAttribute('cy')], map: [LX0, LX1, LY0, LY1], figs: locFig.querySelectorAll('circle').length }),
+  panelCorners, mountains,
+};
+
+// ---------- start ----------
+setCfg({ keepW: true });
+draw.visible = mode === 'draw'; hard.visible = mode === 'hard';
+if (mode === 'hard') makeEnv();
+if (Q.has('w')) omega = Math.max(0, Math.min(wmax, +Q.get('w')));
+else if (FIXED || REDUCED || OG) omega = OPEN_W;
+else { omega = wmax; opening = { s0: 1, s1: M.sAt(pt, OPEN_W), t0: 0.45, dur: 3.4 }; }
+geoDirty = true;
+addEventListener('resize', resize);
+// WebKit can run this before the stylesheet has sized the canvas (it reads 300 x 150): watch the canvas itself
+if (window.ResizeObserver) new ResizeObserver(() => { if (canvas.clientWidth !== W || canvas.clientHeight !== H) resize(); }).observe(canvas);
+resize();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { dirty = true; if (FIXED) render(); });
+if (FIXED) render(); else requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

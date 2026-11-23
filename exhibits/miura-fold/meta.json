@@ -1,0 +1,11 @@
+{
+ "slug": "miura-fold",
+ "title": "Miura Fold",
+ "no": "056",
+ "date": "2026-11-24",
+ "kind": "Rigid origami · three.js",
+ "blurb": "A folded solar array on a live blueprint. Pull any crease crossing and all eighty panels move with it: Miura-ori has one degree of freedom. Computed from Koryo Miura's 1985 equations, checked against his figure and an independent crease-by-crease fold. Square creases need two folds; tilt them 6 degrees and it takes one.",
+ "color": "#00346c",
+ "exhibit": "miuraFold",
+ "lane": "3d"
+}
