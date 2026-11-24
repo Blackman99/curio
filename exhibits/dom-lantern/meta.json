@@ -1,0 +1,11 @@
+{
+ "slug": "dom-lantern",
+ "title": "Paper Lantern",
+ "no": "057",
+ "date": "2026-11-25",
+ "kind": "CSS 3D transforms · live DOM",
+ "blurb": "A handmade pleated paper lantern folded from 2,437 live HTML elements using CSS 3D transforms — zero canvas, zero WebGL. Every facet holds real text you can select in 3D, search with Find, edit around the equator, illuminate with an inner candle, or unroll seamlessly into a flat article.",
+ "color": "#187cf0",
+ "exhibit": "paperLantern",
+ "lane": "web"
+}

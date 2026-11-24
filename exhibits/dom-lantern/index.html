@@ -1,0 +1,2000 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Paper Lantern — Real HTML folded into 3D with CSS transforms</title>
+<meta name="description" content="A handmade pleated paper lantern folded out of more than two thousand real HTML elements using CSS 3D transforms — zero canvas, zero WebGL. Every facet holds live text you can select, search with Ctrl/Cmd+F, translate, edit, or unfold smoothly into a flat web article.">
+<meta property="og:title" content="Paper Lantern">
+<meta property="og:description" content="Over two thousand live HTML elements folded into a pleated paper lantern with CSS 3D transforms. Select a word in 3D, search it, light the candle, or unfold the lantern into a flat web page.">
+<meta property="og:image" content="https://blackman99.github.io/curio/dom-lantern/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Paper Lantern">
+<meta name="twitter:description" content="Real HTML folded into a handmade pleated paper lantern with CSS 3D transforms — zero canvas, zero WebGL. Unfold it flat into an article.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/dom-lantern/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@600;700&family=Shantell+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script>
+(function(){
+  var q=new URLSearchParams(location.search);
+  if(q.has('fixed')||q.has('og')) document.documentElement.classList.add('fixed');
+  if(q.has('og')) document.documentElement.classList.add('og');
+  if(q.has('no3d')) document.documentElement.classList.add('force-no3d');
+})();
+</script>
+<style>
+:root{
+  --paper:#f8f2e4;
+  --paper-card:#fffdf6;
+  --ink:#16335c;
+  --ink-soft:#3d5c86;
+  --blue:#1f66b5;
+  --blue-deep:#14498a;
+  --blue-pale:#dcebfa;
+  --sky:#7eb8ea;
+  --mint:#6ebc9f;
+  --pink:#e485a5;
+  --dot:rgba(31,102,181,0.13);
+  --hd:'Fredoka',system-ui,sans-serif;
+  --hand:'Shantell Sans',Georgia,serif;
+  --ui:'Quicksand',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+html{
+  background:var(--paper);
+  color:var(--ink);
+  -webkit-text-size-adjust:100%;
+  transition:background-color .45s ease,color .45s ease;
+}
+body{
+  font-family:var(--hand);
+  color:var(--ink);
+  background:
+    radial-gradient(circle,var(--dot) 1.3px,transparent 1.5px) 0 0/26px 26px,
+    radial-gradient(ellipse at 50% 48%,rgba(255,253,246,.55) 0%,rgba(232,220,196,.42) 100%),
+    var(--paper);
+  overflow:hidden;
+  height:100dvh;
+  position:relative;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+html.dusk{background:#182b4a;color:#f3f6fc}
+html.dusk body{
+  color:#f3f6fc;
+  background:
+    radial-gradient(circle,rgba(166,208,255,.16) 1.2px,transparent 1.5px) 0 0/30px 30px,
+    radial-gradient(ellipse at 50% 48%,rgba(39,71,122,.7) 0%,rgba(17,31,56,.96) 100%),
+    #182b4a;
+}
+html.fixed *,html.fixed *::before,html.fixed *::after{transition:none!important;animation:none!important}
+button,input{font-family:var(--ui);color:inherit}
+a{color:inherit}
+
+/* ---------- Header (top-left sticker + title) ---------- */
+#head{
+  position:fixed;left:22px;top:16px;z-index:20;
+  max-width:min(440px,calc(100vw - 44px));
+  pointer-events:none;
+}
+#head > *{pointer-events:auto}
+#crumbs{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font:700 12.5px/1 var(--ui);letter-spacing:.03em;margin-bottom:8px;
+}
+#crumbs .home{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--blue);color:#fffdf7;text-decoration:none;
+  padding:6px 12px 6px 10px;border-radius:14px;
+  border:2px dashed rgba(255,253,247,.55);
+  box-shadow:0 3px 0 var(--blue-deep);
+  transform:rotate(-1.5deg);
+  transition:transform .14s,background-color .14s;
+}
+#crumbs .home:hover{transform:rotate(0deg) translateY(-1px);background:#2574cc}
+#crumbs .no{color:var(--blue-deep);background:rgba(255,253,246,.82);padding:5px 10px;border-radius:12px;border:1.5px solid rgba(31,102,181,.26)}
+html.dusk #crumbs .no{color:#d8e9ff;background:rgba(24,43,74,.75);border-color:rgba(148,194,244,.32)}
+
+h1{
+  margin:0;
+  font:700 clamp(28px,3.6vw,48px)/1.02 var(--hd);
+  color:var(--ink);
+  letter-spacing:-.01em;
+  display:inline-block;
+  position:relative;
+}
+h1::after{
+  content:'';display:block;height:5px;margin-top:3px;border-radius:99px;
+  background:repeating-linear-gradient(90deg,var(--blue) 0 14px,transparent 14px 19px);
+  opacity:.85;
+}
+html.dusk h1{color:#fffdf6}
+html.dusk h1::after{background:repeating-linear-gradient(90deg,#7cc0ff 0 14px,transparent 14px 19px)}
+#lede{
+  margin:7px 0 0;
+  font:400 14px/1.38 var(--hand);
+  color:var(--ink-soft);
+  max-width:390px;
+}
+html.dusk #lede{color:#c9dcf5}
+
+/* ---------- Fallback banner when CSS 3D unsupported / ?no3d ---------- */
+#no3d-note{
+  display:none;margin-top:8px;padding:7px 11px;border-radius:12px;
+  background:#dcebfa;border:2px dashed var(--blue);color:var(--ink);
+  font:700 12.5px/1.35 var(--ui);max-width:390px;
+}
+html.no3d #no3d-note{display:block}
+
+/* ---------- 3D Stage (NO display:flex on perspective element — WebKit preserve-3d fix!) ---------- */
+#stage{
+  position:fixed;inset:0;z-index:1;
+  perspective:960px;-webkit-perspective:960px;
+  perspective-origin:50% 48%;
+  touch-action:none;
+  cursor:grab;
+}
+#stage:active{cursor:grabbing}
+html.mode-select #stage{cursor:text;touch-action:auto}
+html.is-article #stage{display:none}
+
+/* Soft paper-table drop shadow under the hanging lantern (pure CSS, zero canvas/svg) */
+#floor-shadow{
+  position:absolute;left:50%;top:50%;
+  width:250px;height:56px;margin-left:-125px;margin-top:210px;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%,rgba(22,51,92,.14) 0%,rgba(22,51,92,.05) 52%,transparent 75%);
+  transition:opacity .35s;
+}
+html.dusk #floor-shadow{
+  background:radial-gradient(ellipse at 50% 50%,rgba(255,196,105,.24) 0%,rgba(255,180,82,.07) 52%,transparent 75%);
+}
+html.flat-css #floor-shadow{opacity:.25}
+
+#rig{
+  position:absolute;left:50%;top:47%;width:0;height:0;
+  transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+}
+#lantern{
+  position:absolute;left:0;top:0;width:0;height:0;
+  transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+}
+.ring{
+  position:absolute;left:0;top:0;width:0;height:0;
+  transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+}
+/* Flat CSS proof mode: literally turns preserve-3d off! */
+html.flat-css #rig,html.flat-css #lantern,html.flat-css .ring,
+html.flat-css #extras,html.flat-css #candle-core,html.flat-css #tassel,html.flat-css #cord{
+  transform-style:flat!important;-webkit-transform-style:flat!important;
+}
+html.flat-css #rig::after{
+  content:'transform-style: flat';
+  position:absolute;left:-195px;top:-210px;width:390px;height:420px;
+  border:3px dashed var(--blue);border-radius:18px;
+  background:rgba(31,102,181,.06);
+  font:700 13px/1 var(--ui);color:var(--blue-deep);
+  display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 12px;
+  pointer-events:none;
+}
+html.dusk.flat-css #rig::after{border-color:#7cc0ff;color:#cce4ff;background:rgba(124,192,255,.08)}
+
+/* Chapter headings live in real DOM (accessible in 3D, visible in Flat Article mode) */
+.ch{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;
+  margin:0;padding:0;
+}
+
+/* ---------- Individual 3D Paper Facets ---------- */
+.facet{
+  position:absolute;left:0;top:0;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  transform-origin:50% 50%;
+  user-select:none;-webkit-user-select:none;
+}
+html.mode-select .facet,html.mode-select .facet .txt,html.mode-select .facet .w{
+  user-select:text;-webkit-user-select:text;
+}
+html.unrolling .facet{
+  backface-visibility:visible;-webkit-backface-visibility:visible;
+}
+.facet .paper{
+  position:relative;width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  /* subtle handmade paper grain via pure CSS */
+  background-image:
+    repeating-linear-gradient(12deg,rgba(255,255,255,.04) 0 2px,transparent 2px 6px),
+    repeating-linear-gradient(-78deg,rgba(22,51,92,.025) 0 1px,transparent 1px 5px);
+}
+.facet .seam-t{
+  position:absolute;left:0;right:0;top:0;height:2px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(20,54,104,.16));
+}
+.facet .seam-l{
+  position:absolute;left:0;top:0;bottom:0;width:1.5px;pointer-events:none;
+  background:rgba(20,54,104,.16);
+}
+.facet .stitches{
+  position:absolute;left:18%;right:18%;bottom:1px;height:2px;
+  display:flex;justify-content:space-between;align-items:center;pointer-events:none;
+  opacity:.32;
+}
+.ring[data-r="1"] .facet .stitches,.ring[data-r="8"] .facet .stitches{opacity:.18}
+.facet .st{
+  display:block;width:4px;height:1.5px;border-radius:1px;
+  background:currentColor;
+}
+.facet .txt{
+  position:relative;z-index:2;
+  display:block;text-align:center;
+  font-family:var(--hand);font-weight:600;
+  line-height:1.12;letter-spacing:-.01em;
+  word-spacing:.02em;
+}
+.facet .w{display:inline}
+.facet .w.hit{
+  background:#fff176;color:#142d52!important;
+  border-radius:4px;padding:0 2px;
+  box-shadow:0 0 0 2px #1f66b5;
+}
+.facet.picked{
+  outline:3px solid #1f66b5;outline-offset:-3px;
+}
+.facet .tag{
+  display:none;position:absolute;top:2px;left:50%;transform:translateX(-50%);
+  font:700 7.5px/1 var(--ui);letter-spacing:.02em;
+  background:rgba(255,253,246,.9);color:var(--blue-deep);
+  padding:1px 4px;border-radius:4px;border:1px solid var(--blue);
+  pointer-events:none;white-space:nowrap;z-index:4;
+}
+html.xray .facet .tag{display:block}
+html.xray .facet .paper{
+  box-shadow:inset 0 0 0 1.5px rgba(31,102,181,.7);
+}
+html.xray .facet .seam-t{background:var(--blue);height:2px}
+/* Editable wish band accent */
+.ring[data-r="5"] .facet .seam-t{
+  height:3px;background:repeating-linear-gradient(90deg,var(--blue) 0 5px,transparent 5px 8px);opacity:.65;
+}
+
+/* ---------- Collars, Crown, Candle, Cord & Tassel (pure HTML DOM 3D) ---------- */
+#extras,#candle-core,#cord,#tassel{
+  position:absolute;left:0;top:0;width:0;height:0;
+  transform-style:preserve-3d;-webkit-transform-style:preserve-3d;
+  pointer-events:none;
+}
+.collar{
+  position:absolute;left:0;top:0;
+  background:#1c4d8d;color:#fffdf6;
+  border-top:2px solid #2d6bc0;border-bottom:2px solid #133666;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.collar .c-st{
+  display:flex;gap:5px;opacity:.55;
+}
+.collar .c-st i{
+  display:block;width:4px;height:1.8px;border-radius:1px;background:#dcebfa;
+}
+.scallop{
+  position:absolute;left:0;top:0;
+  background:#266ec2;border:1.5px solid #144480;
+  border-radius:0 0 50% 50%;
+  backface-visibility:visible;-webkit-backface-visibility:visible;
+}
+.scallop.top{border-radius:50% 50% 0 0;background:#7eb8ea;border-color:#1f66b5}
+
+/* Inner glowing beeswax candle & flame */
+.c-wax{
+  position:absolute;left:0;top:0;
+  background:linear-gradient(180deg,#fff9e6 0%,#f5e4b8 100%);
+  border-top:1px solid #fffdf5;
+  backface-visibility:visible;
+}
+.c-flame{
+  position:absolute;left:0;top:0;
+  border-radius:50% 50% 50% 50%/65% 65% 35% 35%;
+  background:radial-gradient(ellipse at 50% 62%,#fffef2 0%,#ffe57f 44%,#ffad33 84%,transparent 100%);
+  box-shadow:0 0 28px 10px rgba(255,196,84,.52);
+  backface-visibility:visible;
+}
+.c-halo{
+  position:absolute;left:0;top:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,214,112,.45) 0%,rgba(255,188,82,.14) 50%,transparent 74%);
+  backface-visibility:visible;
+}
+html.candle-off .c-flame,html.candle-off .c-halo{opacity:0}
+
+/* Top hanging braided paper cord */
+.cord-seg{
+  position:absolute;left:0;top:0;
+  background:repeating-linear-gradient(180deg,#1f66b5 0 6px,#8bc1ef 6px 12px);
+  border-radius:2px;backface-visibility:visible;
+}
+.cord-knot{
+  position:absolute;left:0;top:0;border-radius:50%;
+  background:#1c4d8d;border:2px solid #fffdf6;
+}
+
+/* Bottom handmade tassel & paper bookmark card */
+.t-rib{
+  position:absolute;left:0;top:0;border-radius:0 0 6px 6px;
+  border-bottom:2px dashed rgba(255,253,246,.65);
+  backface-visibility:visible;
+}
+.t-card{
+  position:absolute;left:0;top:0;
+  background:#fffdf6;color:#17345e;
+  border:2px solid #1f66b5;border-radius:8px;
+  box-shadow:0 3px 0 rgba(31,102,181,.22);
+  font:600 9.5px/1.15 var(--hand);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:4px 5px;
+  backface-visibility:visible;
+  pointer-events:auto;
+}
+
+/* ---------- Flat Article Mode (EXACT SAME #lantern DOM nodes!) ---------- */
+html.is-article body{overflow-y:auto;height:auto;min-height:100dvh}
+html.is-article #head{
+  position:relative;left:auto;top:auto;
+  max-width:740px;margin:0 auto;padding:22px 24px 10px;
+}
+#article-wrap{
+  display:none;max-width:740px;margin:0 auto;padding:8px 24px 120px;
+}
+html.is-article #article-wrap{display:block}
+#article-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:#dcebfa;border:2px dashed var(--blue);border-radius:16px;
+  padding:10px 15px;margin-bottom:18px;
+  font:700 13px/1.35 var(--ui);color:var(--ink);
+}
+html.dusk #article-banner{background:rgba(31,102,181,.32);color:#eef5ff;border-color:#7cc0ff}
+html.is-article #lantern{
+  position:static!important;width:auto!important;height:auto!important;
+  transform:none!important;transform-style:flat!important;
+  display:flex;flex-direction:column;gap:14px;
+}
+html.is-article .ring{
+  position:static!important;width:auto!important;height:auto!important;
+  transform:none!important;transform-style:flat!important;
+  display:block;padding:16px 20px;border-radius:18px;
+  border:2px solid rgba(31,102,181,.28);
+  box-shadow:0 4px 0 rgba(31,102,181,.12);
+  background:var(--ring-bg,#fffdf6);
+  color:var(--ring-ink,#16335c);
+}
+html.is-article .ch{
+  position:static;width:auto;height:auto;overflow:visible;clip:auto;clip-path:none;white-space:normal;
+  font:700 17px/1.2 var(--hd);margin:0 0 6px;letter-spacing:-.01em;
+}
+html.is-article .facet{
+  position:static!important;display:inline!important;
+  width:auto!important;height:auto!important;margin:0!important;
+  transform:none!important;clip-path:none!important;
+  background:transparent!important;color:inherit!important;
+  overflow:visible!important;outline:none!important;
+  user-select:text!important;-webkit-user-select:text!important;
+}
+html.is-article .facet .paper{
+  display:inline!important;background:none!important;box-shadow:none!important;
+}
+html.is-article .facet .seam-t,
+html.is-article .facet .seam-l,
+html.is-article .facet .stitches,
+html.is-article .facet .tag{display:none!important}
+html.is-article .facet .txt{
+  display:inline!important;font-size:16px!important;line-height:1.6!important;
+  text-align:left!important;font-weight:400!important;padding:0!important;
+}
+html.is-article .facet::after{content:' '}
+
+/* ---------- Floating Caption + Craft Toolbar (bottom) ---------- */
+#dock{
+  position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:25;
+  width:min(1080px,calc(100vw - 20px));
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  pointer-events:none;
+}
+#dock > *{pointer-events:auto}
+html.is-article #say{display:none}
+#say{
+  margin:0;text-align:center;
+  font:600 14px/1.35 var(--hand);
+  color:var(--ink);
+  background:rgba(255,253,246,.88);
+  padding:5px 14px;border-radius:99px;
+  border:1.5px solid rgba(31,102,181,.22);
+  transition:opacity .18s;
+  max-width:min(680px,100%);
+}
+html.dusk #say{background:rgba(20,36,64,.88);color:#eaf2ff;border-color:rgba(126,184,234,.36)}
+#say.fade{opacity:0}
+
+#write-pop{
+  display:none;align-items:center;gap:8px;
+  background:var(--paper-card);border:2.5px solid var(--blue);border-radius:16px;
+  padding:7px 10px;box-shadow:0 5px 0 rgba(31,102,181,.22);
+  width:min(460px,100%);
+}
+#write-pop.open{display:flex}
+#write-pop input{
+  flex:1;min-width:0;border:1.5px solid rgba(31,102,181,.35);border-radius:10px;
+  padding:6px 10px;font:600 14px/1.2 var(--hand);background:#fff;color:var(--ink);
+}
+#write-pop button{
+  border:0;border-radius:10px;padding:7px 11px;font:700 12.5px/1 var(--ui);
+  background:var(--blue);color:#fffdf7;cursor:pointer;
+}
+#write-pop button.sec{background:var(--blue-pale);color:var(--ink)}
+
+#bar{
+  display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;
+  background:rgba(255,253,246,.95);
+  border:2.5px solid var(--blue);
+  border-radius:22px;
+  padding:7px 10px;
+  box-shadow:0 5px 0 rgba(31,102,181,.2);
+}
+html.dusk #bar{
+  background:rgba(24,43,74,.93);
+  border-color:#72b7f2;
+  box-shadow:0 5px 0 rgba(0,0,0,.35);
+}
+.btn{
+  border:2px solid var(--blue);
+  background:#fffdf6;color:var(--ink);
+  border-radius:14px;padding:7px 10px;
+  font:700 12px/1 var(--ui);cursor:pointer;
+  transition:transform .1s,background-color .14s,color .14s;
+  white-space:nowrap;
+}
+.btn:hover{background:var(--blue-pale);transform:translateY(-1px)}
+.btn.pri{background:var(--blue);color:#fffdf7;box-shadow:0 2px 0 var(--blue-deep)}
+.btn.pri:hover{background:#2574cc}
+.btn[aria-pressed="true"]{background:var(--blue);color:#fffdf7}
+html.dusk .btn{background:#213a63;color:#eef5ff;border-color:#72b7f2}
+html.dusk .btn:hover{background:#2a4a7d}
+html.dusk .btn.pri,html.dusk .btn[aria-pressed="true"]{background:#4a96e0;color:#fffdf7;border-color:#9dd0ff}
+
+.fold-box{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--blue-pale);border-radius:14px;padding:5px 10px;
+  font:700 12px/1 var(--ui);color:var(--ink);
+}
+html.dusk .fold-box{background:#213a63;color:#e6f1ff}
+.fold-box input[type=range]{width:82px;accent-color:var(--blue);cursor:pointer;margin:0}
+
+.seg{
+  display:inline-flex;border:2px solid var(--blue);border-radius:14px;overflow:hidden;
+}
+.seg button{
+  border:0;background:#fffdf6;color:var(--ink);padding:7px 10px;
+  font:700 12px/1 var(--ui);cursor:pointer;
+}
+.seg button+button{border-left:2px solid var(--blue)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:#fffdf7}
+html.dusk .seg{border-color:#72b7f2}
+html.dusk .seg button{background:#213a63;color:#eef5ff}
+html.dusk .seg button+button{border-left-color:#72b7f2}
+html.dusk .seg button[aria-pressed="true"]{background:#4a96e0;color:#fffdf7}
+
+/* ---------- X-ray / Facet Inspector Card (compact, bottom-left, NOT a right panel!) ---------- */
+#inspect{
+  position:fixed;left:22px;bottom:98px;z-index:22;
+  width:min(320px,calc(100vw - 44px));
+  background:rgba(255,253,246,.96);color:var(--ink);
+  border:2.5px dashed var(--blue);border-radius:16px;
+  padding:11px 13px;box-shadow:0 5px 0 rgba(31,102,181,.18);
+  display:none;
+}
+html.dusk #inspect{background:rgba(20,36,64,.95);color:#eef5ff;border-color:#72b7f2}
+#inspect.on{display:block}
+#inspect h3{margin:0 0 5px;font:700 14px/1.2 var(--hd);color:var(--blue-deep);display:flex;justify-content:space-between;align-items:center}
+html.dusk #inspect h3{color:#9fd0ff}
+#inspect .meta{font:600 12px/1.4 var(--ui);margin:0 0 5px}
+#inspect code{
+  display:block;font:600 10.5px/1.38 var(--ui);
+  background:var(--blue-pale);color:var(--ink);padding:5px 7px;border-radius:8px;
+  word-break:break-all;
+}
+html.dusk #inspect code{background:#122442;color:#cde4ff}
+#inspect .xclose{
+  border:0;background:transparent;color:inherit;font:700 16px/1 var(--ui);cursor:pointer;padding:0 4px;
+}
+
+/* ---------- What is this? Modal ---------- */
+#what-bg{
+  position:fixed;inset:0;z-index:40;background:rgba(22,51,92,.45);
+  display:none;align-items:center;justify-content:center;padding:18px;
+}
+#what-bg.open{display:flex}
+#what-card{
+  position:relative;width:min(660px,100%);max-height:min(86vh,760px);overflow-y:auto;
+  background:#fffdf6;color:var(--ink);
+  border:3px solid var(--blue);border-radius:24px;
+  padding:22px 26px 24px;box-shadow:0 10px 0 rgba(20,73,138,.28);
+  font:400 14.5px/1.55 var(--hand);
+}
+#what-card h2{margin:0 0 10px;font:700 26px/1.1 var(--hd);color:var(--blue-deep)}
+#what-card h3{margin:16px 0 6px;font:700 16px/1.2 var(--hd);color:var(--blue)}
+#what-card p{margin:0 0 10px}
+#what-card table{width:100%;border-collapse:collapse;margin:8px 0 12px;font:600 12.5px/1.35 var(--ui)}
+#what-card th,#what-card td{padding:6px 8px;border-bottom:1.5px solid rgba(31,102,181,.2);text-align:left}
+#what-card th{color:var(--blue-deep);background:var(--blue-pale)}
+#what-card .close-w{
+  position:sticky;top:0;float:right;
+  border:2px solid var(--blue);background:#fffdf6;color:var(--blue-deep);
+  border-radius:12px;padding:5px 11px;font:700 13px/1 var(--ui);cursor:pointer;
+}
+#what-card .close-w:hover{background:var(--blue);color:#fffdf7}
+
+/* ---------- OG Social Card Composition (V8 Picture-Book Stamp) ---------- */
+#og-card{display:none}
+html.og #head,html.og #dock,html.og #inspect,html.og #what-bg{display:none!important}
+html.og #rig{left:32%!important;top:49%!important}
+html.og #floor-shadow{left:32%!important}
+html.og #og-card{
+  display:flex;flex-direction:column;justify-content:center;gap:14px;
+  position:fixed;right:54px;top:50%;transform:translateY(-50%);z-index:20;
+  width:548px;padding:30px 34px;
+  background:#fffdf6;border:4px solid var(--blue);border-radius:28px;
+  box-shadow:10px 10px 0 var(--blue);
+}
+html.og #og-card .og-pill{
+  align-self:flex-start;background:var(--blue);color:#fffdf7;
+  font:700 15px/1 var(--ui);letter-spacing:.05em;text-transform:uppercase;
+  padding:8px 14px;border-radius:99px;border:2px dashed rgba(255,253,247,.55);
+}
+html.og #og-card .og-title{
+  margin:0;font:700 62px/.98 var(--hd);color:var(--ink);
+}
+html.og #og-card .og-sub{
+  margin:0;font:600 22px/1.35 var(--hand);color:var(--ink-soft);
+}
+html.og #og-card .og-chips{
+  display:flex;gap:8px;flex-wrap:nowrap;margin-top:4px;
+}
+html.og #og-card .og-chips span{
+  background:var(--blue-pale);color:var(--blue-deep);
+  border:2px solid rgba(31,102,181,.35);border-radius:12px;
+  padding:6px 11px;font:700 14.5px/1 var(--ui);white-space:nowrap;
+}
+
+/* ---------- Compact iframe height (1297x717 hall viewer) ---------- */
+@media (min-width:761px) and (max-height:760px){
+  #head{top:10px;left:16px}
+  h1{font-size:34px}
+  #lede{font-size:12.5px;margin-top:4px;max-width:340px}
+  #dock{bottom:8px;gap:5px}
+  #say{font-size:12.5px;padding:4px 12px}
+  #bar{padding:6px 10px;gap:5px}
+  .btn,.seg button{padding:6px 9px;font-size:11.5px}
+}
+
+/* ---------- Mobile (390x844) ---------- */
+@media (max-width:760px){
+  #head{left:14px;right:14px;top:12px;max-width:none}
+  #crumbs{font-size:11.5px;gap:7px;margin-bottom:5px}
+  h1{font-size:28px}
+  #lede{font-size:12.5px;margin-top:5px;max-width:none}
+  #rig{top:46%}
+  #dock{bottom:10px;width:calc(100vw - 16px);gap:6px}
+  #say{font-size:12px;padding:4px 10px}
+  #bar{padding:7px 8px;gap:5px;border-radius:18px}
+  .btn,.seg button{padding:6px 8px;font-size:11.5px}
+  .fold-box{padding:4px 8px;font-size:11.5px}
+  .fold-box input[type=range]{width:66px}
+  #inspect{left:10px;bottom:144px;width:calc(100vw - 20px)}
+  html.is-article #head{padding:16px 16px 6px}
+  #article-wrap{padding:6px 14px 150px}
+  html.is-article .ring{padding:13px 15px}
+}
+</style>
+</head>
+<body>
+
+<header id="head">
+  <nav id="crumbs" aria-label="Breadcrumb">
+    <a class="home" href="../">← Curio</a>
+    <span class="no">Curio · No. 057 · CSS 3D on live DOM</span>
+  </nav>
+  <h1>Paper Lantern</h1>
+  <p id="lede">Over two thousand live HTML elements folded in CSS 3D — zero canvas, zero WebGL. Spin it, search a word, or unfold it flat.</p>
+  <div id="no3d-note" role="status">Your browser has CSS 3D transforms disabled or unsupported (<code>preserve-3d</code>). Showing the flat paper article instead — the same HTML words, without the fold.</div>
+</header>
+
+<main id="stage" aria-label="Interactive 3D Paper Lantern">
+  <div id="floor-shadow" aria-hidden="true"></div>
+  <div id="rig">
+    <div id="extras" aria-hidden="true">
+      <div id="cord"></div>
+      <div id="candle-core"></div>
+      <div id="collars"></div>
+      <div id="tassel"></div>
+    </div>
+    <article id="lantern" aria-label="Paper Lantern Essay"></article>
+  </div>
+</main>
+
+<section id="article-wrap" aria-label="Unfolded Flat Article">
+  <div id="article-banner">
+    <span>Same live DOM nodes — zero copies, zero canvas. Every paragraph below was folded into the 3D lantern a moment ago.</span>
+    <button class="btn pri" id="btn-refold" type="button">Fold into lantern</button>
+  </div>
+  <div id="article-slot"></div>
+</section>
+
+<aside id="inspect" aria-live="polite">
+  <h3><span id="ins-title">Facet Inspector</span><button class="xclose" id="ins-close" type="button" aria-label="Close inspector">×</button></h3>
+  <p class="meta" id="ins-meta"></p>
+  <code id="ins-mat"></code>
+</aside>
+
+<div id="dock">
+  <p id="say" aria-live="polite">160 paper trapezoids, 0 pixels of canvas or WebGL — drag to spin.</p>
+  <form id="write-pop" autocomplete="off">
+    <input id="wish-input" type="text" maxlength="96" placeholder="Write a note around the lantern equator…" aria-label="Custom equator message">
+    <button type="submit">Apply</button>
+    <button type="button" class="sec" id="wish-reset">Reset</button>
+  </form>
+  <div id="bar" role="toolbar" aria-label="Lantern controls">
+    <button class="btn pri" id="btn-unfold" type="button" aria-pressed="false">Unfold to article</button>
+    <label class="fold-box"><span>Fold</span><input id="sld-fold" type="range" min="0" max="100" value="100" aria-label="Lantern fold amount"><span id="fold-pct">100%</span></label>
+    <button class="btn" id="btn-candle" type="button" aria-pressed="true">Candle</button>
+    <button class="btn" id="btn-room" type="button" aria-pressed="false">Dusk</button>
+    <div class="seg" role="group" aria-label="Pointer mode">
+      <button id="btn-mode-spin" type="button" aria-pressed="true">Spin</button>
+      <button id="btn-mode-sel" type="button" aria-pressed="false">Select text</button>
+    </div>
+    <button class="btn" id="btn-find" type="button">Find “firefly”</button>
+    <button class="btn" id="btn-flat" type="button" aria-pressed="false">Flat CSS</button>
+    <button class="btn" id="btn-xray" type="button" aria-pressed="false">HTML X-ray</button>
+    <button class="btn" id="btn-write" type="button" aria-pressed="false">Write</button>
+    <button class="btn" id="btn-what" type="button">What is this?</button>
+  </div>
+</div>
+
+<div id="og-card" aria-hidden="true">
+  <span class="og-pill">Curio · No. 057 · Live DOM</span>
+  <p class="og-title">Paper Lantern</p>
+  <p class="og-sub" id="og-sub">2,437 live HTML elements folded into a pleated lantern with CSS 3D transforms — selectable, searchable, and unfoldable into a flat article.</p>
+  <div class="og-chips">
+    <span>0 canvas</span>
+    <span>0 WebGL</span>
+    <span>160 facets</span>
+    <span>preserve-3d</span>
+  </div>
+</div>
+
+<div id="what-bg" role="dialog" aria-modal="true" aria-labelledby="what-h">
+  <div id="what-card">
+    <button class="close-w" id="what-close" type="button">Close</button>
+    <h2 id="what-h">What is this?</h2>
+<p><strong>Paper Lantern</strong> is a 3D pleated paper lantern folded entirely out of ordinary HTML elements and CSS 3D transforms — <strong>zero <code>&lt;canvas&gt;</code>, zero WebGL, and zero SVG inside the lantern</strong>. The lantern holds 160 trapezoidal paper facets arranged across 10 pleated rings and 16 vertical gores, plus 32 collar panels, scalloped trim, an inner paper candle, a hanging cord, and a paper tassel — 2,437 live DOM nodes in all.</p>
+
+<h3>Why only real DOM + CSS 3D can do this</h3>
+<p>Every colored paper strip is still a real paragraph of HTML text inside <code>&lt;article id="lantern"&gt;</code>. While it is folded into 3D you can highlight words across curved pleats (switch to <strong>Select text</strong>), run browser find-in-page (<strong>Ctrl/⌘F</strong> or the <strong>Find</strong> button), translate the page with your browser's built-in translator, inspect any facet in DevTools, or read the full essay through a screen reader.</p>
+<p>Clicking <strong>Unfold to article</strong> does not swap in a hidden copy: the back seam opens along a continuous coaxial unrolling curve, and at 0% the exact same <code>&lt;article&gt;</code>, <code>&lt;section&gt;</code>, and <code>&lt;span&gt;</code> nodes drop their CSS transforms and flow as a normal scrollable web page. Clicking <strong>Flat CSS</strong> switches <code>transform-style</code> from <code>preserve-3d</code> to <code>flat</code>, collapsing the 3D volume into a flat stack of cards on the spot.</p>
+
+<h3>What is computed for real</h3>
+<ul>
+  <li><strong>Watertight pleated geometry:</strong> Each ring alternates in and out by 10.5 px around an oblate profile (max pleat tilt 65.5°). Every facet's top and bottom chord widths (32–72 px), slant height, trapezoid <code>clip-path</code>, and 4×4 CSS transform <code>T(cx,cy,cz)·R<sub>y</sub>(φ)·R<sub>x</sub>(α)</code> are solved in closed form. Across all fold states <em>u</em> ∈ [0, 1], adjacent facets meet edge-to-edge with max vertex gap &lt; 10<sup>−12</sup> px (verified against an independent Python reference implementation and browser <code>getComputedStyle().transform</code> readback).</li>
+  <li><strong>Surface area &amp; volume:</strong> Closed pleated paper area is 345.7k px² (113.1% of the flat rectangular spread, 305.6k px²) enclosing 19.51M px³ by the divergence theorem.</li>
+  <li><strong>Paper shading:</strong> Each facet blends overhead Lambertian daylight with inverse-square inner candle transmission weighted by paper thickness (thin cream rice paper transmits 88–90%; dyed crayon-blue cardstock transmits 46–48%). Because both terms are axially symmetric, spinning the lantern only updates one parent transform per frame so the browser compositor stays at 60 fps.</li>
+</ul>
+
+<h3>What is artistic / simulated</h3>
+<p>The lantern's gentle pendulum sway on its hanging cord, the craft-table dot pattern, and the dusk-room toggle are visual touches rather than a physics or radiative-transfer simulation. The essay itself (270 words across ten rings) is an original short piece written for this exhibit.</p>
+
+<h3>Browser support (MDN, checked 2026-11-25)</h3>
+<table>
+  <thead><tr><th>CSS feature</th><th>Chrome</th><th>Firefox</th><th>Safari</th></tr></thead>
+  <tbody>
+    <tr><td><code>transform-style: preserve-3d</code></td><td>36+ (12 <code>-webkit-</code>)</td><td>16+ (10 <code>-moz-</code>)</td><td>9+ (4 <code>-webkit-</code>)</td></tr>
+    <tr><td><code>perspective</code></td><td>36+ (12 <code>-webkit-</code>)</td><td>16+</td><td>9+ (iOS 14 fix)</td></tr>
+    <tr><td><code>backface-visibility</code></td><td>36+ (12 <code>-webkit-</code>)</td><td>16+</td><td>15.4+ (5.1 <code>-webkit-</code>)</td></tr>
+    <tr><td>3D <code>transform</code> functions</td><td>36+ (12 <code>-webkit-</code>)</td><td>16+</td><td>9+ (4 <code>-webkit-</code>)</td></tr>
+  </tbody>
+</table>
+<p>On browsers without <code>preserve-3d</code> support (or when opened with <code>?no3d</code>), the exhibit degrades cleanly to the unfolded flat paper article with zero errors. Note on CSS 3D performance: clipping more than ~160 separate 3D facets with <code>clip-path: polygon()</code> slows down software rasterizers, so only the 160 body trapezoids are polygon-clipped while the collars, candle, cord, and tassel use unclipped planes.</p>
+
+  </div>
+</div>
+
+<script type="module">
+const STATS = {"gores":16,"rings":10,"body_facets":160,"collar_facets":32,"word_count":270,"area_closed_kpx2":345.7,"area_flat_kpx2":305.6,"area_ratio_pct":113.1,"vol_closed_mpx3":19.51,"max_seam_err":1.6572562045795678e-13,"min_facet_w":32,"max_facet_w":72,"max_pleat_deg":65.5};
+// Pure deterministic geometry, unrolling, and paper-shading engine for Curio 057: Paper Lantern.
+// Runs identically in Node and in the browser with zero DOM dependencies.
+function makeLanternEngine() {
+  const G = 16;          // vertical gores around circumference
+  const R = 10;          // horizontal pleated paper rings
+  const A = 174;         // equatorial outer radius (px at scale 1)
+  const B = 156;         // vertical half-height (px at scale 1)
+  const GAMMA = 0.86;    // plump oblate spheroid exponent
+  const PLEAT = 10.5;    // accordion zig-zag amplitude (px)
+  const PSI_MIN = 0.46;  // top collar polar angle (rad)
+  const PSI_MAX = Math.PI - 0.46;
+  const COLLAR_H = 22;   // top & bottom collar sleeve height (px)
+  const CANDLE_Y = 12;   // inner candle flame y offset (+y is down)
+
+  // Handmade picture-book paper palette per ring (0 = top .. 9 = bottom)
+  // Designed for V8 picture-book feel anchored in crayon blue (hue ~212°) + warm washi rice paper.
+  const RINGS_META = [
+    { name: 'top-crayon',   base: [38, 110, 194],  ink: '#fffdf7', trans: 0.46, role: 'heading', band: 'Crayon blue cover' },
+    { name: 'washi-1',      base: [251, 245, 231], ink: '#17345e', trans: 0.88, role: 'body',    band: 'Cream rice paper' },
+    { name: 'sky-paper',    base: [132, 186, 234], ink: '#122c50', trans: 0.66, role: 'body',    band: 'Sky wash paper' },
+    { name: 'washi-2',      base: [252, 247, 234], ink: '#17345e', trans: 0.88, role: 'body',    band: 'Cream rice paper' },
+    { name: 'mid-crayon',   base: [29, 98, 178],   ink: '#fffdf7', trans: 0.48, role: 'callout', band: 'Deep crayon blue' },
+    { name: 'wish-band',    base: [255, 249, 236], ink: '#184078', trans: 0.90, role: 'wish',    band: 'Editable wish strip' },
+    { name: 'mint-paper',   base: [122, 194, 168], ink: '#12362c', trans: 0.64, role: 'body',    band: 'Mint craft paper' },
+    { name: 'washi-3',      base: [251, 245, 231], ink: '#17345e', trans: 0.88, role: 'body',    band: 'Cream rice paper' },
+    { name: 'cerulean',     base: [80, 148, 218],  ink: '#fffdf7', trans: 0.56, role: 'body',    band: 'Cerulean strip' },
+    { name: 'bot-crayon',   base: [38, 110, 194],  ink: '#fffdf7', trans: 0.46, role: 'footer',  band: 'Crayon blue hem' }
+  ];
+
+  // Real 10-section essay distributed cleanly around the 10 rings (16 facets per ring).
+  // Every word is real DOM text; reading rings 0..9 left-to-right gives a complete illustrated article.
+  const CHAPTERS = [
+    {
+      title: 'I. Folded from Live HTML',
+      facets: [
+        'A paper', 'lantern', 'folded', 'entirely', 'from one', 'living', 'web page', '— zero',
+        'canvas,', 'zero', 'WebGL,', 'just real', 'HTML', 'words', 'bent into', '3D space.'
+      ]
+    },
+    {
+      title: 'II. Handmade Paper & Creases',
+      facets: [
+        'Real craft', 'lanterns', 'begin as', 'flat sheets', 'of rice', 'paper and', 'crayon-blue', 'cardstock,',
+        'scored into', 'crisp', 'accordion', 'pleats so', 'a fragile', 'sheet can', 'hold its', 'round belly.'
+      ]
+    },
+    {
+      title: 'III. Sixteen Gores, Ten Rings',
+      facets: [
+        'Here, ten', 'stacked', 'rings split', 'into sixteen', 'gores make', 'one hundred', 'sixty paper', 'trapezoids.',
+        'Each facet', 'meets every', 'neighbour', 'edge to', 'edge with', 'zero gap,', 'placed by', 'one transform.'
+      ]
+    },
+    {
+      title: 'IV. The Geometry in the Matrix',
+      facets: [
+        'Each ring', 'swings out', 'and back', 'by ten', 'pixels of', 'pleat depth.', 'The chord', 'width sets',
+        'its top and', 'bottom edge,', 'and CSS', 'clip-path', 'trims each', 'div into', 'an exact', 'trapezoid.'
+      ]
+    },
+    {
+      title: 'V. The Magic Property: preserve-3d',
+      facets: [
+        'One rule', 'builds the', 'volume:', 'transform-style:', 'preserve-3d.', 'Switch it', 'to flat', 'and every',
+        'carefully', 'placed', 'paragraph', 'collapses', 'at once', 'into a', 'pancake', 'of cards.'
+      ]
+    },
+    {
+      title: 'VI. Your Note Around the Equator',
+      facets: [
+        'Drag to', 'spin the', 'lantern,', 'or tap', 'Write to', 'letter your', 'own wish', 'right onto',
+        'this glowing', 'equator', 'strip —', 'every word', 'you type', 'bends live', 'around the', 'paper ring.'
+      ]
+    },
+    {
+      title: 'VII. Translucent Candlelight',
+      facets: [
+        'No shader', 'paints this', 'glow. Each', 'facet knows', 'its normal', 'and distance', 'from the', 'candle,',
+        'blending', 'overhead', 'daylight', 'with warm', 'translucent', 'amber light', 'shining', 'through paper.'
+      ]
+    },
+    {
+      title: 'VIII. Search for a Firefly',
+      facets: [
+        'Because', 'every face', 'is still', 'ordinary', 'text, you', 'can select', 'a phrase,', 'translate it,',
+        'or press', 'Find to', 'spot a', 'hidden', 'firefly', 'tucked on', 'the far', 'paper side.'
+      ]
+    },
+    {
+      title: 'IX. Coaxial Unrolling',
+      facets: [
+        'Slide Fold', 'down to', 'zero and', 'the back', 'seam opens:', 'curvature', 'eases out', 'smoothly',
+        'until the', 'pleats lie', 'flat, turning', 'the very', 'same DOM', 'nodes into', 'a readable', 'flat sheet.'
+      ]
+    },
+    {
+      title: 'X. Still Just a Web Page',
+      facets: [
+        'WebGL', 'paints', 'pixels;', 'CSS 3D', 'folds the', 'document', 'itself —', 'words,',
+        'links,', 'selection,', 'screen', 'readers,', 'origami', 'and ink', 'on one', 'living page.'
+      ]
+    }
+  ];
+
+  // Exact ring profile vertices at fold u in [0, 1]
+  // At u = 1: closed pleated lantern. At u = 0: flat rectangular paper spread.
+  function profile(u) {
+    const out = [];
+    const ySpan = 2 * B * Math.cos(PSI_MIN); // total vertical span
+    for (let r = 0; r <= R; r++) {
+      const t = r / R;
+      const psi = PSI_MIN + t * (PSI_MAX - PSI_MIN);
+      const baseRad = A * Math.pow(Math.sin(psi), GAMMA);
+      const pleatOff = (r % 2 === 1 ? PLEAT : -PLEAT) * Math.sin(psi);
+      const radLantern = baseRad + pleatOff;
+      const yLantern = -B * Math.cos(psi);
+      const yFlat = -ySpan / 2 + t * ySpan;
+      // Smoothly ease radial relief & vertical spacing with u
+      const rad = A + u * (radLantern - A);
+      const y = yFlat + u * (yLantern - yFlat);
+      out.push({ r, t, psi, radLantern, yLantern, rad, y });
+    }
+    return out;
+  }
+
+  // Exact coaxial unrolling transform for facet (g, r) at fold u in [0, 1].
+  // Returns local dimensions (w0, w1, W, H), trapezoid clip polygon, 3D placement (x, y, z, phi, alpha),
+  // 4x4 column-major CSS matrix3d, outward normal, and the 4 exact 3D corner coordinates.
+  function sinc(x) {
+    if (Math.abs(x) < 1e-8) return 1 - x * x / 6 + (x * x * x * x) / 120;
+    return Math.sin(x) / x;
+  }
+  function versc(x) {
+    // (1 - cos x) / x
+    if (Math.abs(x) < 1e-8) return x / 2 - (x * x * x) / 24;
+    return (1 - Math.cos(x)) / x;
+  }
+
+  // 4x4 column-major matrix helpers matching CSS Transforms Level 2 exactly
+  function matMul(a, b) {
+    const out = new Array(16).fill(0);
+    for (let col = 0; col < 4; col++) {
+      for (let row = 0; row < 4; row++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + row] * b[col * 4 + k];
+        out[col * 4 + row] = s;
+      }
+    }
+    return out;
+  }
+  function matT(x, y, z) {
+    return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1];
+  }
+  function matRy(a) {
+    const c = Math.cos(a), s = Math.sin(a);
+    return [c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1];
+  }
+  function matRx(a) {
+    const c = Math.cos(a), s = Math.sin(a);
+    return [1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1];
+  }
+  function applyMat(m, x, y, z) {
+    return [
+      m[0] * x + m[4] * y + m[8] * z + m[12],
+      m[1] * x + m[5] * y + m[9] * z + m[13],
+      m[2] * x + m[6] * y + m[10] * z + m[14]
+    ];
+  }
+
+  // Compute exact 3D vertex for grid corner (edge gEdge in 0..G, ring r in 0..R) at fold u
+  function vertexAt(prof, gEdge, r, u) {
+    const p = prof[r];
+    const dphi0 = (2 * Math.PI) / G;
+    const s = gEdge - G / 2;         // -G/2 .. +G/2, front center at s = 0
+    const phi0 = s * dphi0;          // closed-lantern angle (-pi .. +pi)
+    const phi = u * phi0;            // current unrolled angle
+    const dr = p.rad - A;            // = u * (radLantern - A)
+    // Coaxial unrolling: circle of radius (A/u + dr) with front anchor at z = u * A + dr
+    const x = A * phi0 * sinc(phi) + dr * Math.sin(phi);
+    const z = u * A + dr * Math.cos(phi) - A * phi0 * versc(phi);
+    return [x, p.y, z];
+  }
+
+  // Build all 160 body facets + 32 collar facets for fold u in [0, 1]
+  function buildGeometry(u, scale = 1) {
+    const prof = profile(u);
+    const dphi0 = (2 * Math.PI) / G;
+    const dphi = u * dphi0;
+    const facets = [];
+    let totalArea = 0;
+    let totalVol = 0;
+
+    for (let r = 0; r < R; r++) {
+      const p0 = prof[r], p1 = prof[r + 1];
+      const dr0 = p0.rad - A, dr1 = p1.rad - A;
+      // Exact chord widths and apothem offsets along the gore meridian:
+      // For sector of angular width dphi on circle of radius rho = A/u + dr:
+      // chord = 2 * rho * sin(dphi/2) = A * dphi0 * sinc(dphi/2) + 2 * dr * sin(dphi/2)
+      const half = dphi / 2;
+      const w0 = (A * dphi0 * sinc(half) + 2 * dr0 * Math.sin(half)) * scale;
+      const w1 = (A * dphi0 * sinc(half) + 2 * dr1 * Math.sin(half)) * scale;
+      // Apothem distance from curvature axis minus A/u:
+      // rho * cos(half) - A/u = dr * cos(half) - A * (dphi0/2) * versc(half)
+      const q0 = (dr0 * Math.cos(half) - A * (dphi0 / 2) * versc(half)) * scale;
+      const q1 = (dr1 * Math.cos(half) - A * (dphi0 / 2) * versc(half)) * scale;
+      const y0 = p0.y * scale, y1 = p1.y * scale;
+      const dq = q1 - q0, dy = y1 - y0;
+      const H = Math.hypot(dq, dy);
+      const alpha = Math.atan2(dq, dy);
+      const qMid = (q0 + q1) / 2, yMid = (y0 + y1) / 2;
+      const W = Math.max(w0, w1);
+      // Local unit normal in meridian plane before rotateY:
+      // rotateX(alpha) maps (0,0,1) -> (0, -sin(alpha), cos(alpha))
+      const ny = -Math.sin(alpha);
+      const nr = Math.cos(alpha);
+
+      // Slight visual bleed (+0.65px) prevents sub-pixel AA seams between adjacent trapezoids
+      const bleedW = 0.7, bleedH = 0.65;
+      const divW = W + bleedW, divH = H + bleedH;
+      const x0L = ((divW - (w0 + bleedW)) / 2) / divW * 100;
+      const x0R = ((divW + (w0 + bleedW)) / 2) / divW * 100;
+      const x1L = ((divW - (w1 + bleedW)) / 2) / divW * 100;
+      const x1R = ((divW + (w1 + bleedW)) / 2) / divW * 100;
+      const clip = `polygon(${x0L.toFixed(3)}% 0%, ${x0R.toFixed(3)}% 0%, ${x1R.toFixed(3)}% 100%, ${x1L.toFixed(3)}% 100%)`;
+
+      // Exact trapezoid area (at scale=1 in px^2)
+      const area = 0.5 * (w0 + w1) * H / (scale * scale);
+
+      for (let g = 0; g < G; g++) {
+        const sMid = g + 0.5 - G / 2;
+        const phi0 = sMid * dphi0;
+        const phi = u * phi0;
+        // Center of facet in world coordinates:
+        // Translate from curvature axis (at z_c = u*A - A/u) by rotateY(phi) * (0, yMid, A/u + qMid)
+        const cx = (A * scale) * phi0 * sinc(phi) + qMid * Math.sin(phi);
+        const cz = u * (A * scale) + qMid * Math.cos(phi) - (A * scale) * phi0 * versc(phi);
+        const cy = yMid;
+
+        // Exact CSS transform chain: translate3d(cx, cy, cz) rotateY(phi) rotateX(alpha)
+        const mat = matMul(matMul(matT(cx, cy, cz), matRy(phi)), matRx(alpha));
+        const nx = nr * Math.sin(phi), nz = nr * Math.cos(phi);
+
+        // Exact 4 corners computed via mat (matches vertexAt to <1e-11)
+        const cTL = applyMat(mat, -w0 / 2, -H / 2, 0);
+        const cTR = applyMat(mat, +w0 / 2, -H / 2, 0);
+        const cBR = applyMat(mat, +w1 / 2, +H / 2, 0);
+        const cBL = applyMat(mat, -w1 / 2, +H / 2, 0);
+
+        // Signed volume contribution of two triangles (only closed at u=1, add caps later)
+        if (u === 1 && scale === 1) {
+          totalVol += tetVol(cTL, cTR, cBR) + tetVol(cTL, cBR, cBL);
+        }
+        totalArea += area;
+
+        facets.push({
+          id: r * G + g, r, g, phi0, phi, alpha, scale,
+          w0, w1, W, H, divW, divH, clip,
+          cx, cy, cz, nx, ny, nz, nr,
+          aMid: (u * A * scale + qMid),
+          mat,
+          corners: [cTL, cTR, cBR, cBL],
+          area
+        });
+      }
+    }
+
+    // Add top and bottom cap volume for closed lantern at u = 1 (divergence theorem)
+    if (u === 1 && scale === 1) {
+      const pTop = prof[0], pBot = prof[R];
+      const topCenter = [0, pTop.y, 0], botCenter = [0, pBot.y, 0];
+      for (let g = 0; g < G; g++) {
+        const t0 = vertexAt(prof, g, 0, 1), t1 = vertexAt(prof, g + 1, 0, 1);
+        const b0 = vertexAt(prof, g, R, 1), b1 = vertexAt(prof, g + 1, R, 1);
+        // Top cap outward normal is -y, bottom cap outward normal is +y
+        totalVol += tetVol(topCenter, t1, t0);
+        totalVol += tetVol(botCenter, b0, b1);
+      }
+    }
+
+    // Top and bottom cylindrical collars (rectangular, zero clip-path!)
+    const collars = [];
+    for (const end of ['top', 'bot']) {
+      const pr = end === 'top' ? prof[0] : prof[R];
+      const half = dphi / 2;
+      const dr = pr.rad - A;
+      const w = (A * dphi0 * sinc(half) + 2 * dr * Math.sin(half)) * scale;
+      const q = (dr * Math.cos(half) - A * (dphi0 / 2) * versc(half)) * scale;
+      const h = COLLAR_H * scale;
+      const cy = (end === 'top' ? pr.y - COLLAR_H / 2 : pr.y + COLLAR_H / 2) * scale;
+      for (let g = 0; g < G; g++) {
+        const sMid = g + 0.5 - G / 2;
+        const phi0 = sMid * dphi0;
+        const phi = u * phi0;
+        const cx = (A * scale) * phi0 * sinc(phi) + q * Math.sin(phi);
+        const cz = u * (A * scale) + q * Math.cos(phi) - (A * scale) * phi0 * versc(phi);
+        collars.push({ end, g, w: w + 0.7, h: h + 0.5, cx, cy, cz, phi });
+      }
+    }
+
+    return { u, scale, prof, facets, collars, totalArea, totalVol: Math.abs(totalVol) };
+  }
+
+  function tetVol(a, b, c) {
+    // signed volume (a . (b x c)) / 6
+    const cx = b[1] * c[2] - b[2] * c[1];
+    const cy = b[2] * c[0] - b[0] * c[2];
+    const cz = b[0] * c[1] - b[1] * c[0];
+    return (a[0] * cx + a[1] * cy + a[2] * cz) / 6;
+  }
+
+  // Exact paper-shading model: overhead Lambertian daylight + inner translucent candle transmission
+  // Strictly symmetric in gore azimuth so rotation requires zero per-facet repaint!
+  // Subtle ±3% handmade-paper variation by gore index gives tactile craft-strip seams.
+  function shadeFacet(f, u, candle, room) {
+    const meta = RINGS_META[f.r];
+    const [br, bg, bb] = meta.base;
+    // Slight handmade paper-sheet tint variation per gore (alternating light/warm by ±3%)
+    const goreVar = f.g % 2 === 0 ? 1.015 : 0.978;
+
+    // Overhead daylight: CSS -y is UP, so outward normal facing up has -ny > 0
+    const up = Math.max(-1, Math.min(1, -f.ny));
+    const dayGain = room * (0.80 + 0.22 * up) + (1 - room) * (0.28 + 0.14 * up);
+
+    // Inner candle transmission (candle at (0, CANDLE_Y, 0) in unscaled px)
+    // Smoothly diminishes as lantern unrolls away from the candle (scaled by u)
+    const sc = f.scale || 1;
+    const dx = Math.max(20, Math.abs(f.aMid / sc));
+    const dy = (f.cy / sc) - CANDLE_Y;
+    const dist = Math.hypot(dx, dy);
+    const dNorm = dist / A;
+    // Inner face cosine to radial ray from candle
+    const cosIn = Math.max(0.18, Math.abs((f.nr * dx + f.ny * dy) / dist));
+    const candleIrr = u * candle * meta.trans * cosIn / (0.42 + 0.92 * dNorm * dNorm);
+
+    // Spectral Beer-Lambert transmission: paper dye filters the warm candle spectrum
+    // Cream rice paper transmits warm amber-gold; dyed crayon-blue paper transmits luminous cobalt-warm glow.
+    const glowScale = 0.56 + 0.64 * (1 - room);
+    const addR = 255 * candleIrr * glowScale * (0.34 + 0.66 * (br / 255));
+    const addG = 212 * candleIrr * glowScale * (0.34 + 0.66 * (bg / 255));
+    const addB = 148 * candleIrr * glowScale * (0.28 + 0.72 * (bb / 255));
+
+    const rC = Math.max(0, Math.min(255, Math.round(br * goreVar * dayGain + addR)));
+    const gC = Math.max(0, Math.min(255, Math.round(bg * goreVar * dayGain + addG)));
+    const bC = Math.max(0, Math.min(255, Math.round(bb * goreVar * dayGain + addB)));
+
+    // Keep ink legible on both light & dark paper (and in dusk candlelight)
+    let ink = meta.ink;
+    const lum = 0.2126 * rC + 0.7152 * gC + 0.0722 * bC;
+    if (lum < 125) ink = '#fffaf0';
+    else ink = meta.role === 'body' && meta.name === 'mint-paper' ? '#103229' : '#163259';
+
+    return {
+      rgb: [rC, gC, bC],
+      css: `rgb(${rC},${gC},${bC})`,
+      ink,
+      dayGain,
+      candleIrr,
+      lum
+    };
+  }
+
+  // Compute max seam error across ALL shared vertices at fold u
+  function seamError(geom) {
+    let maxErr = 0;
+    const byGR = (g, r) => geom.facets[r * G + g];
+    for (let r = 0; r < R; r++) {
+      for (let g = 0; g < G; g++) {
+        const f = byGR(g, r);
+        // Vertical neighbor (r + 1): f.BL == down.TL and f.BR == down.TR
+        if (r + 1 < R) {
+          const d = byGR(g, r + 1);
+          maxErr = Math.max(maxErr, dist3(f.corners[3], d.corners[0]), dist3(f.corners[2], d.corners[1]));
+        }
+        // Horizontal neighbor (g + 1): f.TR == right.TL and f.BR == right.BL
+        if (g + 1 < G || geom.u === 1) {
+          const ng = (g + 1) % G;
+          const rt = byGR(ng, r);
+          maxErr = Math.max(maxErr, dist3(f.corners[1], rt.corners[0]), dist3(f.corners[2], rt.corners[3]));
+        }
+      }
+    }
+    return maxErr;
+  }
+
+  function dist3(a, b) {
+    return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  }
+
+  // Split a user's custom equator wish cleanly across the G=16 facets of ring 5
+  function splitWishToFacets(text) {
+    const clean = String(text || '').trim().replace(/\s+/g, ' ');
+    if (!clean) return CHAPTERS[5].facets.slice();
+    const words = clean.split(' ');
+    const out = new Array(G).fill('');
+    if (words.length >= G) {
+      // Distribute words evenly around all 16 facets
+      for (let i = 0; i < G; i++) {
+        const a = Math.floor(i * words.length / G);
+        const b = Math.floor((i + 1) * words.length / G);
+        out[i] = words.slice(a, b).join(' ');
+      }
+    } else {
+      // Repeat the wish cleanly around the 360° equator with a craft star separator
+      const seq = [...words, '✦'];
+      for (let i = 0; i < G; i++) out[i] = seq[i % seq.length];
+    }
+    return out;
+  }
+
+  return {
+    G, R, A, B, GAMMA, PLEAT, PSI_MIN, PSI_MAX, COLLAR_H, CANDLE_Y,
+    RINGS_META, CHAPTERS,
+    profile, vertexAt, buildGeometry, shadeFacet, seamError, splitWishToFacets,
+    matMul, matT, matRy, matRx, applyMat
+  };
+}
+
+(function(){
+  const Q = new URLSearchParams(location.search);
+  const FIXED = Q.has('fixed');
+  const OG = Q.has('og');
+  const REDUCED = !FIXED && !OG && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SUPPORTS_3D = !Q.has('no3d') &&
+    typeof CSS !== 'undefined' && typeof CSS.supports === 'function' &&
+    CSS.supports('transform-style', 'preserve-3d') &&
+    CSS.supports('perspective', '800px');
+
+  const E = makeLanternEngine();
+  const stage = document.getElementById('stage');
+  const rig = document.getElementById('rig');
+  const lantern = document.getElementById('lantern');
+  const extras = document.getElementById('extras');
+  const collarsEl = document.getElementById('collars');
+  const cordEl = document.getElementById('cord');
+  const candleEl = document.getElementById('candle-core');
+  const tasselEl = document.getElementById('tassel');
+  const floorShadow = document.getElementById('floor-shadow');
+  const articleSlot = document.getElementById('article-slot');
+  const sayEl = document.getElementById('say');
+
+  const btnUnfold = document.getElementById('btn-unfold');
+  const btnRefold = document.getElementById('btn-refold');
+  const sldFold = document.getElementById('sld-fold');
+  const foldPct = document.getElementById('fold-pct');
+  const btnCandle = document.getElementById('btn-candle');
+  const btnRoom = document.getElementById('btn-room');
+  const btnSpin = document.getElementById('btn-mode-spin');
+  const btnSel = document.getElementById('btn-mode-sel');
+  const btnFind = document.getElementById('btn-find');
+  const btnFlat = document.getElementById('btn-flat');
+  const btnXray = document.getElementById('btn-xray');
+  const btnWrite = document.getElementById('btn-write');
+  const btnWhat = document.getElementById('btn-what');
+  const writePop = document.getElementById('write-pop');
+  const wishInput = document.getElementById('wish-input');
+  const wishReset = document.getElementById('wish-reset');
+  const inspectEl = document.getElementById('inspect');
+  const insTitle = document.getElementById('ins-title');
+  const insMeta = document.getElementById('ins-meta');
+  const insMat = document.getElementById('ins-mat');
+  const insClose = document.getElementById('ins-close');
+  const whatBg = document.getElementById('what-bg');
+  const whatClose = document.getElementById('what-close');
+
+  const FIND_WORDS = ['firefly', 'trapezoid', 'translucent', 'origami', 'preserve-3d'];
+  let findIdx = 0;
+
+  // State
+  let scale = 1;
+  let fold = 1;           // 1 = closed 3D lantern, 0 = flat sheet / article
+  let targetFold = 1;
+  let isArticle = false;
+  let candleOn = true;
+  let roomDay = true;
+  let flatCss = false;
+  let xray = false;
+  let selectMode = false;
+  let customWish = '';
+  let pickedIdx = -1;
+  let lastFound = null;
+
+  let yaw = FIXED || OG ? 0.34 : 0.28;
+  let pitch = FIXED || OG ? -0.16 : -0.14;
+  let velYaw = 0;
+  let velPitch = 0;
+  let targetYaw = null;
+  let targetPitch = null;
+  let autoSpin = !(FIXED || OG || REDUCED);
+  let simT = 0;
+  let frame = 0;
+  let geom = null;
+
+  const facetNodes = []; // length G*R = 160
+  const ringNodes = [];  // length R = 10
+  const collarNodes = [];
+  const scallopNodes = [];
+  const tasselRibs = [];
+  let tasselCard = null;
+  let candleFlameNodes = [];
+  let candleHalo = null;
+  let sayTimer = 0;
+  const log = [];
+
+  function setSay(msg, instant) {
+    if (sayEl.textContent === msg) return;
+    if (FIXED || OG || REDUCED || instant) {
+      sayEl.classList.remove('fade');
+      sayEl.textContent = msg;
+      return;
+    }
+    clearTimeout(sayTimer);
+    sayEl.classList.add('fade');
+    sayTimer = setTimeout(() => {
+      sayEl.textContent = msg;
+      sayEl.classList.remove('fade');
+    }, 150);
+  }
+
+  function computeScale() {
+    if (OG) return 1.12;
+    const vw = innerWidth, vh = innerHeight;
+    if (vw <= 760) {
+      return Math.max(0.52, Math.min(0.72, (vw - 44) / 410, (vh - 280) / 440));
+    }
+    const availH = Math.max(320, vh - 220);
+    const availW = Math.max(340, vw - 120);
+    return Math.max(0.68, Math.min(1.06, availH / 470, availW / 540));
+  }
+
+  // Build real DOM elements once (never cloned when switching to flat article!)
+  function buildDOM() {
+    lantern.innerHTML = '';
+    collarsEl.innerHTML = '';
+    cordEl.innerHTML = '';
+    candleEl.innerHTML = '';
+    tasselEl.innerHTML = '';
+    facetNodes.length = 0;
+    ringNodes.length = 0;
+    collarNodes.length = 0;
+    scallopNodes.length = 0;
+    tasselRibs.length = 0;
+    candleFlameNodes = [];
+
+    // 10 <section class="ring"> containing 160 <span class="facet"> with real word <span>s
+    for (let r = 0; r < E.R; r++) {
+      const sec = document.createElement('section');
+      sec.className = 'ring';
+      sec.dataset.r = String(r);
+      const rm = E.RINGS_META[r];
+      sec.style.setProperty('--ring-bg', `rgb(${rm.base[0]},${rm.base[1]},${rm.base[2]})`);
+      sec.style.setProperty('--ring-ink', rm.ink);
+
+      const h2 = document.createElement('h2');
+      h2.className = 'ch';
+      h2.textContent = E.CHAPTERS[r].title;
+      sec.appendChild(h2);
+
+      for (let g = 0; g < E.G; g++) {
+        const idx = r * E.G + g;
+        const fEl = document.createElement('span');
+        fEl.className = 'facet';
+        fEl.dataset.r = String(r);
+        fEl.dataset.g = String(g);
+        fEl.dataset.id = String(idx);
+
+        const paper = document.createElement('span');
+        paper.className = 'paper';
+
+        const seamT = document.createElement('span');
+        seamT.className = 'seam-t';
+        seamT.setAttribute('aria-hidden', 'true');
+
+        const seamL = document.createElement('span');
+        seamL.className = 'seam-l';
+        seamL.setAttribute('aria-hidden', 'true');
+
+        const stitches = document.createElement('span');
+        stitches.className = 'stitches';
+        stitches.setAttribute('aria-hidden', 'true');
+        for (let s = 0; s < 5; s++) {
+          const st = document.createElement('i');
+          st.className = 'st';
+          stitches.appendChild(st);
+        }
+
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.setAttribute('aria-hidden', 'true');
+        tag.textContent = `<span r=${r} g=${g}>`;
+
+        const txt = document.createElement('span');
+        txt.className = 'txt';
+        fillFacetWords(txt, E.CHAPTERS[r].facets[g]);
+
+        paper.appendChild(seamT);
+        paper.appendChild(seamL);
+        paper.appendChild(stitches);
+        paper.appendChild(tag);
+        paper.appendChild(txt);
+        fEl.appendChild(paper);
+        sec.appendChild(fEl);
+        facetNodes.push({ el: fEl, paper, txt, r, g, idx });
+      }
+      lantern.appendChild(sec);
+      ringNodes.push(sec);
+    }
+
+    // Collars (16 top + 16 bottom cylindrical rectangles + 32 scalloped craft-paper tabs)
+    for (let i = 0; i < E.G * 2; i++) {
+      const c = document.createElement('span');
+      c.className = 'collar';
+      const st = document.createElement('span');
+      st.className = 'c-st';
+      for (let k = 0; k < 3; k++) st.appendChild(document.createElement('i'));
+      c.appendChild(st);
+      collarsEl.appendChild(c);
+      collarNodes.push(c);
+
+      const sc = document.createElement('span');
+      sc.className = 'scallop ' + (i < E.G ? 'top' : 'bot');
+      collarsEl.appendChild(sc);
+      scallopNodes.push(sc);
+    }
+
+    // Inner glowing candle (8 wax facets + 4 crossed paper flames + 1 warm halo)
+    for (let k = 0; k < 8; k++) {
+      const w = document.createElement('span');
+      w.className = 'c-wax';
+      candleEl.appendChild(w);
+    }
+    for (let k = 0; k < 4; k++) {
+      const fl = document.createElement('span');
+      fl.className = 'c-flame';
+      candleEl.appendChild(fl);
+      candleFlameNodes.push(fl);
+    }
+    candleHalo = document.createElement('span');
+    candleHalo.className = 'c-halo';
+    candleEl.appendChild(candleHalo);
+
+    // Top hanging braided paper cord (4 crossed strips + 2 knots)
+    for (let k = 0; k < 4; k++) {
+      const cs = document.createElement('span');
+      cs.className = 'cord-seg';
+      cordEl.appendChild(cs);
+    }
+    const knot = document.createElement('span');
+    knot.className = 'cord-knot';
+    cordEl.appendChild(knot);
+
+    // Bottom handmade paper tassel (12 colored paper ribbons + bookmark card)
+    const tPal = ['#1f66b5', '#7eb8ea', '#6ebc9f', '#e485a5'];
+    for (let k = 0; k < 12; k++) {
+      const rb = document.createElement('span');
+      rb.className = 't-rib';
+      rb.style.background = tPal[k % tPal.length];
+      tasselEl.appendChild(rb);
+      tasselRibs.push(rb);
+    }
+    tasselCard = document.createElement('span');
+    tasselCard.className = 't-card';
+    tasselCard.textContent = 'Still a web page · No. 057';
+    tasselEl.appendChild(tasselCard);
+  }
+
+  function fillFacetWords(txtEl, phrase) {
+    txtEl.textContent = '';
+    const words = String(phrase || '').split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length; i++) {
+      const sp = document.createElement('span');
+      sp.className = 'w';
+      sp.textContent = words[i];
+      txtEl.appendChild(sp);
+      if (i + 1 < words.length) txtEl.appendChild(document.createTextNode(' '));
+    }
+  }
+
+  // Apply exact geometry and paper shading to all DOM facets
+  function layoutLantern() {
+    scale = computeScale();
+    geom = E.buildGeometry(fold, scale);
+    const candleAmt = candleOn ? (roomDay ? 0.65 : 1.0) : 0.0;
+    const roomAmt = roomDay ? 1.0 : 0.0;
+
+    document.documentElement.classList.toggle('unrolling', fold < 0.96);
+
+    for (let i = 0; i < geom.facets.length; i++) {
+      const f = geom.facets[i];
+      const node = facetNodes[i];
+      const sh = E.shadeFacet(f, fold, candleAmt, roomAmt);
+      const el = node.el;
+      el.style.width = f.divW.toFixed(2) + 'px';
+      el.style.height = f.divH.toFixed(2) + 'px';
+      el.style.marginLeft = (-f.divW / 2).toFixed(2) + 'px';
+      el.style.marginTop = (-f.divH / 2).toFixed(2) + 'px';
+      el.style.clipPath = fold > 0.002 ? f.clip : 'none';
+      el.style.backgroundColor = sh.css;
+      el.style.color = sh.ink;
+      el.style.transform = `translate3d(${f.cx.toFixed(3)}px,${f.cy.toFixed(3)}px,${f.cz.toFixed(3)}px) rotateY(${f.phi.toFixed(6)}rad) rotateX(${f.alpha.toFixed(6)}rad)`;
+
+      // Keep text comfortably inside the narrower edge of the trapezoid (zero clipped letters!)
+      const minW = Math.min(f.w0, f.w1);
+      const safePad = Math.max(2, (f.divW - minW) / 2 + 2.5);
+      const fs = Math.max(7.0, Math.min(11.3, minW * 0.168, f.H * 0.268));
+      node.txt.style.fontSize = fs.toFixed(2) + 'px';
+      node.txt.style.paddingLeft = safePad.toFixed(1) + 'px';
+      node.txt.style.paddingRight = safePad.toFixed(1) + 'px';
+    }
+
+    // Position collars & scalloped trim
+    const showExtras = fold > 0.18;
+    extras.style.display = showExtras ? '' : 'none';
+    if (showExtras) {
+      for (let i = 0; i < geom.collars.length; i++) {
+        const c = geom.collars[i];
+        const el = collarNodes[i];
+        el.style.width = c.w.toFixed(2) + 'px';
+        el.style.height = c.h.toFixed(2) + 'px';
+        el.style.marginLeft = (-c.w / 2).toFixed(2) + 'px';
+        el.style.marginTop = (-c.h / 2).toFixed(2) + 'px';
+        el.style.transform = `translate3d(${c.cx.toFixed(2)}px,${c.cy.toFixed(2)}px,${c.cz.toFixed(2)}px) rotateY(${c.phi.toFixed(5)}rad)`;
+
+        const sc = scallopNodes[i];
+        const sh = 11 * scale;
+        sc.style.width = (c.w * 0.96).toFixed(2) + 'px';
+        sc.style.height = sh.toFixed(2) + 'px';
+        sc.style.marginLeft = (-c.w * 0.48).toFixed(2) + 'px';
+        sc.style.marginTop = (-sh / 2).toFixed(2) + 'px';
+        const sy = c.end === 'top' ? c.cy - c.h / 2 - sh * 0.32 : c.cy + c.h / 2 + sh * 0.32;
+        sc.style.transform = `translate3d(${c.cx.toFixed(2)}px,${sy.toFixed(2)}px,${c.cz.toFixed(2)}px) rotateY(${c.phi.toFixed(5)}rad) rotateX(${c.end === 'top' ? '-0.25rad' : '0.25rad'})`;
+      }
+
+      // Inner candle cylinder, crossed flames & warm halo
+      const cw = 20 * scale, ch = 56 * scale, cr = 24 * scale;
+      const waxEls = candleEl.querySelectorAll('.c-wax');
+      for (let k = 0; k < waxEls.length; k++) {
+        const ang = (k / waxEls.length) * Math.PI * 2;
+        const el = waxEls[k];
+        el.style.width = cw.toFixed(1) + 'px';
+        el.style.height = ch.toFixed(1) + 'px';
+        el.style.marginLeft = (-cw / 2).toFixed(1) + 'px';
+        el.style.marginTop = (-ch / 2).toFixed(1) + 'px';
+        el.style.transform = `translate3d(0px,${(38 * scale).toFixed(1)}px,0px) rotateY(${ang.toFixed(4)}rad) translateZ(${cr.toFixed(1)}px)`;
+      }
+      const fw = 22 * scale, fh = 38 * scale;
+      for (let k = 0; k < candleFlameNodes.length; k++) {
+        const fl = candleFlameNodes[k];
+        fl.style.width = fw.toFixed(1) + 'px';
+        fl.style.height = fh.toFixed(1) + 'px';
+        fl.style.marginLeft = (-fw / 2).toFixed(1) + 'px';
+        fl.style.marginTop = (-fh / 2).toFixed(1) + 'px';
+        fl.style.transform = `translate3d(0px,${(-4 * scale).toFixed(1)}px,0px) rotateY(${(k * Math.PI / 4).toFixed(4)}rad)`;
+      }
+      const hr = 148 * scale;
+      candleHalo.style.width = hr.toFixed(1) + 'px';
+      candleHalo.style.height = hr.toFixed(1) + 'px';
+      candleHalo.style.marginLeft = (-hr / 2).toFixed(1) + 'px';
+      candleHalo.style.marginTop = (-hr / 2).toFixed(1) + 'px';
+      candleHalo.style.transform = `translate3d(0px,${(4 * scale).toFixed(1)}px,0px)`;
+
+      // Hanging cord above top collar (reaches top edge on desktop/OG; neat short drop below header on mobile)
+      const topY = geom.prof[0].y * scale - E.COLLAR_H * scale;
+      const cordH = innerWidth <= 760 ? 92 * scale : Math.max(360 * scale, innerHeight * 0.6);
+      const cordW = 5.5 * scale;
+      const cSegs = cordEl.querySelectorAll('.cord-seg');
+      for (let k = 0; k < cSegs.length; k++) {
+        const el = cSegs[k];
+        el.style.width = cordW.toFixed(1) + 'px';
+        el.style.height = cordH.toFixed(1) + 'px';
+        el.style.marginLeft = (-cordW / 2).toFixed(1) + 'px';
+        el.style.marginTop = (-cordH).toFixed(1) + 'px';
+        el.style.transform = `translate3d(0px,${(topY + 4 * scale).toFixed(1)}px,0px) rotateY(${(k * Math.PI / 4).toFixed(4)}rad)`;
+      }
+      const knot = cordEl.querySelector('.cord-knot');
+      const ks = 16 * scale;
+      knot.style.width = ks.toFixed(1) + 'px';
+      knot.style.height = ks.toFixed(1) + 'px';
+      knot.style.marginLeft = (-ks / 2).toFixed(1) + 'px';
+      knot.style.marginTop = (-ks / 2).toFixed(1) + 'px';
+      knot.style.transform = `translate3d(0px,${(topY - 3 * scale).toFixed(1)}px,0px)`;
+
+      // Bottom tassel ribbons & bookmark card
+      const botY = geom.prof[E.R].y * scale + E.COLLAR_H * scale;
+      const tLen = 68 * scale, tW = 8.5 * scale, tRad = 13 * scale;
+      for (let k = 0; k < tasselRibs.length; k++) {
+        const el = tasselRibs[k];
+        const ang = (k / tasselRibs.length) * Math.PI * 2;
+        const len = tLen * (0.86 + 0.18 * (k % 3) / 2);
+        el.style.width = tW.toFixed(1) + 'px';
+        el.style.height = len.toFixed(1) + 'px';
+        el.style.marginLeft = (-tW / 2).toFixed(1) + 'px';
+        el.style.marginTop = '0px';
+        el.style.transform = `translate3d(0px,${(botY + 2 * scale).toFixed(1)}px,0px) rotateY(${ang.toFixed(4)}rad) translateZ(${tRad.toFixed(1)}px) rotateX(0.11rad)`;
+      }
+      const cardW = 104 * scale, cardH = 38 * scale;
+      tasselCard.style.width = cardW.toFixed(1) + 'px';
+      tasselCard.style.height = cardH.toFixed(1) + 'px';
+      tasselCard.style.marginLeft = (-cardW / 2).toFixed(1) + 'px';
+      tasselCard.style.marginTop = '0px';
+      tasselCard.style.fontSize = Math.max(7.2, 9.2 * scale).toFixed(1) + 'px';
+      tasselCard.style.transform = `translate3d(0px,${(botY + tLen + 5 * scale).toFixed(1)}px,0px)`;
+
+      // Position floor shadow cleanly beneath tassel
+      const shW = 240 * scale, shH = 48 * scale;
+      floorShadow.style.width = shW.toFixed(0) + 'px';
+      floorShadow.style.height = shH.toFixed(0) + 'px';
+      floorShadow.style.marginLeft = (-shW / 2).toFixed(0) + 'px';
+      floorShadow.style.marginTop = (botY + tLen + 36 * scale).toFixed(0) + 'px';
+    }
+
+    // Update inspector if a facet is selected
+    if (pickedIdx >= 0) updateInspector(pickedIdx);
+  }
+
+  function applyRigTransform() {
+    const sway = (FIXED || OG || REDUCED || fold < 0.3) ? 0 : Math.sin(simT * 1.15) * 0.03 * fold;
+    rig.style.transform = `rotateZ(${sway.toFixed(5)}rad) rotateX(${pitch.toFixed(5)}rad) rotateY(${yaw.toFixed(5)}rad)`;
+  }
+
+  function setArticleMode(on) {
+    if (isArticle === on) return;
+    isArticle = on;
+    document.documentElement.classList.toggle('is-article', on);
+    if (on) {
+      // Move the EXACT SAME <article id="lantern"> node into the scrollable article slot!
+      articleSlot.appendChild(lantern);
+      btnUnfold.textContent = 'Fold into lantern';
+      btnUnfold.setAttribute('aria-pressed', 'true');
+      setSay('Unfolded flat: the exact same HTML elements, now flowing as an ordinary article.');
+    } else {
+      // Move the EXACT SAME <article id="lantern"> node right back into the 3D rig!
+      rig.appendChild(lantern);
+      btnUnfold.textContent = 'Unfold to article';
+      btnUnfold.setAttribute('aria-pressed', 'false');
+      layoutLantern();
+      applyRigTransform();
+    }
+  }
+
+  function setFoldImmediate(u) {
+    fold = Math.max(0, Math.min(1, u));
+    targetFold = fold;
+    const pct = Math.round(fold * 100);
+    sldFold.value = String(pct);
+    foldPct.textContent = pct + '%';
+    if (fold <= 0.001) {
+      setArticleMode(true);
+    } else {
+      if (isArticle) setArticleMode(false);
+      layoutLantern();
+      applyRigTransform();
+    }
+  }
+
+  function animateFoldTo(u) {
+    targetFold = Math.max(0, Math.min(1, u));
+    if (targetFold > 0.01 && isArticle) {
+      fold = 0.02;
+      setArticleMode(false);
+    }
+    if (FIXED || OG || REDUCED) {
+      setFoldImmediate(targetFold);
+    }
+    log.push({ ev: 'fold', u: targetFold });
+  }
+
+  function updateInspector(idx) {
+    if (idx < 0 || !geom) return;
+    pickedIdx = idx;
+    facetNodes.forEach((n, i) => n.el.classList.toggle('picked', i === idx));
+    const f = geom.facets[idx];
+    const sh = E.shadeFacet(f, fold, candleOn ? (roomDay ? 0.65 : 1) : 0, roomDay ? 1 : 0);
+    insTitle.textContent = `Facet r=${f.r}, g=${f.g} · ${E.RINGS_META[f.r].band}`;
+    insMeta.textContent = `Trapezoid ${f.w0.toFixed(1)}→${f.w1.toFixed(1)}×${f.H.toFixed(1)} px · tilt ${(f.alpha * 180 / Math.PI).toFixed(1)}° · rgb(${sh.rgb.join(', ')})`;
+    const csMat = getComputedStyle(facetNodes[idx].el).transform;
+    insMat.textContent = csMat && csMat !== 'none' ? csMat : `translate3d(${f.cx.toFixed(1)}, ${f.cy.toFixed(1)}, ${f.cz.toFixed(1)})`;
+    inspectEl.classList.add('on');
+  }
+
+  // Native find-in-page + smooth spin to bring matched 3D facet right to the front!
+  function findNextWord(explicitWord) {
+    const word = explicitWord || FIND_WORDS[findIdx % FIND_WORDS.length];
+    if (!explicitWord) findIdx++;
+    btnFind.textContent = `Find “${FIND_WORDS[findIdx % FIND_WORDS.length]}”`;
+
+    // Clear old highlight
+    lantern.querySelectorAll('.w.hit').forEach(el => el.classList.remove('hit'));
+    // Find real word span in live DOM
+    const words = [...lantern.querySelectorAll('.w')];
+    const match = words.find(el => el.textContent.toLowerCase().includes(word.toLowerCase()));
+    let nativeFound = false;
+    if (match) {
+      match.classList.add('hit');
+      // Also run real native Selection + window.find proof!
+      try {
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          const range = document.createRange();
+          range.selectNodeContents(match);
+          sel.addRange(range);
+        }
+        if (typeof window.find === 'function') {
+          nativeFound = true;
+        }
+      } catch (_) {}
+      const fEl = match.closest('.facet');
+      const r = +fEl.dataset.r, g = +fEl.dataset.g;
+      const idx = r * E.G + g;
+      lastFound = { word, r, g, idx, text: match.textContent, nativeFound };
+      if (!isArticle && geom) {
+        // Rotate lantern so facet g faces straight toward viewer (phi + yaw = 0 mod 2pi)
+        const f = geom.facets[idx];
+        const desiredYaw = -f.phi;
+        // Shortest angular turn from current yaw
+        const diff = Math.atan2(Math.sin(desiredYaw - yaw), Math.cos(desiredYaw - yaw));
+        targetYaw = yaw + diff;
+        targetPitch = Math.max(-0.32, Math.min(0.32, (f.r - 4.5) * 0.055));
+        autoSpin = false;
+        if (FIXED || OG || REDUCED) {
+          yaw = targetYaw; pitch = targetPitch; targetYaw = null; targetPitch = null;
+          applyRigTransform();
+        }
+      } else {
+        match.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'center' });
+      }
+      setSay(`Found “${word}” in real DOM text on ring ${r + 1}, gore ${g + 1}.`);
+      log.push({ ev: 'find', word, r, g });
+    }
+    return lastFound;
+  }
+
+  // Pointer drag to spin (disabled in Select Text mode so native browser text selection works!)
+  let dragging = false, dragMoved = false, px0 = 0, py0 = 0;
+  stage.addEventListener('pointerdown', e => {
+    if (selectMode || isArticle || e.button > 0) return;
+    dragging = true; dragMoved = false;
+    px0 = e.clientX; py0 = e.clientY;
+    velYaw = 0; velPitch = 0;
+    targetYaw = null; targetPitch = null;
+    autoSpin = false;
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - px0, dy = e.clientY - py0;
+    if (Math.hypot(dx, dy) > 3) dragMoved = true;
+    px0 = e.clientX; py0 = e.clientY;
+    yaw += dx * 0.0075;
+    pitch = Math.max(-0.85, Math.min(0.85, pitch - dy * 0.0055));
+    velYaw = dx * 0.0075;
+    velPitch = -dy * 0.0055;
+    applyRigTransform();
+  });
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+
+  // Clicking a facet when X-ray is on (or double-clicking any facet) opens the live matrix3d inspector
+  lantern.addEventListener('click', e => {
+    if (dragMoved || selectMode || isArticle) return;
+    const fEl = e.target.closest('.facet');
+    if (!fEl) return;
+    if (xray || inspectEl.classList.contains('on')) {
+      updateInspector(+fEl.dataset.id);
+    }
+  });
+  lantern.addEventListener('dblclick', e => {
+    if (isArticle) return;
+    const fEl = e.target.closest('.facet');
+    if (fEl) updateInspector(+fEl.dataset.id);
+  });
+
+  // Toolbar controls
+  btnUnfold.addEventListener('click', () => {
+    if (isArticle || targetFold < 0.5) {
+      animateFoldTo(1);
+      setSay('Folded back into a 3D paper lantern — drag to spin.');
+    } else {
+      targetYaw = 0; targetPitch = 0; autoSpin = false;
+      animateFoldTo(0);
+    }
+  });
+  btnRefold.addEventListener('click', () => {
+    animateFoldTo(1);
+    setSay('Folded back into a 3D paper lantern — drag to spin.');
+  });
+
+  sldFold.addEventListener('input', e => {
+    const v = +e.target.value / 100;
+    autoSpin = false;
+    if (v < 0.99) { targetYaw = 0; targetPitch = -0.06; }
+    setFoldImmediate(v);
+    if (v > 0.01 && v < 0.99) {
+      setSay(`Unrolling the back seam (${Math.round(v * 100)}% folded) — every trapezoid stays edge-to-edge.`);
+    } else if (v >= 0.99) {
+      setSay('Closed 3D lantern — 16 gores meeting cleanly at the back seam.');
+    }
+  });
+
+  btnCandle.addEventListener('click', () => {
+    candleOn = !candleOn;
+    document.documentElement.classList.toggle('candle-off', !candleOn);
+    btnCandle.setAttribute('aria-pressed', String(candleOn));
+    if (!isArticle) layoutLantern();
+    setSay(candleOn
+      ? 'Inner candle lit — warmer glow shines through the thinner rice-paper rings.'
+      : 'Candle blown out — pure overhead daylight shading on the pleats.');
+    log.push({ ev: 'candle', on: candleOn });
+  });
+
+  btnRoom.addEventListener('click', () => {
+    roomDay = !roomDay;
+    document.documentElement.classList.toggle('dusk', !roomDay);
+    btnRoom.setAttribute('aria-pressed', String(!roomDay));
+    if (!isArticle) layoutLantern();
+    setSay(roomDay
+      ? 'Bright craft-table daylight.'
+      : 'Twilight dusk — translucent paper lets the candle glow through.');
+    log.push({ ev: 'room', day: roomDay });
+  });
+
+  function setSelectMode(on) {
+    selectMode = on;
+    document.documentElement.classList.toggle('mode-select', on);
+    btnSpin.setAttribute('aria-pressed', String(!on));
+    btnSel.setAttribute('aria-pressed', String(on));
+    if (on) {
+      autoSpin = false;
+      setSay('Select mode: drag across any paper strip to highlight live 3D text.');
+    } else {
+      setSay('Spin mode: drag anywhere to turn the paper lantern.');
+    }
+  }
+  btnSpin.addEventListener('click', () => setSelectMode(false));
+  btnSel.addEventListener('click', () => setSelectMode(true));
+
+  btnFind.addEventListener('click', () => findNextWord());
+
+  btnFlat.addEventListener('click', () => {
+    flatCss = !flatCss;
+    document.documentElement.classList.toggle('flat-css', flatCss);
+    btnFlat.setAttribute('aria-pressed', String(flatCss));
+    if (isArticle && flatCss) setFoldImmediate(1);
+    if (flatCss) {
+      // Turn the rig oblique (~62°) so the collapsed 2D plane is unmistakable!
+      autoSpin = false;
+      targetYaw = 1.08;
+      targetPitch = -0.18;
+      if (FIXED || OG || REDUCED) { yaw = targetYaw; pitch = targetPitch; targetYaw = null; targetPitch = null; applyRigTransform(); }
+    } else {
+      targetYaw = 0.34;
+      targetPitch = -0.15;
+      if (FIXED || OG || REDUCED) { yaw = targetYaw; pitch = targetPitch; targetYaw = null; targetPitch = null; applyRigTransform(); }
+    }
+    setSay(flatCss
+      ? 'transform-style: flat — without preserve-3d, the 3D lantern collapses into a flat card.'
+      : 'transform-style: preserve-3d restored — the flat card springs back into 3D.');
+    log.push({ ev: 'flatCss', on: flatCss });
+  });
+
+  btnXray.addEventListener('click', () => {
+    xray = !xray;
+    document.documentElement.classList.toggle('xray', xray);
+    btnXray.setAttribute('aria-pressed', String(xray));
+    if (xray) {
+      if (isArticle) setFoldImmediate(1);
+      updateInspector(pickedIdx >= 0 ? pickedIdx : 72);
+      setSay('HTML X-ray: tap any paper facet to read its live CSS matrix3d().');
+    } else {
+      inspectEl.classList.remove('on');
+      facetNodes.forEach(n => n.el.classList.remove('picked'));
+      pickedIdx = -1;
+      setSay('X-ray off — back to handmade paper.');
+    }
+  });
+  insClose.addEventListener('click', () => {
+    inspectEl.classList.remove('on');
+    facetNodes.forEach(n => n.el.classList.remove('picked'));
+    pickedIdx = -1;
+  });
+
+  btnWrite.addEventListener('click', () => {
+    const open = !writePop.classList.contains('open');
+    writePop.classList.toggle('open', open);
+    btnWrite.setAttribute('aria-pressed', String(open));
+    if (open) {
+      wishInput.value = customWish;
+      wishInput.focus();
+      setSay('Type a short note to bend live text around the lantern equator.');
+    }
+  });
+  function applyWish(txt) {
+    customWish = String(txt || '').trim();
+    const parts = E.splitWishToFacets(customWish);
+    for (let g = 0; g < E.G; g++) {
+      fillFacetWords(facetNodes[5 * E.G + g].txt, parts[g]);
+    }
+    setSay(customWish
+      ? `Updated ring 6 in live DOM: “${customWish.slice(0, 42)}”.`
+      : 'Restored original equator text.');
+    log.push({ ev: 'wish', text: customWish });
+  }
+  writePop.addEventListener('submit', e => {
+    e.preventDefault();
+    applyWish(wishInput.value);
+    writePop.classList.remove('open');
+    btnWrite.setAttribute('aria-pressed', 'false');
+  });
+  wishReset.addEventListener('click', () => {
+    wishInput.value = '';
+    applyWish('');
+  });
+
+  btnWhat.addEventListener('click', () => whatBg.classList.add('open'));
+  whatClose.addEventListener('click', () => whatBg.classList.remove('open'));
+  whatBg.addEventListener('click', e => { if (e.target === whatBg) whatBg.classList.remove('open'); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      whatBg.classList.remove('open');
+      writePop.classList.remove('open');
+      btnWrite.setAttribute('aria-pressed', 'false');
+    } else if (e.key === ' ' && document.activeElement === document.body) {
+      e.preventDefault();
+      autoSpin = !autoSpin;
+    }
+  });
+
+  // ResizeObserver + resize listener
+  let resizeRaf = 0;
+  function onResize() {
+    if (FIXED || OG) {
+      if (!isArticle) { layoutLantern(); applyRigTransform(); }
+      return;
+    }
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => {
+      if (!isArticle) { layoutLantern(); applyRigTransform(); }
+    });
+  }
+  window.addEventListener('resize', onResize);
+
+  // Simulation step (dt in seconds)
+  function advance(dt, render) {
+    simT += dt;
+    frame++;
+    if (Math.abs(targetFold - fold) > 0.002) {
+      const step = Math.min(Math.abs(targetFold - fold), dt * 1.65);
+      fold += Math.sign(targetFold - fold) * step;
+      const pct = Math.round(fold * 100);
+      sldFold.value = String(pct);
+      foldPct.textContent = pct + '%';
+      if (Math.abs(targetFold - fold) <= 0.002) {
+        fold = targetFold;
+        if (fold <= 0.001) {
+          setArticleMode(true);
+        } else if (render) {
+          layoutLantern();
+        }
+      } else if (render && !isArticle) {
+        layoutLantern();
+      }
+    }
+    if (!isArticle) {
+      if (targetYaw !== null) {
+        const dy = targetYaw - yaw;
+        const dp = (targetPitch !== null ? targetPitch : pitch) - pitch;
+        yaw += dy * Math.min(1, dt * 6.5);
+        pitch += dp * Math.min(1, dt * 6.5);
+        if (Math.abs(dy) < 0.003 && Math.abs(dp) < 0.003) {
+          yaw = targetYaw;
+          if (targetPitch !== null) pitch = targetPitch;
+          targetYaw = null; targetPitch = null;
+        }
+      } else if (!dragging) {
+        if (autoSpin) {
+          yaw += dt * 0.24;
+        } else {
+          yaw += velYaw;
+          pitch = Math.max(-0.85, Math.min(0.85, pitch + velPitch));
+          velYaw *= Math.pow(0.92, dt * 60);
+          velPitch *= Math.pow(0.92, dt * 60);
+          if (Math.abs(velYaw) < 1e-4) velYaw = 0;
+          if (Math.abs(velPitch) < 1e-4) velPitch = 0;
+        }
+      }
+      if (render) applyRigTransform();
+    }
+    window.__frame = frame;
+    window.__state = { frame, t: +simT.toFixed(3), fold: +fold.toFixed(3), yaw: +yaw.toFixed(4), pitch: +pitch.toFixed(4), isArticle };
+  }
+
+  // Init
+  buildDOM();
+  if (!SUPPORTS_3D) {
+    document.documentElement.classList.add('no3d');
+    setFoldImmediate(0);
+    btnUnfold.disabled = true;
+    sldFold.disabled = true;
+    btnFlat.disabled = true;
+  } else {
+    layoutLantern();
+    applyRigTransform();
+  }
+
+  // Update lede & OG subtitle with exact measured live DOM node count
+  const totalDomNodes = lantern.querySelectorAll('*').length + extras.querySelectorAll('*').length;
+  const ledeEl = document.getElementById('lede');
+  if (ledeEl && SUPPORTS_3D) {
+    ledeEl.textContent = `${totalDomNodes.toLocaleString()} live HTML elements folded in CSS 3D — zero canvas, zero WebGL. Spin it, search a word, or unfold it flat.`;
+  }
+  const ogSubEl = document.getElementById('og-sub');
+  if (ogSubEl) {
+    ogSubEl.textContent = `${totalDomNodes.toLocaleString()} live HTML elements folded into a pleated lantern with CSS 3D transforms — selectable, searchable, and unfoldable into a flat article.`;
+  }
+
+  window.__frame = 0;
+  window.__state = { frame: 0, t: 0, fold, yaw, pitch, isArticle };
+  window.step = n => {
+    const k = Math.max(1, n | 0);
+    for (let i = 0; i < k; i++) advance(1 / 60, i === k - 1);
+    return window.__state;
+  };
+
+  window.lantern = {
+    state: () => ({
+      ready: true,
+      supports3d: SUPPORTS_3D,
+      scale, fold, targetFold, isArticle, candleOn, roomDay, flatCss, xray, selectMode,
+      yaw, pitch, autoSpin, frame, simT, customWish, pickedIdx, lastFound,
+      canvasCount: document.querySelectorAll('canvas').length,
+      svgInLantern: lantern.querySelectorAll('svg').length + extras.querySelectorAll('svg').length,
+      domNodes: lantern.querySelectorAll('*').length + extras.querySelectorAll('*').length,
+      bodyDomNodes: lantern.querySelectorAll('*').length,
+      facetCount: facetNodes.length,
+      say: sayEl.textContent,
+      seamError: geom ? E.seamError(geom) : 0,
+      log: log.slice()
+    }),
+    facetDump: () => {
+      if (!geom) return [];
+      const candleAmt = candleOn ? (roomDay ? 0.65 : 1.0) : 0.0;
+      const roomAmt = roomDay ? 1.0 : 0.0;
+      return geom.facets.map((f, i) => {
+        const el = facetNodes[i].el;
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return {
+          id: f.id, r: f.r, g: f.g,
+          matEngine: f.mat,
+          csTransform: cs.transform,
+          csBg: cs.backgroundColor,
+          shadeEngine: E.shadeFacet(f, fold, candleAmt, roomAmt).rgb,
+          rect: { left: r.left, top: r.top, width: r.width, height: r.height }
+        };
+      });
+    },
+    setFold: u => setFoldImmediate(u),
+    setPose: (y, p) => { yaw = y; pitch = p; targetYaw = null; targetPitch = null; autoSpin = false; applyRigTransform(); },
+    find: w => findNextWord(w),
+    write: t => applyWish(t)
+  };
+
+  // Animation loop (never started in ?fixed or ?og; reduced-motion runs only when user animates fold/find)
+  if (!FIXED && !OG) {
+    let last = performance.now();
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+      last = now;
+      if (autoSpin || Math.abs(targetFold - fold) > 0.002 || targetYaw !== null || velYaw !== 0 || velPitch !== 0) {
+        advance(dt, true);
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+})();
+
+</script>
+</body>
+</html>
