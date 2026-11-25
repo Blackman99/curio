@@ -1,0 +1,2026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Deep Zoom — Mandelbrot perturbation past 10⁻¹⁰⁰</title>
+<meta name="description" content="Dive past 10⁻¹⁰⁰ into the Mandelbrot set in a full-viewport neon treasure hunt. One arbitrary-precision BigInt reference orbit feeds a WebGL2 Floatexp perturbation shader with Zhuoran rebasing; drag the split curtain to watch direct IEEE float32 shatter into giant tiles at 10⁻⁷.">
+<meta property="og:title" content="Deep Zoom">
+<meta property="og:description" content="Hunt a mini-Mandelbrot hidden past 10⁻¹⁰⁰ using BigInt reference orbits and WebGL2 Floatexp perturbation, and watch direct float32 collapse at 10⁻⁷.">
+<meta property="og:image" content="https://blackman99.github.io/curio/deep-zoom/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Deep Zoom">
+<meta name="twitter:description" content="Hunt a mini-Mandelbrot hidden past 10⁻¹⁰⁰ with BigInt perturbation theory in WebGL2, and drag the curtain to see float32 shatter at 10⁻⁷.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/deep-zoom/og.png">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500&family=Outfit:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script>(function(){var q=new URLSearchParams(location.search),h=document.documentElement;
+if(q.has('fixed'))h.classList.add('fixed');if(q.has('og'))h.classList.add('og');
+if(matchMedia('(prefers-reduced-motion: reduce)').matches)h.classList.add('still');})();</script>
+<style>
+:root{
+  --void:#04030c;
+  --glass:rgba(6,5,18,.82);
+  --glass-hi:rgba(10,8,28,.92);
+  --ink:#f2f7ff;
+  --muted:#a6b2c6;
+  --cyan:#00f2ff;
+  --cyan-dim:rgba(0,242,255,.32);
+  --cyan-soft:rgba(0,242,255,.13);
+  --mag:#ff1ee0;
+  --mag-dim:rgba(255,30,224,.38);
+  --mag-soft:rgba(255,30,224,.15);
+  --hd:'Syne',system-ui,sans-serif;
+  --tx:'Outfit',system-ui,sans-serif;
+  --mn:'Chivo Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--void);color:var(--ink);font:400 15px/1.45 var(--tx);-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+button,input,select{font:500 12.5px/1 var(--mn);color:inherit}
+sup{font-size:.7em;vertical-align:.36em;line-height:0}
+a{color:var(--cyan)}
+html.fixed *,html.still *{transition:none!important;animation:none!important}
+
+/* Full-bleed viewport stage */
+#stage{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;overflow:hidden;background:var(--void);cursor:crosshair;touch-action:none}
+#gl,#cpu,#hud{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cpu{display:none}
+#hud{pointer-events:none}
+
+/* Top-left floating header (DOM order: title & clue first) */
+#top{position:fixed;z-index:10;left:20px;top:16px;max-width:440px;pointer-events:none}
+#crumbs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:500 12px/1 var(--mn);letter-spacing:.03em;pointer-events:auto}
+#crumbs .home{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--cyan-dim);color:var(--cyan);text-decoration:none;transition:background .15s,border-color .15s}
+#crumbs .home:hover{background:var(--cyan-soft);border-color:var(--cyan)}
+#crumbs .no{padding:7px 11px;border-radius:999px;background:var(--glass);border:1px solid rgba(255,255,255,.12);color:var(--muted)}
+#title{margin:10px 0 4px;font:800 clamp(34px,4.5vw,56px)/.98 var(--hd);letter-spacing:-.03em;color:#fff;text-shadow:0 0 24px rgba(0,242,255,.32),0 2px 12px rgba(4,3,12,.9)}
+#clue{display:inline-block;margin:4px 0 0;padding:7px 12px;border-radius:10px;background:var(--glass);border:1px solid rgba(0,242,255,.22);font:400 14px/1.35 var(--tx);color:var(--ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#clue b{font-weight:600;color:var(--cyan)}
+#clue em{font-style:normal;font-weight:600;color:var(--mag)}
+#fallbackNote{display:none;margin-top:6px;padding:5px 10px;border-radius:8px;background:rgba(255,30,224,.18);border:1px solid var(--mag-dim);font:500 11.5px/1.3 var(--mn);color:#ffd6f9}
+
+/* Top-right compact Treasure Card (214px wide, ~244px tall: never a right-hand panel) */
+#card{position:fixed;z-index:10;right:20px;top:16px;width:214px;padding:10px;border-radius:14px;background:var(--glass-hi);border:1px solid var(--cyan-dim);box-shadow:0 12px 36px rgba(0,0,0,.55),0 0 24px rgba(0,242,255,.08);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#card.won{border-color:var(--mag);box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 28px rgba(255,30,224,.35)}
+.c-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font:500 11px/1 var(--mn);letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+#card.won .c-head{color:var(--mag)}
+.c-depth{color:var(--ink);letter-spacing:.01em;text-transform:none}
+#thumbWrap{position:relative;width:100%;aspect-ratio:16/10;border-radius:8px;overflow:hidden;border:1px solid rgba(0,242,255,.28);background:var(--void)}
+#thumb{width:100%;height:100%;display:block}
+#foundTag{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(4,3,12,.72);color:var(--mag);font:800 14px/1.1 var(--hd);letter-spacing:.04em;text-transform:uppercase;text-shadow:0 0 14px rgba(255,30,224,.7)}
+#card.won #foundTag{display:flex}
+#foundTag span{font:500 11px/1 var(--mn);color:var(--cyan);letter-spacing:.02em;text-transform:none}
+.c-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.stat{padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.stat .k{display:block;font:500 10px/1 var(--mn);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.stat .v{display:block;margin-top:4px;font:500 13.5px/1 var(--mn);color:#fff}
+.stat .v.hi{color:var(--cyan)}
+#sonar{margin-top:7px;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:rgba(0,242,255,.08);border:1px solid rgba(0,242,255,.2);font:500 11.5px/1.2 var(--mn);color:var(--cyan)}
+#card.won #sonar{background:var(--mag-soft);border-color:var(--mag-dim);color:var(--mag)}
+#arrow{width:16px;height:16px;flex:0 0 16px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;transition:transform .18s ease-out}
+#sonarTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Depth scale strip under sonar (shows 10^-7 f32 wall, 10^-16 f64 wall, 10^-38 underflow) */
+#depthBar{position:relative;margin-top:7px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+#depthFill{position:absolute;left:0;top:0;bottom:0;width:80%;background:linear-gradient(90deg,var(--cyan),var(--mag));border-radius:999px}
+.c-marks{display:flex;justify-content:space-between;margin-top:4px;font:400 10px/1 var(--mn);color:var(--muted)}
+
+/* Draggable Split Curtain */
+#curtain{position:fixed;z-index:8;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:var(--mag);box-shadow:0 0 16px var(--mag),0 0 4px #fff;display:none;pointer-events:none}
+#curtain.on{display:block}
+#curtainHandle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:7px 11px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--mag);color:#fff;font:500 11px/1 var(--mn);letter-spacing:.04em;white-space:nowrap;cursor:ew-resize;pointer-events:auto;box-shadow:0 0 20px rgba(255,30,224,.45)}
+#curtainHandle b{color:var(--cyan)}
+#curtainHandle em{font-style:normal;color:var(--mag)}
+
+/* Bottom-center floating command dock */
+#dock{position:fixed;z-index:11;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--cyan-dim);box-shadow:0 12px 38px rgba(0,0,0,.62),0 0 24px rgba(0,242,255,.09);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);max-width:calc(100vw - 24px)}
+.grp{display:flex;align-items:center;gap:4px}
+.sep{width:1px;height:20px;background:rgba(255,255,255,.14);flex:0 0 1px}
+.btn{appearance:none;border:1px solid transparent;background:transparent;color:var(--muted);padding:8px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.btn:hover{color:#fff;background:rgba(255,255,255,.08)}
+.btn.on{color:var(--void);background:var(--cyan);border-color:var(--cyan);font-weight:600}
+.btn.mag.on{color:#fff;background:var(--mag);border-color:var(--mag)}
+.btn.act{color:var(--cyan);border-color:rgba(0,242,255,.28)}
+.btn.act:hover{background:var(--cyan-soft);border-color:var(--cyan)}
+.btn.cliff{color:var(--mag);border-color:rgba(255,30,224,.34)}
+.btn.cliff:hover{background:var(--mag-soft);border-color:var(--mag)}
+.btn:disabled{opacity:.42;cursor:default}
+
+/* Live Verify toast badge */
+#verifyBadge{position:fixed;z-index:11;left:20px;bottom:76px;display:none;padding:8px 12px;border-radius:10px;background:var(--glass-hi);border:1px solid var(--cyan);font:500 12px/1.35 var(--mn);color:var(--cyan);box-shadow:0 8px 26px rgba(0,0,0,.55);max-width:340px}
+#verifyBadge.on{display:block}
+#verifyBadge small{display:block;margin-top:2px;color:var(--muted);font-size:11px}
+
+/* Modal for "What is this?" (closed by default) */
+#whatBg{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(4,3,12,.76);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#whatBg.on{display:flex}
+#whatBox{width:min(680px,100%);max-height:84vh;overflow:auto;padding:24px 26px;border-radius:18px;background:#09071a;border:1px solid var(--cyan-dim);box-shadow:0 24px 70px rgba(0,0,0,.75);color:var(--ink);user-select:text;-webkit-user-select:text}
+#whatHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+#whatHead h2{margin:0;font:800 24px/1.1 var(--hd);color:#fff}
+#whatClose{appearance:none;border:1px solid var(--cyan-dim);background:transparent;color:var(--cyan);border-radius:999px;padding:6px 12px;cursor:pointer;font:500 12px/1 var(--mn)}
+#whatClose:hover{background:var(--cyan-soft)}
+#whatBody p{margin:0 0 11px;font:400 15px/1.6 var(--tx);color:#dce4f4}
+#whatBody h3{margin:16px 0 6px;font:700 14px/1.2 var(--hd);letter-spacing:.04em;text-transform:uppercase;color:var(--cyan)}
+#whatBody code{font:400 13px/1 var(--mn);color:var(--mag);background:rgba(255,30,224,.1);padding:2px 5px;border-radius:4px}
+#whatBody table{width:100%;border-collapse:collapse;margin:10px 0 14px;font:400 12.5px/1.4 var(--mn)}
+#whatBody th,#whatBody td{text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)}
+#whatBody th{color:var(--cyan);font-weight:500}
+
+/* OG card layout (?fixed&og=1): bold neon poster framing */
+html.og #card,html.og #dock,html.og #verifyBadge,html.og #curtain{display:none!important}
+html.og #top{left:48px;top:auto;bottom:48px;max-width:640px}
+html.og #crumbs .home{display:none}
+html.og #crumbs .no{background:rgba(4,3,12,.85);border-color:var(--cyan);color:var(--cyan);font-size:14px;padding:8px 14px}
+html.og #title{font-size:88px;margin:14px 0 10px;text-shadow:0 0 40px rgba(0,242,255,.45),0 4px 20px #000}
+html.og #clue{font-size:20px;padding:11px 16px;background:rgba(4,3,12,.86);border-color:var(--mag);color:#fff;white-space:nowrap}
+html.og #ogBadge{display:flex}
+#ogBadge{display:none;position:fixed;z-index:10;right:48px;top:44px;flex-direction:column;align-items:flex-end;gap:6px;padding:14px 18px;border-radius:14px;background:rgba(4,3,12,.84);border:1px solid var(--cyan)}
+#ogBadge .big{font:800 44px/1 var(--hd);color:var(--cyan);letter-spacing:-.02em}
+#ogBadge .sub{font:500 13px/1.2 var(--mn);color:var(--mag);letter-spacing:.04em;text-transform:uppercase}
+
+/* Compact desktop / hall iframe (1297x717) */
+@media (max-height:760px) and (min-width:721px){
+  #top{left:14px;top:12px}
+  #title{font-size:36px;margin:6px 0 2px}
+  #clue{font-size:13px;padding:5px 10px}
+  #card{right:14px;top:12px;width:196px;padding:8px}
+  #dock{bottom:10px;padding:5px 7px}
+  .btn{padding:7px 8px;font-size:11.5px}
+}
+
+/* Mobile 390x844: zero horizontal overflow, thumb card tucked cleanly */
+@media (max-width:720px){
+  #top{left:12px;right:12px;top:10px;max-width:none}
+  #crumbs{gap:6px;font-size:11px}
+  #crumbs .home,#crumbs .no{padding:5px 9px}
+  #title{font-size:30px;margin:6px 0 3px}
+  #clue{display:block;font-size:12.5px;padding:6px 9px}
+  #card{right:12px;left:12px;top:auto;bottom:94px;width:auto;padding:8px 10px;display:grid;grid-template-columns:86px 1fr;gap:4px 10px;align-items:center}
+  .c-head{grid-column:2;margin:0;font-size:10px}
+  #thumbWrap{grid-column:1;grid-row:1/4;aspect-ratio:4/3}
+  .c-meta{grid-column:2;margin:0;gap:5px}
+  .stat{padding:4px 6px}
+  .stat .v{font-size:12px;margin-top:2px}
+  #sonar{grid-column:2;margin:0;padding:4px 7px;font-size:10.5px}
+  #depthBar,.c-marks{display:none}
+  #dock{left:10px;right:10px;bottom:10px;transform:none;max-width:none;border-radius:16px;padding:6px;flex-wrap:wrap;justify-content:center;gap:4px}
+  .sep{display:none}
+  .btn{padding:6px 7px;font-size:11px}
+  #verifyBadge{left:12px;right:12px;bottom:192px;max-width:none;font-size:11px}
+  #curtainHandle{font-size:10px;padding:6px 9px}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <canvas id="cpu"></canvas>
+  <canvas id="hud"></canvas>
+</div>
+
+<header id="top">
+  <nav id="crumbs" aria-label="Curio navigation">
+    <a class="home" href="../">← Curio</a>
+    <span class="no">Curio · No. 058 · Perturbation Theory</span>
+  </nav>
+  <h1 id="title">Deep Zoom</h1>
+  <p id="clue">Click the glowing vortex to dive toward the hidden <b>10<sup>−109</sup></b> minibrot</p>
+  <div id="fallbackNote"></div>
+</header>
+
+<div id="ogBadge" aria-hidden="true">
+  <div class="big">10<sup>−109</sup></div>
+  <div class="sub">BigInt + WebGL2 Perturbation</div>
+</div>
+
+<aside id="card" aria-label="Treasure target">
+  <div class="c-head">
+    <span id="targetTag">Target Minibrot</span>
+    <span class="c-depth" id="targetDepth">10<sup>−109</sup></span>
+  </div>
+  <div id="thumbWrap">
+    <canvas id="thumb" width="192" height="120"></canvas>
+    <div id="foundTag">Found! <span id="foundSub">7 steps · Par 7</span></div>
+  </div>
+  <div class="c-meta">
+    <div class="stat"><span class="k">Depth</span><span class="v hi" id="depthVal">10<sup>−103</sup></span></div>
+    <div class="stat"><span class="k">Steps</span><span class="v" id="stepsVal">0 / 7</span></div>
+  </div>
+  <div id="sonar"><span id="arrow">→</span><span id="sonarTxt">6.2 orders below</span></div>
+  <div id="depthBar"><div id="depthFill"></div></div>
+  <div class="c-marks"><span>10<sup>0</sup></span><span>f32 10<sup>−7</sup></span><span>f64 10<sup>−16</sup></span><span>10<sup>−109</sup></span></div>
+</aside>
+
+<div id="curtain" aria-hidden="true">
+  <div id="curtainHandle" role="slider" aria-label="Perturbation vs Float32 split" aria-valuemin="5" aria-valuemax="95" aria-valuenow="50"><b>PERTURBATION</b> ◂ ▸ <em>FLOAT32</em></div>
+</div>
+
+<div id="verifyBadge" role="status" aria-live="polite"></div>
+
+<nav id="dock" aria-label="Dive controls">
+  <div class="grp" id="diveBtns">
+    <button class="btn on" data-dive="centillion" title="10^-109 Centillion Spiral">10<sup>−109</sup></button>
+    <button class="btn" data-dive="abyssal" title="10^-53 Abyssal Scepter">10<sup>−53</sup></button>
+    <button class="btn" data-dive="cliff" title="10^-16 Float32 Cliff">10<sup>−16</sup></button>
+  </div>
+  <span class="sep"></span>
+  <div class="grp" id="modeBtns">
+    <button class="btn on" data-mode="perturb" title="BigInt reference + WebGL2 Floatexp perturbation">Perturb</button>
+    <button class="btn mag" data-mode="split" title="Split compare: Perturbation vs direct float32">Split</button>
+    <button class="btn mag" data-mode="f32" title="Direct IEEE float32 Mandelbrot">Float32</button>
+  </div>
+  <span class="sep"></span>
+  <div class="grp">
+    <button class="btn cliff" id="cliffBtn" title="Jump straight to 10^-6.8 with split compare">10<sup>−7</sup> Cliff</button>
+    <button class="btn act" id="outBtn" title="Zoom out (Shift+click)">− Out</button>
+    <button class="btn act" id="verifyBtn" title="Check 25 pixels against exact 512-bit BigInt">Verify</button>
+    <button class="btn" id="resetBtn" title="Restart current dive">Reset</button>
+    <button class="btn act" id="whatBtn" title="How it works">?</button>
+  </div>
+</nav>
+
+<div id="whatBg" role="dialog" aria-modal="true" aria-labelledby="whatTitle">
+  <div id="whatBox">
+    <div id="whatHead">
+      <h2 id="whatTitle">What is this?</h2>
+      <button id="whatClose">Close</button>
+    </div>
+    <div id="whatBody"><p><strong>Deep Zoom</strong> is a treasure dive past <code>10⁻¹⁰⁰</code> into the Mandelbrot set. Every frame is computed live in your browser using <strong>Mandelbrot perturbation theory</strong> (K. I. Martin, 2013) paired with <strong>Zhuoran rebasing</strong> (2021) and a custom 32-bit <strong>Floatexp</strong> representation inside a WebGL2 fragment shader.</p>
+
+<h3>Why direct GPU floats hit a wall at 10⁻⁷</h3>
+<p>Standard GPUs iterate <code>z ← z² + c</code> in IEEE 754 single-precision <code>float32</code>, which carries only 24 bits of mantissa (about 7.2 decimal digits). Near <code>c ≈ −0.185 + 1.014i</code>, the spacing between adjacent <code>float32</code> numbers is <code>2⁻²⁶ ≈ 1.49 × 10⁻⁸</code> horizontally and <code>2⁻²³ ≈ 1.19 × 10⁻⁷</code> vertically. Click <strong>10⁻⁷ Cliff</strong> and drag the magenta laser curtain to see direct <code>float32</code> collapse on a 1440×900 viewport:</p>
+
+<table>
+  <thead><tr><th>Half-height</th><th>Distinct float32 coords (of 1,296,000 px)</th><th>What happens</th></tr></thead>
+  <tbody>
+    <tr><td>10⁻⁶.⁰</td><td>3,655</td><td>Visible horizontal/vertical staircasing</td></tr>
+    <tr><td>10⁻⁶.⁸</td><td>105 (35 × 3)</td><td>113/200 (56%) pixels get the wrong escape count; perturbation gets 200/200 exact</td></tr>
+    <tr><td>10⁻⁷.²</td><td>45</td><td>Vertical resolution collapses to 3 rows</td></tr>
+    <tr><td>10⁻⁸.⁰</td><td>3</td><td>Entire screen freezes into 3 flat vertical stripes</td></tr>
+  </tbody>
+</table>
+
+<h3>How perturbation + Floatexp reaches 10⁻¹⁰⁹ at 60 fps</h3>
+<p>Instead of running slow arbitrary-precision arithmetic on every pixel, the page computes <strong>one</strong> reference orbit <code>Zₙ₊₁ = Zₙ² + C</code> in JavaScript using 512-bit fixed-point <code>BigInt</code> arithmetic (median <code>1.2 ms</code> for the <code>10⁻¹⁰⁹</code> reference orbit) and uploads it into an <code>RGBA32F</code> texture. Every pixel only tracks its tiny deviation <code>zₙ = Wₙ − Zₙ</code> using Martin’s perturbation recurrence:</p>
+<p><code>zₙ₊₁ = 2 Zₙ zₙ + zₙ² + Δc</code></p>
+<p>Two obstacles remain on a <code>float32</code> GPU. First, IEEE <code>float32</code> underflows to zero at <code>2⁻¹²⁶ ≈ 1.18 × 10⁻³⁸</code>, long before <code>10⁻¹⁰⁰</code>; the shader therefore stores each complex number as a normalized <code>vec2</code> mantissa plus a 32-bit signed integer exponent (<strong>Floatexp</strong>), using exact <code>floatBitsToUint</code> / <code>uintBitsToFloat</code> exponent shifts with zero rounding error. Second, when a pixel’s true orbit <code>Wₙ = Zₙ + zₙ</code> passes close to 0 while the reference does not, subtraction glitches appear; following Zhuoran (2021), whenever <code>|Wₙ| &lt; |zₙ|</code> (or the reference escapes), the pixel resets <code>zₙ ← Wₙ</code> and rewinds the reference index to <code>0</code> (mean 1.7 rebases per pixel).</p>
+
+<h3>Verified against 512-bit direct iteration</h3>
+<p>Across 300 stratified pixels sampled at the target depths of all three dives (<code>10⁻¹⁰⁹</code> period-120, <code>10⁻⁵³</code> period-185, and <code>10⁻¹⁶</code> period-22), 32-bit Floatexp perturbation matches independent 512-bit arbitrary-precision direct iteration to the exact escape step on <strong>296/300</strong> pixels and within ±1 step on <strong>299/300</strong> (the rare 1–3 step differences occur on chaotic boundary filaments where 24-bit perturbation rounding shifts escape by a step). Click <strong>Verify</strong> at any depth to run 25 live 512-bit <code>BigInt</code> direct iterations in your browser and check the GPU readback pixel-by-pixel.</p>
+
+<h3>What is computed vs. visual</h3>
+<p><strong>Computed live:</strong> 512-bit <code>BigInt</code> reference orbits, WebGL2 Floatexp perturbation with Zhuoran rebasing, direct IEEE <code>float32</code> comparison, target thumbnails, bearing geometry, and live 512-bit pixel verification. The three treasure nuclei were found via Tan Lei’s (1990) Misiurewicz self-similarity and polished with 768-bit Newton’s method. <strong>Visual:</strong> the neon cyan/magenta cyclic palette, filament edge sheen, and gentle phase shimmer.</p>
+
+<h3>References</h3>
+<p>K. I. Martin (2013), <em>Superfractalthing Maths</em> (perturbation method for the Mandelbrot set); Zhuoran (2021), <em>Another solution to perturbation glitches</em> (FractalForums, rebasing); Tan Lei (1990), <em>Similarity between the Mandelbrot set and Julia sets</em>, Comm. Math. Phys. 134, 587–617.</p></div>
+  </div>
+</div>
+
+<script>
+const STATS = {"diveStats": [{"id": "centillion", "exact": 97, "le1": 99, "maxDiff": 3, "meanRebase": 1.48, "orbitMs": 1.24}, {"id": "abyssal", "exact": 99, "le1": 100, "maxDiff": 1, "meanRebase": 2.15, "orbitMs": 1.05}, {"id": "cliff", "exact": 100, "le1": 100, "maxDiff": 0, "meanRebase": 1.4, "orbitMs": 0.48}], "f32Table": {"60": {"log10": -6.0, "ux": 215, "uy": 17, "unique": 3655, "total": 1296000}, "68": {"log10": -6.8, "ux": 35, "uy": 3, "unique": 105, "total": 1296000}, "72": {"log10": -7.2, "ux": 15, "uy": 3, "unique": 45, "total": 1296000}, "80": {"log10": -8.0, "ux": 3, "uy": 1, "unique": 3, "total": 1296000}}, "f32Wrong68": 113, "pertExact68": 200, "totExact": 296, "totPx": 300};
+const DZ = (() => {
+  'use strict';
+
+  const FRAC = 512n;
+  const FRAC_N = 512;
+  const ONE = 1n << FRAC;
+  const ESC_R2 = 65536; // R = 256 -> R^2 = 65536 = 2^16
+  const ESC_FP = BigInt(ESC_R2) << FRAC;
+  const ZERO_EXP = -1000000;
+  const NIB_LEN = [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+
+  // Shared float32 <-> uint32 bit-reinterpretation scratch buffer
+  const _ab = new ArrayBuffer(4);
+  const _f32 = new Float32Array(_ab);
+  const _u32 = new Uint32Array(_ab);
+  const f32 = Math.fround;
+
+  function floatBitsToUint(x) {
+    _f32[0] = x;
+    return _u32[0];
+  }
+  function uintBitsToFloat(u) {
+    _u32[0] = u >>> 0;
+    return _f32[0];
+  }
+  function scalePow2(dk) {
+    if (dk < -126 || dk > 127) return 0;
+    return uintBitsToFloat(((dk + 127) << 23) >>> 0);
+  }
+
+  function bitLen(a) {
+    if (a <= 0n) return 0;
+    const h = a.toString(16);
+    return (h.length - 1) * 4 + NIB_LEN[parseInt(h[0], 16)];
+  }
+
+  // Parse decimal string (with optional sign / exponent) to 512-bit fixed-point BigInt
+  function parseDec(str) {
+    let s = String(str).trim();
+    let neg = false;
+    if (s[0] === '-') { neg = true; s = s.slice(1); }
+    else if (s[0] === '+') s = s.slice(1);
+    let exp10 = 0;
+    const ei = s.search(/[eE]/);
+    if (ei >= 0) {
+      exp10 = parseInt(s.slice(ei + 1), 10);
+      s = s.slice(0, ei);
+    }
+    const dot = s.indexOf('.');
+    let digits;
+    if (dot >= 0) {
+      exp10 -= (s.length - dot - 1);
+      digits = BigInt(s.slice(0, dot) + s.slice(dot + 1));
+    } else {
+      digits = BigInt(s);
+    }
+    let val;
+    if (exp10 >= 0) {
+      val = (digits * (10n ** BigInt(exp10))) << FRAC;
+    } else {
+      val = (digits << FRAC) / (10n ** BigInt(-exp10));
+    }
+    return neg ? -val : val;
+  }
+
+  // Format 512-bit fixed-point BigInt to decimal string with `digits` decimal places
+  function formatDec(v, digits = 12) {
+    const neg = v < 0n;
+    const a = neg ? -v : v;
+    const pow10 = 10n ** BigInt(digits);
+    const scaled = (a * pow10 + (1n << (FRAC - 1n))) >> FRAC;
+    const raw = scaled.toString().padStart(digits + 1, '0');
+    const ip = raw.slice(0, raw.length - digits);
+    const fp = raw.slice(raw.length - digits);
+    return (neg ? '-' : '') + ip + (digits > 0 ? '.' + fp : '');
+  }
+
+  // Convert a 512-bit fixed-point pair (xr, xi) to floatexp (mx, my in f32 with max in [1,2), exp int)
+  function fpToFloatexp(xr, xi) {
+    const ar = xr < 0n ? -xr : xr;
+    const ai = xi < 0n ? -xi : xi;
+    const am = ar > ai ? ar : ai;
+    if (am === 0n) return [0, 0, ZERO_EXP];
+    const bl = bitLen(am);
+    const sh = bl - 30;
+    let mr, mi;
+    if (sh >= 0) {
+      const s = BigInt(sh);
+      mr = Number(xr >> s);
+      mi = Number(xi >> s);
+    } else {
+      const s = BigInt(-sh);
+      mr = Number(xr << s);
+      mi = Number(xi << s);
+    }
+    // Divide by 2^29 exactly so max(|mx|, |my|) lies in [1, 2)
+    const inv29 = 1.862645149230957e-9; // 2^-29 exact IEEE double
+    const mx = f32(mr * inv29);
+    const my = f32(mi * inv29);
+    // Re-normalize in float32 in case f32 rounding pushed mx/my to 2.0
+    const af = Math.max(Math.abs(mx), Math.abs(my));
+    const de = ((floatBitsToUint(af) >>> 23) & 255) - 127;
+    const sc = uintBitsToFloat(((127 - de) << 23) >>> 0);
+    return [f32(mx * sc), f32(my * sc), bl - 1 - FRAC_N + de];
+  }
+
+  // Convert float32 value * 2^exp to exact 512-bit fixed-point BigInt
+  function f32ExpToFp(val, exp) {
+    const v = f32(val);
+    if (v === 0) return 0n;
+    const bits = floatBitsToUint(v);
+    const neg = (bits >>> 31) !== 0;
+    const be = (bits >>> 23) & 255;
+    let mant, e2;
+    if (be === 0) {
+      mant = bits & 0x7fffff;
+      e2 = -126 - 23;
+    } else {
+      mant = (bits & 0x7fffff) | 0x800000;
+      e2 = (be - 127) - 23;
+    }
+    const sh = e2 + exp + FRAC_N;
+    let fp;
+    if (sh >= 0) fp = BigInt(mant) << BigInt(sh);
+    else fp = BigInt(mant) >> BigInt(-sh);
+    return neg ? -fp : fp;
+  }
+
+  // Convert base-10 log scale (half-height = 10^log10s) to (mantissa in [1, 2), binary exponent int)
+  function log10ToScale(log10s) {
+    const log2s = log10s * Math.LOG2E * Math.LN10; // exact log10 * log2(10)
+    const e = Math.floor(log2s);
+    const m = f32(Math.pow(2, log2s - e));
+    return { m, e };
+  }
+
+  function scaleToLog10(m, e) {
+    return (e + Math.log2(Math.max(m, 1e-30))) * Math.LOG10E * Math.LN2;
+  }
+
+  // Convert 512-bit fixed-point BigInt to JS float64 (for depths >= 10^-300) and float32
+  function fpToF64(v) {
+    const neg = v < 0n;
+    const a = neg ? -v : v;
+    if (a === 0n) return 0;
+    const bl = bitLen(a);
+    const sh = bl - 53;
+    const m = sh >= 0 ? Number(a >> BigInt(sh)) : Number(a << BigInt(-sh));
+    const res = m * Math.pow(2, sh - FRAC_N);
+    return neg ? -res : res;
+  }
+
+  // Compute arbitrary-precision BigInt reference orbit Z_{n+1} = Z_n^2 + C
+  // Returns { cr, ci, Zmx, Zmy, Ze, len, escaped, maxIter, texData (Float32Array len*4) }
+  function refOrbit(cr, ci, maxIter) {
+    let zr = 0n, zi = 0n;
+    const Zmx = new Float32Array(maxIter + 1);
+    const Zmy = new Float32Array(maxIter + 1);
+    const Ze = new Int32Array(maxIter + 1);
+    const texData = new Float32Array((maxIter + 1) * 4);
+    let len = 0;
+    let escaped = false;
+    for (let n = 0; n <= maxIter; n++) {
+      const fe = fpToFloatexp(zr, zi);
+      Zmx[n] = fe[0];
+      Zmy[n] = fe[1];
+      Ze[n] = fe[2];
+      const o = n * 4;
+      texData[o] = fe[0];
+      texData[o + 1] = fe[1];
+      texData[o + 2] = fe[2];
+      texData[o + 3] = 0;
+      len = n + 1;
+      const zr2 = (zr * zr) >> FRAC;
+      const zi2 = (zi * zi) >> FRAC;
+      if (zr2 + zi2 > ESC_FP) {
+        escaped = true;
+        break;
+      }
+      const zri = (zr * zi) >> (FRAC - 1n);
+      zr = zr2 - zi2 + cr;
+      zi = zri + ci;
+    }
+    return { cr, ci, Zmx, Zmy, Ze, len, escaped, maxIter, texData };
+  }
+
+  // Exact 512-bit direct Mandelbrot escape step (returns integer in [0, maxIter])
+  function directEscape(cr, ci, maxIter) {
+    let zr = 0n, zi = 0n;
+    for (let n = 0; n < maxIter; n++) {
+      const zr2 = (zr * zr) >> FRAC;
+      const zi2 = (zi * zi) >> FRAC;
+      if (zr2 + zi2 > ESC_FP) return n;
+      const zri = (zr * zi) >> (FRAC - 1n);
+      zr = zr2 - zi2 + cr;
+      zi = zri + ci;
+    }
+    return maxIter;
+  }
+
+  // Pick the best reference point for a viewport (center, scale):
+  // 1) Try treasure nucleus if within 2.5 * halfH (guaranteed non-escaping periodic nucleus!)
+  // 2) Try viewport center; if it survives >= maxIter, use it!
+  // 3) Otherwise probe a fast 5x5 grid in the viewport and pick the longest-surviving point.
+  function chooseRef(cx, cy, scaleM, scaleE, maxIter, hintR, hintI) {
+    // Check if hint nucleus is near viewport (within 2.5 * halfH)
+    if (hintR !== undefined && hintI !== undefined) {
+      const dr = hintR - cx;
+      const di = hintI - cy;
+      const [dmx, dmy, de] = fpToFloatexp(dr, di);
+      // Compare |d| <= 2.5 * scaleM * 2^scaleE
+      if (de <= scaleE + 2) {
+        const ratio = Math.hypot(dmx, dmy) * Math.pow(2, de - scaleE) / scaleM;
+        if (ratio <= 2.5) {
+          const orb = refOrbit(hintR, hintI, maxIter);
+          if (!orb.escaped) return orb;
+        }
+      }
+    }
+    let best = refOrbit(cx, cy, maxIter);
+    if (!best.escaped) return best;
+    // Fast 5x5 probe for highest-iteration point in viewport
+    const offsets = [-0.6, -0.3, 0, 0.3, 0.6];
+    let bestR = cx, bestI = cy, bestLen = best.len;
+    for (let iy = 0; iy < 5; iy++) {
+      for (let ix = 0; ix < 5; ix++) {
+        if (ix === 2 && iy === 2) continue;
+        const pr = cx + f32ExpToFp(f32(offsets[ix] * scaleM), scaleE);
+        const pi = cy + f32ExpToFp(f32(offsets[iy] * scaleM), scaleE);
+        const n = directEscape(pr, pi, maxIter);
+        if (n > bestLen) {
+          bestLen = n;
+          bestR = pr;
+          bestI = pi;
+          if (bestLen >= maxIter) return refOrbit(bestR, bestI, maxIter);
+        }
+      }
+    }
+    if (bestLen > best.len) return refOrbit(bestR, bestI, maxIter);
+    return best;
+  }
+
+  // Floatexp normalization in exact IEEE float32 (mirrors GLSL ES 3.00 shader)
+  function normFE(mx, my, e) {
+    const am = Math.max(Math.abs(mx), Math.abs(my));
+    if (am > 0) {
+      const de = ((floatBitsToUint(am) >>> 23) & 255) - 127;
+      const inv = uintBitsToFloat(((127 - de) << 23) >>> 0);
+      return [f32(mx * inv), f32(my * inv), e + de];
+    }
+    return [0, 0, ZERO_EXP];
+  }
+
+  // Exact IEEE float32 Floatexp Perturbation + Zhuoran Rebasing on a single pixel
+  // Matches both GLSL shader and Python numpy float32 reference!
+  function perturbPixel(orb, dcmx, dcmy, dce, maxIter) {
+    const Zmx = orb.Zmx, Zmy = orb.Zmy, Ze = orb.Ze, refLen = orb.len;
+    let mx = 0, my = 0, ex = ZERO_EXP;
+    let ri = 0;
+    let rebases = 0;
+    const cx = f32(dcmx), cy = f32(dcmy);
+
+    for (let n = 0; n < maxIter; n++) {
+      const Zx = Zmx[ri], Zy = Zmy[ri], Zex = Ze[ri];
+
+      // Term 1: 2 * Z * z
+      let t1x = 0, t1y = 0, e1 = ZERO_EXP;
+      if (Zex > -500000 && ex > -500000) {
+        t1x = f32(f32(Zx * mx) - f32(Zy * my));
+        t1y = f32(f32(Zx * my) + f32(Zy * mx));
+        e1 = Zex + ex + 1;
+      }
+
+      // Term 2: z^2
+      let t2x = 0, t2y = 0, e2 = ZERO_EXP;
+      if (ex > -500000) {
+        t2x = f32(f32(mx * mx) - f32(my * my));
+        t2y = f32(2 * f32(mx * my));
+        e2 = ex * 2;
+      }
+
+      // Term 3: dc
+      const e3 = dce;
+      let emax = e1;
+      if (e2 > emax) emax = e2;
+      if (e3 > emax) emax = e3;
+
+      const s1 = scalePow2(e1 - emax);
+      const s2 = scalePow2(e2 - emax);
+      const s3 = scalePow2(e3 - emax);
+      const sx = f32(f32(f32(t1x * s1) + f32(t2x * s2)) + f32(cx * s3));
+      const sy = f32(f32(f32(t1y * s1) + f32(t2y * s2)) + f32(cy * s3));
+      let nfe = normFE(sx, sy, emax);
+      let nmx = nfe[0], nmy = nfe[1], nex = nfe[2];
+
+      let nri = ri + 1;
+      const inB = nri < refLen;
+      const NZx = inB ? Zmx[nri] : 0;
+      const NZy = inB ? Zmy[nri] : 0;
+      const NZex = inB ? Ze[nri] : ZERO_EXP;
+
+      const wemax = NZex > nex ? NZex : nex;
+      const ws1 = scalePow2(NZex - wemax);
+      const ws2 = scalePow2(nex - wemax);
+      const wfe = normFE(f32(f32(NZx * ws1) + f32(nmx * ws2)), f32(f32(NZy * ws1) + f32(nmy * ws2)), wemax);
+      const wmx = wfe[0], wmy = wfe[1], wex = wfe[2];
+
+      const w2 = f32(f32(wmx * wmx) + f32(wmy * wmy));
+      const esc = (wex >= 8) || (wex >= 6 && f32(w2 * scalePow2(2 * (wex - 8))) > 1);
+      if (esc) {
+        const log2w = wex + 0.5 * Math.log2(Math.max(w2, 1e-30));
+        const smooth = (n + 1) + 1 - Math.log2(Math.max(log2w, 1));
+        return { iters: n + 1, smooth, rebases };
+      }
+
+      const z2 = f32(f32(nmx * nmx) + f32(nmy * nmy));
+      const de = wex - nex;
+      let wSmaller = false;
+      if (de < -1) wSmaller = true;
+      else if (de <= 1) {
+        const shv = de === -1 ? 0.25 : (de === 1 ? 4.0 : 1.0);
+        wSmaller = f32(w2 * shv) < z2;
+      }
+      if (wSmaller || !inB) {
+        mx = wmx; my = wmy; ex = wex; ri = 0; rebases++;
+      } else {
+        mx = nmx; my = nmy; ex = nex; ri = nri;
+      }
+    }
+    return { iters: maxIter, smooth: maxIter, rebases };
+  }
+
+  // Exact Direct IEEE float32 Mandelbrot (demonstrates the 10^-7 cliff)
+  function directFloat32Pixel(crF32, ciF32, dxF32, dyF32, maxIter) {
+    const cx = f32(f32(crF32) + f32(dxF32));
+    const cy = f32(f32(ciF32) + f32(dyF32));
+    let x = 0, y = 0;
+    for (let n = 0; n < maxIter; n++) {
+      const x2 = f32(x * x), y2 = f32(y * y);
+      const nx = f32(f32(x2 - y2) + cx);
+      const ny = f32(f32(2 * f32(x * y)) + cy);
+      const r2 = f32(f32(nx * nx) + f32(ny * ny));
+      if (r2 > ESC_R2) {
+        const log2w = 0.5 * Math.log2(Math.max(r2, 1));
+        const smooth = (n + 1) + 1 - Math.log2(Math.max(log2w, 1));
+        return { iters: n + 1, smooth, cx, cy };
+      }
+      x = nx; y = ny;
+    }
+    return { iters: maxIter, smooth: maxIter, cx, cy };
+  }
+
+  // 3 Curated Treasure Dives (all nuclei polished to 768 bits -> rounded to 512 bits)
+  const DIVES = [
+    {
+      id: 'centillion',
+      title: 'Centillion Spiral',
+      shortLabel: '10⁻¹⁰⁹ Spiral',
+      tag: 'Past 10⁻¹⁰⁰',
+      period: 120,
+      pre: 15,
+      per: 1,
+      m: 104,
+      rhoAbs: 2.9866,
+      rhoDeg: -22.8,
+      lrad: -110.27,
+      targetLog10: -109.25,
+      startLog10: -103.0,
+      par: 7,
+      startOffX: -0.34,
+      startOffY: 0.19,
+      maxIter: 2600,
+      crStr: '-0.1850005309825843158788931467863908518420830799245692710784514032603741340961788861931499309876522069308912860485927082100859334910',
+      ciStr: '1.0136156492720429121556541858529909040514709197117755875623462622889049785659647952818585878672116740054623016390316518703554139894',
+      note: '12-armed Tan Lei spiral around M₁₅,₁ hiding a period-120 minibrot at 10⁻¹⁰⁹.'
+    },
+    {
+      id: 'abyssal',
+      title: 'Abyssal Scepter',
+      shortLabel: '10⁻⁵³ Scepter',
+      tag: 'Past 10⁻³⁸ underflow',
+      period: 185,
+      pre: 5,
+      per: 2,
+      m: 82,
+      rhoAbs: 1.9056,
+      rhoDeg: 122.4,
+      lrad: -53.92,
+      targetLog10: -52.9,
+      startLog10: -47.2,
+      par: 6,
+      startOffX: 0.31,
+      startOffY: -0.21,
+      maxIter: 3200,
+      crStr: '-1.2555819767538616311060679263222120697141261202180859861019007960536846040981430900608563295894414455270350459060651356675970843046',
+      ciStr: '0.4020388592658135264631128722838270318205479089131661631433973720012291239889777031673010691465031424642667474150402135417680591666',
+      note: 'Period-185 minibrot past both float64 precision (10⁻¹⁶) and float32 underflow (10⁻³⁸).'
+    },
+    {
+      id: 'cliff',
+      title: 'Float32 Cliff',
+      shortLabel: '10⁻¹⁶ Cliff',
+      tag: 'Crosses 10⁻⁷ wall',
+      period: 22,
+      pre: 15,
+      per: 1,
+      m: 6,
+      rhoAbs: 2.9866,
+      rhoDeg: -22.8,
+      lrad: -17.13,
+      targetLog10: -16.11,
+      startLog10: -5.8,
+      par: 11,
+      startOffX: -0.28,
+      startOffY: -0.18,
+      maxIter: 1400,
+      crStr: '-0.1850005916016532350176226787497813683171860675238408816267910576866759402944021670347316806767224310113005767417470597249365120787',
+      ciStr: '1.0136155799273449414110072067533522225149862652790533329219334371744878796709600007375793892264062321221846492150289309142751672104',
+      note: 'Start above 10⁻⁶ and dive straight through float32 collapse (10⁻⁷) to a period-22 minibrot.'
+    }
+  ].map(d => ({ ...d, cr: parseDec(d.crStr), ci: parseDec(d.ciStr) }));
+
+  // Compute bearing and relative offset from current viewport center to dive target
+  function targetRelation(cx, cy, scaleM, scaleE, dive) {
+    const dr = dive.cr - cx;
+    const di = dive.ci - cy;
+    const [dmx, dmy, de] = fpToFloatexp(dr, di);
+    const curLog10 = scaleToLog10(scaleM, scaleE);
+    const depthGap = curLog10 - dive.targetLog10; // positive = need to zoom deeper
+    if (de <= ZERO_EXP / 2) {
+      return { rx: 0, ry: 0, distView: 0, angle: 0, inView: true, depthGap, found: depthGap <= 1.1 && depthGap >= -0.9 };
+    }
+    const pow = Math.pow(2, de - scaleE) / scaleM;
+    const rx = dmx * pow; // in units of halfH
+    const ry = dmy * pow;
+    const distView = Math.hypot(rx, ry);
+    const angle = Math.atan2(ry, rx); // standard math angle (+y up)
+    const inView = Math.abs(rx) <= 1.15 && Math.abs(ry) <= 0.85;
+    const found = distView <= 0.55 && depthGap <= 1.05 && depthGap >= -0.85;
+    return { rx, ry, distView, angle, inView, depthGap, found };
+  }
+
+  // Compute exact pixel coordinate (pr, pi) and floatexp offset (dcmx, dcmy, dce) from ref orb
+  function pixelToCoord(u, v, cx, cy, scaleM, scaleE, orb) {
+    // u, v are normalized screen coords in [-aspect, +aspect] x [-1, +1] (+v up)
+    const dpx = f32(u * scaleM);
+    const dpy = f32(v * scaleM);
+    const pr = cx + f32ExpToFp(dpx, scaleE);
+    const pi = cy + f32ExpToFp(dpy, scaleE);
+    // Offset relative to orb.cr, orb.ci: (cx - orb.cr) + dpx*2^scaleE
+    const [bmx, bmy, be] = fpToFloatexp(pr - orb.cr, pi - orb.ci);
+    return { pr, pi, dcmx: bmx, dcmy: bmy, dce: be };
+  }
+
+  // Compute exact base shift (cx - orb.cr, cy - orb.ci) in units of (scaleM * 2^scaleE) for shader uniforms!
+  // Returns { bx, by, be } in floatexp so shader computes dc = baseShift + vec2(u, v) * scale!
+  function refShiftFE(cx, cy, orb) {
+    const [bx, by, be] = fpToFloatexp(cx - orb.cr, cy - orb.ci);
+    return { bx, by, be };
+  }
+
+  // Adaptive maxIter for a given depth & dive
+  function autoMaxIter(log10s, dive) {
+    const depth = Math.max(0, -log10s);
+    if (!dive) return Math.min(4000, Math.max(300, Math.round(200 + depth * 28)));
+    if (dive.id === 'centillion') {
+      if (depth > 105) return 2600;
+      if (depth > 95) return 1800;
+      return Math.max(300, Math.round(160 + depth * 18));
+    }
+    if (dive.id === 'abyssal') {
+      if (depth > 48) return 3200;
+      return Math.max(300, Math.round(220 + depth * 55));
+    }
+    if (dive.id === 'cliff') {
+      if (depth > 13) return 1400;
+      return Math.max(300, Math.round(240 + depth * 70));
+    }
+    return dive.maxIter;
+  }
+
+  return {
+    FRAC, FRAC_N, ESC_R2, ZERO_EXP, DIVES,
+    f32, floatBitsToUint, uintBitsToFloat, scalePow2, bitLen,
+    parseDec, formatDec, fpToFloatexp, f32ExpToFp, log10ToScale, scaleToLog10, fpToF64,
+    refOrbit, directEscape, chooseRef, normFE, perturbPixel, directFloat32Pixel,
+    targetRelation, pixelToCoord, refShiftFE, autoMaxIter
+  };
+})();
+
+(() => {
+  'use strict';
+
+  const Q = new URLSearchParams(location.search);
+  const FIXED = Q.has('fixed');
+  const OG = Q.has('og') ? (parseInt(Q.get('og'), 10) || 1) : 0;
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const FORCE_CPU = Q.has('cpu') || Q.has('nowebgl');
+
+  const $ = id => document.getElementById(id);
+  const glCv = $('gl'), cpuCv = $('cpu'), hudCv = $('hud'), stage = $('stage');
+  const thumbCv = $('thumb'), cardEl = $('card'), clueEl = $('clue');
+  const depthVal = $('depthVal'), stepsVal = $('stepsVal'), targetDepth = $('targetDepth'), targetTag = $('targetTag');
+  const arrowEl = $('arrow'), sonarTxt = $('sonarTxt'), depthFill = $('depthFill'), foundSub = $('foundSub');
+  const curtainEl = $('curtain'), curtainHandle = $('curtainHandle'), verifyBadge = $('verifyBadge');
+  const whatBg = $('whatBg'), fallbackNote = $('fallbackNote');
+
+  // ---------- Utility formatting ----------
+  function fmtPow10HTML(log10s, dp = 1) {
+    const v = (dp === 0 ? String(Math.round(log10s)) : log10s.toFixed(dp).replace(/\.0$/, '')).replace('-', '−');
+    return `10<sup>${v}</sup>`;
+  }
+
+  // ---------- App state ----------
+  const DIVE_MAP = Object.fromEntries(DZ.DIVES.map(d => [d.id, d]));
+  const initDiveId = DIVE_MAP[Q.get('dive')] ? Q.get('dive') : 'centillion';
+  const initMode = ['perturb', 'split', 'f32'].includes(Q.get('mode')) ? Q.get('mode') : 'perturb';
+
+  let curDive = DIVE_MAP[initDiveId];
+  let cx = curDive.cr, cy = curDive.ci;
+  let scaleM = 1, scaleE = 0;
+  let maxIter = curDive.maxIter;
+  let mode = initMode;
+  let splitX = 0.5;
+  let steps = 0;
+  let found = false;
+  let history = [];
+  let orb = null;
+  let orbitMs = 0;
+  let simTime = 0;
+  let frameCount = 0;
+  let ready = false;
+  let useGL = false;
+  let rendererName = 'cpu';
+  let isSoftwareGL = false;
+  let baseSmooth = 100;
+  let lastVerify = null;
+  let verifyMarks = [];
+  const logs = [];
+
+  // Smooth zoom glide & arrival animation state
+  let anim = null; // { t0, dur, startLog10, endLog10, fromCx, fromCy, toCx, toCy, zoomFactor, anchorU, anchorV }
+  let hoverPt = null; // { nx, ny, px, py }
+  let dragCurtain = false;
+
+  // ---------- WebGL2 Shaders ----------
+  const VS = `#version 300 es
+  layout(location=0) in vec2 aPos;
+  out vec2 vUv;
+  void main(){
+    vUv = aPos * 0.5 + 0.5;
+    gl_Position = vec4(aPos, 0.0, 1.0);
+  }`;
+
+  const FS_COMP = `#version 300 es
+  precision highp float;
+  precision highp int;
+  in vec2 vUv;
+  out vec4 fragColor;
+
+  uniform sampler2D uOrbit;
+  uniform int uRefLen;
+  uniform int uMaxIter;
+  uniform vec2 uBaseM;
+  uniform int uBaseE;
+  uniform float uScaleM;
+  uniform int uScaleE;
+  uniform float uAspect;
+  uniform int uMode; // 0=pert smooth, 1=f32 smooth, 2=pert int probe, 3=f32 int probe
+  uniform vec2 uCenterF32;
+  uniform float uScaleF32;
+
+  const int ZERO_EXP = -1000000;
+
+  float scalePow2(int dk) {
+    if (dk < -126 || dk > 127) return 0.0;
+    return uintBitsToFloat(uint(dk + 127) << 23u);
+  }
+
+  void normFE(inout vec2 m, inout int e) {
+    float am = max(abs(m.x), abs(m.y));
+    if (am > 0.0) {
+      int de = int((floatBitsToUint(am) >> 23u) & 255u) - 127;
+      m *= uintBitsToFloat(uint(127 - de) << 23u);
+      e += de;
+    } else {
+      m = vec2(0.0);
+      e = ZERO_EXP;
+    }
+  }
+
+  void addFE(vec2 am, int ae, vec2 bm, int be, out vec2 om, out int oe) {
+    int emax = max(ae, be);
+    if (emax < -500000) { om = vec2(0.0); oe = ZERO_EXP; return; }
+    om = am * scalePow2(ae - emax) + bm * scalePow2(be - emax);
+    oe = emax;
+    normFE(om, oe);
+  }
+
+  vec4 fetchRef(int idx) {
+    return texelFetch(uOrbit, ivec2(idx & 1023, idx >> 10), 0);
+  }
+
+  vec4 packSmooth(float sm, bool escaped) {
+    if (!escaped) return vec4(0.0, 0.0, 0.0, 0.0);
+    float v = clamp(floor(sm * 256.0 + 0.5), 1.0, 16777214.0);
+    float r = mod(v, 256.0);
+    float g = mod(floor(v / 256.0), 256.0);
+    float b = floor(v / 65536.0);
+    return vec4(r / 255.0, g / 255.0, b / 255.0, 1.0);
+  }
+
+  vec4 packProbe(int iters, int rebases) {
+    int r = iters & 255;
+    int g = (iters >> 8) & 255;
+    int b = min(rebases, 255);
+    return vec4(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0, 1.0);
+  }
+
+  void main() {
+    float u = (vUv.x * 2.0 - 1.0) * uAspect;
+    float v = (vUv.y * 2.0 - 1.0);
+
+    // Direct IEEE float32 Mandelbrot (modes 1 & 3)
+    if (uMode == 1 || uMode == 3) {
+      vec2 c = uCenterF32 + vec2(u * uScaleF32, v * uScaleF32);
+      vec2 z = vec2(0.0);
+      int escIt = uMaxIter;
+      float sm = float(uMaxIter);
+      bool escaped = false;
+      for (int n = 0; n < 4096; n++) {
+        if (n >= uMaxIter) break;
+        float nx = z.x * z.x - z.y * z.y + c.x;
+        float ny = 2.0 * z.x * z.y + c.y;
+        float r2 = nx * nx + ny * ny;
+        if (r2 > 65536.0) {
+          escIt = n + 1;
+          float log2w = 0.5 * log2(max(r2, 1.0));
+          sm = float(n + 1) + 1.0 - log2(max(log2w, 1.0));
+          escaped = true;
+          break;
+        }
+        z = vec2(nx, ny);
+      }
+      fragColor = (uMode == 3) ? packProbe(escIt, 0) : packSmooth(sm, escaped);
+      return;
+    }
+
+    // Floatexp Perturbation + Zhuoran Rebasing (modes 0 & 2)
+    vec2 pxm = vec2(u * uScaleM, v * uScaleM);
+    int pxe = uScaleE;
+    normFE(pxm, pxe);
+    vec2 dcm;
+    int dce;
+    addFE(uBaseM, uBaseE, pxm, pxe, dcm, dce);
+
+    vec2 zm = vec2(0.0);
+    int ze = ZERO_EXP;
+    int ri = 0;
+    int rebases = 0;
+    int escIt = uMaxIter;
+    float sm = float(uMaxIter);
+    bool escaped = false;
+
+    for (int n = 0; n < 4096; n++) {
+      if (n >= uMaxIter) break;
+      vec4 Zr = fetchRef(ri);
+      vec2 Zx = Zr.xy;
+      int Zex = int(Zr.z);
+
+      // T1 = 2 * Z * z
+      vec2 t1 = vec2(0.0);
+      int e1 = ZERO_EXP;
+      if (Zex > -500000 && ze > -500000) {
+        t1 = vec2(Zx.x * zm.x - Zx.y * zm.y, Zx.x * zm.y + Zx.y * zm.x);
+        e1 = Zex + ze + 1;
+      }
+
+      // T2 = z^2
+      vec2 t2 = vec2(0.0);
+      int e2 = ZERO_EXP;
+      if (ze > -500000) {
+        t2 = vec2(zm.x * zm.x - zm.y * zm.y, 2.0 * zm.x * zm.y);
+        e2 = ze * 2;
+      }
+
+      int emax = max(e1, max(e2, dce));
+      vec2 nzm = t1 * scalePow2(e1 - emax) + t2 * scalePow2(e2 - emax) + dcm * scalePow2(dce - emax);
+      int nze = emax;
+      normFE(nzm, nze);
+
+      int nri = ri + 1;
+      bool inB = nri < uRefLen;
+      vec2 NZx = vec2(0.0);
+      int NZex = ZERO_EXP;
+      if (inB) {
+        vec4 NZr = fetchRef(nri);
+        NZx = NZr.xy;
+        NZex = int(NZr.z);
+      }
+
+      vec2 wm;
+      int we;
+      addFE(NZx, NZex, nzm, nze, wm, we);
+
+      float w2 = dot(wm, wm);
+      bool esc = (we >= 8) || (we >= 6 && w2 * scalePow2(2 * (we - 8)) > 1.0);
+      if (esc) {
+        escIt = n + 1;
+        float log2w = float(we) + 0.5 * log2(max(w2, 1e-30));
+        sm = float(n + 1) + 1.0 - log2(max(log2w, 1.0));
+        escaped = true;
+        break;
+      }
+
+      float z2 = dot(nzm, nzm);
+      int de = we - nze;
+      bool wSmaller = (de < -1);
+      if (de >= -1 && de <= 1) {
+        float shv = (de == -1) ? 0.25 : ((de == 1) ? 4.0 : 1.0);
+        wSmaller = (w2 * shv < z2);
+      }
+      if (wSmaller || !inB) {
+        zm = wm; ze = we; ri = 0; rebases++;
+      } else {
+        zm = nzm; ze = nze; ri = nri;
+      }
+    }
+    fragColor = (uMode == 2) ? packProbe(escIt, rebases) : packSmooth(sm, escaped);
+  }`;
+
+  const FS_DISP = `#version 300 es
+  precision highp float;
+  in vec2 vUv;
+  out vec4 fragColor;
+
+  uniform sampler2D uTexPert;
+  uniform sampler2D uTexF32;
+  uniform int uViewMode; // 0=pert, 1=split, 2=f32
+  uniform float uSplitX;
+  uniform float uBaseSmooth;
+  uniform float uPhase;
+  uniform vec2 uZoomAnchor; // in [0,1] UV
+  uniform float uZoomScale; // >1 zooms into cached frame during glide
+  uniform vec2 uTexSize;
+
+  float unpackSmooth(vec4 t, out bool inside) {
+    inside = (t.a < 0.5);
+    if (inside) return 0.0;
+    return (t.r * 255.0 + t.g * 255.0 * 256.0 + t.b * 255.0 * 65536.0) / 256.0;
+  }
+
+  // Pure V9 Neon Cyan (#00f2ff) & Neon Magenta (#ff1ee0) on deep obsidian void (#04030c)
+  // Designed for dark overall luminance (<65) with electric filament contrast
+  vec3 neonColor(float s, float grad) {
+    float ds = max(0.0, s - uBaseSmooth);
+    float u = log(1.0 + ds * 0.24) * 3.8 + ds * 0.032 + uPhase;
+    float ph = fract(u / 6.2831853);
+    // Sharp neon cyan and magenta peaks separated by deep obsidian-violet troughs
+    float dCyan = min(abs(ph - 0.24), 1.0 - abs(ph - 0.24));
+    float dMag  = min(abs(ph - 0.74), 1.0 - abs(ph - 0.74));
+    float pCyan = exp(-pow(dCyan / 0.115, 2.0));
+    float pMag  = exp(-pow(dMag  / 0.115, 2.0));
+    float pVio  = exp(-pow((ph - 0.49) / 0.15, 2.0));
+
+    vec3 col = vec3(0.016, 0.012, 0.047); // deep obsidian void #04030c
+    col += vec3(0.11, 0.025, 0.24) * pVio * 0.65;
+    col += vec3(0.0, 0.95, 1.0) * pCyan * 0.96;
+    col += vec3(1.0, 0.11, 0.88) * pMag * 0.96;
+    // Crisp filament edge sheen (highlights fine fractal tendrils & minibrot silhouette!)
+    float edge = clamp(grad * 0.28, 0.0, 1.0);
+    col += mix(vec3(0.0, 0.95, 1.0), vec3(1.0, 0.35, 0.95), pMag / (pCyan + pMag + 0.01)) * edge * 0.55;
+    col += vec3(0.85, 0.98, 1.0) * pow(max(pCyan, pMag), 6.0) * 0.22;
+    return clamp(col, 0.0, 1.0);
+  }
+
+  void main() {
+    vec2 uv = uZoomAnchor + (vUv - uZoomAnchor) / uZoomScale;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+      fragColor = vec4(0.016, 0.012, 0.047, 1.0);
+      return;
+    }
+    bool useF32 = (uViewMode == 2) || (uViewMode == 1 && vUv.x > uSplitX);
+    bool ins;
+    float s;
+    vec2 px = 1.0 / uTexSize;
+    if (useF32) {
+      s = unpackSmooth(texture(uTexF32, uv), ins);
+      if (ins) {
+        fragColor = vec4(0.012, 0.008, 0.035, 1.0);
+      } else {
+        bool i1, i2;
+        float sx = unpackSmooth(texture(uTexF32, uv + vec2(px.x, 0.0)), i1);
+        float sy = unpackSmooth(texture(uTexF32, uv + vec2(0.0, px.y)), i2);
+        float g = (i1 || i2) ? 1.5 : (abs(sx - s) + abs(sy - s));
+        fragColor = vec4(neonColor(s, min(g, 3.0)), 1.0);
+      }
+    } else {
+      s = unpackSmooth(texture(uTexPert, uv), ins);
+      if (ins) {
+        // Check if neighboring pixel escaped -> electric rim around the minibrot!
+        bool i1, i2, i3, i4;
+        unpackSmooth(texture(uTexPert, uv + vec2(px.x, 0.0)), i1);
+        unpackSmooth(texture(uTexPert, uv - vec2(px.x, 0.0)), i2);
+        unpackSmooth(texture(uTexPert, uv + vec2(0.0, px.y)), i3);
+        unpackSmooth(texture(uTexPert, uv - vec2(0.0, px.y)), i4);
+        bool rim = !(i1 && i2 && i3 && i4);
+        vec3 insideCol = rim ? vec3(0.0, 0.78, 0.92) : vec3(0.012, 0.008, 0.035);
+        fragColor = vec4(insideCol, 1.0);
+      } else {
+        bool i1, i2;
+        float sx = unpackSmooth(texture(uTexPert, uv + vec2(px.x, 0.0)), i1);
+        float sy = unpackSmooth(texture(uTexPert, uv + vec2(0.0, px.y)), i2);
+        float g = (i1 || i2) ? 2.5 : (abs(sx - s) + abs(sy - s));
+        fragColor = vec4(neonColor(s, min(g, 4.0)), 1.0);
+      }
+    }
+    // Subtle dark vignette at top-left so header is effortless to read
+    float vig = smoothstep(0.62, 0.0, length((vUv - vec2(0.08, 0.94)) * vec2(1.1, 1.7)));
+    fragColor.rgb *= (1.0 - 0.38 * vig);
+  }`;
+
+  // ---------- WebGL2 context & resources ----------
+  let gl = null, progComp = null, progDisp = null, vao = null;
+  let orbitTex = null, orbitH = 0;
+  let fboPert = null, texPert = null, fboF32 = null, texF32 = null;
+  let fboW = 0, fboH = 0;
+  let compLoc = {}, dispLoc = {};
+
+  // Progressive compute state (renders in horizontal strips on live GPU/SwiftShader to stay 60fps!)
+  let pendingComp = null; // { row, rowsPerStep, needsF32, f32Row, anchorU, anchorV }
+
+  function compileShader(type, src) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      throw new Error('Shader error: ' + gl.getShaderInfoLog(sh));
+    }
+    return sh;
+  }
+
+  function linkProgram(vsSrc, fsSrc) {
+    const p = gl.createProgram();
+    gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error('Link error: ' + gl.getProgramInfoLog(p));
+    }
+    return p;
+  }
+
+  function initGL() {
+    if (FORCE_CPU) return false;
+    try {
+      gl = glCv.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: true });
+    } catch (e) { gl = null; }
+    if (!gl) return false;
+
+    // Detect renderer safely without Firefox deprecation warning
+    rendererName = gl.getParameter(gl.RENDERER) || 'WebGL2';
+    if (/WebKit|Mozilla/i.test(rendererName)) {
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) rendererName = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || rendererName;
+    }
+    isSoftwareGL = /SwiftShader|llvmpipe|Software/i.test(rendererName);
+
+    try {
+      progComp = linkProgram(VS, FS_COMP);
+      progDisp = linkProgram(VS, FS_DISP);
+    } catch (e) {
+      console.warn('WebGL2 compile failed, falling back to CPU:', e.message);
+      gl = null;
+      return false;
+    }
+
+    // Full-screen triangle with explicit attrib 0 (avoids Firefox attrib-0 warning)
+    vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
+
+    for (const k of ['uOrbit', 'uRefLen', 'uMaxIter', 'uBaseM', 'uBaseE', 'uScaleM', 'uScaleE', 'uAspect', 'uMode', 'uCenterF32', 'uScaleF32']) {
+      compLoc[k] = gl.getUniformLocation(progComp, k);
+    }
+    for (const k of ['uTexPert', 'uTexF32', 'uViewMode', 'uSplitX', 'uBaseSmooth', 'uPhase', 'uZoomAnchor', 'uZoomScale', 'uTexSize']) {
+      dispLoc[k] = gl.getUniformLocation(progDisp, k);
+    }
+
+    orbitTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, orbitTex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    return true;
+  }
+
+  function makeFBO(w, h) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fbo, tex };
+  }
+
+  function ensureFBOs() {
+    if (!useGL) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, isSoftwareGL ? 1 : 1.5);
+    const cw = Math.max(1, Math.round(stage.clientWidth * dpr));
+    const ch = Math.max(1, Math.round(stage.clientHeight * dpr));
+    if (glCv.width !== cw || glCv.height !== ch) {
+      glCv.width = cw;
+      glCv.height = ch;
+    }
+    const hudDpr = Math.min(window.devicePixelRatio || 1, 2);
+    const hw = Math.max(1, Math.round(stage.clientWidth * hudDpr));
+    const hh = Math.max(1, Math.round(stage.clientHeight * hudDpr));
+    if (hudCv.width !== hw || hudCv.height !== hh) {
+      hudCv.width = hw;
+      hudCv.height = hh;
+    }
+
+    // Compute FBO resolution: crisp on GPU, smart scaled on SwiftShader so it never stalls
+    const maxW = isSoftwareGL ? 560 : (FIXED ? 1440 : 1280);
+    const scale = Math.min(1, maxW / cw);
+    const tw = Math.max(64, Math.round(cw * scale));
+    const th = Math.max(64, Math.round(ch * scale));
+    if (tw === fboW && th === fboH && fboPert) return;
+    if (fboPert) { gl.deleteFramebuffer(fboPert); gl.deleteTexture(texPert); }
+    if (fboF32) { gl.deleteFramebuffer(fboF32); gl.deleteTexture(texF32); }
+    const a = makeFBO(tw, th); fboPert = a.fbo; texPert = a.tex;
+    const b = makeFBO(tw, th); fboF32 = b.fbo; texF32 = b.tex;
+    fboW = tw; fboH = th;
+  }
+
+  function uploadOrbit(o) {
+    if (!useGL) return;
+    const rows = Math.ceil(o.len / 1024);
+    const buf = new Float32Array(rows * 1024 * 4);
+    buf.set(o.texData.subarray(0, o.len * 4));
+    gl.bindTexture(gl.TEXTURE_2D, orbitTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 1024, rows, 0, gl.RGBA, gl.FLOAT, buf);
+    orbitH = rows;
+  }
+
+  // Estimate baseline smooth iteration from a fast 16-point CPU sample so palette contrast stays razor-sharp at every depth
+  function estimateBaseSmooth() {
+    if (!orb) return 0;
+    const aspect = stage.clientWidth / Math.max(1, stage.clientHeight);
+    const vals = [];
+    for (let iy = 0; iy < 4; iy++) {
+      for (let ix = 0; ix < 4; ix++) {
+        const u = ((ix + 0.5) / 2 - 1) * aspect * 0.85;
+        const v = ((iy + 0.5) / 2 - 1) * 0.85;
+        const p = DZ.pixelToCoord(u, v, cx, cy, scaleM, scaleE, orb);
+        const r = DZ.perturbPixel(orb, p.dcmx, p.dcmy, p.dce, maxIter);
+        if (r.iters < maxIter) vals.push(r.smooth);
+      }
+    }
+    if (!vals.length) return 0;
+    vals.sort((a, b) => a - b);
+    return vals[0];
+  }
+
+  // Render rows [y0, y0 + h) into fbo (perturbation or f32)
+  function renderCompStrip(fbo, compMode, y0, h) {
+    const aspect = fboW / fboH;
+    const shift = DZ.refShiftFE(cx, cy, orb);
+    const cF32r = DZ.f32(DZ.fpToF64(cx));
+    const cF32i = DZ.f32(DZ.fpToF64(cy));
+    const log10s = DZ.scaleToLog10(scaleM, scaleE);
+    const scF32 = log10s < -38 ? 0 : DZ.f32(Math.pow(10, log10s));
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.viewport(0, 0, fboW, fboH);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(0, y0, fboW, h);
+    gl.useProgram(progComp);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, orbitTex);
+    gl.uniform1i(compLoc.uOrbit, 0);
+    gl.uniform1i(compLoc.uRefLen, orb.len);
+    gl.uniform1i(compLoc.uMaxIter, maxIter);
+    gl.uniform2f(compLoc.uBaseM, shift.bx, shift.by);
+    gl.uniform1i(compLoc.uBaseE, shift.be);
+    gl.uniform1f(compLoc.uScaleM, scaleM);
+    gl.uniform1i(compLoc.uScaleE, scaleE);
+    gl.uniform1f(compLoc.uAspect, aspect);
+    gl.uniform1i(compLoc.uMode, compMode);
+    gl.uniform2f(compLoc.uCenterF32, cF32r, cF32i);
+    gl.uniform1f(compLoc.uScaleF32, scF32);
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  function drawDisplay() {
+    if (!useGL) {
+      drawCPUDisplay();
+      return;
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, glCv.width, glCv.height);
+    gl.useProgram(progDisp);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texPert);
+    gl.uniform1i(dispLoc.uTexPert, 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, texF32);
+    gl.uniform1i(dispLoc.uTexF32, 1);
+    gl.uniform1i(dispLoc.uViewMode, mode === 'perturb' ? 0 : (mode === 'split' ? 1 : 2));
+    gl.uniform1f(dispLoc.uSplitX, splitX);
+    gl.uniform1f(dispLoc.uBaseSmooth, baseSmooth);
+    const phase = (FIXED || REDUCED) ? 0.0 : (simTime * 0.42);
+    gl.uniform1f(dispLoc.uPhase, phase);
+
+    let zaX = 0.5, zaY = 0.5, zs = 1.0;
+    if (anim && !FIXED && !REDUCED) {
+      const prog = Math.min(1, (simTime - anim.t0) / anim.dur);
+      const ease = 1 - Math.pow(1 - prog, 3);
+      zaX = anim.anchorU;
+      zaY = anim.anchorV;
+      zs = Math.pow(anim.zoomScale, ease);
+    }
+    gl.uniform2f(dispLoc.uZoomAnchor, zaX, zaY);
+    gl.uniform1f(dispLoc.uZoomScale, zs);
+    gl.uniform2f(dispLoc.uTexSize, fboW, fboH);
+
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  // ---------- Pure JS Neon Color + CPU Fallback ----------
+  function neonRGB(s, baseS, phase) {
+    const ds = Math.max(0, s - baseS);
+    const u = Math.log(1 + ds * 0.24) * 3.8 + ds * 0.032 + phase;
+    const ph = ((u / 6.2831853) % 1 + 1) % 1;
+    const dCyan = Math.min(Math.abs(ph - 0.24), 1 - Math.abs(ph - 0.24));
+    const dMag = Math.min(Math.abs(ph - 0.74), 1 - Math.abs(ph - 0.74));
+    const pCyan = Math.exp(-Math.pow(dCyan / 0.115, 2));
+    const pMag = Math.exp(-Math.pow(dMag / 0.115, 2));
+    const pVio = Math.exp(-Math.pow((ph - 0.49) / 0.15, 2));
+    const r = Math.min(1, 0.016 + 0.11 * pVio * 0.65 + 1.0 * pMag * 0.96);
+    const g = Math.min(1, 0.012 + 0.025 * pVio * 0.65 + 0.95 * pCyan * 0.96 + 0.11 * pMag * 0.96);
+    const b = Math.min(1, 0.047 + 0.24 * pVio * 0.65 + 1.0 * pCyan * 0.96 + 0.88 * pMag * 0.96);
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
+  let cpuCache = null; // { w, h, pertS, f32S, baseS }
+  function renderCPUFallback() {
+    const cw = 220, ch = Math.max(120, Math.round(220 * stage.clientHeight / Math.max(1, stage.clientWidth)));
+    cpuCv.width = cw; cpuCv.height = ch;
+    const aspect = cw / ch;
+    const pertS = new Float32Array(cw * ch);
+    const f32S = new Float32Array(cw * ch);
+    const cF32r = DZ.f32(DZ.fpToF64(cx));
+    const cF32i = DZ.f32(DZ.fpToF64(cy));
+    const log10s = DZ.scaleToLog10(scaleM, scaleE);
+    const scF32 = log10s < -38 ? 0 : DZ.f32(Math.pow(10, log10s));
+    let minS = 1e9;
+    for (let y = 0; y < ch; y++) {
+      const v = 1 - (y + 0.5) / ch * 2;
+      for (let x = 0; x < cw; x++) {
+        const u = ((x + 0.5) / cw * 2 - 1) * aspect;
+        const p = DZ.pixelToCoord(u, v, cx, cy, scaleM, scaleE, orb);
+        const r = DZ.perturbPixel(orb, p.dcmx, p.dcmy, p.dce, maxIter);
+        const sv = r.iters >= maxIter ? -1 : r.smooth;
+        pertS[y * cw + x] = sv;
+        if (sv >= 0 && sv < minS) minS = sv;
+        if (mode !== 'perturb') {
+          const rf = DZ.directFloat32Pixel(cF32r, cF32i, DZ.f32(u * scF32), DZ.f32(v * scF32), maxIter);
+          f32S[y * cw + x] = rf.iters >= maxIter ? -1 : rf.smooth;
+        }
+      }
+    }
+    baseSmooth = minS < 1e8 ? minS : 0;
+    cpuCache = { w: cw, h: ch, pertS, f32S, baseS: baseSmooth };
+    drawCPUDisplay();
+  }
+
+  function drawCPUDisplay() {
+    if (!cpuCache) return;
+    const { w, h, pertS, f32S, baseS } = cpuCache;
+    const ctx = cpuCv.getContext('2d');
+    const img = ctx.createImageData(w, h);
+    const data = img.data;
+    const phase = (FIXED || REDUCED) ? 0 : (simTime * 0.42);
+    const splitCol = Math.round(splitX * w);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        const useF = (mode === 'f32') || (mode === 'split' && x >= splitCol);
+        const sv = useF ? f32S[idx] : pertS[idx];
+        const o = idx * 4;
+        if (sv < 0) { data[o] = 3; data[o + 1] = 2; data[o + 2] = 9; data[o + 3] = 255; }
+        else {
+          const c = neonRGB(sv, baseS, phase);
+          data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---------- Treasure Target Thumbnail (rendered by our real engine!) ----------
+  const thumbCache = {};
+  function renderTargetThumb(dive) {
+    const W = thumbCv.width, H = thumbCv.height;
+    const ctx = thumbCv.getContext('2d');
+    if (thumbCache[dive.id]) {
+      ctx.putImageData(thumbCache[dive.id], 0, 0);
+      return;
+    }
+    // Render crisp 96x60 thumbnail via real perturbation engine and upscale cleanly
+    const tw = 96, th = 60;
+    const sc = DZ.log10ToScale(dive.targetLog10);
+    const to = DZ.refOrbit(dive.cr, dive.ci, Math.min(dive.maxIter, 2400));
+    const aspect = tw / th;
+    const smArr = new Float32Array(tw * th);
+    let minS = 1e9;
+    const mit = Math.min(dive.maxIter, 2400);
+    for (let y = 0; y < th; y++) {
+      const v = 1 - (y + 0.5) / th * 2;
+      for (let x = 0; x < tw; x++) {
+        const u = ((x + 0.5) / tw * 2 - 1) * aspect;
+        const p = DZ.pixelToCoord(u, v, dive.cr, dive.ci, sc.m, sc.e, to);
+        const r = DZ.perturbPixel(to, p.dcmx, p.dcmy, p.dce, mit);
+        const sv = r.iters >= mit ? -1 : r.smooth;
+        smArr[y * tw + x] = sv;
+        if (sv >= 0 && sv < minS) minS = sv;
+      }
+    }
+    const baseS = minS < 1e8 ? minS : 0;
+    const off = document.createElement('canvas');
+    off.width = tw; off.height = th;
+    const octx = off.getContext('2d');
+    const img = octx.createImageData(tw, th);
+    const d = img.data;
+    for (let i = 0; i < tw * th; i++) {
+      const o = i * 4;
+      if (smArr[i] < 0) { d[o] = 4; d[o + 1] = 3; d[o + 2] = 12; d[o + 3] = 255; }
+      else {
+        const c = neonRGB(smArr[i], baseS, 0);
+        d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+      }
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(off, 0, 0, W, H);
+    thumbCache[dive.id] = ctx.getImageData(0, 0, W, H);
+  }
+
+  // ---------- HUD 2D overlay (reticle, edge chevron, verify markers) ----------
+  function drawHUD() {
+    const w = hudCv.width, h = hudCv.height;
+    const dpr = w / Math.max(1, stage.clientWidth);
+    const ctx = hudCv.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    if (OG) return;
+
+    // 1. Subtle edge bearing chevron when treasure is outside current viewport
+    const rel = DZ.targetRelation(cx, cy, scaleM, scaleE, curDive);
+    if (!rel.inView && !found) {
+      const ang = -rel.angle; // canvas +y down
+      const rad = Math.min(w, h) * 0.42;
+      const ex = w * 0.5 + Math.cos(ang) * rad;
+      const ey = h * 0.5 + Math.sin(ang) * rad;
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(ang);
+      ctx.strokeStyle = '#ff1ee0';
+      ctx.lineWidth = 2.2 * dpr;
+      ctx.shadowColor = '#ff1ee0';
+      ctx.shadowBlur = 12 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(-10 * dpr, -9 * dpr);
+      ctx.lineTo(10 * dpr, 0);
+      ctx.lineTo(-10 * dpr, 9 * dpr);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 2. Hover dive footprint box (shows next x8 zoom window on desktop)
+    if (hoverPt && !dragCurtain && !FIXED) {
+      const bw = w / 8, bh = h / 8;
+      const bx = hoverPt.px * dpr - bw * 0.5;
+      const by = hoverPt.py * dpr - bh * 0.5;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0, 242, 255, 0.72)';
+      ctx.lineWidth = 1.3 * dpr;
+      ctx.setLineDash([5 * dpr, 4 * dpr]);
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.setLineDash([]);
+      // Center crosshair
+      const cxp = hoverPt.px * dpr, cyp = hoverPt.py * dpr;
+      ctx.beginPath();
+      ctx.moveTo(cxp - 7 * dpr, cyp); ctx.lineTo(cxp + 7 * dpr, cyp);
+      ctx.moveTo(cxp, cyp - 7 * dpr); ctx.lineTo(cxp, cyp + 7 * dpr);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Live BigInt vs GPU Verify markers
+    if (verifyMarks.length) {
+      ctx.save();
+      for (const m of verifyMarks) {
+        const px = m.vx * w;
+        const py = (1 - m.vy) * h;
+        const exact = m.diff === 0;
+        const close = m.diff <= 1;
+        ctx.strokeStyle = exact ? '#00f2ff' : (close ? '#ff1ee0' : '#ff4040');
+        ctx.fillStyle = exact ? 'rgba(0,242,255,0.22)' : 'rgba(255,30,224,0.28)';
+        ctx.lineWidth = 1.6 * dpr;
+        ctx.beginPath();
+        ctx.arc(px, py, 6.5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // ---------- Recompute Reference Orbit + Schedule/Execute Render ----------
+  function recompute(syncNow) {
+    ensureFBOs();
+    const log10s = DZ.scaleToLog10(scaleM, scaleE);
+    maxIter = DZ.autoMaxIter(log10s, curDive);
+    const t0 = performance.now();
+    orb = DZ.chooseRef(cx, cy, scaleM, scaleE, maxIter, curDive.cr, curDive.ci);
+    orbitMs = +(performance.now() - t0).toFixed(2);
+    baseSmooth = estimateBaseSmooth();
+    verifyMarks = [];
+
+    if (!useGL) {
+      renderCPUFallback();
+      syncUI();
+      drawHUD();
+      return;
+    }
+
+    uploadOrbit(orb);
+    const needsF32 = mode !== 'perturb';
+    if (syncNow || FIXED || REDUCED) {
+      renderCompStrip(fboPert, 0, 0, fboH);
+      if (needsF32) renderCompStrip(fboF32, 1, 0, fboH);
+      pendingComp = null;
+      drawDisplay();
+    } else {
+      // Progressive strips (keeps 60fps on GPU & smooth on SwiftShader)
+      const strips = isSoftwareGL ? 10 : 4;
+      const rps = Math.max(16, Math.ceil(fboH / strips));
+      pendingComp = { row: 0, f32Row: 0, rps, needsF32 };
+      // Render first strip immediately so screen updates fast
+      stepCompute();
+    }
+    syncUI();
+    drawHUD();
+  }
+
+  function stepCompute() {
+    if (!pendingComp || !useGL) return false;
+    const p = pendingComp;
+    if (p.row < fboH) {
+      const h = Math.min(p.rps, fboH - p.row);
+      renderCompStrip(fboPert, 0, p.row, h);
+      p.row += h;
+    } else if (p.needsF32 && p.f32Row < fboH) {
+      const h = Math.min(p.rps * 2, fboH - p.f32Row);
+      renderCompStrip(fboF32, 1, p.f32Row, h);
+      p.f32Row += h;
+    }
+    if (p.row >= fboH && (!p.needsF32 || p.f32Row >= fboH)) {
+      pendingComp = null;
+      anim = null;
+    }
+    return true;
+  }
+
+  // ---------- UI Synchronization ----------
+  function syncUI() {
+    const log10s = DZ.scaleToLog10(scaleM, scaleE);
+    const rel = DZ.targetRelation(cx, cy, scaleM, scaleE, curDive);
+    if (rel.found && !found) {
+      found = true;
+    }
+    depthVal.innerHTML = fmtPow10HTML(log10s, 1);
+    stepsVal.textContent = `${steps} / ${curDive.par}`;
+    targetDepth.innerHTML = fmtPow10HTML(curDive.targetLog10, 0);
+    targetTag.textContent = found ? 'Treasure Found' : 'Target Minibrot';
+    foundSub.innerHTML = steps > 0
+      ? `${steps} step${steps === 1 ? '' : 's'} · Par ${curDive.par}`
+      : `Period ${curDive.period} · ${fmtPow10HTML(curDive.targetLog10, 0)}`;
+    cardEl.classList.toggle('won', found);
+
+    // Bearing arrow & sonar text ('→' natively points 0deg right; screen +y is down -> -angle)
+    const deg = -rel.angle * 180 / Math.PI;
+    arrowEl.style.transform = `rotate(${deg.toFixed(0)}deg)`;
+    if (found) {
+      sonarTxt.innerHTML = `Locked at ${fmtPow10HTML(log10s, 1)}`;
+    } else if (!rel.inView) {
+      sonarTxt.textContent = 'Off-screen · follow chevron';
+    } else if (rel.depthGap > 0.4) {
+      sonarTxt.textContent = `${rel.depthGap.toFixed(1)} orders deeper`;
+    } else if (rel.depthGap < -0.5) {
+      sonarTxt.textContent = `Overshot · zoom out`;
+    } else {
+      sonarTxt.textContent = 'Center the minibrot!';
+    }
+
+    // Depth progress bar (maps 0..110)
+    const pct = Math.max(3, Math.min(100, (-log10s / 110) * 100));
+    depthFill.style.width = pct.toFixed(1) + '%';
+
+    // Single concise clue line (max 1 number!)
+    if (OG) {
+      clueEl.innerHTML = '<b>BigInt</b> + <b>WebGL2</b> perturbation vs. float32’s <em>10<sup>−7</sup></em> wall';
+    } else if (found) {
+      clueEl.innerHTML = `<em>Treasure found!</em> Period-${curDive.period} minibrot unlocked — try Split or the next dive`;
+    } else if (mode === 'split') {
+      clueEl.innerHTML = log10s < -6.3
+        ? `Drag the laser curtain — direct <em>float32</em> collapses into tiles below <b>10<sup>−7</sup></b>`
+        : `Left is <b>Perturbation</b>, right is direct <em>float32</em> — dive past 10<sup>−7</sup>`;
+    } else if (mode === 'f32') {
+      clueEl.innerHTML = log10s < -6.3
+        ? `Direct <em>float32</em> runs out of mantissa bits at <b>10<sup>−7</sup></b> — switch to Perturb`
+        : `Direct <em>float32</em> still holds here — click deeper to hit the 10<sup>−7</sup> wall`;
+    } else {
+      clueEl.innerHTML = `Click the glowing vortex to dive toward the hidden <b>${fmtPow10HTML(curDive.targetLog10, 0)}</b> minibrot`;
+    }
+
+    // Sync dock buttons
+    document.querySelectorAll('#diveBtns .btn').forEach(b => b.classList.toggle('on', b.dataset.dive === curDive.id));
+    document.querySelectorAll('#modeBtns .btn').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+    $('outBtn').disabled = log10s >= -0.2;
+
+    // Split curtain visibility
+    curtainEl.classList.toggle('on', mode === 'split' && !OG);
+    curtainEl.style.left = (splitX * 100).toFixed(2) + '%';
+    curtainHandle.setAttribute('aria-valuenow', String(Math.round(splitX * 100)));
+  }
+
+  // ---------- Game & Camera Actions ----------
+  function loadDive(diveId, opts = {}) {
+    curDive = DIVE_MAP[diveId] || DZ.DIVES[0];
+    steps = 0;
+    found = false;
+    history = [];
+    verifyBadge.classList.remove('on');
+    verifyMarks = [];
+    renderTargetThumb(curDive);
+
+    const startLog = opts.depth !== undefined ? opts.depth : (OG ? curDive.targetLog10 : curDive.startLog10);
+    const sc = DZ.log10ToScale(startLog);
+    scaleM = sc.m;
+    scaleE = sc.e;
+
+    if (opts.centered || OG) {
+      cx = curDive.cr;
+      cy = curDive.ci;
+    } else {
+      // Offset initial view so treasure spiral sits dramatically off-center (true hunt!)
+      cx = curDive.cr - DZ.f32ExpToFp(DZ.f32(curDive.startOffX * scaleM), scaleE);
+      cy = curDive.ci - DZ.f32ExpToFp(DZ.f32(curDive.startOffY * scaleM), scaleE);
+    }
+
+    if (opts.mode) mode = opts.mode;
+    recompute(opts.sync || FIXED || REDUCED);
+  }
+
+  function diveAtNorm(nx, ny, zoomFactor = 8.0) {
+    // nx in [0,1] left->right, ny in [0,1] top->bottom
+    const aspect = stage.clientWidth / Math.max(1, stage.clientHeight);
+    const u = (nx * 2 - 1) * aspect;
+    const v = 1 - ny * 2;
+    history.push({ cx, cy, scaleM, scaleE, steps });
+
+    const newCx = cx + DZ.f32ExpToFp(DZ.f32(u * scaleM), scaleE);
+    const newCy = cy + DZ.f32ExpToFp(DZ.f32(v * scaleM), scaleE);
+    const newLog10 = Math.max(-118, DZ.scaleToLog10(scaleM, scaleE) - Math.log10(zoomFactor));
+    const sc = DZ.log10ToScale(newLog10);
+
+    // Start short zoom glide on old FBO while new depth computes
+    if (useGL && !FIXED && !REDUCED) {
+      anim = { t0: simTime, dur: 0.34, anchorU: nx, anchorV: 1 - ny, zoomScale: Math.min(zoomFactor, 4.0) };
+    }
+    cx = newCx;
+    cy = newCy;
+    scaleM = sc.m;
+    scaleE = sc.e;
+    steps++;
+    verifyBadge.classList.remove('on');
+    recompute(FIXED || REDUCED);
+  }
+
+  function zoomOut() {
+    if (history.length) {
+      const prev = history.pop();
+      cx = prev.cx; cy = prev.cy; scaleM = prev.scaleM; scaleE = prev.scaleE;
+      // Keep step count monotonic during hunt unless back to 0
+      verifyBadge.classList.remove('on');
+      recompute(FIXED || REDUCED);
+      return;
+    }
+    const curLog = DZ.scaleToLog10(scaleM, scaleE);
+    const newLog = Math.min(0.25, curLog + 1.0);
+    const sc = DZ.log10ToScale(newLog);
+    scaleM = sc.m; scaleE = sc.e;
+    verifyBadge.classList.remove('on');
+    recompute(FIXED || REDUCED);
+  }
+
+  function setMode(m) {
+    if (!['perturb', 'split', 'f32'].includes(m)) return;
+    mode = m;
+    if (useGL && m !== 'perturb') {
+      ensureFBOs();
+      renderCompStrip(fboF32, 1, 0, fboH);
+    } else if (!useGL) {
+      renderCPUFallback();
+    }
+    syncUI();
+    drawDisplay();
+    drawHUD();
+  }
+
+  function jumpCliff() {
+    mode = 'split';
+    splitX = 0.5;
+    loadDive('cliff', { depth: -6.8, centered: false, mode: 'split', sync: true });
+    // Place nice spiral detail right across the split line
+    const sc = DZ.log10ToScale(-6.8);
+    cx = curDive.cr - DZ.f32ExpToFp(DZ.f32(-0.12 * sc.m), sc.e);
+    cy = curDive.ci - DZ.f32ExpToFp(DZ.f32(0.08 * sc.m), sc.e);
+    scaleM = sc.m; scaleE = sc.e;
+    recompute(true);
+  }
+
+  // ---------- Exact GPU / CPU Readback Probe & Live 512-bit BigInt Verifier ----------
+  function probeGrid(nx = 5, ny = 5, probeMode = 'perturb') {
+    const aspect = stage.clientWidth / Math.max(1, stage.clientHeight);
+    const points = [];
+    const cF32r = DZ.f32(DZ.fpToF64(cx));
+    const cF32i = DZ.f32(DZ.fpToF64(cy));
+    const log10s = DZ.scaleToLog10(scaleM, scaleE);
+    const scF32 = log10s < -38 ? 0 : DZ.f32(Math.pow(10, log10s));
+
+    let gpuPixels = null;
+    if (useGL) {
+      // Render exact integer escape step into a dedicated small RGBA8 FBO of size (nx, ny)
+      const pfbo = makeFBO(nx, ny);
+      const shift = DZ.refShiftFE(cx, cy, orb);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, pfbo.fbo);
+      gl.viewport(0, 0, nx, ny);
+      gl.useProgram(progComp);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, orbitTex);
+      gl.uniform1i(compLoc.uOrbit, 0);
+      gl.uniform1i(compLoc.uRefLen, orb.len);
+      gl.uniform1i(compLoc.uMaxIter, maxIter);
+      gl.uniform2f(compLoc.uBaseM, shift.bx, shift.by);
+      gl.uniform1i(compLoc.uBaseE, shift.be);
+      gl.uniform1f(compLoc.uScaleM, scaleM);
+      gl.uniform1i(compLoc.uScaleE, scaleE);
+      gl.uniform1f(compLoc.uAspect, aspect);
+      gl.uniform1i(compLoc.uMode, probeMode === 'f32' ? 3 : 2);
+      gl.uniform2f(compLoc.uCenterF32, cF32r, cF32i);
+      gl.uniform1f(compLoc.uScaleF32, scF32);
+      gl.bindVertexArray(vao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gpuPixels = new Uint8Array(nx * ny * 4);
+      gl.readPixels(0, 0, nx, ny, gl.RGBA, gl.UNSIGNED_BYTE, gpuPixels);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.deleteFramebuffer(pfbo.fbo);
+      gl.deleteTexture(pfbo.tex);
+    }
+
+    let exactCount = 0, le1Count = 0;
+    for (let iy = 0; iy < ny; iy++) {
+      const vy = (iy + 0.5) / ny; // WebGL bottom=0 -> top=1
+      const v = vy * 2 - 1;
+      for (let ix = 0; ix < nx; ix++) {
+        const vx = (ix + 0.5) / nx;
+        const u = (vx * 2 - 1) * aspect;
+        const coord = DZ.pixelToCoord(u, v, cx, cy, scaleM, scaleE, orb);
+        let gpuIters, rebases = 0;
+        if (gpuPixels) {
+          const o = (iy * nx + ix) * 4;
+          gpuIters = gpuPixels[o] | (gpuPixels[o + 1] << 8);
+          rebases = gpuPixels[o + 2];
+        } else if (probeMode === 'f32') {
+          const r = DZ.directFloat32Pixel(cF32r, cF32i, DZ.f32(u * scF32), DZ.f32(v * scF32), maxIter);
+          gpuIters = r.iters;
+        } else {
+          const r = DZ.perturbPixel(orb, coord.dcmx, coord.dcmy, coord.dce, maxIter);
+          gpuIters = r.iters; rebases = r.rebases;
+        }
+        const exactIters = DZ.directEscape(coord.pr, coord.pi, maxIter);
+        const diff = Math.abs(gpuIters - exactIters);
+        if (diff === 0) exactCount++;
+        if (diff <= 1) le1Count++;
+        points.push({
+          vx, vy, u, v,
+          pr: DZ.formatDec(coord.pr, 130),
+          pi: DZ.formatDec(coord.pi, 130),
+          cr: cF32r, ci: cF32i, dx: DZ.f32(u * scF32), dy: DZ.f32(v * scF32),
+          gpuIters, rebases, exactIters, diff, maxIter
+        });
+      }
+    }
+    const res = {
+      ev: probeMode === 'f32' ? 'f32' : 'verify',
+      dive: curDive.id,
+      depthLog10: +log10s.toFixed(2),
+      maxIter,
+      total: points.length,
+      exactCount,
+      le1Count,
+      points
+    };
+    logs.push(res);
+    return res;
+  }
+
+  function runLiveVerify() {
+    const t0 = performance.now();
+    const res = probeGrid(5, 5, 'perturb');
+    const ms = (performance.now() - t0).toFixed(0);
+    lastVerify = { exact: res.exactCount, le1: res.le1Count, total: res.total, ms: +ms, depthLog10: res.depthLog10 };
+    verifyMarks = res.points.map(p => ({ vx: p.vx, vy: p.vy, diff: p.diff }));
+    verifyBadge.innerHTML = `${res.exactCount}/${res.total} exact vs. 512-bit BigInt (${res.le1Count}/${res.total} within ±1)<small>${useGL ? 'WebGL2 GPU' : 'CPU'} readback at ${fmtPow10HTML(res.depthLog10, 1)} · ${ms} ms</small>`;
+    verifyBadge.classList.add('on');
+    drawHUD();
+    return lastVerify;
+  }
+
+  // ---------- Pointer / Touch / Keyboard Events ----------
+  function pointerPos(e) {
+    const r = stage.getBoundingClientRect();
+    return {
+      px: e.clientX - r.left,
+      py: e.clientY - r.top,
+      nx: (e.clientX - r.left) / Math.max(1, r.width),
+      ny: (e.clientY - r.top) / Math.max(1, r.height)
+    };
+  }
+
+  let downInfo = null;
+  stage.addEventListener('pointerdown', e => {
+    if (e.button === 2) return;
+    if (dragCurtain) return;
+    downInfo = { x: e.clientX, y: e.clientY, t: performance.now() };
+  });
+  stage.addEventListener('pointermove', e => {
+    if (dragCurtain) return;
+    if (e.pointerType === 'mouse') {
+      hoverPt = pointerPos(e);
+      drawHUD();
+    }
+  });
+  stage.addEventListener('pointerleave', () => {
+    hoverPt = null;
+    drawHUD();
+  });
+  stage.addEventListener('pointerup', e => {
+    if (!downInfo || dragCurtain) return;
+    const dist = Math.hypot(e.clientX - downInfo.x, e.clientY - downInfo.y);
+    downInfo = null;
+    if (dist > 14) return;
+    if (e.shiftKey) { zoomOut(); return; }
+    const p = pointerPos(e);
+    diveAtNorm(p.nx, p.ny, 8.0);
+  });
+
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const p = pointerPos(e);
+    const factor = e.deltaY < 0 ? 2.2 : 0.45;
+    if (factor < 1) { zoomOut(); return; }
+    diveAtNorm(p.nx, p.ny, factor);
+  }, { passive: false });
+
+  // Draggable split curtain
+  curtainHandle.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    dragCurtain = true;
+    curtainHandle.setPointerCapture(e.pointerId);
+  });
+  curtainHandle.addEventListener('pointermove', e => {
+    if (!dragCurtain) return;
+    const r = stage.getBoundingClientRect();
+    splitX = Math.max(0.05, Math.min(0.95, (e.clientX - r.left) / Math.max(1, r.width)));
+    curtainEl.style.left = (splitX * 100).toFixed(2) + '%';
+    curtainHandle.setAttribute('aria-valuenow', String(Math.round(splitX * 100)));
+    drawDisplay();
+  });
+  curtainHandle.addEventListener('pointerup', e => {
+    dragCurtain = false;
+    try { curtainHandle.releasePointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  // Dock button bindings
+  document.querySelectorAll('#diveBtns .btn').forEach(b => {
+    b.addEventListener('click', () => loadDive(b.dataset.dive, { mode: mode === 'f32' ? 'perturb' : mode }));
+  });
+  document.querySelectorAll('#modeBtns .btn').forEach(b => {
+    b.addEventListener('click', () => setMode(b.dataset.mode));
+  });
+  $('cliffBtn').addEventListener('click', jumpCliff);
+  $('outBtn').addEventListener('click', zoomOut);
+  $('verifyBtn').addEventListener('click', runLiveVerify);
+  $('resetBtn').addEventListener('click', () => loadDive(curDive.id, { mode: 'perturb' }));
+  $('whatBtn').addEventListener('click', () => whatBg.classList.add('on'));
+  $('whatClose').addEventListener('click', () => whatBg.classList.remove('on'));
+  whatBg.addEventListener('click', e => { if (e.target === whatBg) whatBg.classList.remove('on'); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') whatBg.classList.remove('on');
+    else if (e.key === 'v' || e.key === 'V') runLiveVerify();
+    else if (e.key === '-' || e.key === 'Backspace') zoomOut();
+  });
+
+  // Resize observer (handles WebKit late layout & full_page screenshots cleanly)
+  const ro = new ResizeObserver(() => {
+    if (!ready) return;
+    ensureFBOs();
+    recompute(FIXED || REDUCED);
+  });
+  ro.observe(stage);
+
+  // ---------- Main loop & ?fixed deterministic stepper ----------
+  let lastT = performance.now();
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000));
+    lastT = now;
+    simTime += dt;
+    frameCount++;
+    if (pendingComp) stepCompute();
+    drawDisplay();
+    window.__frame = frameCount;
+    window.__state = { t: +simTime.toFixed(3), frame: frameCount, dive: curDive.id, depth: +DZ.scaleToLog10(scaleM, scaleE).toFixed(2) };
+  }
+
+  window.step = function(n = 1) {
+    const count = Math.max(1, n | 0);
+    for (let i = 0; i < count; i++) {
+      simTime += 1 / 60;
+      frameCount++;
+      if (pendingComp) stepCompute();
+    }
+    drawDisplay();
+    drawHUD();
+    window.__frame = frameCount;
+    window.__state = { t: +simTime.toFixed(3), frame: frameCount, dive: curDive.id, depth: +DZ.scaleToLog10(scaleM, scaleE).toFixed(2) };
+  };
+
+  // ---------- Public read-only test & inspection API ----------
+  window.deepZoom = {
+    state() {
+      const log10s = DZ.scaleToLog10(scaleM, scaleE);
+      const rel = DZ.targetRelation(cx, cy, scaleM, scaleE, curDive);
+      return {
+        ready,
+        path: useGL ? 'webgl2' : 'cpu',
+        renderer: rendererName,
+        softwareGL: isSoftwareGL,
+        diveId: curDive.id,
+        diveTitle: curDive.title,
+        depthLog10: +log10s.toFixed(3),
+        targetLog10: curDive.targetLog10,
+        centerRe: DZ.formatDec(cx, 120),
+        centerIm: DZ.formatDec(cy, 120),
+        scaleM, scaleE, maxIter,
+        mode, splitX: +splitX.toFixed(3),
+        steps, par: curDive.par, found,
+        inView: rel.inView, depthGap: +rel.depthGap.toFixed(3),
+        targetRx: +rel.rx.toFixed(4), targetRy: +rel.ry.toFixed(4),
+        refLen: orb ? orb.len : 0,
+        refEscaped: orb ? orb.escaped : false,
+        orbitMs,
+        computing: !!pendingComp,
+        fboSize: [fboW, fboH],
+        canvasSize: [useGL ? glCv.width : cpuCv.width, useGL ? glCv.height : cpuCv.height],
+        lastVerify,
+        log: logs,
+        clue: clueEl.textContent,
+        frame: frameCount,
+        t: +simTime.toFixed(3)
+      };
+    },
+    dive(id, opts) { loadDive(id, { ...opts, sync: true }); },
+    setMode(m) { setMode(m); },
+    setSplit(x) { splitX = Math.max(0.05, Math.min(0.95, x)); syncUI(); drawDisplay(); },
+    jumpCliff() { jumpCliff(); },
+    jumpDepth(log10s, centered = true) { loadDive(curDive.id, { depth: log10s, centered, sync: true }); },
+    clickNorm(nx, ny, zf = 8.0) { diveAtNorm(nx, ny, zf); },
+    zoomOut() { zoomOut(); },
+    verifyNow() { return runLiveVerify(); },
+    probeGrid(nx = 5, ny = 5, pm = 'perturb') { return probeGrid(nx, ny, pm); },
+    targetScreenNorm() {
+      const rel = DZ.targetRelation(cx, cy, scaleM, scaleE, curDive);
+      const aspect = stage.clientWidth / Math.max(1, stage.clientHeight);
+      return { nx: 0.5 + rel.rx / (2 * aspect), ny: 0.5 - rel.ry / 2, rx: rel.rx, ry: rel.ry };
+    }
+  };
+
+  // ---------- Boot ----------
+  useGL = initGL();
+  if (!useGL) {
+    glCv.style.display = 'none';
+    cpuCv.style.display = 'block';
+    fallbackNote.textContent = 'WebGL2 unavailable — running CPU Floatexp perturbation fallback.';
+    fallbackNote.style.display = 'inline-block';
+  }
+  const initDepth = Q.has('depth') ? parseFloat(Q.get('depth')) : undefined;
+  const initCentered = Q.has('center') || OG > 0;
+  loadDive(initDiveId, { depth: Number.isFinite(initDepth) ? initDepth : undefined, centered: initCentered, mode: initMode, sync: true });
+  ready = true;
+  window.__frame = 0;
+  window.__state = { t: 0, frame: 0, dive: curDive.id, depth: +DZ.scaleToLog10(scaleM, scaleE).toFixed(2) };
+
+  if (!FIXED && !REDUCED) {
+    requestAnimationFrame(tick);
+  }
+})();
+
+</script>
+</body>
+</html>

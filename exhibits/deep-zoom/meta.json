@@ -1,0 +1,11 @@
+{
+ "slug": "deep-zoom",
+ "title": "Deep Zoom",
+ "no": "058",
+ "date": "2026-11-26",
+ "kind": "Perturbation theory · WebGL2",
+ "blurb": "Dive past 10⁻¹⁰⁰ into the Mandelbrot set to hunt a hidden period-120 minibrot. One 512-bit BigInt reference orbit feeds a WebGL2 Floatexp perturbation shader with Zhuoran rebasing; drag the split curtain to watch direct IEEE float32 shatter into giant tiles at 10⁻⁷, or click Verify to check 25 live pixels against 512-bit truth.",
+ "color": "#fc00f8",
+ "exhibit": "deepZoom",
+ "lane": "science"
+}
