@@ -1,0 +1,2098 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Q Labyrinth — Curio No. 059</title>
+<meta name="description" content="A 4-shade handheld pixel maze game: paint walls, cats, and cheese to stump a real tabular Q-learning mouse while its value heatmap crawls back across the floor.">
+<meta property="og:title" content="Q Labyrinth — Curio No. 059">
+<meta property="og:description" content="Paint walls, cats, and cheese on a 4-shade pocket LCD to make a real Q-learning mouse learn as slowly as possible.">
+<meta property="og:image" content="https://blackman99.github.io/curio/q-labyrinth/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Q Labyrinth — Curio No. 059">
+<meta name="twitter:description" content="Paint walls, cats, and cheese on a 4-shade pocket LCD to make a real Q-learning mouse learn as slowly as possible.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/q-labyrinth/og.png">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --lcd0:#c6dc8a;
+  --lcd1:#94c456;
+  --lcd2:#2f7830;
+  --lcd3:#0f380f;
+  --f-disp:'Silkscreen',monospace;
+  --f-body:'Pixelify Sans',sans-serif;
+  --f-num:'VT323',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  width:100%;min-height:100%;
+  background:var(--lcd0);
+  color:var(--lcd3);
+  font-family:var(--f-body);
+  -webkit-font-smoothing:none;
+  image-rendering:pixelated;
+}
+html.fixed *,html.rm *{transition:none !important;animation:none !important}
+body{
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100dvh;
+  background-color:var(--lcd0);
+  background-image:
+    linear-gradient(to right, rgba(15,56,15,.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15,56,15,.045) 1px, transparent 1px);
+  background-size:6px 6px;
+}
+.shell{
+  width:100%;max-width:1100px;
+  min-height:100dvh;
+  display:flex;flex-direction:column;
+  padding:10px 18px 12px;
+  gap:8px;
+}
+
+/* Header bar */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+  padding-bottom:8px;
+  border-bottom:3px solid var(--lcd3);
+}
+.brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+.back{
+  display:inline-flex;align-items:center;
+  font-family:var(--f-disp);font-size:12px;font-weight:700;
+  color:var(--lcd0);background:var(--lcd2);
+  border:2px solid var(--lcd3);
+  box-shadow:2px 2px 0 var(--lcd3);
+  padding:5px 9px;text-decoration:none;letter-spacing:.02em;
+  white-space:nowrap;
+}
+.back:hover{background:var(--lcd3);color:var(--lcd0)}
+.title-wrap{display:flex;flex-direction:column;gap:1px}
+.kicker{
+  font-family:var(--f-disp);font-size:10px;letter-spacing:.08em;
+  color:var(--lcd2);text-transform:uppercase;
+}
+h1.title{
+  font-family:var(--f-disp);font-size:26px;line-height:1.05;
+  color:var(--lcd3);letter-spacing:.03em;
+}
+
+.hud{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.stat{
+  display:flex;flex-direction:column;align-items:flex-end;
+  padding:3px 9px;
+  border:2px solid var(--lcd3);
+  background:var(--lcd0);
+  box-shadow:2px 2px 0 var(--lcd2);
+  min-width:74px;
+}
+.stat-k{font-family:var(--f-disp);font-size:9px;color:var(--lcd2);letter-spacing:.05em}
+.stat-v{font-family:var(--f-num);font-size:22px;line-height:.95;color:var(--lcd3)}
+.stat.hi{background:var(--lcd2);border-color:var(--lcd3);box-shadow:2px 2px 0 var(--lcd3)}
+.stat.hi .stat-k,.stat.hi .stat-v{color:var(--lcd0)}
+
+.icon-btn{
+  font-family:var(--f-disp);font-size:11px;font-weight:700;
+  padding:7px 10px;cursor:pointer;
+  background:var(--lcd0);color:var(--lcd3);
+  border:2px solid var(--lcd3);box-shadow:2px 2px 0 var(--lcd3);
+}
+.icon-btn:hover,.icon-btn.on{background:var(--lcd2);color:var(--lcd0)}
+
+/* Ticker */
+.ticker{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:5px 11px;
+  border:2px solid var(--lcd3);
+  background:var(--lcd2);
+  color:var(--lcd0);
+  box-shadow:3px 3px 0 var(--lcd3);
+  font-family:var(--f-body);font-size:15px;font-weight:600;
+  letter-spacing:.01em;
+}
+.ticker-msg{flex:1;min-width:0}
+.ticker-probe{
+  font-family:var(--f-num);font-size:19px;line-height:1;
+  color:var(--lcd0);white-space:nowrap;opacity:.95;
+}
+
+/* Center pixel LCD screen */
+.stage-row{
+  flex:1 1 auto;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  gap:16px;
+}
+.lcd-frame{
+  position:relative;
+  border:4px solid var(--lcd3);
+  box-shadow:5px 5px 0 var(--lcd2), 8px 8px 0 var(--lcd3);
+  background:var(--lcd0);
+  padding:6px;
+  display:flex;flex-direction:column;align-items:center;
+  width:min(100%, 860px, calc((100dvh - 232px) * 1.4 + 16px));
+}
+#maze{
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:224 / 160;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  cursor:crosshair;
+  touch-action:none;
+  border:2px solid var(--lcd3);
+  background:var(--lcd0);
+}
+.lcd-foot{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:5px 4px 1px;
+  font-family:var(--f-disp);font-size:9px;color:var(--lcd2);
+  letter-spacing:.04em;
+}
+.legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sw{display:inline-flex;align-items:center;gap:4px}
+.sw i{display:inline-block;width:10px;height:10px;border:2px solid var(--lcd3)}
+.sw-0{background:var(--lcd0)}
+.sw-1{background:var(--lcd1)}
+.sw-2{background:var(--lcd2)}
+.sw-3{background:var(--lcd3)}
+
+/* Bottom handheld deck */
+.deck{
+  display:flex;flex-direction:column;gap:7px;
+  border-top:3px solid var(--lcd3);
+  padding-top:8px;
+}
+.deck-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;flex-wrap:wrap;
+}
+.grp{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.glbl{
+  font-family:var(--f-disp);font-size:10px;color:var(--lcd2);
+  margin-right:2px;letter-spacing:.04em;
+}
+button.pbtn{
+  font-family:var(--f-disp);font-size:11px;font-weight:400;
+  padding:5px 9px;cursor:pointer;
+  background:var(--lcd0);color:var(--lcd3);
+  border:2px solid var(--lcd3);
+  box-shadow:2px 2px 0 var(--lcd3);
+  line-height:1.1;white-space:nowrap;
+}
+button.pbtn:hover{background:var(--lcd1)}
+button.pbtn.on{
+  background:var(--lcd2);color:var(--lcd0);
+  box-shadow:1px 1px 0 var(--lcd3);
+  transform:translate(1px,1px);
+}
+button.pbtn.cta{
+  background:var(--lcd2);color:var(--lcd0);font-weight:700;
+}
+button.pbtn.cta:hover{background:var(--lcd3)}
+button.pbtn:active{transform:translate(2px,2px);box-shadow:none}
+
+.dial{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 8px;
+  border:2px solid var(--lcd3);
+  background:var(--lcd0);
+  box-shadow:2px 2px 0 var(--lcd2);
+}
+.dial label{
+  font-family:var(--f-disp);font-size:10px;color:var(--lcd3);white-space:nowrap;
+}
+.dial output{
+  font-family:var(--f-num);font-size:20px;line-height:1;
+  color:var(--lcd2);min-width:34px;text-align:right;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:92px;height:10px;
+  background:var(--lcd1);
+  border:2px solid var(--lcd3);
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:14px;height:18px;
+  background:var(--lcd2);
+  border:2px solid var(--lcd3);
+  cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:14px;height:18px;border-radius:0;
+  background:var(--lcd2);
+  border:2px solid var(--lcd3);
+  cursor:pointer;
+}
+
+/* Modal ("What is this?") */
+.modal-bg{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(15,56,15,.72);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.modal-bg.open{display:flex}
+.modal{
+  width:100%;max-width:720px;max-height:86dvh;overflow-y:auto;
+  background:var(--lcd0);color:var(--lcd3);
+  border:4px solid var(--lcd3);
+  box-shadow:8px 8px 0 var(--lcd3);
+  padding:22px 24px;
+  font-family:var(--f-body);font-size:15px;line-height:1.55;
+}
+.modal-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:3px solid var(--lcd3);padding-bottom:10px;margin-bottom:14px;
+}
+.modal h2{font-family:var(--f-disp);font-size:18px;color:var(--lcd3)}
+.modal h3{font-family:var(--f-disp);font-size:13px;color:var(--lcd2);margin:14px 0 6px;letter-spacing:.03em}
+.modal p,.modal li{margin-bottom:8px}
+.modal ul{padding-left:20px}
+.modal code{
+  font-family:var(--f-num);font-size:18px;
+  background:var(--lcd1);padding:0 5px;border:1px solid var(--lcd3);
+}
+.modal .eq{
+  font-family:var(--f-num);font-size:22px;text-align:center;
+  background:var(--lcd1);border:2px solid var(--lcd3);
+  padding:8px 10px;margin:10px 0;
+}
+.wtbl{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+.wtbl th,.wtbl td{border:2px solid var(--lcd3);padding:5px 8px;text-align:left}
+.wtbl th{background:var(--lcd2);color:var(--lcd0);font-family:var(--f-disp);font-size:10px}
+.wtbl tr:nth-child(even) td{background:var(--lcd1)}
+
+/* OG-only cartridge poster layout (hidden in normal live mode) */
+.og-card{display:none}
+body.og{overflow:hidden}
+body.og .shell{max-width:1440px;height:100dvh;padding:24px 32px;justify-content:center}
+body.og .topbar,body.og .ticker,body.og .deck{display:none !important}
+body.og .stage-row{
+  width:100%;height:100%;
+  display:grid;grid-template-columns:1.55fr 1fr;
+  align-items:center;gap:28px;
+}
+body.og #maze{width:100%;max-width:none}
+body.og .lcd-frame{width:100%;padding:10px;box-shadow:7px 7px 0 var(--lcd2),11px 11px 0 var(--lcd3)}
+body.og .lcd-foot{font-size:12px;padding-top:8px}
+body.og .og-card{
+  display:flex;flex-direction:column;gap:16px;
+  border:4px solid var(--lcd3);
+  background:var(--lcd0);
+  box-shadow:7px 7px 0 var(--lcd2),11px 11px 0 var(--lcd3);
+  padding:22px 24px;
+}
+.og-kicker{font-family:var(--f-disp);font-size:14px;color:var(--lcd2);letter-spacing:.08em}
+.og-title{font-family:var(--f-disp);font-size:44px;line-height:1.05;color:var(--lcd3)}
+.og-sub{font-family:var(--f-body);font-size:22px;line-height:1.35;font-weight:600;color:var(--lcd3)}
+.og-scores{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.og-box{
+  border:3px solid var(--lcd3);padding:10px 12px;background:var(--lcd1);
+}
+.og-box.dark{background:var(--lcd2);color:var(--lcd0)}
+.og-box .k{font-family:var(--f-disp);font-size:11px;display:block;margin-bottom:3px}
+.og-box .v{font-family:var(--f-num);font-size:34px;line-height:1;display:block}
+.og-foot{
+  font-family:var(--f-disp);font-size:13px;
+  background:var(--lcd3);color:var(--lcd0);
+  padding:10px 14px;text-align:center;letter-spacing:.05em;
+}
+
+/* Compact desktop / hall viewer iframe (1297x717) */
+@media (min-width:761px) and (max-height:790px){
+  .shell{padding:6px 14px 8px;gap:5px}
+  .topbar{padding-bottom:5px}
+  h1.title{font-size:20px}
+  .stat{padding:2px 7px;min-width:66px}
+  .stat-v{font-size:19px}
+  .ticker{padding:4px 10px;font-size:13.5px}
+  .lcd-frame{width:min(100%, 720px, calc((100dvh - 204px) * 1.4 + 16px))}
+  #maze{width:100%}
+  .deck{padding-top:5px;gap:5px}
+  button.pbtn{padding:4px 7px;font-size:10px}
+  .dial{padding:3px 6px}
+  input[type=range]{width:76px}
+}
+
+/* Mobile (390x844) */
+@media (max-width:760px){
+  .shell{padding:8px 10px 14px;gap:8px;min-height:auto}
+  .topbar{gap:6px;padding-bottom:6px}
+  h1.title{font-size:18px}
+  .kicker{font-size:9px}
+  .hud{width:100%;justify-content:space-between;gap:5px}
+  .stat{flex:1 1 0;min-width:0;padding:3px 5px;align-items:center}
+  .stat-k{font-size:8px}
+  .stat-v{font-size:19px}
+  .ticker{flex-direction:column;align-items:flex-start;gap:3px;font-size:13px;padding:6px 9px}
+  .ticker-probe{font-size:16px}
+  .lcd-frame{width:100%;padding:4px;box-shadow:3px 3px 0 var(--lcd2),5px 5px 0 var(--lcd3)}
+  #maze{width:100%}
+  .lcd-foot{font-size:8px}
+  .deck-row{gap:6px}
+  .grp{width:100%;gap:4px}
+  button.pbtn{padding:6px 7px;font-size:10px}
+  .dial{flex:1 1 46%;justify-content:space-between}
+  input[type=range]{width:74px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <a class="back" href="../">&larr; Curio</a>
+      <div class="title-wrap">
+        <span class="kicker">Curio &middot; No. 059 &middot; Q-Learning</span>
+        <h1 class="title">Q LABYRINTH</h1>
+      </div>
+    </div>
+    <div class="hud">
+      <div class="stat"><span class="stat-k">EPISODE</span><span class="stat-v" id="stEp">1</span></div>
+      <div class="stat"><span class="stat-k" id="stParLbl">PAR</span><span class="stat-v" id="stPar">103</span></div>
+      <div class="stat hi"><span class="stat-k">SCORE</span><span class="stat-v" id="stScore">---</span></div>
+      <div class="stat"><span class="stat-k">BEST</span><span class="stat-v" id="stBest">---</span></div>
+      <button type="button" class="icon-btn" id="btnSfx" aria-pressed="false">SFX</button>
+      <button type="button" class="icon-btn" id="btnWhat" aria-label="What is this?">?</button>
+    </div>
+  </header>
+
+  <div class="ticker" role="status" aria-live="polite">
+    <span class="ticker-msg" id="tickerMsg">GOAL: BUILD A SOLVABLE MAZE THAT SLOWS DOWN Q-LEARNING</span>
+    <span class="ticker-probe" id="probeRead">TAP OR DRAG TILES TO PAINT</span>
+  </div>
+
+  <main class="stage-row">
+    <div class="lcd-frame">
+      <canvas id="maze" width="672" height="480" aria-label="Q-learning pixel maze"></canvas>
+      <div class="lcd-foot">
+        <span id="stageRead">STAGE: CAT ALLEY &middot; SHORTEST 10</span>
+        <span class="legend">
+          <span class="sw"><i class="sw-0"></i>0</span>
+          <span class="sw"><i class="sw-1"></i>LOW</span>
+          <span class="sw"><i class="sw-2"></i>HIGH</span>
+          <span class="sw"><i class="sw-3"></i>MAX Q</span>
+        </span>
+      </div>
+    </div>
+
+    <aside class="og-card" aria-hidden="true">
+      <div class="og-kicker">CURIO &middot; NO. 059 &middot; TABULAR Q-LEARNING</div>
+      <div class="og-title">Q LABYRINTH</div>
+      <div class="og-sub">Draw walls, cats &amp; cheese. Make the mouse learn as slowly as you can.</div>
+      <div class="og-scores">
+        <div class="og-box"><span class="k">CAT ALLEY</span><span class="v">103 EP</span></div>
+        <div class="og-box dark"><span class="k">GAUNTLET PAR</span><span class="v">1011 EP</span></div>
+      </div>
+      <div class="og-foot">4-SHADE LCD VALUE MAP &middot; LIVE EPS &amp; GAMMA DIALS</div>
+    </aside>
+  </main>
+
+  <section class="deck" aria-label="Controls">
+    <div class="deck-row">
+      <div class="grp" id="stageGrp">
+        <span class="glbl">STAGE</span>
+        <button type="button" class="pbtn on" data-stage="cat-alley">CAT ALLEY</button>
+        <button type="button" class="pbtn" data-stage="keyhole">KEYHOLE</button>
+        <button type="button" class="pbtn" data-stage="serpentine">SPIRAL</button>
+        <button type="button" class="pbtn" data-stage="gauntlet">GAUNTLET</button>
+        <button type="button" class="pbtn" data-stage="blank">CLEAR</button>
+      </div>
+      <div class="grp" id="brushGrp">
+        <span class="glbl">PAINT</span>
+        <button type="button" class="pbtn on" data-brush="1">WALL</button>
+        <button type="button" class="pbtn" data-brush="0">FLOOR</button>
+        <button type="button" class="pbtn" data-brush="2">CAT</button>
+        <button type="button" class="pbtn" data-brush="3">CHEESE</button>
+        <button type="button" class="pbtn" data-brush="4">START</button>
+      </div>
+    </div>
+
+    <div class="deck-row">
+      <div class="grp">
+        <div class="dial">
+          <label for="slEps">EPS EXPLORE</label>
+          <input id="slEps" type="range" min="0.05" max="0.50" step="0.05" value="0.20">
+          <output id="outEps">0.20</output>
+        </div>
+        <div class="dial">
+          <label for="slGam">GAMMA DISC</label>
+          <input id="slGam" type="range" min="0.60" max="0.98" step="0.01" value="0.92">
+          <output id="outGam">0.92</output>
+        </div>
+        <button type="button" class="pbtn" id="btnStepCost" title="Toggle per-step living penalty">STEP: 0</button>
+      </div>
+      <div class="grp">
+        <button type="button" class="pbtn" data-spd="1">1&times;</button>
+        <button type="button" class="pbtn on" data-spd="8">8&times;</button>
+        <button type="button" class="pbtn" data-spd="60">MAX</button>
+        <button type="button" class="pbtn cta" id="btnScore">SCORE MAZE</button>
+        <button type="button" class="pbtn" id="btnReset">RESET</button>
+        <button type="button" class="pbtn" id="btnView">HEATMAP</button>
+        <button type="button" class="pbtn" id="btnSeed">SEED #7</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg" id="modalBg" role="dialog" aria-modal="true" aria-label="What is this?">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>CURIO NO. 059 &middot; Q LABYRINTH</h2>
+      <button type="button" class="pbtn" id="btnClose">CLOSE</button>
+    </div>
+    <h2>What is this?</h2>
+<p><strong>Q Labyrinth</strong> is a 4-shade handheld puzzle game where <em>you</em> are the maze architect and a tiny mouse learns your labyrinth from scratch using real tabular <strong>Q-learning</strong> (Watkins, 1989; Watkins &amp; Dayan, 1992). Your goal is the opposite of a normal maze game: paint walls, cats, and cheese to make the mouse take as many episodes as possible to master a still-solvable maze.</p>
+
+<h3>The algorithm (real float64 math)</h3>
+<p>The grid has 13 × 9 = 117 cells and 4 actions (up, right, down, left). Starting from <code>Q(s, a) = 0</code> everywhere, the mouse chooses a random action with probability <strong>ε</strong> and otherwise picks uniformly among the highest-valued actions in its current cell. After every step, it updates one table entry:</p>
+<p class="eq">Q(s, a) &larr; Q(s, a) + &alpha; [ r + &gamma; max<sub>a&prime;</sub> Q(s&prime;, a&prime;) &minus; Q(s, a) ]</p>
+<p>Cheese ends an episode with <strong>+10</strong>; a cat ends it with <strong>&minus;10</strong>; walls bounce the mouse back in place; episodes cap at 200 steps (&alpha; = 0.40). A maze counts as <strong>mastered</strong> on the first episode whose greedy policy walks cleanly from Start to Cheese with backed-up value at least 0.05 on every tile along the way (0.01 when step cost is on). The floor heatmap shades each tile by <code>V(s) = max<sub>a</sub> Q(s, a)</code>, and dark edge bars mark directions where a cat taught a negative Q-value. Switching to <strong>Q-4</strong> splits each tile into all four action triangles.</p>
+
+<h3>What we measured across 30 seeds</h3>
+<p>All four built-in stages were benchmarked over 30 deterministic seeds (&epsilon; = 0.20, &gamma; = 0.92, cap 1,500 episodes) and verified bit-for-bit against an independent Python/NumPy reference. The same engine also solves exact Bellman value iteration <code>V*(s)</code>; after 2,500 episodes on Cat Alley (&epsilon; = 0.30, &alpha; = 0.20), the mouse&rsquo;s learned values along the optimal path match <code>V*</code> to max error <strong>0.0000</strong>.</p>
+<table class="wtbl">
+  <thead><tr><th>Stage</th><th>Shortest</th><th>Sparse (r = 0)</th><th>Cat hits</th><th>Step cost (&minus;0.04)</th></tr></thead>
+  <tbody>
+<tr><td>CAT ALLEY</td><td>10</td><td>103 ep</td><td>67</td><td>57 ep (1.8× faster)</td></tr>
+<tr><td>KEYHOLE</td><td>15</td><td>271 ep</td><td>0</td><td>50 ep (5.4× faster)</td></tr>
+<tr><td>SPIRAL</td><td>28</td><td>463 ep</td><td>0</td><td>67 ep (6.9× faster)</td></tr>
+<tr><td>GAUNTLET</td><td>20</td><td>1127 ep (2/30 hit cap)</td><td>198</td><td>110 ep (10.2× faster)</td></tr>
+  </tbody>
+</table>
+
+<h3>Four surprises built into the game</h3>
+<ul>
+  <li><strong>Architecture beats raw length.</strong> <em>Gauntlet</em> is only 20 steps long &mdash; 8 steps shorter than <em>Spiral</em> (28) &mdash; yet takes median <strong>1127 episodes</strong> vs 463 (with 198 cat hits). A decoy room plus a one-tile cat-guarded bridge turns random exploration into a minefield.</li>
+  <li><strong>The hidden optimism of step cost.</strong> Flip the <code>STEP</code> switch from <code>0</code> to <code>&minus;0.04</code>. Punishing every step sounds harsher, yet it makes Q-learning solve <em>Keyhole</em> <strong>5.4&times; faster</strong> (50 vs 271 ep) and <em>Gauntlet</em> <strong>10.2&times; faster</strong> (110 vs 1127 ep). Because <code>Q</code> starts at <code>0</code>, any visited floor drops below <code>0</code>, so unvisited tiles look strictly better &mdash; turning greedy steps into optimistic exploration (Sutton &amp; Barto &sect;2.6).</li>
+  <li><strong>The &epsilon; cat paradox.</strong> On <em>Cat Alley</em>, raising &epsilon; from 0.05 to 0.50 slows mastery by <strong>4.0&times;</strong> (63 &rarr; 254.5 ep; cat hits 25 &rarr; 211.5) because random exploration steps off the bridge before credit can crawl back.</li>
+  <li><strong>The &gamma; discount horizon.</strong> On <em>Spiral</em>, lowering &gamma; from 0.92 (<code>V*(S) = 1.05</code>) to 0.75 shrinks the discounted cheese reward at Start to <code>0.004</code>, below the 0.05 threshold &mdash; <strong>30/30</strong> seeds fail to master within 1,500 episodes.</li>
+</ul>
+
+<h3>What is computed vs visual</h3>
+<p><strong>Computed live:</strong> every Q-table update, &epsilon;-greedy tie-break, BFS shortest path, Bellman value iteration <code>V*(s)</code>, mastery check, and the 15-seed fair score (<code>SCORE</code>, Gauntlet par 1011 ep). <strong>Visual / audio craft:</strong> the 16&times;16 pixel sprites, Bayer 4&times;4 ordered dithering, LCD dot-matrix grid, and optional Web Audio square-wave bleeps.</p>
+
+<h3>References</h3>
+<ul>
+  <li>Watkins, C. J. C. H. (1989). <em>Learning from Delayed Rewards</em>. PhD thesis, King&rsquo;s College, Cambridge.</li>
+  <li>Watkins, C. J. C. H. &amp; Dayan, P. (1992). <em>Q-learning</em>. Machine Learning 8(3&ndash;4): 279&ndash;292.</li>
+  <li>Sutton, R. S. &amp; Barto, A. G. (2018). <em>Reinforcement Learning: An Introduction</em> (2nd ed.), &sect;2.6 (Optimistic Initial Values) &amp; &sect;6.5 (Q-learning &amp; Cliff Walking).</li>
+</ul>
+  </div>
+</div>
+
+<script>
+const STATS = {"par": {"cat-alley": 103, "keyhole": 297, "serpentine": 463, "gauntlet": 1011, "blank": 43}, "presets": {"cat-alley": {"name": "CAT ALLEY", "shortest": 10, "vStarSparse": 4.72, "vStarCost": 4.46, "sparseMed": 103, "sparseIqr": [78, 145], "sparseStump": 0, "sparseCatsMed": 67, "sparseFirstMed": 24.5, "costMed": 57, "costIqr": [53, 61], "costStump": 0, "speedup": 1.8, "par15": 103, "seed7Ep": 103, "seed7Cats": 67, "seed7Len": 12}, "keyhole": {"name": "KEYHOLE", "shortest": 15, "vStarSparse": 3.11, "vStarCost": 2.77, "sparseMed": 271, "sparseIqr": [207, 300], "sparseStump": 0, "sparseCatsMed": 0, "sparseFirstMed": 24.5, "costMed": 50, "costIqr": [48, 51], "costStump": 0, "speedup": 5.4, "par15": 297, "seed7Ep": 300, "seed7Cats": 0, "seed7Len": 19}, "serpentine": {"name": "SPIRAL", "shortest": 28, "vStarSparse": 1.05, "vStarCost": 0.61, "sparseMed": 463, "sparseIqr": [323, 548], "sparseStump": 0, "sparseCatsMed": 0, "sparseFirstMed": 61.5, "costMed": 67, "costIqr": [66, 67], "costStump": 0, "speedup": 6.9, "par15": 463, "seed7Ep": 615, "seed7Cats": 0, "seed7Len": 28}, "gauntlet": {"name": "GAUNTLET", "shortest": 20, "vStarSparse": 2.05, "vStarCost": 1.65, "sparseMed": 1127, "sparseIqr": [960, 1255], "sparseStump": 2, "sparseCatsMed": 198, "sparseFirstMed": 91, "costMed": 110, "costIqr": [107, 116], "costStump": 0, "speedup": 10.2, "par15": 1011, "seed7Ep": 766, "seed7Cats": 138, "seed7Len": 20}}, "epsSweep": {"0.05": {"med": 63, "catsMed": 25}, "0.20": {"med": 103, "catsMed": 67}, "0.50": {"med": 254.5, "catsMed": 211.5}}, "gamSweep": {"0.95": {"med": 459.5, "stump": 0, "vStart": 2.503}, "0.92": {"med": 463, "stump": 0, "vStart": 1.053}, "0.85": {"med": 475, "stump": 0, "vStart": 0.124}, "0.75": {"med": 1500, "stump": 30, "vStart": 0.004}}, "bellmanMaxErr": 0};
+// Pure float64 tabular Q-learning engine for Q Labyrinth (No. 059)
+// Shared bit-for-bit across browser, Node, and independent Python/NumPy reference.
+const QL = (() => {
+  const W = 13, H = 9, N = W * H;
+  const FLOOR = 0, WALL = 1, CAT = 2, CHEESE = 3;
+  const DR = [-1, 0, 1, 0]; // 0:U, 1:R, 2:D, 3:L
+  const DC = [0, 1, 0, -1];
+  const ACT_NAMES = ['U', 'R', 'D', 'L'];
+
+  const ALPHA = 0.40;
+  const R_CHEESE = 10.0;
+  const R_CAT = -10.0;
+  const MAX_STEPS = 200;
+  const MAX_EP = 1500;
+  const MIN_SIG = 0.05;
+  const MIN_SIG_COST = 0.01;
+
+  // Deterministic counter-based mulberry32 (exact uint32 math, identical in JS & Python)
+  function mul32(a) {
+    let t = (a + 0x6D2B79F5) | 0;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t = (t ^ (t + Math.imul(t ^ (t >>> 7), t | 61))) | 0;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function makeRng(seed) {
+    let n = 0;
+    return {
+      next() {
+        n = (n + 1) | 0;
+        const idx = (seed + Math.imul(n, 0x6D2B79F5)) | 0;
+        return mul32(idx);
+      },
+      count() { return n; }
+    };
+  }
+
+  // Exact IEEE-754 float64 array FNV-1a 32-bit hash (reads raw little-endian bytes)
+  function hashF64(arr) {
+    const u8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < u8.length; i++) {
+      h ^= u8[i];
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return ('00000000' + h.toString(16)).slice(-8);
+  }
+
+  const PRESETS = [
+    {
+      id: 'cat-alley',
+      name: 'CAT ALLEY',
+      short: 'CLIFF SHORTCUT',
+      note: 'A 10-step alley lined with cats versus safer upper and lower passages.',
+      rows: [
+        '.............',
+        '.##.#####.##.',
+        '.............',
+        '.###.....###.',
+        '.S.........C.',
+        '.#XXXXXXXXX#.',
+        '.#.........#.',
+        '.#..#####..#.',
+        '.............',
+      ]
+    },
+    {
+      id: 'keyhole',
+      name: 'KEYHOLE',
+      short: '1-TILE GATE',
+      note: 'Wide decoy hall feeding a single-tile doorway into the inner vault — zero cats.',
+      rows: [
+        '......#......',
+        '......#.####.',
+        '......#.#..#.',
+        '......#.#..#.',
+        '..S.....#C.#.',
+        '......#.#..#.',
+        '......#.##.#.',
+        '......#....#.',
+        '......#......',
+      ]
+    },
+    {
+      id: 'serpentine',
+      name: 'SPIRAL',
+      short: 'LONG CHAIN',
+      note: 'A 28-step spiral corridor exposing backward credit propagation and the γ horizon.',
+      rows: [
+        '#############',
+        '####S......##',
+        '##########.##',
+        '##....C###.##',
+        '##.#######.##',
+        '##.#######.##',
+        '##.#######.##',
+        '##.........##',
+        '#############',
+      ]
+    },
+    {
+      id: 'gauntlet',
+      name: 'GAUNTLET',
+      short: 'PAR BOSS',
+      note: 'Decoy room + narrow gate + cat-guarded vault: shorter than Spiral yet slower to learn.',
+      rows: [
+        '....#........',
+        '....#.XXXXX..',
+        '....#........',
+        '....#.######.',
+        '.S....#....#.',
+        '....#.#.##.#.',
+        '....#.#.#C.#.',
+        '....#.X.#..#.',
+        '....#...####.',
+      ]
+    },
+    {
+      id: 'blank',
+      name: 'CLEAR',
+      short: 'YOUR MAZE',
+      note: 'Open floor — paint walls, cats, and cheese to invent your own trap.',
+      rows: [
+        '.............',
+        '.............',
+        '.............',
+        '.............',
+        '.S.........C.',
+        '.............',
+        '.............',
+        '.............',
+        '.............',
+      ]
+    }
+  ];
+
+  function parseRows(rows) {
+    const grid = new Uint8Array(N);
+    let sr = 4, sc = 1;
+    for (let r = 0; r < H; r++) {
+      const line = rows[r];
+      for (let c = 0; c < W; c++) {
+        const ch = line[c];
+        const i = r * W + c;
+        if (ch === '#') grid[i] = WALL;
+        else if (ch === 'X') grid[i] = CAT;
+        else if (ch === 'C') grid[i] = CHEESE;
+        else if (ch === 'S') { grid[i] = FLOOR; sr = r; sc = c; }
+        else grid[i] = FLOOR;
+      }
+    }
+    return { grid, sr, sc };
+  }
+
+  function encodeGrid(grid, sr, sc) {
+    let out = '';
+    for (let r = 0; r < H; r++) {
+      for (let c = 0; c < W; c++) {
+        if (r === sr && c === sc) out += 'S';
+        else {
+          const t = grid[r * W + c];
+          out += t === WALL ? '#' : t === CAT ? 'X' : t === CHEESE ? 'C' : '.';
+        }
+      }
+      if (r < H - 1) out += '/';
+    }
+    return out;
+  }
+
+  function decodeGrid(str) {
+    const rows = str.split('/');
+    if (rows.length !== H || rows.some(r => r.length !== W)) return null;
+    return parseRows(rows);
+  }
+
+  function bfs(grid, sr, sc) {
+    const dist = new Int32Array(N);
+    dist.fill(-1);
+    const parent = new Int32Array(N);
+    parent.fill(-1);
+    const q = new Int32Array(N);
+    let head = 0, tail = 0;
+    const sIdx = sr * W + sc;
+    dist[sIdx] = 0;
+    q[tail++] = sIdx;
+    let goalIdx = -1;
+    while (head < tail) {
+      const u = q[head++];
+      if (grid[u] === CHEESE) { goalIdx = u; break; }
+      const r = (u / W) | 0, c = u % W;
+      for (let a = 0; a < 4; a++) {
+        const nr = r + DR[a], nc = c + DC[a];
+        if (nr < 0 || nr >= H || nc < 0 || nc >= W) continue;
+        const v = nr * W + nc;
+        if (dist[v] === -1 && (grid[v] === FLOOR || grid[v] === CHEESE)) {
+          dist[v] = dist[u] + 1;
+          parent[v] = u;
+          q[tail++] = v;
+        }
+      }
+    }
+    if (goalIdx === -1) return { solvable: false, shortest: -1, path: [] };
+    const path = [];
+    for (let cur = goalIdx; cur !== -1; cur = parent[cur]) path.push(cur);
+    path.reverse();
+    return { solvable: true, shortest: dist[goalIdx], path };
+  }
+
+  // Exact Bellman Value Iteration (converges to < 1e-11 in <= 1200 sweeps)
+  function valueIteration(grid, gamma, stepCost) {
+    const rStep = stepCost ? -0.04 : 0.0;
+    const rWall = stepCost ? -0.08 : 0.0;
+    const V = new Float64Array(N);
+    const Vn = new Float64Array(N);
+    let sweeps = 0;
+    for (let it = 0; it < 1200; it++) {
+      sweeps = it + 1;
+      let maxDiff = 0.0;
+      for (let r = 0; r < H; r++) {
+        for (let c = 0; c < W; c++) {
+          const u = r * W + c;
+          if (grid[u] !== FLOOR) { Vn[u] = 0.0; continue; }
+          let best = -1e18;
+          for (let a = 0; a < 4; a++) {
+            const nr = r + DR[a], nc = c + DC[a];
+            let val;
+            if (nr < 0 || nr >= H || nc < 0 || nc >= W || grid[nr * W + nc] === WALL) {
+              val = rWall + gamma * V[u];
+            } else {
+              const v = nr * W + nc;
+              if (grid[v] === CAT) val = R_CAT;
+              else if (grid[v] === CHEESE) val = R_CHEESE;
+              else val = rStep + gamma * V[v];
+            }
+            if (val > best) best = val;
+          }
+          Vn[u] = best;
+          const d = Math.abs(best - V[u]);
+          if (d > maxDiff) maxDiff = d;
+        }
+      }
+      for (let i = 0; i < N; i++) V[i] = Vn[i];
+      if (maxDiff < 1e-11) break;
+    }
+    return { V, sweeps };
+  }
+
+  function greedyPolicy(grid, sr, sc, Q, stepCost) {
+    const minSig = stepCost ? MIN_SIG_COST : MIN_SIG;
+    const seen = new Uint8Array(N);
+    const path = [];
+    let r = sr, c = sc;
+    for (let steps = 0; steps < N + 2; steps++) {
+      const u = r * W + c;
+      if (seen[u]) return { ok: false, steps, path, reason: 'loop' };
+      seen[u] = 1;
+      path.push(u);
+      const base = u * 4;
+      let best = Q[base], bestA = 0, ties = 1;
+      for (let a = 1; a < 4; a++) {
+        const q = Q[base + a];
+        if (q > best) { best = q; bestA = a; ties = 1; }
+        else if (q === best) ties++;
+      }
+      if (ties > 1 || best < minSig) {
+        return { ok: false, steps, path, reason: best < minSig ? 'weak' : 'tie' };
+      }
+      const nr = r + DR[bestA], nc = c + DC[bestA];
+      if (nr < 0 || nr >= H || nc < 0 || nc >= W || grid[nr * W + nc] === WALL) {
+        return { ok: false, steps, path, reason: 'wall' };
+      }
+      const v = nr * W + nc;
+      if (grid[v] === CAT) return { ok: false, steps: steps + 1, path, reason: 'cat' };
+      if (grid[v] === CHEESE) {
+        path.push(v);
+        return { ok: true, steps: steps + 1, path, reason: 'cheese' };
+      }
+      r = nr; c = nc;
+    }
+    return { ok: false, steps: N + 2, path, reason: 'cap' };
+  }
+
+  function createSession(maze, opts = {}) {
+    const grid = new Uint8Array(maze.grid);
+    const sr = maze.sr, sc = maze.sc;
+    const eps = opts.eps !== undefined ? +opts.eps : 0.20;
+    const gamma = opts.gamma !== undefined ? +opts.gamma : 0.92;
+    const alpha = opts.alpha !== undefined ? +opts.alpha : ALPHA;
+    const stepCost = !!opts.stepCost;
+    const seed = opts.seed !== undefined ? (opts.seed | 0) : 7;
+    const rStep = stepCost ? -0.04 : 0.0;
+    const rWall = stepCost ? -0.08 : 0.0;
+    const minSig = stepCost ? MIN_SIG_COST : MIN_SIG;
+
+    const Q = new Float64Array(N * 4);
+    const visits = new Int32Array(N);
+    const rng = makeRng(seed);
+    const bfsInfo = bfs(grid, sr, sc);
+    const vi = valueIteration(grid, gamma, stepCost);
+    const vStart = vi.V[sr * W + sc];
+    const horizonBlind = bfsInfo.solvable && (vStart < minSig);
+
+    const s = {
+      W, H, N, grid, sr, sc,
+      eps, gamma, alpha, stepCost, seed,
+      rStep, rWall, minSig,
+      Q, visits, rng,
+      bfs: bfsInfo,
+      Vstar: vi.V,
+      viSweeps: vi.sweeps,
+      vStart,
+      horizonBlind,
+      // Live episode cursor
+      ep: 1,
+      stepInEp: 0,
+      mr: sr, mc: sc,
+      dir: 1,
+      lastEvent: 'start', // start | step | wall | cat | cheese | timeout | explore
+      lastReward: 0,
+      lastTD: 0,
+      lastExplored: false,
+      lastAction: 1,
+      totalSteps: 0,
+      catsHit: 0,
+      cheesesHit: 0,
+      firstCheeseEp: -1,
+      mastered: false,
+      masterEp: -1,
+      masterLen: -1,
+      stumped: false,
+      greedyPath: [],
+      epHistory: [], // {ep, outcome, steps, reward}
+    };
+    visits[sr * W + sc] = 1;
+    return s;
+  }
+
+  function stepOne(s) {
+    if (!s.bfs.solvable) {
+      s.lastEvent = 'blocked';
+      return { epDone: false, event: 'blocked' };
+    }
+    const u = s.mr * W + s.mc;
+    const base = u * 4;
+    const Q = s.Q;
+
+    let a, explored = false;
+    if (s.rng.next() < s.eps) {
+      explored = true;
+      a = Math.floor(s.rng.next() * 4);
+    } else {
+      let mx = Q[base], nt = 1;
+      const ties = [0, 0, 0, 0];
+      for (let k = 1; k < 4; k++) {
+        const q = Q[base + k];
+        if (q > mx) { mx = q; ties[0] = k; nt = 1; }
+        else if (q === mx) { ties[nt++] = k; }
+      }
+      a = nt > 1 ? ties[Math.floor(s.rng.next() * nt)] : ties[0];
+    }
+
+    s.dir = a;
+    s.lastAction = a;
+    s.lastExplored = explored;
+    s.stepInEp++;
+    s.totalSteps++;
+
+    const nr = s.mr + DR[a], nc = s.mc + DC[a];
+    let epDone = false;
+    let event = 'step';
+    let reward = s.rStep;
+    let td = 0;
+
+    if (nr < 0 || nr >= H || nc < 0 || nc >= W || s.grid[nr * W + nc] === WALL) {
+      let mx = Q[base];
+      for (let k = 1; k < 4; k++) if (Q[base + k] > mx) mx = Q[base + k];
+      reward = s.rWall;
+      td = reward + s.gamma * mx - Q[base + a];
+      Q[base + a] = Q[base + a] + s.alpha * td;
+      event = 'wall';
+    } else {
+      const v = nr * W + nc;
+      const cell = s.grid[v];
+      if (cell === CAT) {
+        reward = R_CAT;
+        td = reward - Q[base + a];
+        Q[base + a] = Q[base + a] + s.alpha * td;
+        s.mr = nr; s.mc = nc;
+        s.catsHit++;
+        event = 'cat';
+        epDone = true;
+      } else if (cell === CHEESE) {
+        reward = R_CHEESE;
+        td = reward - Q[base + a];
+        Q[base + a] = Q[base + a] + s.alpha * td;
+        s.mr = nr; s.mc = nc;
+        s.cheesesHit++;
+        if (s.firstCheeseEp === -1) s.firstCheeseEp = s.ep;
+        event = 'cheese';
+        epDone = true;
+      } else {
+        const vb = v * 4;
+        let mx = Q[vb];
+        for (let k = 1; k < 4; k++) if (Q[vb + k] > mx) mx = Q[vb + k];
+        reward = s.rStep;
+        td = reward + s.gamma * mx - Q[base + a];
+        Q[base + a] = Q[base + a] + s.alpha * td;
+        s.mr = nr; s.mc = nc;
+        s.visits[v]++;
+        event = 'step';
+      }
+    }
+
+    if (!epDone && s.stepInEp >= MAX_STEPS) {
+      event = 'timeout';
+      epDone = true;
+    }
+
+    s.lastEvent = event;
+    s.lastReward = reward;
+    s.lastTD = td;
+
+    if (epDone) {
+      const finishedEp = s.ep;
+      const gp = greedyPolicy(s.grid, s.sr, s.sc, s.Q, s.stepCost);
+      s.greedyPath = gp.ok ? gp.path : [];
+      if (!s.mastered && gp.ok) {
+        s.mastered = true;
+        s.masterEp = finishedEp;
+        s.masterLen = gp.steps;
+      }
+      if (!s.mastered && finishedEp >= MAX_EP) {
+        s.stumped = true;
+      }
+      if (s.epHistory.length >= 200) s.epHistory.shift();
+      s.epHistory.push({ ep: finishedEp, outcome: event, steps: s.stepInEp });
+      // Prepare next episode
+      s.ep = finishedEp + 1;
+      s.stepInEp = 0;
+      s.mr = s.sr;
+      s.mc = s.sc;
+      s.visits[s.sr * W + s.sc]++;
+    }
+    return { epDone, event, reward, td };
+  }
+
+  function runEpisode(s) {
+    if (!s.bfs.solvable) return { event: 'blocked' };
+    let res;
+    for (let guard = 0; guard <= MAX_STEPS + 2; guard++) {
+      res = stepOne(s);
+      if (res.epDone) return res;
+    }
+    return res;
+  }
+
+  function runEpisodes(s, n) {
+    for (let i = 0; i < n; i++) runEpisode(s);
+    return s;
+  }
+
+  function runUntilMastered(s, maxEp = MAX_EP) {
+    if (!s.bfs.solvable) return s;
+    while (!s.mastered && (s.ep - 1) < maxEp) {
+      runEpisode(s);
+    }
+    if (!s.mastered && (s.ep - 1) >= maxEp) s.stumped = true;
+    return s;
+  }
+
+  // Fair multi-seed challenge score (default 15 deterministic seeds 1..15)
+  function scoreMaze(maze, opts = {}, seeds = 15) {
+    const b = bfs(maze.grid, maze.sr, maze.sc);
+    if (!b.solvable) return { solvable: false, median: -1, p25: -1, p75: -1, stumped: seeds, scores: [] };
+    const scores = [];
+    let stumped = 0;
+    for (let k = 1; k <= seeds; k++) {
+      const sess = createSession(maze, { ...opts, seed: k });
+      runUntilMastered(sess, MAX_EP);
+      if (sess.mastered) scores.push(sess.masterEp);
+      else { scores.push(MAX_EP); stumped++; }
+    }
+    const sorted = scores.slice().sort((a, b2) => a - b2);
+    const mid = sorted.length >> 1;
+    const median = sorted.length % 2 ? sorted[mid] : 0.5 * (sorted[mid - 1] + sorted[mid]);
+    return {
+      solvable: true,
+      shortest: b.shortest,
+      median,
+      p25: sorted[Math.floor(sorted.length * 0.25)],
+      p75: sorted[Math.floor(sorted.length * 0.75)],
+      stumped,
+      seeds,
+      scores,
+    };
+  }
+
+  function cellV(s, idx) {
+    const b = idx * 4, Q = s.Q;
+    let m = Q[b];
+    if (Q[b + 1] > m) m = Q[b + 1];
+    if (Q[b + 2] > m) m = Q[b + 2];
+    if (Q[b + 3] > m) m = Q[b + 3];
+    return m;
+  }
+
+  function bestAction(s, idx) {
+    const b = idx * 4, Q = s.Q;
+    let m = Q[b], a = 0, ties = 1;
+    for (let k = 1; k < 4; k++) {
+      const q = Q[b + k];
+      if (q > m) { m = q; a = k; ties = 1; }
+      else if (q === m) ties++;
+    }
+    return { a, val: m, tie: ties > 1 };
+  }
+
+  function maxVError(s) {
+    let mx = 0;
+    for (let i = 0; i < N; i++) {
+      if (s.grid[i] !== FLOOR) continue;
+      const d = Math.abs(cellV(s, i) - s.Vstar[i]);
+      if (d > mx) mx = d;
+    }
+    return mx;
+  }
+
+  return {
+    W, H, N, FLOOR, WALL, CAT, CHEESE, DR, DC, ACT_NAMES,
+    ALPHA, R_CHEESE, R_CAT, MAX_STEPS, MAX_EP, MIN_SIG, MIN_SIG_COST,
+    PRESETS, mul32, makeRng, hashF64,
+    parseRows, encodeGrid, decodeGrid,
+    bfs, valueIteration, greedyPolicy,
+    createSession, stepOne, runEpisode, runEpisodes, runUntilMastered, scoreMaze,
+    cellV, bestAction, maxVError,
+  };
+})();
+
+(() => {
+  'use strict';
+
+  const QURL = new URLSearchParams(location.search);
+  const FIXED = QURL.has('fixed');
+  const OG = QURL.get('og');
+  const RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (FIXED) document.documentElement.classList.add('fixed');
+  if (RM) document.documentElement.classList.add('rm');
+  if (OG) document.body.classList.add('og');
+
+  // Authentic 4-shade handheld LCD green palette (little-endian ABGR uint32 for ImageData)
+  const PAL_RGB = [
+    [198, 220, 138], // 0: #c6dc8a brightest unlit LCD
+    [148, 196,  86], // 1: #94c456 mid-light LCD
+    [ 47, 120,  48], // 2: #2f7830 mid-dark LCD
+    [ 15,  56,  15], // 3: #0f380f darkest LCD ink
+  ];
+  const PAL_U32 = new Uint32Array(PAL_RGB.map(([r, g, b]) => (255 << 24) | (b << 16) | (g << 8) | r));
+
+  // Bayer 4x4 ordered dither matrix (0..15)
+  const BAYER = [
+     0,  8,  2, 10,
+    12,  4, 14,  6,
+     3, 11,  1,  9,
+    15,  7, 13,  5,
+  ];
+
+  // Native pixel framebuffer: 13x9 tiles of 16x16 + 8px brick frame all around = 224x160
+  const TILE = 16;
+  const PAD = 8;
+  const NW = QL.W * TILE + PAD * 2; // 224
+  const NH = QL.H * TILE + PAD * 2; // 160
+  const SCALE = 3;                  // 672x480 crisp display canvas
+
+  // Handcrafted 16x16 pixel-art sprites ('.' transparent, '0'..'3' LCD shade)
+  const SPR_WALL = [
+    '3333333333333333',
+    '3111111311111113',
+    '3122222312222223',
+    '3122222312222223',
+    '3333333333333333',
+    '3111311111113113',
+    '3122312222223123',
+    '3122312222223123',
+    '3333333333333333',
+    '3111111311111113',
+    '3122222312222223',
+    '3122222312222223',
+    '3333333333333333',
+    '3111311111113113',
+    '3122312222223123',
+    '3333333333333333',
+  ];
+
+  const SPR_CHEESE_A = [
+    '................',
+    '........33......',
+    '......330033....',
+    '....3300000033..',
+    '..3300022000003.',
+    '.300002200001003',
+    '.301000002200003',
+    '.333333333333333',
+    '.300100000010013',
+    '.300003300000013',
+    '.302203200022013',
+    '.302200000022013',
+    '.300000010000013',
+    '.311111111111113',
+    '..3333333333333.',
+    '................',
+  ];
+
+  const SPR_CHEESE_B = [
+    '.....3..........',
+    '....303.33......',
+    '.....3330033....',
+    '....3300000033..',
+    '..3300022000003.',
+    '.300002200001003',
+    '.301000002200003',
+    '.333333333333333',
+    '.300100000010013',
+    '.300003300000013',
+    '.302203200022013',
+    '.302200000022013',
+    '.300000010000013',
+    '.311111111111113',
+    '..3333333333333.',
+    '................',
+  ];
+
+  const SPR_CAT_A = [
+    '................',
+    '..33........33..',
+    '.3223......3223.',
+    '.32033333333023.',
+    '.32222222222223.',
+    '.32233222233223.',
+    '.32230222203223.',
+    '3322222332222233',
+    '.32222322322223.',
+    '3322222222222233',
+    '..332222222233..',
+    '..322200002223..',
+    '..3222000022233.',
+    '..32232222322323',
+    '..333.3333.3333.',
+    '................',
+  ];
+
+  const SPR_CAT_BLINK = [
+    '................',
+    '..33........33..',
+    '.3223......3223.',
+    '.32033333333023.',
+    '.32222222222223.',
+    '.32222222222223.',
+    '.32233222233223.',
+    '3322222332222233',
+    '.32222322322223.',
+    '3322222222222233',
+    '..332222222233..',
+    '..322200002223..',
+    '..3222000022233.',
+    '..32232222322323',
+    '..333.3333.3333.',
+    '................',
+  ];
+
+  const SPR_MOUSE_R0 = [
+    '................',
+    '......333.......',
+    '.....30103......',
+    '.....3000333....',
+    '.....30000003...',
+    '....3000003003..',
+    '...300000000003.',
+    '..30000000000033',
+    '33.30000000003..',
+    '3...300000003...',
+    '.33..3333333....',
+    '...33.3..3..3...',
+    '......3..3......',
+    '................',
+    '................',
+    '................',
+  ];
+
+  const SPR_MOUSE_R1 = [
+    '................',
+    '................',
+    '......333.......',
+    '.....30103......',
+    '.....3000333....',
+    '.....30000003...',
+    '....3000003003..',
+    '...300000000003.',
+    '.333000000000033',
+    '3...3000000003..',
+    '.33..30000003...',
+    '....3.333333....',
+    '.....3....3.....',
+    '................',
+    '................',
+    '................',
+  ];
+
+  const SPR_HOLE = [
+    '................',
+    '................',
+    '....33333333....',
+    '...3322222233...',
+    '..322333333223..',
+    '..323333333323..',
+    '..323333333323..',
+    '..323333333323..',
+    '..323333333323..',
+    '..323333333323..',
+    '..323333333323..',
+    '..323333333323..',
+    '.33333333333333.',
+    '.31111111111113.',
+    '.33333333333333.',
+    '................',
+  ];
+
+  // Crisp 5x5 directional pixel arrows (U, R, D, L)
+  const ARROWS = [
+    ['..1..', '.111.', '1.1.1', '..1..', '..1..'], // U
+    ['..1..', '...1.', '11111', '...1.', '..1..'], // R
+    ['..1..', '..1..', '1.1.1', '.111.', '..1..'], // D
+    ['..1..', '.1...', '11111', '.1...', '..1..'], // L
+  ];
+
+  // Tiny 5x5 icons: '?' explore, '!' cheese, 'X' cat zap
+  const ICON_Q = ['1111.', '...1.', '.111.', '.....', '.1...'];
+  const ICON_X = ['1...1', '.1.1.', '..1..', '.1.1.', '1...1'];
+  const ICON_B = ['..1..', '..1..', '..1..', '.....', '..1..'];
+
+  // Compile ASCII sprite to Int8Array(256) (-1 transparent, 0..3 shade)
+  function compileSpr(rows, flipX = false) {
+    const out = new Int8Array(256);
+    for (let y = 0; y < 16; y++) {
+      const line = rows[y];
+      for (let x = 0; x < 16; x++) {
+        const ch = line[flipX ? 15 - x : x];
+        out[y * 16 + x] = ch === '.' ? -1 : (+ch);
+      }
+    }
+    return out;
+  }
+
+  const SP = {
+    wall: compileSpr(SPR_WALL),
+    cheeseA: compileSpr(SPR_CHEESE_A),
+    cheeseB: compileSpr(SPR_CHEESE_B),
+    catA: compileSpr(SPR_CAT_A),
+    catB: compileSpr(SPR_CAT_BLINK),
+    mouseR0: compileSpr(SPR_MOUSE_R0, false),
+    mouseR1: compileSpr(SPR_MOUSE_R1, false),
+    mouseL0: compileSpr(SPR_MOUSE_R0, true),
+    mouseL1: compileSpr(SPR_MOUSE_R1, true),
+    hole: compileSpr(SPR_HOLE),
+  };
+
+  // Optional 8-bit chiptune SFX via Web Audio (OFF by default)
+  let audioCtx = null;
+  let sfxOn = false;
+  function beep(freq, dur = 0.045, type = 'square', vol = 0.05) {
+    if (!sfxOn || FIXED || RM) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      g.gain.setValueAtTime(vol, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + dur);
+    } catch (_) {}
+  }
+  function sfxCheese() { beep(587, 0.06); setTimeout(() => beep(880, 0.09), 55); }
+  function sfxCat() { beep(196, 0.07, 'sawtooth', 0.05); setTimeout(() => beep(130, 0.10, 'sawtooth', 0.05), 60); }
+  function sfxMaster() { beep(523, 0.07); setTimeout(() => beep(659, 0.07), 70); setTimeout(() => beep(784, 0.07), 140); setTimeout(() => beep(1046, 0.14), 210); }
+  function sfxPaint() { beep(440, 0.025, 'square', 0.03); }
+
+  // DOM refs
+  const cv = document.getElementById('maze');
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const off = document.createElement('canvas');
+  off.width = NW; off.height = NH;
+  const octx = off.getContext('2d');
+  const imgData = octx.createImageData(NW, NH);
+  const px32 = new Uint32Array(imgData.data.buffer);
+
+  const elEp = document.getElementById('stEp');
+  const elPar = document.getElementById('stPar');
+  const elParLbl = document.getElementById('stParLbl');
+  const elScore = document.getElementById('stScore');
+  const elBest = document.getElementById('stBest');
+  const elTicker = document.getElementById('tickerMsg');
+  const elProbe = document.getElementById('probeRead');
+  const elStageRead = document.getElementById('stageRead');
+  const slEps = document.getElementById('slEps');
+  const outEps = document.getElementById('outEps');
+  const slGam = document.getElementById('slGam');
+  const outGam = document.getElementById('outGam');
+  const btnStepCost = document.getElementById('btnStepCost');
+  const btnScore = document.getElementById('btnScore');
+  const btnReset = document.getElementById('btnReset');
+  const btnView = document.getElementById('btnView');
+  const btnSeed = document.getElementById('btnSeed');
+  const btnSfx = document.getElementById('btnSfx');
+  const btnWhat = document.getElementById('btnWhat');
+  const btnClose = document.getElementById('btnClose');
+  const modalBg = document.getElementById('modalBg');
+
+  // State
+  let stageId = QURL.get('stage') || 'cat-alley';
+  if (!QL.PRESETS.some(p => p.id === stageId)) stageId = 'cat-alley';
+  let isCustom = false;
+  let brush = QL.WALL; // 1=wall, 0=floor, 2=cat, 3=cheese, 4=start
+  let view = QURL.get('view') === 'q4' ? 'q4' : 'heat';
+  let speed = 8; // 1, 8, 60
+  let seed = QURL.has('seed') ? (+QURL.get('seed') || 7) : 7;
+  let eps = QURL.has('eps') ? Math.max(0.05, Math.min(0.50, +QURL.get('eps'))) : 0.20;
+  let gamma = QURL.has('gamma') ? Math.max(0.60, Math.min(0.98, +QURL.get('gamma'))) : 0.92;
+  let stepCost = QURL.get('cost') === '1';
+  let hiScore = 0; // Best episodes achieved on a valid custom maze (or any beat)
+  let score15 = null;
+  let hoverIdx = -1;
+  let facingLeft = false;
+  let flashType = ''; // 'cat' | 'cheese' | 'master'
+  let flashTimer = 0;
+  let flashR = 0, flashC = 0;
+  let simFrame = 0;
+  let simTime = 0;
+  let stepAccum = 0;
+  let paused = RM; // Pause continuous stepping under prefers-reduced-motion
+  let session = null;
+  let currentMaze = null;
+  const sessionLog = [];
+
+  function recordLog(tag) {
+    if (!session) return;
+    sessionLog.push({
+      tag,
+      grid: QL.encodeGrid(session.grid, session.sr, session.sc),
+      cfg: {
+        seed: session.seed,
+        eps: session.eps,
+        gamma: session.gamma,
+        alpha: session.alpha,
+        stepCost: session.stepCost,
+      },
+      bfsShortest: session.bfs.shortest,
+      vStarHash: QL.hashF64(session.Vstar),
+      qHash: QL.hashF64(session.Q),
+      ep: session.ep - 1,
+      totalSteps: session.totalSteps,
+      catsHit: session.catsHit,
+      cheesesHit: session.cheesesHit,
+      mastered: session.mastered,
+      masterEp: session.masterEp,
+      masterLen: session.masterLen,
+    });
+    if (sessionLog.length > 80) sessionLog.shift();
+  }
+
+  function currentPar() {
+    if (isCustom) return STATS.par.gauntlet || 1011;
+    return STATS.par[stageId] || 103;
+  }
+
+  function loadMaze(maze, { tag = 'init', preRunEp = 0, preRunSteps = 0 } = {}) {
+    currentMaze = { grid: new Uint8Array(maze.grid), sr: maze.sr, sc: maze.sc };
+    session = QL.createSession(currentMaze, { eps, gamma, stepCost, seed });
+    score15 = null;
+    facingLeft = false;
+    flashType = '';
+    flashTimer = 0;
+    stepAccum = 0;
+    if (preRunEp > 0 && session.bfs.solvable) {
+      QL.runEpisodes(session, preRunEp);
+    }
+    for (let i = 0; i < preRunSteps && session.bfs.solvable; i++) {
+      QL.stepOne(session);
+    }
+    if (session.dir === 3) facingLeft = true;
+    recordLog(tag);
+    syncUI();
+    render();
+  }
+
+  function selectStage(id, logTag = 'stage') {
+    const p = QL.PRESETS.find(x => x.id === id) || QL.PRESETS[0];
+    stageId = p.id;
+    isCustom = false;
+    const preEp = (FIXED || RM) ? (id === 'cat-alley' ? 115 : 60) : 0;
+    const preSt = (FIXED || RM) ? 5 : 0;
+    loadMaze(QL.parseRows(p.rows), { tag: logTag, preRunEp: preEp, preRunSteps: preSt });
+  }
+
+  function updateTicker() {
+    const s = session;
+    if (!s.bfs.solvable) {
+      elTicker.textContent = 'BLOCKED MAZE — OPEN A CAT-FREE PATH TO THE CHEESE';
+      return;
+    }
+    if (s.horizonBlind) {
+      elTicker.textContent = `HORIZON BLIND AT GAMMA ${s.gamma.toFixed(2)} — CHEESE SIGNAL FADES BEFORE START`;
+      return;
+    }
+    if (score15) {
+      const m = Math.round(score15.median);
+      if (score15.stumped > 0) {
+        elTicker.textContent = `15-SEED MEDIAN: ${m} EP (${score15.stumped} STUMPED) — YOU BUILT A REAL TRAP`;
+      } else if (isCustom && m >= (STATS.par.gauntlet || 1011)) {
+        elTicker.textContent = `15-SEED MEDIAN: ${m} EP — YOU BEAT GAUNTLET PAR!`;
+      } else {
+        elTicker.textContent = `15-SEED FAIR SCORE: ${m} EP — ADD BOTTLENECKS OR CATS TO SLOW IT DOWN`;
+      }
+      return;
+    }
+    if (s.stumped) {
+      elTicker.textContent = `STUMPED PAST ${QL.MAX_EP} EPISODES — MOUSE NEVER MASTERED THIS MAZE`;
+      return;
+    }
+    if (s.mastered) {
+      if (isCustom) {
+        elTicker.textContent = `MASTERED YOUR MAZE IN ${s.masterEp} EP — PRESS SCORE MAZE FOR 15-SEED RANK`;
+      } else {
+        elTicker.textContent = `MASTERED IN ${s.masterEp} EP — PAINT WALLS OR CATS TO MAKE IT HARDER`;
+      }
+      return;
+    }
+    if (s.firstCheeseEp === -1) {
+      elTicker.textContent = `EXPLORING BLIND — MOUSE HAS NOT FOUND THE CHEESE YET`;
+    } else {
+      elTicker.textContent = `CHEESE FOUND — WATCH THE VALUE HEATMAP CRAWL BACK TO START`;
+    }
+  }
+
+  function updateProbe() {
+    if (hoverIdx < 0 || hoverIdx >= QL.N || !session) {
+      if (session && session.bfs.solvable) {
+        elProbe.textContent = `V*(START) ${session.vStart.toFixed(2)} · CATS ${session.catsHit}`;
+      } else {
+        elProbe.textContent = 'TAP OR DRAG TILES TO PAINT';
+      }
+      return;
+    }
+    const r = (hoverIdx / QL.W) | 0, c = hoverIdx % QL.W;
+    const t = session.grid[hoverIdx];
+    if (t === QL.WALL) { elProbe.textContent = `(${c},${r}) BRICK WALL`; return; }
+    if (t === QL.CAT) { elProbe.textContent = `(${c},${r}) CAT TRAP · REWARD -10`; return; }
+    if (t === QL.CHEESE) { elProbe.textContent = `(${c},${r}) CHEESE GOAL · REWARD +10`; return; }
+    const b = hoverIdx * 4, Q = session.Q;
+    const v = QL.cellV(session, hoverIdx);
+    const vs = session.Vstar[hoverIdx];
+    elProbe.textContent = `(${c},${r}) V=${v.toFixed(2)} V*=${vs.toFixed(2)} ↑${Q[b].toFixed(1)} →${Q[b+1].toFixed(1)} ↓${Q[b+2].toFixed(1)} ←${Q[b+3].toFixed(1)}`;
+  }
+
+  function syncUI() {
+    const s = session;
+    elEp.textContent = String(s.ep);
+    elParLbl.textContent = isCustom ? 'BOSS PAR' : 'PAR';
+    elPar.textContent = String(Math.round(currentPar()));
+    if (score15) {
+      elScore.textContent = `${Math.round(score15.median)} EP`;
+    } else if (s.mastered) {
+      elScore.textContent = `${s.masterEp} EP`;
+    } else if (s.stumped) {
+      elScore.textContent = `${QL.MAX_EP}+`;
+    } else {
+      elScore.textContent = '---';
+    }
+    elBest.textContent = hiScore > 0 ? `${hiScore} EP` : '---';
+
+    const pObj = QL.PRESETS.find(x => x.id === stageId);
+    const sName = isCustom ? 'CUSTOM MAZE' : (pObj ? pObj.name : stageId.toUpperCase());
+    const lenTxt = s.bfs.solvable ? `SHORTEST ${s.bfs.shortest}` : 'UNSOLVABLE';
+    elStageRead.textContent = `STAGE: ${sName} · ${lenTxt}`;
+
+    slEps.value = eps.toFixed(2);
+    outEps.textContent = eps.toFixed(2);
+    slGam.value = gamma.toFixed(2);
+    outGam.textContent = gamma.toFixed(2);
+    btnStepCost.textContent = stepCost ? 'STEP: -0.04' : 'STEP: 0';
+    btnStepCost.classList.toggle('on', stepCost);
+    btnView.textContent = view === 'q4' ? 'Q-4 VIEW' : 'HEATMAP';
+    btnView.classList.toggle('on', view === 'q4');
+    btnSeed.textContent = `SEED #${seed}`;
+    btnSfx.classList.toggle('on', sfxOn);
+    btnSfx.setAttribute('aria-pressed', String(sfxOn));
+
+    document.querySelectorAll('#stageGrp button').forEach(b => {
+      b.classList.toggle('on', !isCustom && b.dataset.stage === stageId);
+    });
+    document.querySelectorAll('#brushGrp button').forEach(b => {
+      b.classList.toggle('on', +b.dataset.brush === brush);
+    });
+    document.querySelectorAll('[data-spd]').forEach(b => {
+      b.classList.toggle('on', +b.dataset.spd === speed);
+    });
+
+    updateTicker();
+    updateProbe();
+  }
+
+  // ---- Pixel-Art Framebuffer Renderer ----
+  function setPx(x, y, shade) {
+    if (x >= 0 && x < NW && y >= 0 && y < NH) px32[y * NW + x] = PAL_U32[shade];
+  }
+
+  function fillRect(x0, y0, w, h, shade) {
+    const col = PAL_U32[shade];
+    for (let y = y0; y < y0 + h; y++) {
+      const row = y * NW;
+      for (let x = x0; x < x0 + w; x++) px32[row + x] = col;
+    }
+  }
+
+  // Ordered Bayer 4x4 dithered fill mapping scalar t in [0, 1] across the 4 LCD green shades
+  function fillDither(x0, y0, w, h, t) {
+    const clamped = t <= 0 ? 0 : t >= 1 ? 1 : t;
+    // Map [0, 1] to [0, 2.75] (keeps brightest text/sprites high-contrast even at max Q)
+    const scaled = clamped * 2.65;
+    const lo = Math.floor(scaled);
+    const frac = scaled - lo;
+    const hi = Math.min(3, lo + 1);
+    const thresh = Math.floor(frac * 16);
+    for (let y = y0; y < y0 + h; y++) {
+      const row = y * NW;
+      const by = (y & 3) << 2;
+      for (let x = x0; x < x0 + w; x++) {
+        const b = BAYER[by | (x & 3)];
+        px32[row + x] = PAL_U32[b < thresh ? hi : lo];
+      }
+    }
+  }
+
+  function drawSpr(spr, ox, oy) {
+    for (let y = 0; y < 16; y++) {
+      const row = (oy + y) * NW;
+      const sr = y * 16;
+      for (let x = 0; x < 16; x++) {
+        const s = spr[sr + x];
+        if (s >= 0) px32[row + ox + x] = PAL_U32[s];
+      }
+    }
+  }
+
+  function drawMiniIcon(icon, ox, oy, shade, bgShade = -1) {
+    if (bgShade >= 0) fillRect(ox - 1, oy - 1, 7, 7, bgShade);
+    for (let y = 0; y < 5; y++) {
+      const line = icon[y];
+      for (let x = 0; x < 5; x++) {
+        if (line[x] === '1') setPx(ox + x, oy + y, shade);
+      }
+    }
+  }
+
+  function drawBorder() {
+    // 8px sculpted stone dungeon frame around the 13x9 arena
+    fillRect(0, 0, NW, PAD, 2);
+    fillRect(0, NH - PAD, NW, PAD, 2);
+    fillRect(0, 0, PAD, NH, 2);
+    fillRect(NW - PAD, 0, PAD, NH, 2);
+    // Outer & inner crisp ink bevels
+    for (let x = 0; x < NW; x++) {
+      setPx(x, 0, 3); setPx(x, 1, 1); setPx(x, PAD - 1, 3);
+      setPx(x, NH - PAD, 3); setPx(x, NH - 2, 1); setPx(x, NH - 1, 3);
+    }
+    for (let y = 0; y < NH; y++) {
+      setPx(0, y, 3); setPx(1, y, 1); setPx(PAD - 1, y, 3);
+      setPx(NW - PAD, y, 3); setPx(NW - 2, y, 1); setPx(NW - 1, y, 3);
+    }
+    // Brick seam ticks along frame
+    for (let x = PAD; x < NW - PAD; x += 16) {
+      for (let y = 1; y < PAD - 1; y++) { setPx(x, y, 3); setPx(x, NH - 1 - y, 3); }
+    }
+    for (let y = PAD; y < NH - PAD; y += 16) {
+      for (let x = 1; x < PAD - 1; x++) { setPx(x, y, 3); setPx(NW - 1 - x, y, 3); }
+    }
+    // Corner pixel bolts
+    for (const [cx, cy] of [[3, 3], [NW - 5, 3], [3, NH - 5], [NW - 5, NH - 5]]) {
+      fillRect(cx, cy, 2, 2, 0);
+    }
+  }
+
+  // Non-linear perceptual compression so faint cheese scent (0.05..2) AND bright near-cheese (2..10) are BOTH legible in 4 shades!
+  function valueShade(v) {
+    if (v <= 0.005) return 0;
+    return Math.min(1, Math.pow(v / 10.0, 0.42));
+  }
+
+  function drawQ4Tile(ox, oy, base) {
+    const Q = session.Q;
+    for (let dy = 0; dy < TILE; dy++) {
+      const y = oy + dy;
+      const row = y * NW;
+      const by = (y & 3) << 2;
+      for (let dx = 0; dx < TILE; dx++) {
+        const x = ox + dx;
+        // Diagonal partition into 4 triangles: U(0), R(1), D(2), L(3)
+        if (dx === dy || dx === 15 - dy) {
+          px32[row + x] = PAL_U32[1];
+          continue;
+        }
+        const a = (dy < dx) ? (dy < 15 - dx ? 0 : 1) : (dy < 15 - dx ? 3 : 2);
+        const q = Q[base + a];
+        if (q < -0.25) {
+          // Negative Q: crisp diagonal hazard stripe
+          px32[row + x] = PAL_U32[((dx + dy) & 3) === 0 ? 3 : 1];
+        } else {
+          const t = valueShade(q);
+          const scaled = t * 2.65;
+          const lo = Math.floor(scaled);
+          const hi = Math.min(3, lo + 1);
+          const thresh = Math.floor((scaled - lo) * 16);
+          const b = BAYER[by | (x & 3)];
+          px32[row + x] = PAL_U32[b < thresh ? hi : lo];
+        }
+      }
+    }
+    // Thin tile border
+    for (let i = 0; i < TILE; i++) {
+      setPx(ox + i, oy, 1); setPx(ox, oy + i, 1);
+    }
+  }
+
+  function render() {
+    if (!session) return;
+    const s = session;
+    const tickAnim = Math.floor(simFrame / 16);
+    const greedySet = new Uint8Array(QL.N);
+    if (s.mastered && s.greedyPath.length) {
+      for (let i = 0; i < s.greedyPath.length; i++) greedySet[s.greedyPath[i]] = 1;
+    }
+
+    drawBorder();
+
+    for (let r = 0; r < QL.H; r++) {
+      for (let c = 0; c < QL.W; c++) {
+        const idx = r * QL.W + c;
+        const ox = PAD + c * TILE;
+        const oy = PAD + r * TILE;
+        const cell = s.grid[idx];
+
+        if (cell === QL.WALL) {
+          drawSpr(SP.wall, ox, oy);
+          continue;
+        }
+        if (cell === QL.CHEESE) {
+          fillRect(ox, oy, TILE, TILE, 0);
+          // Subtle warm pulse frame around cheese
+          const rim = (tickAnim & 1) ? 1 : 0;
+          if (rim) {
+            for (let i = 1; i < 15; i++) { setPx(ox + i, oy + 1, 1); setPx(ox + i, oy + 14, 1); }
+          }
+          drawSpr((tickAnim & 1) ? SP.cheeseB : SP.cheeseA, ox, oy);
+          continue;
+        }
+        if (cell === QL.CAT) {
+          fillRect(ox, oy, TILE, TILE, 1);
+          // Periodic cat blink (deterministic by tile + frame)
+          const blink = ((simFrame + idx * 19) % 110) < 6;
+          drawSpr(blink ? SP.catB : SP.catA, ox, oy);
+          continue;
+        }
+
+        // Floor tile
+        const base = idx * 4;
+        if (view === 'q4') {
+          drawQ4Tile(ox, oy, base);
+        } else {
+          const ba = QL.bestAction(s, idx);
+          if (ba.val > 0.005) {
+            fillDither(ox, oy, TILE, TILE, valueShade(ba.val));
+          } else if (ba.val < -0.02) {
+            // Visited under step cost or surrounded by cats
+            fillDither(ox, oy, TILE, TILE, 0.14);
+          } else {
+            fillRect(ox, oy, TILE, TILE, 0);
+            // Tiny retro floor grid pip
+            setPx(ox + 0, oy + 0, 1);
+          }
+
+          // Subtle wall drop shadow from wall directly above
+          if (r > 0 && s.grid[(r - 1) * QL.W + c] === QL.WALL) {
+            for (let x = 0; x < TILE; x++) setPx(ox + x, oy, 2);
+          }
+
+          // Learned negative edge bars (cat/wall avoidance marks!)
+          const Q = s.Q;
+          if (Q[base + 0] < -0.5) fillRect(ox + 3, oy + 1, 10, 2, 3);
+          if (Q[base + 1] < -0.5) fillRect(ox + 13, oy + 3, 2, 10, 3);
+          if (Q[base + 2] < -0.5) fillRect(ox + 3, oy + 13, 10, 2, 3);
+          if (Q[base + 3] < -0.5) fillRect(ox + 1, oy + 3, 2, 10, 3);
+
+          // Policy arrow when a clear positive preference exists
+          if (!ba.tie && ba.val > 0.008 && !(r === s.sr && c === s.sc)) {
+            const arrowShade = valueShade(ba.val) > 0.56 ? 0 : 3;
+            drawMiniIcon(ARROWS[ba.a], ox + 5, oy + 5, arrowShade);
+          }
+        }
+
+        // Mastered greedy path stepping-stone highlight
+        if (greedySet[idx] && !(r === s.sr && c === s.sc) && view === 'heat') {
+          const pulse = ((simFrame >> 3) + r + c) & 3;
+          if (pulse === 0 || FIXED || RM) {
+            setPx(ox + 2, oy + 2, 0); setPx(ox + 13, oy + 2, 0);
+            setPx(ox + 2, oy + 13, 0); setPx(ox + 13, oy + 13, 0);
+          }
+        }
+
+        // Start mousehole sprite
+        if (r === s.sr && c === s.sc) {
+          drawSpr(SP.hole, ox, oy);
+        }
+      }
+    }
+
+    // Hover tile pixel selection cursor
+    if (hoverIdx >= 0 && hoverIdx < QL.N && !OG) {
+      const hr = (hoverIdx / QL.W) | 0, hc = hoverIdx % QL.W;
+      const hx = PAD + hc * TILE, hy = PAD + hr * TILE;
+      for (let i = 0; i < 4; i++) {
+        setPx(hx + i, hy, 3); setPx(hx, hy + i, 3);
+        setPx(hx + 15 - i, hy, 3); setPx(hx + 15, hy + i, 3);
+        setPx(hx + i, hy + 15, 3); setPx(hx, hy + 15 - i, 3);
+        setPx(hx + 15 - i, hy + 15, 3); setPx(hx + 15, hy + 15 - i, 3);
+      }
+    }
+
+    // Draw live mouse sprite
+    const mx = PAD + s.mc * TILE;
+    const my = PAD + s.mr * TILE;
+    const walkFrame = (s.totalSteps & 1) === 1;
+    const mSpr = facingLeft
+      ? (walkFrame ? SP.mouseL1 : SP.mouseL0)
+      : (walkFrame ? SP.mouseR1 : SP.mouseR0);
+    drawSpr(mSpr, mx, my);
+
+    // Tiny pixel '?' above mouse when it just took an ε-random step
+    if (s.lastExplored && s.totalSteps > 0 && my >= PAD + 4) {
+      drawMiniIcon(ICON_Q, mx + 5, Math.max(PAD, my - 5), 0, 3);
+    }
+
+    // Brief pixel impact flash on cat/cheese event
+    if (flashTimer > 0) {
+      const fx = PAD + flashC * TILE;
+      const fy = PAD + flashR * TILE;
+      if (flashType === 'cat') {
+        drawMiniIcon(ICON_X, fx + 5, fy + 5, 0, 3);
+      } else if (flashType === 'cheese') {
+        drawMiniIcon(ICON_B, fx + 5, Math.max(PAD, fy - 4), 0, 3);
+      }
+    }
+
+    // Blit offscreen 224x160 buffer cleanly to 672x480 display canvas
+    octx.putImageData(imgData, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, NW * SCALE, NH * SCALE);
+
+    // Subtle 1px pocket-LCD dot-matrix pixel grid overlay (only 3px spacing, fast single path)
+    ctx.fillStyle = 'rgba(15,56,15,0.065)';
+    for (let x = SCALE - 1; x < NW * SCALE; x += SCALE) ctx.fillRect(x, 0, 1, NH * SCALE);
+    for (let y = SCALE - 1; y < NH * SCALE; y += SCALE) ctx.fillRect(0, y, NW * SCALE, 1);
+
+    window.__frame = simFrame;
+    window.__state = {
+      frame: simFrame,
+      t: +simTime.toFixed(3),
+      stage: isCustom ? 'custom' : stageId,
+      ep: s.ep,
+      mastered: s.mastered,
+      masterEp: s.masterEp,
+    };
+  }
+
+  // ---- Simulation Tick ----
+  function advanceSim(dt) {
+    simFrame++;
+    simTime += dt;
+    if (flashTimer > 0) flashTimer--;
+    if (paused || !session || !session.bfs.solvable || session.stumped) return;
+
+    // Steps per second by speed setting: 1x -> 10/s, 8x -> 120/s (2/frame), MAX -> 1800/s (30/frame)
+    const rate = speed === 1 ? 10 : speed === 8 ? 120 : 1800;
+    stepAccum += rate * dt;
+    const nSteps = Math.min(45, Math.floor(stepAccum));
+    stepAccum -= nSteps;
+
+    const wasMastered = session.mastered;
+    let uiDirty = false;
+    for (let i = 0; i < nSteps; i++) {
+      const prevR = session.mr, prevC = session.mc;
+      const res = QL.stepOne(session);
+      if (session.dir === 3) facingLeft = true;
+      else if (session.dir === 1) facingLeft = false;
+
+      if (res.event === 'cat') {
+        flashType = 'cat'; flashTimer = 10;
+        flashR = prevR + QL.DR[session.lastAction];
+        flashC = prevC + QL.DC[session.lastAction];
+        if (speed <= 8) sfxCat();
+        uiDirty = true;
+      } else if (res.event === 'cheese') {
+        flashType = 'cheese'; flashTimer = 12;
+        flashR = prevR + QL.DR[session.lastAction];
+        flashC = prevC + QL.DC[session.lastAction];
+        if (speed <= 8) sfxCheese();
+        uiDirty = true;
+      } else if (res.epDone) {
+        uiDirty = true;
+      }
+      if (!wasMastered && session.mastered) {
+        sfxMaster();
+        if (isCustom && session.masterEp > hiScore) hiScore = session.masterEp;
+        recordLog('mastered');
+        uiDirty = true;
+        break;
+      }
+      if (session.stumped) {
+        recordLog('stumped');
+        uiDirty = true;
+        break;
+      }
+    }
+    if (uiDirty || (simFrame & 7) === 0) syncUI();
+  }
+
+  // ---- Interactive Canvas Painting ----
+  let painting = false;
+  let activeBrush = QL.WALL;
+  let lastPaintedIdx = -1;
+
+  function clientToCell(clientX, clientY) {
+    const rect = cv.getBoundingClientRect();
+    const nx = ((clientX - rect.left) / rect.width) * NW;
+    const ny = ((clientY - rect.top) / rect.height) * NH;
+    const c = Math.floor((nx - PAD) / TILE);
+    const r = Math.floor((ny - PAD) / TILE);
+    if (r < 0 || r >= QL.H || c < 0 || c >= QL.W) return -1;
+    return r * QL.W + c;
+  }
+
+  function applyPaint(idx, tool) {
+    if (idx < 0 || idx >= QL.N) return;
+    const r = (idx / QL.W) | 0, c = idx % QL.W;
+    const g = new Uint8Array(currentMaze.grid);
+    let sr = currentMaze.sr, sc = currentMaze.sc;
+    let changed = false;
+
+    if (tool === 4) {
+      // Move Start
+      if (r !== sr || c !== sc) {
+        sr = r; sc = c;
+        g[idx] = QL.FLOOR;
+        changed = true;
+      }
+    } else {
+      // Don't overwrite Start with wall/cat/cheese
+      if (r === sr && c === sc && tool !== QL.FLOOR) return;
+      if (g[idx] !== tool) {
+        g[idx] = tool;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    isCustom = true;
+    sfxPaint();
+    loadMaze({ grid: g, sr, sc }, { tag: 'paint' });
+  }
+
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    cv.setPointerCapture(e.pointerId);
+    painting = true;
+    activeBrush = e.button === 2 ? QL.FLOOR : brush;
+    const idx = clientToCell(e.clientX, e.clientY);
+    hoverIdx = idx;
+    lastPaintedIdx = idx;
+    applyPaint(idx, activeBrush);
+  });
+  cv.addEventListener('pointermove', e => {
+    const idx = clientToCell(e.clientX, e.clientY);
+    if (idx !== hoverIdx) {
+      hoverIdx = idx;
+      updateProbe();
+      if (paused || FIXED) render();
+    }
+    if (painting && idx !== lastPaintedIdx && idx >= 0) {
+      lastPaintedIdx = idx;
+      applyPaint(idx, activeBrush);
+    }
+  });
+  cv.addEventListener('pointerup', () => { painting = false; lastPaintedIdx = -1; });
+  cv.addEventListener('pointerleave', () => {
+    if (!painting) { hoverIdx = -1; updateProbe(); if (paused || FIXED) render(); }
+  });
+
+  // ---- Controls ----
+  document.getElementById('stageGrp').addEventListener('click', e => {
+    const b = e.target.closest('button[data-stage]');
+    if (!b) return;
+    selectStage(b.dataset.stage, 'stage');
+  });
+
+  document.getElementById('brushGrp').addEventListener('click', e => {
+    const b = e.target.closest('button[data-brush]');
+    if (!b) return;
+    brush = +b.dataset.brush;
+    syncUI();
+  });
+
+  document.querySelectorAll('[data-spd]').forEach(b => {
+    b.addEventListener('click', () => {
+      speed = +b.dataset.spd;
+      paused = false;
+      syncUI();
+    });
+  });
+
+  slEps.addEventListener('input', () => {
+    eps = +slEps.value;
+    loadMaze(currentMaze, { tag: 'eps' });
+  });
+
+  slGam.addEventListener('input', () => {
+    gamma = +slGam.value;
+    loadMaze(currentMaze, { tag: 'gamma' });
+  });
+
+  btnStepCost.addEventListener('click', () => {
+    stepCost = !stepCost;
+    loadMaze(currentMaze, { tag: 'stepCost' });
+  });
+
+  btnReset.addEventListener('click', () => {
+    loadMaze(currentMaze, { tag: 'reset' });
+  });
+
+  btnView.addEventListener('click', () => {
+    view = view === 'heat' ? 'q4' : 'heat';
+    syncUI();
+    render();
+  });
+
+  btnSeed.addEventListener('click', () => {
+    seed = (seed % 30) + 1;
+    loadMaze(currentMaze, { tag: 'seed' });
+  });
+
+  btnSfx.addEventListener('click', () => {
+    sfxOn = !sfxOn;
+    if (sfxOn) beep(660, 0.05);
+    syncUI();
+  });
+
+  function scoreNow() {
+    if (!session || !session.bfs.solvable) { syncUI(); render(); return null; }
+    QL.runUntilMastered(session, QL.MAX_EP);
+    score15 = QL.scoreMaze(currentMaze, { eps, gamma, stepCost }, 15);
+    if (score15.solvable) {
+      const m = Math.round(score15.median);
+      if (isCustom && m > hiScore) hiScore = m;
+    }
+    recordLog('scoreNow');
+    sfxMaster();
+    syncUI();
+    render();
+    return score15;
+  }
+  btnScore.addEventListener('click', scoreNow);
+
+  btnWhat.addEventListener('click', () => modalBg.classList.add('open'));
+  btnClose.addEventListener('click', () => modalBg.classList.remove('open'));
+  modalBg.addEventListener('click', e => { if (e.target === modalBg) modalBg.classList.remove('open'); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') modalBg.classList.remove('open');
+  });
+
+  // Resize: redraw immediately for ?fixed / paused modes
+  window.addEventListener('resize', () => render());
+
+  // Public API for tests and ?fixed deterministic stepping
+  window.qlab = {
+    state() {
+      if (!session) return { ready: false };
+      return {
+        ready: true,
+        stage: isCustom ? 'custom' : stageId,
+        isCustom,
+        grid: QL.encodeGrid(session.grid, session.sr, session.sc),
+        sr: session.sr,
+        sc: session.sc,
+        eps: session.eps,
+        gamma: session.gamma,
+        alpha: session.alpha,
+        stepCost: session.stepCost,
+        seed: session.seed,
+        ep: session.ep,
+        stepInEp: session.stepInEp,
+        mr: session.mr,
+        mc: session.mc,
+        dir: session.dir,
+        totalSteps: session.totalSteps,
+        catsHit: session.catsHit,
+        cheesesHit: session.cheesesHit,
+        firstCheeseEp: session.firstCheeseEp,
+        mastered: session.mastered,
+        masterEp: session.masterEp,
+        masterLen: session.masterLen,
+        stumped: session.stumped,
+        bfsShortest: session.bfs.shortest,
+        solvable: session.bfs.solvable,
+        vStart: session.vStart,
+        horizonBlind: session.horizonBlind,
+        vStarHash: QL.hashF64(session.Vstar),
+        qHash: QL.hashF64(session.Q),
+        score15,
+        hiScore,
+        view,
+        speed,
+        brush,
+        sfx: sfxOn,
+        paused,
+        frame: simFrame,
+        t: +simTime.toFixed(3),
+        ticker: elTicker.textContent,
+        log: sessionLog.slice(),
+      };
+    },
+    setStage(id) { selectStage(id, 'api-stage'); },
+    setTile(r, c, tile) { applyPaint(r * QL.W + c, tile); },
+    setParams(o = {}) {
+      if (o.eps !== undefined) eps = +o.eps;
+      if (o.gamma !== undefined) gamma = +o.gamma;
+      if (o.stepCost !== undefined) stepCost = !!o.stepCost;
+      if (o.seed !== undefined) seed = o.seed | 0;
+      loadMaze(currentMaze, { tag: 'api-params' });
+    },
+    setView(v) { view = v === 'q4' ? 'q4' : 'heat'; syncUI(); render(); },
+    setSpeed(s) { speed = +s; paused = false; syncUI(); },
+    scoreNow,
+    reset() { loadMaze(currentMaze, { tag: 'api-reset' }); },
+    cellRect(r, c) {
+      const rect = cv.getBoundingClientRect();
+      const sx = rect.width / NW, sy = rect.height / NH;
+      return {
+        x: rect.left + (PAD + (c + 0.5) * TILE) * sx,
+        y: rect.top + (PAD + (r + 0.5) * TILE) * sy,
+        w: TILE * sx,
+        h: TILE * sy,
+      };
+    },
+    fbHash() {
+      let h = 0x811c9dc5;
+      for (let i = 0; i < px32.length; i++) {
+        h ^= (px32[i] & 255);
+        h = Math.imul(h, 0x01000193) >>> 0;
+      }
+      return ('00000000' + h.toString(16)).slice(-8);
+    },
+  };
+
+  window.step = function (n = 1) {
+    const count = Math.max(1, n | 0);
+    for (let i = 0; i < count; i++) advanceSim(1 / 60);
+    render();
+    return window.__state;
+  };
+
+  // Boot!
+  selectStage(stageId, 'boot');
+
+  if (!FIXED) {
+    let last = performance.now();
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+      last = now;
+      advanceSim(dt);
+      render();
+    }
+    requestAnimationFrame(loop);
+  }
+})();
+
+</script>
+</body>
+</html>

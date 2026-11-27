@@ -1,0 +1,11 @@
+{
+ "slug": "q-labyrinth",
+ "title": "Q Labyrinth",
+ "no": "059",
+ "date": "2026-11-27",
+ "kind": "Q-learning · Pixel Canvas 2D",
+ "blurb": "A 4-shade handheld pixel maze where you paint walls, cats, and cheese to stump a real tabular Q-learning mouse. Watch its value heatmap crawl backward from the cheese, tune ε and γ, flip the −0.04 step cost switch to trigger optimistic exploration, and try to beat Gauntlet par across 15 seeds.",
+ "color": "#005618",
+ "exhibit": "qLabyrinth",
+ "lane": "ml"
+}
