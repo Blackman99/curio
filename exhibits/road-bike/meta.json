@@ -1,0 +1,11 @@
+{
+ "slug": "road-bike",
+ "title": "Road Bike",
+ "no": "060",
+ "date": "2026-11-28",
+ "kind": "Steering geometry · three.js",
+ "blurb": "Three procedural 700c road bikes side by side on a Swiss specification grid. Sweep one head-angle rail and fork offset to see trail, Meijaard (2007) Whipple self-stability eigenvalues, and a working 11-speed slant-parallelogram derailleur respond live.",
+ "color": "#c05868",
+ "exhibit": "roadBike",
+ "lane": "3d"
+}

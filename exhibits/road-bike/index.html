@@ -1,0 +1,2607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Road Bike — Steering Geometry &amp; Drivetrain · Curio No. 060</title>
+<meta name="description" content="Three procedural 3D road bikes side-by-side on a Swiss specification grid: sweep head-tube angle and fork rake to watch trail, Whipple self-stability eigenvalues, and an 11-speed slant-parallelogram drivetrain respond in real time.">
+<meta property="og:title" content="Road Bike — Curio No. 060">
+<meta property="og:description" content="Side-by-side 3D road bikes on a Swiss grid: head-tube angle, fork trail, Meijaard (2007) Whipple self-stability eigenvalues, and a working 11-speed derailleur.">
+<meta property="og:image" content="https://blackman99.github.io/curio/road-bike/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Road Bike — Curio No. 060">
+<meta name="twitter:description" content="Three 3D road bikes on one head-angle rail: trail, Whipple self-stability, and 11-speed slant-parallelogram drivetrain.">
+<meta name="twitter:image" content="https://blackman99.github.io/curio/road-bike/og.png">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f7f6f2;
+  --white:#ffffff;
+  --ink:#111214;
+  --muted:#5a5d64;
+  --rule:#111214;
+  --subrule:#d5d2c8;
+  --red:#dc1c24;
+  --red-soft:rgba(220,28,36,.10);
+  --stable-tint:rgba(17,18,20,.07);
+  --f-disp:'Schibsted Grotesk',system-ui,sans-serif;
+  --f-body:'Public Sans',system-ui,sans-serif;
+  --f-mono:'Space Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{display:flex;flex-direction:column;min-height:100vh}
+body.og-mode .ctrl-rail,body.og-mode .modal-wrap,body.og-mode .top-actions,body.og-mode .mob-tabs,body.og-mode .stage-hint{display:none!important}
+body.og-mode .masthead{padding:10px 24px}
+body.og-mode .title-main h1{font-size:34px}
+body.og-mode .spec-row{border-bottom:1.5px solid var(--rule)}
+body.og-mode .chart-strip{height:108px}
+body.og-mode .stage-note{font-size:13px;padding:5px 12px}
+
+/* Band 1: Swiss Editorial Masthead */
+.masthead{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:18px;
+  padding:10px 20px;
+  background:var(--white);
+  border-bottom:2px solid var(--rule);
+  flex-shrink:0;
+}
+.brand-col{display:flex;align-items:center;gap:12px}
+.back{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 9px;border:1.5px solid var(--rule);
+  color:var(--ink);text-decoration:none;
+  font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.04em;
+  background:var(--white);transition:background .12s,color .12s;
+}
+.back:hover{background:var(--ink);color:var(--white)}
+.kicker{
+  font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--red);white-space:nowrap;
+}
+.title-main{display:flex;align-items:baseline;gap:14px;min-width:0}
+.title-main h1{
+  font-family:var(--f-disp);font-weight:900;font-size:28px;line-height:1;
+  letter-spacing:-.03em;color:var(--ink);white-space:nowrap;
+}
+.title-main .sub{
+  font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.top-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.seg{display:inline-flex;border:1.5px solid var(--rule);background:var(--white)}
+.seg button{
+  appearance:none;border:0;border-right:1px solid var(--subrule);background:transparent;
+  color:var(--ink);font-family:var(--f-mono);font-size:11px;font-weight:700;
+  padding:5px 10px;cursor:pointer;letter-spacing:.03em;transition:background .1s,color .1s;
+}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:#eeede7}
+.seg button.on{background:var(--ink);color:var(--white)}
+.btn{
+  appearance:none;border:1.5px solid var(--rule);background:var(--white);color:var(--ink);
+  font-family:var(--f-mono);font-size:11px;font-weight:700;padding:5px 10px;cursor:pointer;
+  letter-spacing:.03em;transition:background .1s,color .1s,border-color .1s;white-space:nowrap;
+}
+.btn:hover{background:#eeede7}
+.btn.red{background:var(--red);border-color:var(--red);color:var(--white)}
+.btn.red:hover{background:#b8141b;border-color:#b8141b}
+.btn.on{background:var(--red);border-color:var(--red);color:var(--white)}
+
+/* Mobile bike tabs */
+.mob-tabs{display:none;border-bottom:1.5px solid var(--rule);background:var(--white)}
+.mob-tabs button{
+  flex:1;appearance:none;border:0;border-right:1px solid var(--subrule);background:var(--white);
+  font-family:var(--f-mono);font-size:11px;font-weight:700;padding:8px 6px;color:var(--ink);cursor:pointer;
+}
+.mob-tabs button:last-child{border-right:0}
+.mob-tabs button.on{background:var(--red);color:var(--white)}
+
+/* Band 2: 3-Column Swiss Spec Strip */
+.spec-row{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  background:var(--white);
+  border-bottom:1.5px solid var(--rule);
+  flex-shrink:0;
+}
+.spec-row.single{grid-template-columns:1fr}
+.spec-col{
+  padding:8px 16px;
+  border-right:1.5px solid var(--rule);
+  cursor:pointer;
+  transition:background .12s;
+  display:flex;flex-direction:column;gap:4px;
+}
+.spec-col:last-child{border-right:0}
+.spec-col:hover{background:#faf9f5}
+.spec-col.focus{background:#fff8f8}
+.spec-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.spec-id{display:flex;align-items:baseline;gap:8px}
+.spec-num{font-family:var(--f-disp);font-weight:900;font-size:18px;color:var(--red);line-height:1}
+.spec-name{font-family:var(--f-disp);font-weight:800;font-size:16px;letter-spacing:-.01em}
+.spec-tag{font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:.04em}
+.pill{
+  font-family:var(--f-mono);font-size:10px;font-weight:700;letter-spacing:.06em;
+  padding:2px 7px;border:1.5px solid var(--rule);text-transform:uppercase;white-space:nowrap;
+}
+.pill.stable{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.pill.weave{background:var(--red);color:var(--white);border-color:var(--red)}
+.pill.capsize{background:var(--white);color:var(--red);border-color:var(--red)}
+.spec-metrics{
+  display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  font-size:12px;color:var(--muted);
+}
+.spec-metrics b{
+  font-family:var(--f-mono);font-size:12px;font-weight:700;color:var(--ink);margin-left:3px;
+}
+.spec-metrics .hi b{color:var(--red)}
+
+/* Band 3: Full-Width 3D Viewport Stage */
+.stage-wrap{
+  position:relative;
+  flex:1 1 auto;
+  min-height:280px;
+  background:var(--paper);
+  overflow:hidden;
+  user-select:none;
+  touch-action:none;
+}
+#gl{display:block;width:100%;height:100%;cursor:grab}
+#gl:active{cursor:grabbing}
+.bay-rules{
+  position:absolute;inset:0;pointer-events:none;
+  display:grid;grid-template-columns:repeat(3,1fr);
+}
+.bay-rules.hidden{display:none}
+.bay-rules div{border-right:1.5px solid var(--rule)}
+.bay-rules div:last-child{border-right:0}
+
+/* Compact floating caption / callout inside stage (single idea, top-left or bottom-center) */
+.stage-note{
+  position:absolute;left:16px;bottom:10px;
+  background:rgba(255,255,255,.92);border:1px solid var(--rule);
+  padding:4px 10px;font-size:12px;color:var(--ink);
+  max-width:min(620px,calc(100% - 32px));pointer-events:none;
+}
+.stage-note b{color:var(--red);font-weight:700}
+.stage-hint{
+  position:absolute;right:14px;bottom:10px;
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;
+  color:var(--muted);background:rgba(247,246,242,.86);padding:3px 7px;
+  border:1px solid var(--subrule);pointer-events:none;
+}
+
+/* Band 4: Whipple Eigenvalue & Drivetrain Strip */
+.chart-strip{
+  height:112px;
+  flex-shrink:0;
+  background:var(--white);
+  border-top:1.5px solid var(--rule);
+  border-bottom:1.5px solid var(--rule);
+  position:relative;
+}
+#chart{display:block;width:100%;height:100%}
+
+/* Band 5: Shared Horizontal Swiss Control Rail */
+.ctrl-rail{
+  display:grid;
+  grid-template-columns:1.1fr 1.0fr 1.25fr 1.55fr auto;
+  align-items:center;
+  background:var(--white);
+  flex-shrink:0;
+}
+.ctrl-cell{
+  padding:8px 12px;
+  border-right:1px solid var(--subrule);
+  display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;
+}
+.ctrl-cell:last-child{border-right:0}
+.ctrl-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;min-width:0}
+.ctrl-lbl{
+  font-family:var(--f-mono);font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ctrl-val{
+  font-family:var(--f-mono);font-size:11px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0;
+}
+.ctrl-val.red{color:var(--red)}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;margin-top:-5.5px;
+  background:var(--red);border:1.5px solid var(--ink);border-radius:0;
+}
+input[type=range]::-moz-range-track{height:2px;background:var(--ink)}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;background:var(--red);border:1.5px solid var(--ink);border-radius:0;
+}
+.gear-row{display:flex;align-items:center;gap:6px}
+.gear-btn{
+  appearance:none;border:1.5px solid var(--rule);background:var(--white);color:var(--ink);
+  font-family:var(--f-mono);font-size:11px;font-weight:700;padding:3px 7px;cursor:pointer;
+}
+.gear-btn:hover{background:#eeede7}
+.gear-btn.on{background:var(--ink);color:var(--white)}
+.cog-bar{display:flex;align-items:center;gap:4px;flex:1}
+.cog-bar input[type=range]{flex:1}
+.act-cell{
+  padding:9px 14px;display:flex;align-items:center;gap:6px;justify-content:flex-end;
+}
+
+/* Modal: What is this? */
+.modal-wrap{
+  position:fixed;inset:0;background:rgba(17,18,20,.56);
+  display:none;align-items:center;justify-content:center;padding:24px;z-index:40;
+}
+.modal-wrap.open{display:flex}
+.modal{
+  background:var(--white);border:2px solid var(--rule);
+  max-width:860px;width:100%;max-height:86vh;overflow-y:auto;
+  padding:24px 28px;
+}
+.modal-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding-bottom:12px;margin-bottom:16px;border-bottom:2px solid var(--rule);
+}
+.modal-head h2{font-family:var(--f-disp);font-weight:900;font-size:24px;letter-spacing:-.02em}
+.w-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 24px}
+.w-sec h3{
+  font-family:var(--f-disp);font-weight:800;font-size:14px;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--red);margin-bottom:6px;
+}
+.w-sec p,.w-sec li{font-size:13px;line-height:1.55;color:#25272d;margin-bottom:7px}
+.w-sec ul{padding-left:16px}
+.w-eq{
+  font-family:var(--f-mono);font-size:12px;background:var(--paper);
+  border-left:3px solid var(--red);padding:6px 10px;margin:8px 0;color:var(--ink);
+}
+
+/* Compact iframe (1297x717) */
+@media (min-width:761px) and (max-height:780px){
+  .masthead{padding:6px 14px;gap:12px}
+  .title-main h1{font-size:22px}
+  .title-main .sub{font-size:12px}
+  .spec-col{padding:5px 12px}
+  .spec-num{font-size:15px}
+  .spec-name{font-size:14px}
+  .chart-strip{height:90px}
+  .ctrl-cell{padding:6px 10px}
+  .act-cell{padding:6px 10px}
+}
+
+/* Mobile (390x844) */
+@media (max-width:760px){
+  body{min-height:100dvh}
+  .masthead{grid-template-columns:1fr;gap:8px;padding:10px 12px}
+  .brand-col{justify-content:space-between}
+  .title-main{flex-direction:column;gap:3px}
+  .title-main h1{font-size:24px}
+  .title-main .sub{white-space:normal;font-size:12px}
+  .top-actions{justify-content:flex-start}
+  .seg button,.btn{font-size:10px;padding:5px 7px}
+  .mob-tabs{display:flex}
+  .spec-row{grid-template-columns:1fr}
+  .spec-col{border-right:0;display:none;padding:8px 12px}
+  .spec-col.mob-on{display:flex}
+  .stage-wrap{min-height:270px;height:38vh}
+  .bay-rules{display:none!important}
+  .stage-hint{display:none}
+  .stage-note{left:8px;right:8px;bottom:6px;font-size:11px;padding:4px 8px}
+  .chart-strip{height:102px}
+  .ctrl-rail{grid-template-columns:1fr 1fr}
+  .ctrl-cell{padding:7px 9px;border-bottom:1px solid var(--subrule)}
+  .ctrl-lbl,.ctrl-val{font-size:10px}
+  .ctrl-cell:nth-child(3),.ctrl-cell:nth-child(4){grid-column:1 / -1;border-right:0}
+  .act-cell{grid-column:1 / -1;justify-content:stretch;padding:8px 10px}
+  .act-cell .btn{flex:1}
+  .w-grid{grid-template-columns:1fr}
+  .modal{padding:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="brand-col">
+    <a class="back" href="../">← Curio</a>
+    <span class="kicker">Curio · No. 060 · Steering geometry</span>
+  </div>
+  <div class="title-main">
+    <h1>Road Bike</h1>
+    <p class="sub">Trail, Whipple stability &amp; 11-speed drivetrain across three frames.</p>
+  </div>
+  <div class="top-actions">
+    <div class="seg" id="modeSeg" role="group" aria-label="Inspection mode">
+      <button type="button" data-mode="compare" class="on">Compare 3</button>
+      <button type="button" data-mode="drivetrain">Drivetrain</button>
+      <button type="button" data-mode="exploded">Exploded</button>
+      <button type="button" data-mode="xray">X-Ray</button>
+    </div>
+    <button type="button" class="btn" id="btnBench">Meijaard ’07</button>
+    <button type="button" class="btn" id="btnWhat">What is this?</button>
+  </div>
+</header>
+
+<div class="mob-tabs" id="mobTabs">
+  <button type="button" data-bike="0">01 Criterium</button>
+  <button type="button" data-bike="1" class="on">02 Endurance</button>
+  <button type="button" data-bike="2">03 Gravel</button>
+</div>
+
+<section class="spec-row" id="specRow" aria-label="Bike geometry summary">
+  <div class="spec-col" data-bike="0">
+    <div class="spec-head">
+      <div class="spec-id"><span class="spec-num">01</span><span class="spec-name">Criterium</span><span class="spec-tag">700×25C</span></div>
+      <span class="pill stable" id="pill0">Self-stable</span>
+    </div>
+    <div class="spec-metrics">
+      <span>HTA<b id="hta0">73.5°</b></span>
+      <span class="hi">Trail<b id="tr0">54.7 mm</b></span>
+      <span>Stable<b id="win0">5.18–9.46 m/s</b></span>
+    </div>
+  </div>
+  <div class="spec-col mob-on focus" data-bike="1">
+    <div class="spec-head">
+      <div class="spec-id"><span class="spec-num">02</span><span class="spec-name">Endurance</span><span class="spec-tag">700×28C</span></div>
+      <span class="pill stable" id="pill1">Self-stable</span>
+    </div>
+    <div class="spec-metrics">
+      <span>HTA<b id="hta1">72.0°</b></span>
+      <span class="hi">Trail<b id="tr1">62.8 mm</b></span>
+      <span>Stable<b id="win1">5.50–10.18 m/s</b></span>
+    </div>
+  </div>
+  <div class="spec-col" data-bike="2">
+    <div class="spec-head">
+      <div class="spec-id"><span class="spec-num">03</span><span class="spec-name">Gravel</span><span class="spec-tag">700×38C</span></div>
+      <span class="pill weave" id="pill2">Weave</span>
+    </div>
+    <div class="spec-metrics">
+      <span>HTA<b id="hta2">70.0°</b></span>
+      <span class="hi">Trail<b id="tr2">73.8 mm</b></span>
+      <span>Stable<b id="win2">5.91–11.04 m/s</b></span>
+    </div>
+  </div>
+</section>
+
+<main class="stage-wrap" id="stageWrap">
+  <canvas id="gl"></canvas>
+  <div class="bay-rules" id="bayRules"><div></div><div></div><div></div></div>
+  <div class="stage-note" id="say">At <b>5.6 m/s</b>, Criterium and Endurance self-correct after a nudge while high-trail Gravel still weaves.</div>
+  <div class="stage-hint">Drag to orbit · Scroll to zoom · Click column to focus</div>
+</main>
+
+<section class="chart-strip" aria-label="Whipple stability eigenvalues">
+  <canvas id="chart"></canvas>
+</section>
+
+<footer class="ctrl-rail">
+  <div class="ctrl-cell">
+    <div class="ctrl-top"><span class="ctrl-lbl">Head Angle ΔHTA</span><span class="ctrl-val red" id="valHta">+0.0°</span></div>
+    <input type="range" id="slHta" min="-6" max="6" step="0.5" value="0" aria-label="Head-tube angle offset">
+  </div>
+  <div class="ctrl-cell">
+    <div class="ctrl-top"><span class="ctrl-lbl">Fork Offset ΔRake</span><span class="ctrl-val" id="valRake">+0 mm</span></div>
+    <input type="range" id="slRake" min="-15" max="65" step="1" value="0" aria-label="Fork offset delta">
+  </div>
+  <div class="ctrl-cell">
+    <div class="ctrl-top"><span class="ctrl-lbl">Speed v</span><span class="ctrl-val" id="valSpeed">5.6 m/s · 20.2 km/h</span></div>
+    <input type="range" id="slSpeed" min="0" max="13" step="0.1" value="5.6" aria-label="Forward speed">
+  </div>
+  <div class="ctrl-cell">
+    <div class="ctrl-top"><span class="ctrl-lbl">Gear · Chainline</span><span class="ctrl-val" id="valGear">50×17T · 2.94 · +0.5°</span></div>
+    <div class="gear-row">
+      <button type="button" class="gear-btn" id="ring34">34T</button>
+      <button type="button" class="gear-btn on" id="ring50">50T</button>
+      <div class="cog-bar">
+        <span class="ctrl-lbl">34</span>
+        <input type="range" id="slCog" min="0" max="10" step="1" value="5" aria-label="Rear cassette cog">
+        <span class="ctrl-lbl">11</span>
+      </div>
+    </div>
+  </div>
+  <div class="act-cell">
+    <button type="button" class="btn red" id="btnNudge">Nudge</button>
+    <button type="button" class="btn" id="btnReset">Reset</button>
+  </div>
+</footer>
+
+<div class="modal-wrap" id="modalWrap" role="dialog" aria-modal="true" aria-labelledby="whatTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="whatTitle">What is this? — Road Bike Geometry &amp; Dynamics</h2>
+      <button type="button" class="btn" id="btnCloseWhat">Close</button>
+    </div>
+    <div class="w-grid">
+  <div class="w-sec">
+    <h3>The Steering Paradox</h3>
+    <p>Every bicycle's front fork has two numbers that shape how it feels: the <strong>head-tube angle</strong> (α) and the <strong>fork offset / rake</strong> (d). Together with wheel radius R they set the <strong>ground trail</strong>:</p>
+    <p class="w-eq">c = (R cos α − d) / sin α = R tan λ − d / cos λ</p>
+    <p>where λ = 90° − α is the steer-axis tilt. Two counterintuitive facts fall straight out of this equation: <em>increasing</em> fork offset pushes the axle forward and <em>shortens</em> trail; and a slacker head angle with more trail is <em>not</em> always more stable.</p>
+    <p>At 5.6 m/s (20.2 km/h), the steep <strong>Criterium</strong> (trail 54.7 mm, self-stable 5.18–9.46 m/s) and <strong>Endurance</strong> (62.8 mm, 5.50–10.18 m/s) already self-stabilize after a nudge, while the slack, high-trail <strong>Gravel</strong> bike (73.8 mm, 5.91–11.04 m/s) is still weave-unstable. Above 10.2 m/s (37 km/h) the roles flip: Criterium and Endurance cross capsize while Gravel remains self-stable up to 39.7 km/h.</p>
+  </div>
+  <div class="w-sec">
+    <h3>Whipple–Carvallo Benchmark (Meijaard et al. 2007)</h3>
+    <p>The stability curves and live nudge response solve the full 25-parameter linearized rigid-body equations of <strong>Meijaard, Papadopoulos, Ruina &amp; Schwab (2007)</strong>, <em>Proc. R. Soc. A</em> 463, 1955–1982 (Appendix A, eqs A1–A27):</p>
+    <p class="w-eq">M q̈ + v C₁ q̇ + (g K₀ + v² K₂) q = 0, &nbsp; q = [φ, δ]ᵀ</p>
+    <p>Toggle <strong>Meijaard '07</strong> to inspect the exact published benchmark bicycle: weave speed <strong>4.292 m/s</strong>, capsize speed <strong>6.024 m/s</strong>, and weave eigenvalue at 5 m/s of <strong>-0.775 ± 4.465i s⁻¹</strong> (verified to 12+ digits against Table 2 of the paper). Even when fork offset is pushed to 105 mm on the Endurance frame—giving negative trail of <strong>-0.3 mm</strong>—the forward handlebar mass still yields a narrow self-stable window (2.79–3.01 m/s), echoing Kooijman et al. (2011).</p>
+  </div>
+  <div class="w-sec">
+    <h3>11-Speed Drivetrain &amp; Slant Parallelogram</h3>
+    <p>Each bike carries a Shimano 11-speed road compact layout: <strong>50/34T</strong> chainrings (7.2 mm spacing, 43.5 mm nominal chainline) and an <strong>11–34T</strong> 11-cog cassette (34-28-24-21-19-17-15-14-13-12-11T at 3.74 mm pitch; ratios 1.00–4.55, development 2.13–9.68 m/rev).</p>
+    <p>The rear derailleur is a rigid <strong>47° slant-parallelogram four-bar linkage</strong> (42 mm bars): shifting laterally toward larger inner cogs automatically drops the guide pulley along the cassette cone. At every shift, the page solves numerically for the tension-cage angle ψ (spanning -91.3° on 34×11 to +36.2° on 50×34, a 127.5° sweep) that keeps total roller-chain length strictly constant (112 / 114 / 116 half-inch links). Extreme cross-chaining reaches +3.09° (50×34) and -3.10° (34×11).</p>
+  </div>
+  <div class="w-sec">
+    <h3>What Is Computed vs. Modeled</h3>
+    <ul>
+      <li><strong>Computed live (float64)</strong>: all frame/fork hardpoints, ground &amp; mechanical trail, wheel flop, 25-parameter Whipple matrices (M, C₁, K₀, K₂), quartic eigenvalues (Aberth–Ehrlich), weave/capsize speeds (Routh–Hurwitz &amp; closed-form det K), RK4 impulse response, gear ratios, chainline angle, 3D 4-bar parallelogram pins, constant-chain-length cage angle, and 3D roller-chain path.</li>
+      <li><strong>Modeled / chosen</strong>: the three 700c road frames (Criterium / Endurance / Gravel) use representative size-56 geometry and a uniform 78 kg rider+frame mass model rather than a specific commercial bicycle; tube cross-sections, rim depth profiles, and studio finishes are procedural visual design. Tire slip, frame flex, and rider feedback are omitted, as in the rigid Whipple benchmark.</li>
+    </ul>
+  </div>
+</div>
+
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from '../assets/vendor/three.module.min.js';
+// Pure float64 physics, geometry, Whipple-Carvallo dynamics (Meijaard et al. 2007)
+// and 11-speed road drivetrain kinematics engine. Shared between browser and Node.
+function makeRoadBikeEngine() {
+  const G = 9.81;
+  const PI = Math.PI;
+  const TAU = 2 * PI;
+  const RAD = PI / 180;
+  const DEG = 180 / PI;
+
+  // Exact Meijaard, Papadopoulos, Ruina & Schwab (2007) Proc. R. Soc. A 463, Table 1
+  const MEIJAARD_2007 = {
+    name: 'Meijaard 2007',
+    w: 1.02, c: 0.08, lam: PI / 10, g: 9.81,
+    rR: 0.3, mR: 2.0, IRxx: 0.0603, IRyy: 0.12,
+    xB: 0.3, zB: -0.9, mB: 85.0, IBxx: 9.2, IByy: 11.0, IBzz: 2.8, IBxz: 2.4,
+    xH: 0.9, zH: -0.7, mH: 4.0, IHxx: 0.05892, IHyy: 0.06, IHzz: 0.00708, IHxz: -0.00756,
+    rF: 0.35, mF: 3.0, IFxx: 0.1405, IFyy: 0.28,
+  };
+
+  // Three contemporary 700c (ETRTO 622 mm BSD) road / all-road bikes.
+  // Frame geometry represents typical size-56 categories; masses/inertias are modeled consistently
+  // for a 78 kg frame+rider assembly and documented in What is this.
+  const BIKES = [
+    {
+      id: 'criterium', code: '01', name: 'CRITERIUM', tag: 'RACE · 700×25C',
+      htaDeg: 73.5, rakeMm: 43.0, tireMm: 25.0, rimDepthMm: 45.0,
+      csMm: 405.0, stackMm: 535.0, reachMm: 395.0, bbDropMm: 68.0,
+      staDeg: 73.5, htLenMm: 140.0, stLenMm: 515.0, stemMm: 110.0, nLinks: 112,
+      mRiderFrame: 78.0, mWheelF: 1.05, mWheelR: 1.30, mFront: 2.1,
+      paintHex: '#181a1f', accentHex: '#dc1c24',
+    },
+    {
+      id: 'endurance', code: '02', name: 'ENDURANCE', tag: 'ALL-ROAD · 700×28C',
+      htaDeg: 72.0, rakeMm: 45.0, tireMm: 28.0, rimDepthMm: 36.0,
+      csMm: 415.0, stackMm: 575.0, reachMm: 380.0, bbDropMm: 72.0,
+      staDeg: 73.0, htLenMm: 172.0, stLenMm: 525.0, stemMm: 100.0, nLinks: 114,
+      mRiderFrame: 78.0, mWheelF: 1.05, mWheelR: 1.30, mFront: 2.1,
+      paintHex: '#d91b22', accentHex: '#111216',
+    },
+    {
+      id: 'gravel', code: '03', name: 'GRAVEL', tag: 'RANDONNEUR · 700×38C',
+      htaDeg: 70.0, rakeMm: 50.0, tireMm: 38.0, rimDepthMm: 28.0,
+      csMm: 430.0, stackMm: 595.0, reachMm: 385.0, bbDropMm: 75.0,
+      staDeg: 72.5, htLenMm: 175.0, stLenMm: 520.0, stemMm: 90.0, nLinks: 116,
+      mRiderFrame: 78.0, mWheelF: 1.05, mWheelR: 1.30, mFront: 2.1,
+      paintHex: '#b4b8bf', accentHex: '#dc1c24',
+    },
+  ];
+
+  // Shimano 11-speed road compact drivetrain (50/34T + CS-HG700/HG800 11-34T)
+  const DRIVETRAIN = {
+    pitchMm: 12.7,          // 1/2" chain pitch
+    rings: [34, 50],
+    cogs: [34, 28, 24, 21, 19, 17, 15, 14, 13, 12, 11], // inner (0) -> outer (10)
+    chainlineMm: 43.5,      // standard Shimano 11s road center plane
+    ringSpacingMm: 7.2,     // 34T at 39.9 mm, 50T at 47.1 mm
+    cogPitchMm: 3.74,       // Shimano 11s road sprocket pitch
+    pulleyT: 11,            // 11T guide & tension pulleys
+    slantDeg: 47.0,         // slant-parallelogram plane angle
+    linkLenMm: 42.0,        // parallelogram bar length Lp
+    linkSepMm: 14.0,        // perpendicular bar separation on B/P knuckles
+    cageLenMm: 86.0,        // GS medium tension cage length Lc
+    b0X: 16.0, b0Y: -78.0,  // parallelogram center anchor relative to rear axle (mm)
+    hangerX: -4.0, hangerY: -28.0, hangerZ: 70.0,
+  };
+
+  function pitchRadius(teeth) {
+    return DRIVETRAIN.pitchMm / (2 * Math.sin(PI / teeth));
+  }
+
+  // ---- 1. Frame & Steering Geometry ----
+  // Returns all hardpoints in bike local frame: X forward from rear axle (m), Y up from ground (m).
+  // Plus consistent 25 Whipple parameters (Meijaard convention: x forward from rear contact, z DOWN).
+  function bikeGeometry(spec, dHtaDeg = 0, dRakeMm = 0) {
+    const htaDeg = spec.htaDeg + dHtaDeg;
+    const rakeMm = spec.rakeMm + dRakeMm;
+    const r = (622 * 0.5 + spec.tireMm) / 1000;
+    const rimOuterR = 622 * 0.5 / 1000;
+    const rimInnerR = rimOuterR - spec.rimDepthMm / 1000;
+    const alpha = htaDeg * RAD;
+    const lam = PI * 0.5 - alpha;
+    const d = rakeMm / 1000;
+    const sl = Math.sin(lam), cl = Math.cos(lam);
+
+    // Closed-form ground trail, mechanical trail, wheel flop
+    const trail = r * Math.tan(lam) - d / cl;
+    const mechTrail = trail * cl;
+    const flop = trail * Math.sin(alpha) * Math.cos(alpha);
+
+    const cs = spec.csMm / 1000;
+    const bbDrop = spec.bbDropMm / 1000;
+    const bbX = Math.sqrt(Math.max(0.01, cs * cs - bbDrop * bbDrop));
+    const bbY = r - bbDrop;
+
+    const stack = spec.stackMm / 1000;
+    const reach = spec.reachMm / 1000;
+    const htTopX = bbX + reach;
+    const htTopY = bbY + stack;
+
+    // Steer axis unit vector pointing DOWN-FORWARD in (X, Y-up): (sin lam, -cos lam)
+    // Unit normal pointing UP-FORWARD perpendicular to steer axis: (cos lam, sin lam)
+    const htLen = spec.htLenMm / 1000;
+    const htBotX = htTopX + htLen * sl;
+    const htBotY = htTopY - htLen * cl;
+
+    // Front axle sits at Y = r, offset +d along (cos lam, sin lam) from a point on steer axis at param s:
+    // htTopY - s * cl + d * sl = r => s = (htTopY - r + d * sl) / cl
+    const sAxle = (htTopY - r + d * sl) / cl;
+    const frontAxleX = htTopX + sAxle * sl + d * cl;
+    const frontAxleY = r;
+    const wheelbase = frontAxleX;
+    const frontCenter = Math.hypot(frontAxleX - bbX, frontAxleY - bbY);
+
+    // Fork crown sits 14 mm below lower head-tube cup along steer axis
+    const sCrown = htLen + 0.014;
+    const crownX = htTopX + sCrown * sl;
+    const crownY = htTopY - sCrown * cl;
+    const axleToCrown = Math.hypot(frontAxleX - crownX, frontAxleY - crownY);
+
+    // Steer axis ground intersection (Y = 0)
+    const sGround = htTopY / cl;
+    const steerGroundX = htTopX + sGround * sl;
+
+    // Seat tube & saddle
+    const sta = spec.staDeg * RAD;
+    const stLen = spec.stLenMm / 1000;
+    const stTopX = bbX - stLen * Math.cos(sta);
+    const stTopY = bbY + stLen * Math.sin(sta);
+    const saddleH = 0.725; // BB to saddle rail center along seat tube
+    const saddleX = bbX - saddleH * Math.cos(sta);
+    const saddleY = bbY + saddleH * Math.sin(sta);
+
+    // Top-tube & down-tube junctions on head tube
+    const ttHeadS = 0.024;
+    const ttHeadX = htTopX + ttHeadS * sl;
+    const ttHeadY = htTopY - ttHeadS * cl;
+    const dtHeadS = Math.max(0.04, htLen - 0.024);
+    const dtHeadX = htTopX + dtHeadS * sl;
+    const dtHeadY = htTopY - dtHeadS * cl;
+
+    // Seatstay junction on seat tube (50 mm below top of seat tube)
+    const ssStX = bbX - (stLen - 0.055) * Math.cos(sta);
+    const ssStY = bbY + (stLen - 0.055) * Math.sin(sta);
+
+    // Stem & bar clamp
+    const spacerH = 0.026;
+    const stemBaseX = htTopX - spacerH * sl;
+    const stemBaseY = htTopY + spacerH * cl;
+    const stemAngle = (90 - htaDeg - 6) * RAD; // -6 deg road stem
+    const stemL = spec.stemMm / 1000;
+    const barX = stemBaseX + stemL * Math.cos(stemAngle);
+    const barY = stemBaseY + stemL * Math.sin(stemAngle);
+
+    // 25 Whipple parameters (Meijaard convention: z = -Y)
+    const xB = bbX + 0.02;
+    const zB = -0.94;
+    const sH = (htTopY - 0.76) / cl;
+    const xH = htTopX + sH * sl + 0.060 * cl;
+    const zH = -0.76;
+    const IFyy = spec.mWheelF * (0.86 * r) * (0.86 * r);
+    const IFxx = 0.51 * IFyy;
+    const IRyy = spec.mWheelR * (0.80 * r) * (0.80 * r);
+    const IRxx = 0.52 * IRyy;
+
+    const whipple = {
+      w: wheelbase, c: trail, lam, g: G,
+      rR: r, mR: spec.mWheelR, IRxx, IRyy,
+      xB, zB, mB: spec.mRiderFrame, IBxx: 8.4, IByy: 10.2, IBzz: 2.5, IBxz: 2.1,
+      xH, zH, mH: spec.mFront, IHxx: 0.052, IHyy: 0.054, IHzz: 0.0085, IHxz: -0.0068,
+      rF: r, mF: spec.mWheelF, IFxx, IFyy,
+    };
+
+    return {
+      htaDeg, rakeMm, alpha, lam, r, rimOuterR, rimInnerR, tireR: spec.tireMm / 1000,
+      trail, mechTrail, flop, wheelbase, frontCenter, axleToCrown,
+      rearAxle: [0, r], frontAxle: [frontAxleX, frontAxleY],
+      bb: [bbX, bbY], htTop: [htTopX, htTopY], htBot: [htBotX, htBotY],
+      crown: [crownX, crownY], steerGround: [steerGroundX, 0],
+      stTop: [stTopX, stTopY], saddle: [saddleX, saddleY],
+      ttHead: [ttHeadX, ttHeadY], dtHead: [dtHeadX, dtHeadY], ssSt: [ssStX, ssStY],
+      stemBase: [stemBaseX, stemBaseY], bar: [barX, barY],
+      whipple,
+    };
+  }
+
+  // ---- 2. Meijaard et al. (2007) Appendix A Matrices (A1)-(A27) ----
+  function whippleMatrices(p) {
+    const { w, c, lam, rR, mR, IRxx, IRyy, xB, zB, mB, IBxx, IBzz, IBxz,
+      xH, zH, mH, IHxx, IHzz, IHxz, rF, mF, IFxx, IFyy } = p;
+    const mT = mR + mB + mH + mF;
+    const xT = (xB * mB + xH * mH + w * mF) / mT;
+    const zT = (-rR * mR + zB * mB + zH * mH - rF * mF) / mT;
+
+    const ITxx = IRxx + IBxx + IHxx + IFxx + mR * rR * rR + mB * zB * zB + mH * zH * zH + mF * rF * rF;
+    const ITxz = IBxz + IHxz - mB * xB * zB - mH * xH * zH + mF * w * rF;
+    const ITzz = IRxx + IBzz + IHzz + IFxx + mB * xB * xB + mH * xH * xH + mF * w * w;
+
+    const mA = mH + mF;
+    const xA = (xH * mH + w * mF) / mA;
+    const zA = (zH * mH - rF * mF) / mA;
+    const IAxx = IHxx + IFxx + mH * (zH - zA) * (zH - zA) + mF * (rF + zA) * (rF + zA);
+    const IAxz = IHxz - mH * (xH - xA) * (zH - zA) + mF * (w - xA) * (rF + zA);
+    const IAzz = IHzz + IFxx + mH * (xH - xA) * (xH - xA) + mF * (w - xA) * (w - xA);
+
+    const sl = Math.sin(lam), cl = Math.cos(lam);
+    const uA = (xA - w - c) * cl - zA * sl;
+    const IAll = mA * uA * uA + IAxx * sl * sl + 2 * IAxz * sl * cl + IAzz * cl * cl;
+    const IAlx = -mA * uA * zA + IAxx * sl + IAxz * cl;
+    const IAlz = mA * uA * xA + IAxz * sl + IAzz * cl;
+
+    const mu = (c / w) * cl;
+    const SR = IRyy / rR, SF = IFyy / rF, ST = SR + SF;
+    const SA = mA * uA + mu * mT * xT;
+
+    const M00 = ITxx;
+    const M01 = IAlx + mu * ITxz;
+    const M11 = IAll + 2 * mu * IAlz + mu * mu * ITzz;
+
+    const K000 = mT * zT;
+    const K001 = -SA;
+    const K011 = -SA * sl;
+
+    const K201 = ((ST - mT * zT) / w) * cl;
+    const K211 = ((SA + SF * sl) / w) * cl;
+
+    const C101 = mu * ST + SF * cl + (ITxz / w) * cl - mu * mT * zT;
+    const C110 = -(mu * ST + SF * cl);
+    const C111 = (IAlz / w) * cl + mu * (SA + (ITzz / w) * cl);
+
+    return {
+      M: [[M00, M01], [M01, M11]],
+      C1: [[0, C101], [C110, C111]],
+      K0: [[K000, K001], [K001, K011]],
+      K2: [[0, K201], [0, K211]],
+      detM: M00 * M11 - M01 * M01,
+      mT, xT, zT, mA, xA, zA, uA, SA, mu,
+    };
+  }
+
+  function charPoly(mat, g, v) {
+    const M = mat.M, C1 = mat.C1, K0 = mat.K0, K2 = mat.K2;
+    const c01 = v * C1[0][1], c10 = v * C1[1][0], c11 = v * C1[1][1];
+    const k00 = g * K0[0][0], k01 = g * K0[0][1] + v * v * K2[0][1];
+    const k10 = g * K0[1][0], k11 = g * K0[1][1] + v * v * K2[1][1];
+    const a4 = M[0][0] * M[1][1] - M[0][1] * M[1][0];
+    const a3 = M[0][0] * c11 - M[0][1] * c10 - c01 * M[1][0];
+    const a2 = M[0][0] * k11 + k00 * M[1][1] - M[0][1] * k10 - c01 * c10 - k01 * M[1][0];
+    const a1 = k00 * c11 - c01 * k10 - k01 * c10;
+    const a0 = k00 * k11 - k01 * k10;
+    return [a4, a3, a2, a1, a0];
+  }
+
+  // Aberth-Ehrlich solver for monic quartic z^4 + b3 z^3 + b2 z^2 + b1 z + b0 = 0
+  function quarticRoots(a4, a3, a2, a1, a0) {
+    const b3 = a3 / a4, b2 = a2 / a4, b1 = a1 / a4, b0 = a0 / a4;
+    // Special exact case: biquadratic (v = 0 => b3 = 0, b1 = 0)
+    if (Math.abs(b3) < 1e-15 && Math.abs(b1) < 1e-15) {
+      const disc = b2 * b2 - 4 * b0;
+      const out = [];
+      if (disc >= 0) {
+        const s = Math.sqrt(disc);
+        for (const u of [0.5 * (-b2 + s), 0.5 * (-b2 - s)]) {
+          if (u >= 0) {
+            const r = Math.sqrt(u);
+            out.push([r, 0], [-r, 0]);
+          } else {
+            const r = Math.sqrt(-u);
+            out.push([0, r], [0, -r]);
+          }
+        }
+      } else {
+        const re = -0.5 * b2, im = 0.5 * Math.sqrt(-disc);
+        const mod = Math.hypot(re, im), ang = Math.atan2(im, re) * 0.5;
+        const r = Math.sqrt(mod), cr = r * Math.cos(ang), ci = r * Math.sin(ang);
+        out.push([cr, ci], [cr, -ci], [-cr, ci], [-cr, -ci]);
+      }
+      return sortRoots(out);
+    }
+
+    // Center & Cauchy radius bound for initial Aberth-Ehrlich guesses
+    const cRe = -0.25 * b3;
+    const rad = Math.max(0.5, 1 + Math.max(Math.abs(b3), Math.abs(b2), Math.abs(b1), Math.abs(b0)) ** 0.25);
+    const zr = new Float64Array(4), zi = new Float64Array(4);
+    for (let k = 0; k < 4; k++) {
+      const th = (TAU * k) / 4 + 0.37123;
+      zr[k] = cRe + rad * Math.cos(th);
+      zi[k] = rad * Math.sin(th);
+    }
+
+    for (let it = 0; it < 120; it++) {
+      let maxStep = 0;
+      for (let k = 0; k < 4; k++) {
+        const xr = zr[k], xi = zi[k];
+        // Horner evaluation of p(z) and p'(z)
+        let pr = xr + b3, pi = xi;
+        let dr = 1, di = 0;
+        let t;
+        t = dr * xr - di * xi + pr; di = dr * xi + di * xr + pi; dr = t;
+        t = pr * xr - pi * xi + b2; pi = pr * xi + pi * xr; pr = t;
+        t = dr * xr - di * xi + pr; di = dr * xi + di * xr + pi; dr = t;
+        t = pr * xr - pi * xi + b1; pi = pr * xi + pi * xr; pr = t;
+        t = dr * xr - di * xi + pr; di = dr * xi + di * xr + pi; dr = t;
+        t = pr * xr - pi * xi + b0; pi = pr * xi + pi * xr; pr = t;
+
+        const dmag = dr * dr + di * di;
+        if (dmag < 1e-30) continue;
+        // w = p(z) / p'(z)
+        const wr = (pr * dr + pi * di) / dmag;
+        const wi = (pi * dr - pr * di) / dmag;
+        // s = sum_{j!=k} 1 / (z_k - z_j)
+        let sr = 0, si = 0;
+        for (let j = 0; j < 4; j++) {
+          if (j === k) continue;
+          const dx = xr - zr[j], dy = xi - zi[j];
+          const dm = dx * dx + dy * dy;
+          if (dm > 1e-30) { sr += dx / dm; si -= dy / dm; }
+        }
+        // denom = 1 - w * s
+        const qr = 1 - (wr * sr - wi * si);
+        const qi = -(wr * si + wi * sr);
+        const qm = qr * qr + qi * qi;
+        if (qm < 1e-30) continue;
+        const stepR = (wr * qr + wi * qi) / qm;
+        const stepI = (wi * qr - wr * qi) / qm;
+        zr[k] -= stepR;
+        zi[k] -= stepI;
+        const st = Math.hypot(stepR, stepI);
+        if (st > maxStep) maxStep = st;
+      }
+      if (maxStep < 1e-14) break;
+    }
+
+    const out = [];
+    for (let k = 0; k < 4; k++) {
+      out.push([zr[k], Math.abs(zi[k]) < 1e-11 ? 0 : zi[k]]);
+    }
+    return sortRoots(out);
+  }
+
+  function sortRoots(rs) {
+    // Sort by real part descending, then imag descending
+    return rs.slice().sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]));
+  }
+
+  function eigenvalues(mat, g, v) {
+    const [a4, a3, a2, a1, a0] = charPoly(mat, g, v);
+    return quarticRoots(a4, a3, a2, a1, a0);
+  }
+
+  function classifyModes(roots) {
+    const complex = roots.filter(r => Math.abs(r[1]) > 1e-7);
+    const reals = roots.filter(r => Math.abs(r[1]) <= 1e-7).map(r => r[0]).sort((a, b) => b - a);
+    let weaveRe = null, weaveIm = 0, capsize = null, caster = null;
+    if (complex.length >= 2) {
+      const pos = complex.find(r => r[1] > 0) || complex[0];
+      weaveRe = pos[0];
+      weaveIm = Math.abs(pos[1]);
+      if (reals.length >= 2) {
+        capsize = reals[0];
+        caster = reals[1];
+      }
+    } else if (reals.length === 4) {
+      // Near v = 0: two positive/negative falling-rising pairs
+      weaveRe = reals[0];
+      weaveIm = 0;
+      capsize = reals[2];
+      caster = reals[3];
+    }
+    const maxRe = Math.max(...roots.map(r => r[0]));
+    const stable = maxRe < -1e-9;
+    let regime = 'stable';
+    if (!stable) {
+      if (complex.length >= 2 && weaveRe >= (capsize ?? -1e9)) regime = 'weave';
+      else if (capsize !== null && capsize >= 0 && (weaveRe === null || capsize > weaveRe)) regime = 'capsize';
+      else regime = 'weave';
+    }
+    return { roots, weaveRe, weaveIm, capsize, caster, maxRe, stable, regime };
+  }
+
+  function criticalSpeeds(mat, g) {
+    const K0 = mat.K0, K2 = mat.K2;
+    const detK0 = K0[0][0] * K0[1][1] - K0[0][1] * K0[1][0];
+    const lin = K0[0][0] * K2[1][1] - K0[1][0] * K2[0][1];
+    const vcSq = Math.abs(lin) > 1e-15 ? (-g * detK0) / lin : -1;
+    const vc = vcSq > 0 ? Math.sqrt(vcSq) : NaN;
+
+    const H3 = (v) => {
+      const [a4, a3, a2, a1, a0] = charPoly(mat, g, v);
+      return a3 * a2 * a1 - a4 * a1 * a1 - a3 * a3 * a0;
+    };
+    let vw = NaN;
+    const N = 600, vLo = 0.05, vHi = 25.0;
+    let prevV = vLo, prevH = H3(vLo);
+    for (let i = 1; i <= N; i++) {
+      const v = vLo + ((vHi - vLo) * i) / N;
+      const h = H3(v);
+      if ((prevH <= 0 && h > 0) || (prevH >= 0 && h < 0)) {
+        let lo = prevV, hi = v, fl = prevH;
+        for (let k = 0; k < 72; k++) {
+          const m = 0.5 * (lo + hi), fm = H3(m);
+          if ((fl <= 0 && fm <= 0) || (fl >= 0 && fm >= 0)) { lo = m; fl = fm; }
+          else hi = m;
+        }
+        const cand = 0.5 * (lo + hi);
+        const rs = eigenvalues(mat, g, cand);
+        if (rs.some(r => Math.abs(r[0]) < 1e-5 && Math.abs(r[1]) > 1e-4)) {
+          vw = cand;
+          break;
+        }
+      }
+      prevV = v; prevH = h;
+    }
+    // Check if there is actually a self-stable band (vw < vc and stable at midpoint)
+    let hasStableBand = false;
+    if (Number.isFinite(vw) && Number.isFinite(vc) && vw < vc) {
+      const mid = classifyModes(eigenvalues(mat, g, 0.5 * (vw + vc)));
+      hasStableBand = mid.stable;
+    }
+    return { vw, vc, hasStableBand, span: hasStableBand ? vc - vw : 0 };
+  }
+
+  function stabilityCurve(mat, g, vMax = 14.0, steps = 70) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const v = (vMax * i) / steps;
+      const m = classifyModes(eigenvalues(mat, g, v));
+      pts.push({ v, weaveRe: m.weaveRe, weaveIm: m.weaveIm, capsize: m.capsize, caster: m.caster, maxRe: m.maxRe, stable: m.stable });
+    }
+    return pts;
+  }
+
+  // Exact RK4 step of M q'' + v C1 q' + (g K0 + v^2 K2) q = 0
+  function whippleDeriv(mat, g, v, st) {
+    const [phi, delta, dphi, ddelta] = st;
+    const M = mat.M, C1 = mat.C1, K0 = mat.K0, K2 = mat.K2;
+    const r0 = -(v * C1[0][1] * ddelta + g * K0[0][0] * phi + (g * K0[0][1] + v * v * K2[0][1]) * delta);
+    const r1 = -(v * (C1[1][0] * dphi + C1[1][1] * ddelta) + g * K0[1][0] * phi + (g * K0[1][1] + v * v * K2[1][1]) * delta);
+    const inv = 1 / mat.detM;
+    const ddphi = (M[1][1] * r0 - M[0][1] * r1) * inv;
+    const dddelta = (-M[1][0] * r0 + M[0][0] * r1) * inv;
+    return [dphi, ddelta, ddphi, dddelta];
+  }
+
+  function whippleStepRK4(mat, g, v, st, dt) {
+    const k1 = whippleDeriv(mat, g, v, st);
+    const s2 = [st[0] + 0.5 * dt * k1[0], st[1] + 0.5 * dt * k1[1], st[2] + 0.5 * dt * k1[2], st[3] + 0.5 * dt * k1[3]];
+    const k2 = whippleDeriv(mat, g, v, s2);
+    const s3 = [st[0] + 0.5 * dt * k2[0], st[1] + 0.5 * dt * k2[1], st[2] + 0.5 * dt * k2[2], st[3] + 0.5 * dt * k2[3]];
+    const k3 = whippleDeriv(mat, g, v, s3);
+    const s4 = [st[0] + dt * k3[0], st[1] + dt * k3[1], st[2] + dt * k3[2], st[3] + dt * k3[3]];
+    const k4 = whippleDeriv(mat, g, v, s4);
+    return [
+      st[0] + (dt / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
+      st[1] + (dt / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]),
+      st[2] + (dt / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]),
+      st[3] + (dt / 6) * (k1[3] + 2 * k2[3] + 2 * k3[3] + k4[3]),
+    ];
+  }
+
+  // ---- 3. 11-Speed Drivetrain, Slant-Parallelogram & Constant-Chain-Length Solver ----
+  function extTan(x1, y1, r1, x2, y2, r2, sgn) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const d = Math.hypot(dx, dy);
+    const a = Math.atan2(dy, dx) + sgn * Math.acos((r1 - r2) / d);
+    const ca = Math.cos(a), sa = Math.sin(a);
+    return { ax: x1 + r1 * ca, ay: y1 + r1 * sa, bx: x2 + r2 * ca, by: y2 + r2 * sa, a };
+  }
+
+  function intTan(x1, y1, r1, x2, y2, r2, sgn) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const d = Math.hypot(dx, dy);
+    const a1 = Math.atan2(dy, dx) + sgn * Math.acos((r1 + r2) / d);
+    const a2 = a1 + PI;
+    return {
+      ax: x1 + r1 * Math.cos(a1), ay: y1 + r1 * Math.sin(a1),
+      bx: x2 + r2 * Math.cos(a2), by: y2 + r2 * Math.sin(a2),
+      a1, a2,
+    };
+  }
+
+  function cwWrap(a, b) { let d = (a - b) % TAU; if (d < 0) d += TAU; return d; }
+  function ccwWrap(a, b) { let d = (b - a) % TAU; if (d < 0) d += TAU; return d; }
+
+  function solveDrivetrain(spec, ringIdx, cogIdx, speedMs = 5.6) {
+    const nf = DRIVETRAIN.rings[ringIdx];
+    const nr = DRIVETRAIN.cogs[cogIdx];
+    const Rf = pitchRadius(nf);
+    const Rr = pitchRadius(nr);
+    const Rp = pitchRadius(DRIVETRAIN.pulleyT);
+    const cs = spec.csMm, bbDrop = spec.bbDropMm;
+    const bbX = Math.sqrt(cs * cs - bbDrop * bbDrop);
+    const bbY = -bbDrop;
+
+    // Lateral positions (mm from bike symmetry plane, +Z = drive side / right)
+    const zRing = DRIVETRAIN.chainlineMm + (ringIdx === 0 ? -0.5 : 0.5) * DRIVETRAIN.ringSpacingMm;
+    const zCog = DRIVETRAIN.chainlineMm + (cogIdx - 5) * DRIVETRAIN.cogPitchMm;
+
+    // Slant-parallelogram 4-bar linkage in 3D (mm relative to rear axle (0, 0, 0)):
+    // Hinge axis u_axis = (0, -cos beta, sin beta)
+    // Swing plane orthonormal basis: e1 = (-1, 0, 0), e2 = (0, sin beta, cos beta)
+    const beta = DRIVETRAIN.slantDeg * RAD;
+    const cb = Math.cos(beta), sb = Math.sin(beta);
+    const Lp = DRIVETRAIN.linkLenMm;
+    const sep = DRIVETRAIN.linkSepMm;
+    const B0 = [DRIVETRAIN.b0X, DRIVETRAIN.b0Y, DRIVETRAIN.chainlineMm];
+    const sSlant = (zCog - DRIVETRAIN.chainlineMm) / cb;
+    const phiP = Math.asin(sSlant / Lp);
+    const cp = Math.cos(phiP), sp = Math.sin(phiP);
+
+    // Upper (1) and lower (2) parallel bar pivot pins on B-knuckle & P-knuckle
+    const halfOffY = 0.5 * sep * (-cb);
+    const halfOffZ = 0.5 * sep * sb;
+    const B1 = [B0[0], B0[1] - halfOffY, B0[2] - halfOffZ];
+    const B2 = [B0[0], B0[1] + halfOffY, B0[2] + halfOffZ];
+    const dxLink = -Lp * cp;
+    const dyLink = Lp * sp * sb;
+    const dzLink = Lp * sp * cb;
+    const P1 = [B1[0] + dxLink, B1[1] + dyLink, B1[2] + dzLink];
+    const P2 = [B2[0] + dxLink, B2[1] + dyLink, B2[2] + dzLink];
+    const P = [B0[0] + dxLink, B0[1] + dyLink, B0[2] + dzLink];
+
+    const xP = P[0], yP = P[1], zP = P[2];
+    const bGapMm = Math.hypot(xP, yP) - Rr - Rp;
+
+    const Lc = DRIVETRAIN.cageLenMm;
+    const LTarget = spec.nLinks * DRIVETRAIN.pitchMm;
+
+    function evalCage(psi) {
+      const xT = xP + Lc * Math.sin(psi);
+      const yT = yP - Lc * Math.cos(psi);
+      const t1 = extTan(0, 0, Rr, bbX, bbY, Rf, +1);
+      const t2 = extTan(xT, yT, Rp, bbX, bbY, Rf, -1);
+      const t3 = intTan(xT, yT, Rp, xP, yP, Rp, +1);
+      const t4 = intTan(xP, yP, Rp, 0, 0, Rr, -1);
+      const dz = zRing - zCog;
+      const L1 = Math.hypot(t1.bx - t1.ax, t1.by - t1.ay, dz);
+      const L2 = Math.hypot(t2.bx - t2.ax, t2.by - t2.ay, dz);
+      const L3 = Math.hypot(t3.bx - t3.ax, t3.by - t3.ay);
+      const L4 = Math.hypot(t4.bx - t4.ax, t4.by - t4.ay);
+      const wr = cwWrap(t1.a, t2.a);
+      const wt = cwWrap(t2.a, t3.a1);
+      const wg = ccwWrap(t3.a2, t4.a1);
+      const wc = cwWrap(t4.a2, t1.a);
+      const total = L1 + Rf * wr + L2 + Rp * wt + L3 + Rp * wg + L4 + Rr * wc;
+      return { xT, yT, t1, t2, t3, t4, L1, L2, L3, L4, wr, wt, wg, wc, total };
+    }
+
+    let lo = -1.75, hi = 0.85;
+    let flo = evalCage(lo).total - LTarget;
+    for (let i = 0; i < 68; i++) {
+      const m = 0.5 * (lo + hi);
+      const fm = evalCage(m).total - LTarget;
+      if ((flo <= 0 && fm <= 0) || (flo >= 0 && fm >= 0)) { lo = m; flo = fm; }
+      else hi = m;
+    }
+    const psi = 0.5 * (lo + hi);
+    const sol = evalCage(psi);
+
+    // Build ordered closed-loop chain segments (in mm relative to rear axle, direction of motion: CW top->ring->bot->tens->guide->cog)
+    const segs = [
+      { kind: 'line', ax: sol.t1.ax, ay: sol.t1.ay, az: zCog, bx: sol.t1.bx, by: sol.t1.by, bz: zRing, len: sol.L1 },
+      { kind: 'arc', cx: bbX, cy: bbY, cz: zRing, r: Rf, a0: sol.t1.a, da: -sol.wr, len: Rf * sol.wr },
+      { kind: 'line', ax: sol.t2.bx, ay: sol.t2.by, az: zRing, bx: sol.t2.ax, by: sol.t2.ay, bz: zCog, len: sol.L2 },
+      { kind: 'arc', cx: sol.xT, cy: sol.yT, cz: zCog, r: Rp, a0: sol.t2.a, da: -sol.wt, len: Rp * sol.wt },
+      { kind: 'line', ax: sol.t3.ax, ay: sol.t3.ay, az: zCog, bx: sol.t3.bx, by: sol.t3.by, bz: zCog, len: sol.L3 },
+      { kind: 'arc', cx: xP, cy: yP, cz: zCog, r: Rp, a0: sol.t3.a2, da: +sol.wg, len: Rp * sol.wg },
+      { kind: 'line', ax: sol.t4.ax, ay: sol.t4.ay, az: zCog, bx: sol.t4.bx, by: sol.t4.by, bz: zCog, len: sol.L4 },
+      { kind: 'arc', cx: 0, cy: 0, cz: zCog, r: Rr, a0: sol.t4.a2, da: -sol.wc, len: Rr * sol.wc },
+    ];
+    let cum = 0;
+    for (const s of segs) { s.s0 = cum; cum += s.len; s.s1 = cum; }
+
+    function sampleChain(s) {
+      let u = s % cum;
+      if (u < 0) u += cum;
+      let seg = segs[segs.length - 1];
+      for (let i = 0; i < segs.length; i++) {
+        if (u < segs[i].s1) { seg = segs[i]; break; }
+      }
+      const f = seg.len > 1e-12 ? (u - seg.s0) / seg.len : 0;
+      if (seg.kind === 'line') {
+        const x = seg.ax + (seg.bx - seg.ax) * f;
+        const y = seg.ay + (seg.by - seg.ay) * f;
+        const z = seg.az + (seg.bz - seg.az) * f;
+        const tx = (seg.bx - seg.ax) / seg.len;
+        const ty = (seg.by - seg.ay) / seg.len;
+        const tz = (seg.bz - seg.az) / seg.len;
+        return [x, y, z, tx, ty, tz];
+      }
+      const ang = seg.a0 + seg.da * f;
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      const sgn = seg.da >= 0 ? 1 : -1;
+      return [seg.cx + seg.r * ca, seg.cy + seg.r * sa, seg.cz, -sa * sgn, ca * sgn, 0];
+    }
+
+    const rWheelM = (622 * 0.5 + spec.tireMm) / 1000;
+    const ratio = nf / nr;
+    const devM = TAU * rWheelM * ratio; // meters per crank rev
+    const gearInches = (2 * rWheelM / 0.0254) * ratio;
+    const cadenceRpm = devM > 0 ? (speedMs * 60) / devM : 0;
+    const spanXY = Math.hypot(sol.t1.bx - sol.t1.ax, sol.t1.by - sol.t1.ay);
+    const chainlineDeg = Math.atan2(zRing - zCog, spanXY) * DEG;
+    const crossChained = Math.abs(chainlineDeg) > 1.85;
+
+    return {
+      nf, nr, Rf, Rr, Rp, zRing, zCog,
+      ratio, devM, gearInches, cadenceRpm, chainlineDeg, crossChained,
+      phiPDeg: phiP * DEG, psiDeg: psi * DEG, psi, phiP,
+      bGapMm, totalLenMm: sol.total, targetLenMm: LTarget, lenErrMm: Math.abs(sol.total - LTarget),
+      B1, B2, P1, P2, P, T: [sol.xT, sol.yT, zCog],
+      wrapsDeg: [sol.wr * DEG, sol.wt * DEG, sol.wg * DEG, sol.wc * DEG],
+      segs, sampleChain,
+    };
+  }
+
+  return {
+    G, MEIJAARD_2007, BIKES, DRIVETRAIN,
+    pitchRadius, bikeGeometry, whippleMatrices, charPoly, quarticRoots,
+    eigenvalues, classifyModes, criticalSpeeds, stabilityCurve,
+    whippleDeriv, whippleStepRK4, solveDrivetrain,
+  };
+}
+
+
+const E = makeRoadBikeEngine();
+const Q = new URLSearchParams(location.search);
+const FIXED = Q.has('fixed');
+const OG = Q.get('og');
+const REDUCED = !FIXED && matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (OG) document.body.classList.add('og-mode');
+
+// ---- Application state ----
+const S = {
+  ready: false,
+  mode: Q.get('mode') || 'compare', // compare | drivetrain | exploded | xray
+  focusBike: Number(Q.get('bike') ?? 1),
+  dHta: Number(Q.get('dhta') ?? 0),
+  dRake: Number(Q.get('drake') ?? 0),
+  speed: Number(Q.get('v') ?? 5.6),
+  ringIdx: Number(Q.get('ring') ?? 1),   // 0=34T, 1=50T
+  cogIdx: Number(Q.get('cog') ?? 5),     // 0=34T .. 10=11T (5=17T)
+  showBench: Q.has('bench'),
+  explodeT: 0,
+  explodeTarget: 0,
+  // Shared camera spherical coordinates (radians)
+  yaw: Q.has('yaw') ? Number(Q.get('yaw')) : 0.30,
+  pitch: Q.has('pitch') ? Number(Q.get('pitch')) : 0.12,
+  zoom: Q.has('zoom') ? Number(Q.get('zoom')) : 1.0,
+  // Per-bike dynamic state
+  wheelAng: [0, 0, 0],
+  crankAng: [0.35, 0.35, 0.35],
+  chainPhase: [0, 0, 0],
+  // Whipple linear state [phi, delta, dphi, ddelta] & unclamped copy
+  dyn: [[0,0,0,0], [0,0,0,0], [0,0,0,0]],
+  dynRaw: [[0,0,0,0], [0,0,0,0], [0,0,0,0]],
+  nudgedAt: -1,
+  autoNudged: false,
+  time: 0,
+  frame: 0,
+  geom: [null, null, null],
+  mat: [null, null, null],
+  crit: [null, null, null],
+  modes: [null, null, null],
+  curves: [null, null, null],
+  drive: [null, null, null],
+  benchMat: null,
+  benchCrit: null,
+  benchCurve: null,
+  benchMode: null,
+  log: [],
+  lite: false,
+  tris: 0,
+  calls: 0,
+};
+
+if (S.mode === 'exploded') { S.explodeTarget = 1; S.explodeT = FIXED || REDUCED ? 1 : 0; }
+if (S.mode === 'drivetrain') { S.yaw = 0.24; S.pitch = 0.08; }
+
+// ---- Precompute Meijaard 2007 benchmark ----
+S.benchMat = E.whippleMatrices(E.MEIJAARD_2007);
+S.benchCrit = E.criticalSpeeds(S.benchMat, E.G);
+S.benchCurve = E.stabilityCurve(S.benchMat, E.G, 14.0, 70);
+
+function recomputeAll(recordLog = false) {
+  for (let i = 0; i < 3; i++) {
+    const spec = E.BIKES[i];
+    S.geom[i] = E.bikeGeometry(spec, S.dHta, S.dRake);
+    S.mat[i] = E.whippleMatrices(S.geom[i].whipple);
+    S.crit[i] = E.criticalSpeeds(S.mat[i], E.G);
+    S.modes[i] = E.classifyModes(E.eigenvalues(S.mat[i], E.G, S.speed));
+    S.curves[i] = E.stabilityCurve(S.mat[i], E.G, 14.0, 70);
+    S.drive[i] = E.solveDrivetrain(spec, S.ringIdx, S.cogIdx, S.speed);
+  }
+  S.benchMode = E.classifyModes(E.eigenvalues(S.benchMat, E.G, S.speed));
+  if (recordLog) pushLog();
+}
+
+function pushLog() {
+  if (S.log.length > 60) S.log.shift();
+  S.log.push({
+    dHta: S.dHta, dRake: S.dRake, v: S.speed, ringIdx: S.ringIdx, cogIdx: S.cogIdx,
+    bikes: [0, 1, 2].map(i => ({
+      id: E.BIKES[i].id,
+      trail: S.geom[i].trail,
+      wheelbase: S.geom[i].wheelbase,
+      vw: Number.isFinite(S.crit[i].vw) ? S.crit[i].vw : null,
+      vc: Number.isFinite(S.crit[i].vc) ? S.crit[i].vc : null,
+      roots: S.modes[i].roots,
+      drive: {
+        psiDeg: S.drive[i].psiDeg,
+        chainlineDeg: S.drive[i].chainlineDeg,
+        totalLenMm: S.drive[i].totalLenMm,
+      },
+    })),
+  });
+}
+
+recomputeAll(true);
+
+// ---- Three.js Renderer & Crisp Swiss Studio Environment ----
+const canvas = document.getElementById('gl');
+const stageWrap = document.getElementById('stageWrap');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: FIXED });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
+renderer.setClearColor(0xf7f6f2, 1);
+
+// Bright Swiss studio PMREM environment for crisp anodized alloy & carbon reflections
+function makeStudioEnv() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const es = new THREE.Scene();
+  es.background = new THREE.Color(0xdad8d2);
+  const addPanel = (w, h, pos, rot, col, intensity = 1) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(intensity), side: THREE.DoubleSide })
+    );
+    m.position.set(...pos); m.rotation.set(...rot); es.add(m);
+  };
+  addPanel(14, 14, [0, 7, 0], [Math.PI / 2, 0, 0], 0xffffff, 1.5);
+  addPanel(10, 6, [6, 3, 7], [0, -0.6, 0], 0xfffdf8, 1.35);
+  addPanel(10, 6, [-7, 2.5, 5], [0, 0.9, 0], 0xeef3fa, 1.1);
+  addPanel(14, 5, [0, -3, 0], [-Math.PI / 2, 0, 0], 0xb8b6ae, 0.8);
+  const tex = pmrem.fromScene(es, 0.04).texture;
+  pmrem.dispose();
+  return tex;
+}
+const ENV_TEX = makeStudioEnv();
+
+// Shared procedural materials (no antique words or textures)
+function matStd(color, metalness, roughness, extra = {}) {
+  return new THREE.MeshStandardMaterial({ color, metalness, roughness, envMap: ENV_TEX, envMapIntensity: 1.0, ...extra });
+}
+const MATS = {
+  rubber: matStd(0x1f2126, 0.02, 0.88),
+  sidewall: matStd(0x4a4d54, 0.02, 0.82),
+  carbonRim: matStd(0x23262d, 0.16, 0.36),
+  carbonMatte: matStd(0x1d1f24, 0.14, 0.42),
+  alloyLight: matStd(0xd4d8df, 0.88, 0.24),
+  alloyMid: matStd(0x969ca6, 0.86, 0.30),
+  alloyDark: matStd(0x3a3e47, 0.78, 0.34),
+  steelBright: matStd(0xe0e4eb, 0.92, 0.18),
+  spoke: matStd(0xc6ccd4, 0.90, 0.22),
+  swissRed: matStd(0xdc1c24, 0.24, 0.32),
+  barTape: matStd(0x1b1c20, 0.03, 0.90),
+  chainOuter: matStd(0x2d3139, 0.82, 0.32),
+  chainInner: matStd(0x7c828d, 0.85, 0.28),
+  chainRoller: matStd(0xd8dde5, 0.92, 0.20),
+  lineRed: new THREE.LineBasicMaterial({ color: 0xdc1c24 }),
+  lineInk: new THREE.LineBasicMaterial({ color: 0x111214 }),
+  lineGrid: new THREE.LineBasicMaterial({ color: 0xd5d2c8 }),
+  redSolid: new THREE.MeshBasicMaterial({ color: 0xdc1c24 }),
+  inkSolid: new THREE.MeshBasicMaterial({ color: 0x111214 }),
+  bearingGold: matStd(0x7d8594, 0.9, 0.22),
+  comRear: new THREE.MeshBasicMaterial({ color: 0x111214 }),
+  comFront: new THREE.MeshBasicMaterial({ color: 0xdc1c24 }),
+};
+
+// ---- Procedural Geometry Builders ----
+function makeGearGeo(teeth, pitchMm, thicknessMm, holeRadiusMm, cutouts = 0) {
+  const Rp = E.pitchRadius(teeth) / 1000;
+  const rOut = Rp + 0.0026;
+  const rRoot = Math.max(holeRadiusMm / 1000 + 0.002, Rp - 0.0031);
+  const shape = new THREE.Shape();
+  const step = (2 * Math.PI) / teeth;
+  for (let i = 0; i < teeth; i++) {
+    const a0 = i * step;
+    const a1 = a0 + step * 0.22;
+    const a2 = a0 + step * 0.42;
+    const a3 = a0 + step * 0.58;
+    const a4 = a0 + step * 0.78;
+    const pts = [
+      [rRoot * Math.cos(a0), rRoot * Math.sin(a0)],
+      [rRoot * Math.cos(a1), rRoot * Math.sin(a1)],
+      [rOut * Math.cos(a2), rOut * Math.sin(a2)],
+      [rOut * Math.cos(a3), rOut * Math.sin(a3)],
+      [rRoot * Math.cos(a4), rRoot * Math.sin(a4)],
+    ];
+    if (i === 0) shape.moveTo(pts[0][0], pts[0][1]);
+    else shape.lineTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) shape.lineTo(pts[k][0], pts[k][1]);
+  }
+  shape.closePath();
+  if (holeRadiusMm > 1) {
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, holeRadiusMm / 1000, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+  }
+  if (cutouts > 0 && rRoot - holeRadiusMm / 1000 > 0.014) {
+    const rMid = 0.5 * (rRoot + holeRadiusMm / 1000);
+    const rCut = Math.min(0.016, (rRoot - holeRadiusMm / 1000) * 0.30);
+    for (let k = 0; k < cutouts; k++) {
+      const ang = (k / cutouts) * Math.PI * 2 + 0.35;
+      const h = new THREE.Path();
+      h.absarc(rMid * Math.cos(ang), rMid * Math.sin(ang), rCut, 0, Math.PI * 2, true);
+      shape.holes.push(h);
+    }
+  }
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thicknessMm / 1000, bevelEnabled: false, curveSegments: 8 });
+  geo.translate(0, 0, -thicknessMm / 2000);
+  return geo;
+}
+
+function makeDiscRotorGeo(outerMm) {
+  const ro = outerMm / 2000, ri = 0.024;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, ro, 0, Math.PI * 2, false);
+  const center = new THREE.Path();
+  center.absarc(0, 0, ri, 0, Math.PI * 2, true);
+  shape.holes.push(center);
+  for (let i = 0; i < 6; i++) {
+    const a0 = (i / 6) * Math.PI * 2 + 0.14;
+    const a1 = ((i + 1) / 6) * Math.PI * 2 - 0.14;
+    const r1 = ri + 0.008, r2 = ro - 0.011;
+    const p = new THREE.Path();
+    p.absarc(0, 0, r1, a0, a1, false);
+    p.absarc(0, 0, r2, a1, a0, true);
+    p.closePath();
+    shape.holes.push(p);
+  }
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.0018, bevelEnabled: false, curveSegments: 20 });
+  g.translate(0, 0, -0.0009);
+  return g;
+}
+
+function makeTubeBetween(a, b, rA, rB = rA, segs = 12) {
+  const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b);
+  const len = va.distanceTo(vb);
+  const geo = new THREE.CylinderGeometry(rB, rA, len, segs, 1, false);
+  const m = new THREE.Matrix4();
+  const dir = vb.clone().sub(va).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  m.compose(va.clone().add(vb).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1));
+  geo.applyMatrix4(m);
+  return geo;
+}
+
+// Reusable gear/rotor/chain geometries shared across all 3 bikes
+const SHARED_GEO = {
+  ring50: makeGearGeo(50, 12.7, 3.0, 74, 4),
+  ring34: makeGearGeo(34, 12.7, 2.8, 48, 4),
+  cogs: E.DRIVETRAIN.cogs.map((t, idx) => makeGearGeo(t, 12.7, 1.65, Math.min(16.5, E.pitchRadius(t) - 4.2), t >= 24 ? 5 : 0)),
+  pulley: makeGearGeo(11, 12.7, 2.2, 4.0, 0),
+  rotor160: makeDiscRotorGeo(160),
+  rotor140: makeDiscRotorGeo(140),
+  spokeUnit: new THREE.CylinderGeometry(0.00095, 0.00095, 1, 5),
+  nippleUnit: new THREE.CylinderGeometry(0.0021, 0.0018, 0.011, 6),
+  chainPlate: new THREE.BoxGeometry(0.0118, 0.0074, 0.0011),
+  chainRoller: (() => { const g = new THREE.CylinderGeometry(0.0038, 0.0038, 0.0052, 8); g.rotateX(Math.PI / 2); return g; })(),
+  bolt: (() => { const g = new THREE.CylinderGeometry(0.0032, 0.0032, 0.004, 6); g.rotateX(Math.PI / 2); return g; })(),
+};
+
+function makeAeroRimGeo(rimInnerR, rimOuterR, width = 0.024) {
+  // LatheGeometry around Y, then rotateX(PI/2) so wheel axis is Z!
+  const hw = width * 0.5;
+  const pts = [
+    new THREE.Vector2(rimInnerR, 0),
+    new THREE.Vector2(rimInnerR + (rimOuterR - rimInnerR) * 0.35, hw * 0.92),
+    new THREE.Vector2(rimOuterR - 0.002, hw),
+    new THREE.Vector2(rimOuterR, hw * 0.85),
+    new THREE.Vector2(rimOuterR, -hw * 0.85),
+    new THREE.Vector2(rimOuterR - 0.002, -hw),
+    new THREE.Vector2(rimInnerR + (rimOuterR - rimInnerR) * 0.35, -hw * 0.92),
+    new THREE.Vector2(rimInnerR, 0),
+  ];
+  const g = new THREE.LatheGeometry(pts, 48);
+  g.rotateX(Math.PI / 2);
+  return g;
+}
+
+function makeHubGeo(flangeSep = 0.056, flangeR = 0.024, bodyR = 0.013, width = 0.100) {
+  const hw = width * 0.5, fs = flangeSep * 0.5;
+  const pts = [
+    new THREE.Vector2(0.006, -hw),
+    new THREE.Vector2(0.010, -hw),
+    new THREE.Vector2(0.010, -fs - 0.003),
+    new THREE.Vector2(flangeR, -fs - 0.002),
+    new THREE.Vector2(flangeR, -fs + 0.002),
+    new THREE.Vector2(bodyR, -fs + 0.004),
+    new THREE.Vector2(bodyR, fs - 0.004),
+    new THREE.Vector2(flangeR, fs - 0.002),
+    new THREE.Vector2(flangeR, fs + 0.002),
+    new THREE.Vector2(0.010, fs + 0.003),
+    new THREE.Vector2(0.010, hw),
+    new THREE.Vector2(0.006, hw),
+    new THREE.Vector2(0.006, -hw),
+  ];
+  const g = new THREE.LatheGeometry(pts, 24);
+  g.rotateX(Math.PI / 2);
+  return g;
+}
+
+function buildWheel(spec, isRear) {
+  const root = new THREE.Group();
+  const spin = new THREE.Group();
+  root.add(spin);
+  const r = (622 * 0.5 + spec.tireMm) / 1000;
+  const rimOuter = 0.311;
+  const rimInner = rimOuter - spec.rimDepthMm / 1000;
+  const tubeR = (r - rimOuter) * 0.58;
+  const tireMajor = r - tubeR;
+
+  const tire = new THREE.Mesh(new THREE.TorusGeometry(tireMajor, tubeR, 16, 56), MATS.rubber);
+  const rim = new THREE.Mesh(makeAeroRimGeo(rimInner, rimOuter, Math.max(0.023, spec.tireMm / 1000 * 0.82)), MATS.carbonRim);
+  const hub = new THREE.Mesh(makeHubGeo(isRear ? 0.056 : 0.062, 0.025, 0.013, isRear ? 0.132 : 0.100), MATS.alloyDark);
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, isRear ? 0.156 : 0.120, 12), MATS.alloyLight);
+  axle.rotation.x = Math.PI / 2;
+
+  // Presta valve
+  const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0028, 0.036, 8), MATS.alloyLight);
+  valve.position.set(0, rimInner - 0.016, 0);
+
+  // 24 crossed stainless spokes (2-cross lacing) + 24 alloy nipples
+  const nSpokes = 24;
+  const spokes = new THREE.InstancedMesh(SHARED_GEO.spokeUnit, MATS.spoke, nSpokes);
+  const nipples = new THREE.InstancedMesh(SHARED_GEO.nippleUnit, MATS.alloyLight, nSpokes);
+  const flangeZ = isRear ? 0.027 : 0.030;
+  const flangeR = 0.022;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), vA = new THREE.Vector3(), vB = new THREE.Vector3(), dir = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < nSpokes; i++) {
+    const side = (i & 1) ? 1 : -1;
+    const crossDir = ((i >> 1) & 1) ? 1 : -1;
+    const aRim = (i / nSpokes) * Math.PI * 2;
+    const aHub = aRim + crossDir * 0.56;
+    vA.set(flangeR * Math.cos(aHub), flangeR * Math.sin(aHub), side * flangeZ);
+    vB.set((rimInner + 0.003) * Math.cos(aRim), (rimInner + 0.003) * Math.sin(aRim), side * 0.0018);
+    const len = vA.distanceTo(vB);
+    dir.copy(vB).sub(vA).normalize();
+    q.setFromUnitVectors(up, dir);
+    m.compose(vA.clone().add(vB).multiplyScalar(0.5), q, new THREE.Vector3(1, len, 1));
+    spokes.setMatrixAt(i, m);
+    m.compose(vB.clone().addScaledVector(dir, -0.005), q, new THREE.Vector3(1, 1, 1));
+    nipples.setMatrixAt(i, m);
+  }
+  spokes.instanceMatrix.needsUpdate = true;
+  nipples.instanceMatrix.needsUpdate = true;
+  spokes.frustumCulled = false; nipples.frustumCulled = false;
+
+  // Disc rotor + 6 mounting bolts (non-drive side z = -0.044)
+  const rotorGroup = new THREE.Group();
+  const rotor = new THREE.Mesh(isRear ? SHARED_GEO.rotor140 : SHARED_GEO.rotor160, MATS.steelBright);
+  rotorGroup.add(rotor);
+  const bolts = new THREE.InstancedMesh(SHARED_GEO.bolt, MATS.alloyDark, 6);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    m.makeTranslation(0.022 * Math.cos(a), 0.022 * Math.sin(a), -0.0015);
+    bolts.setMatrixAt(i, m);
+  }
+  bolts.instanceMatrix.needsUpdate = true;
+  bolts.frustumCulled = false;
+  rotorGroup.add(bolts);
+  rotorGroup.position.z = isRear ? -0.048 : -0.038;
+
+  spin.add(tire, rim, hub, valve, spokes, nipples, rotorGroup);
+  root.add(axle);
+
+  // Rear 11-speed cassette (individual toothed sprockets)
+  const cassetteMeshes = [];
+  const cassetteGroup = new THREE.Group();
+  if (isRear) {
+    for (let ci = 0; ci < E.DRIVETRAIN.cogs.length; ci++) {
+      const zCog = (E.DRIVETRAIN.chainlineMm + (ci - 5) * E.DRIVETRAIN.cogPitchMm) / 1000;
+      const cog = new THREE.Mesh(SHARED_GEO.cogs[ci], ci < 3 ? MATS.alloyMid : MATS.steelBright);
+      cog.position.z = zCog;
+      cog.userData.baseZ = zCog;
+      cassetteGroup.add(cog);
+      cassetteMeshes.push(cog);
+    }
+    const lockring = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.004, 16), MATS.swissRed);
+    lockring.rotation.x = Math.PI / 2;
+    lockring.position.z = (E.DRIVETRAIN.chainlineMm + 5 * E.DRIVETRAIN.cogPitchMm + 2.8) / 1000;
+    lockring.userData.baseZ = lockring.position.z;
+    cassetteGroup.add(lockring);
+    cassetteMeshes.push(lockring);
+    spin.add(cassetteGroup);
+  }
+
+  return { root, spin, axle, rotorGroup, cassetteGroup, cassetteMeshes, baseRotorZ: rotorGroup.position.z, partCount: 24 * 2 + 12 + (isRear ? 12 : 0) };
+}
+
+function makeDropBarGroup(barX, barY, stemBaseX, stemBaseY) {
+  const g = new THREE.Group();
+  // Ahead stem
+  const stem = new THREE.Mesh(makeTubeBetween([stemBaseX, stemBaseY, 0], [barX, barY, 0], 0.0155, 0.015, 12), MATS.carbonMatte);
+  const clamp = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.044, 14), MATS.alloyDark);
+  clamp.rotation.x = Math.PI / 2; clamp.position.set(barX, barY, 0);
+  // Swiss red faceplate stripe
+  const fplate = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.032, 0.036), MATS.swissRed);
+  fplate.position.set(barX + 0.018, barY, 0);
+  g.add(stem, clamp, fplate);
+
+  // Compact road drop handlebar (420 mm wide, 78 mm reach, 128 mm drop)
+  const hw = 0.21;
+  const pts = [
+    new THREE.Vector3(barX + 0.005, barY - 0.128, -hw),
+    new THREE.Vector3(barX + 0.072, barY - 0.118, -hw),
+    new THREE.Vector3(barX + 0.088, barY - 0.045, -hw),
+    new THREE.Vector3(barX + 0.075, barY + 0.002, -hw * 0.94),
+    new THREE.Vector3(barX + 0.010, barY + 0.004, -hw * 0.65),
+    new THREE.Vector3(barX, barY, 0),
+    new THREE.Vector3(barX + 0.010, barY + 0.004, hw * 0.65),
+    new THREE.Vector3(barX + 0.075, barY + 0.002, hw * 0.94),
+    new THREE.Vector3(barX + 0.088, barY - 0.045, hw),
+    new THREE.Vector3(barX + 0.072, barY - 0.118, hw),
+    new THREE.Vector3(barX + 0.005, barY - 0.128, hw),
+  ];
+  const barCurve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.4);
+  const bar = new THREE.Mesh(new THREE.TubeGeometry(barCurve, 44, 0.0135, 10, false), MATS.barTape);
+  g.add(bar);
+
+  // Dual STI brake/shift hoods & curved levers
+  for (const side of [-1, 1]) {
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.042, 0.026), MATS.carbonMatte);
+    hood.position.set(barX + 0.106, barY + 0.018, side * hw * 0.98);
+    hood.rotation.z = 0.22;
+    const leverCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(barX + 0.122, barY + 0.002, side * hw * 0.98),
+      new THREE.Vector3(barX + 0.128, barY - 0.048, side * hw * 0.99),
+      new THREE.Vector3(barX + 0.106, barY - 0.098, side * hw * 1.01),
+    ]);
+    const lever = new THREE.Mesh(new THREE.TubeGeometry(leverCurve, 10, 0.0042, 6, false), MATS.alloyLight);
+    g.add(hood, lever);
+  }
+  return g;
+}
+
+function makeSaddleGroup() {
+  const g = new THREE.Group();
+  const s = new THREE.Shape();
+  s.moveTo(-0.145, 0.004);
+  s.quadraticCurveTo(-0.08, 0.018, 0.01, 0.008);
+  s.quadraticCurveTo(0.09, 0.005, 0.135, -0.003);
+  s.lineTo(0.135, -0.013);
+  s.quadraticCurveTo(0.02, -0.008, -0.140, -0.010);
+  s.closePath();
+  const shell = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.132, bevelEnabled: true, bevelThickness: 0.005, bevelSize: 0.004, bevelSegments: 2 }), MATS.carbonMatte);
+  shell.position.z = -0.066;
+  g.add(shell);
+  for (const side of [-1, 1]) {
+    const rail = new THREE.Mesh(makeTubeBetween([-0.085, -0.012, side * 0.022], [0.065, -0.010, side * 0.022], 0.0035, 0.0035, 6), MATS.alloyLight);
+    g.add(rail);
+  }
+  return g;
+}
+
+// ---- Build One Complete Procedural 3D Road Bike Scene ----
+function buildBikeScene(bikeIdx) {
+  const spec = E.BIKES[bikeIdx];
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf7f6f2);
+
+  // Studio lights (no PointLights for fast SwiftShader)
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xcac6bc, 0.95));
+  const key = new THREE.DirectionalLight(0xfffdf8, 1.85);
+  key.position.set(2.2, 4.2, 3.6);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xeaf0fa, 0.72);
+  fill.position.set(-2.5, 2.0, -2.2);
+  scene.add(fill);
+  const rimL = new THREE.DirectionalLight(0xffffff, 0.55);
+  rimL.position.set(0.4, 1.5, -3.5);
+  scene.add(rimL);
+
+  // Crisp Swiss drafting floor (metric ticks along X, centered near bike midpoint)
+  const floorGroup = new THREE.Group();
+  const floorPts = [];
+  for (let x = -0.5; x <= 1.7; x += 0.1) {
+    const major = Math.abs(Math.round(x * 10) % 5) === 0;
+    const hw = major ? 0.42 : 0.24;
+    floorPts.push(x, 0.0005, -hw, x, 0.0005, hw);
+  }
+  floorPts.push(-0.5, 0.0005, 0, 1.7, 0.0005, 0);
+  floorPts.push(-0.5, 0.0005, -0.42, 1.7, 0.0005, -0.42);
+  floorPts.push(-0.5, 0.0005, 0.42, 1.7, 0.0005, 0.42);
+  const floorGeo = new THREE.BufferGeometry();
+  floorGeo.setAttribute('position', new THREE.Float32BufferAttribute(floorPts, 3));
+  floorGroup.add(new THREE.LineSegments(floorGeo, MATS.lineGrid));
+
+  // Soft studio contact shadows under rear & front wheels
+  const shGeo = new THREE.CircleGeometry(0.16, 24);
+  shGeo.rotateX(-Math.PI / 2);
+  shGeo.scale(1.65, 1, 0.42);
+  const shMat = new THREE.MeshBasicMaterial({ color: 0x111214, transparent: true, opacity: 0.11, depthWrite: false });
+  const shRear = new THREE.Mesh(shGeo, shMat); shRear.position.set(0, 0.0008, 0);
+  const shFront = new THREE.Mesh(shGeo, shMat); shFront.position.set(1.0, 0.0008, 0);
+  floorGroup.add(shRear, shFront);
+  scene.add(floorGroup);
+
+  // Paint & accent material per bike (distinct matte carbon / Swiss red / titanium grey)
+  const paintMat = matStd(spec.paintHex, spec.id === 'gravel' ? 0.62 : 0.16, spec.id === 'gravel' ? 0.34 : 0.36);
+  const accentMat = matStd(spec.accentHex, 0.20, 0.34);
+
+  // Bike roll root (pivots around ground contact line Y=0, X-axis = lean!)
+  const rollGroup = new THREE.Group();
+  scene.add(rollGroup);
+
+  // Rear wheel
+  const rearWheel = buildWheel(spec, true);
+  rollGroup.add(rearWheel.root);
+
+  // Main frame dynamic container (rebuilt cleanly when HTA/rake changes)
+  const frameGroup = new THREE.Group();
+  const xrayInternalGroup = new THREE.Group();
+  rollGroup.add(frameGroup, xrayInternalGroup);
+
+  // Seatpost + saddle group (slides up in Exploded mode)
+  const seatGroup = new THREE.Group();
+  const saddleMesh = makeSaddleGroup();
+  seatGroup.add(saddleMesh);
+  rollGroup.add(seatGroup);
+
+  // Steer axis pivot (placed at crown, rotated by +lam around Z) -> steerGroup rotates by -delta around local Y!
+  const steerAxisPivot = new THREE.Group();
+  const steerGroup = new THREE.Group();
+  steerAxisPivot.add(steerGroup);
+  rollGroup.add(steerAxisPivot);
+
+  const forkGroup = new THREE.Group();
+  const cockpitGroup = new THREE.Group();
+  const frontWheel = buildWheel(spec, false);
+  steerGroup.add(forkGroup, cockpitGroup, frontWheel.root);
+
+  // Drivetrain group (crankset, front derailleur, slant-parallelogram rear derailleur, articulated chain)
+  const driveGroup = new THREE.Group();
+  rollGroup.add(driveGroup);
+
+  // Crankset (rotates around BB)
+  const crankPivot = new THREE.Group();
+  const crankRightGroup = new THREE.Group();
+  const crankLeftGroup = new THREE.Group();
+  const ring50Mesh = new THREE.Mesh(SHARED_GEO.ring50, MATS.alloyDark);
+  const ring34Mesh = new THREE.Mesh(SHARED_GEO.ring34, MATS.alloyMid);
+  ring50Mesh.position.z = (E.DRIVETRAIN.chainlineMm + 0.5 * E.DRIVETRAIN.ringSpacingMm) / 1000;
+  ring34Mesh.position.z = (E.DRIVETRAIN.chainlineMm - 0.5 * E.DRIVETRAIN.ringSpacingMm) / 1000;
+  // 4-arm asymmetric CNC spider
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2 + (i % 2 === 0 ? 0.16 : -0.16);
+    const arm = new THREE.Mesh(makeTubeBetween([0, 0, ring50Mesh.position.z + 0.004], [0.064 * Math.cos(a), 0.064 * Math.sin(a), ring50Mesh.position.z + 0.002], 0.0085, 0.0065, 6), MATS.alloyDark);
+    crankRightGroup.add(arm);
+  }
+  const crankArmR = new THREE.Mesh(makeTubeBetween([0, 0, 0.056], [0.1725, 0, 0.066], 0.014, 0.011, 8), MATS.alloyDark);
+  const pedalR = new THREE.Mesh(new THREE.BoxGeometry(0.064, 0.016, 0.052), MATS.carbonMatte);
+  pedalR.position.set(0.1725, 0, 0.100);
+  crankRightGroup.add(ring50Mesh, ring34Mesh, crankArmR, pedalR);
+
+  const crankArmL = new THREE.Mesh(makeTubeBetween([0, 0, -0.056], [-0.1725, 0, -0.066], 0.014, 0.011, 8), MATS.alloyDark);
+  const pedalL = new THREE.Mesh(new THREE.BoxGeometry(0.064, 0.016, 0.052), MATS.carbonMatte);
+  pedalL.position.set(-0.1725, 0, -0.100);
+  crankLeftGroup.add(crankArmL, pedalL);
+
+  const bbSpindle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.118, 12), MATS.alloyLight);
+  bbSpindle.rotation.x = Math.PI / 2;
+  crankPivot.add(crankRightGroup, crankLeftGroup, bbSpindle);
+  driveGroup.add(crankPivot);
+
+  // Sculpted front derailleur hollow U-cage
+  const fdCage = new THREE.Group();
+  const fdOut = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.022, 0.0022), MATS.alloyLight); fdOut.position.z = 0.0065;
+  const fdIn = new THREE.Mesh(new THREE.BoxGeometry(0.064, 0.020, 0.0020), MATS.alloyMid); fdIn.position.z = -0.0065;
+  const fdTop = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.004, 0.015), MATS.alloyDark); fdTop.position.set(0.022, 0.011, 0);
+  const fdArm = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.036, 0.016), MATS.alloyDark); fdArm.position.set(-0.026, 0.016, -0.018);
+  fdCage.add(fdOut, fdIn, fdTop, fdArm);
+  driveGroup.add(fdCage);
+
+  // Rear derailleur 4-bar slant parallelogram assembly (anchored relative to rear axle!)
+  const rdGroup = new THREE.Group();
+  driveGroup.add(rdGroup);
+  const rdHangerArm = new THREE.Mesh(makeTubeBetween([-0.004, -0.028, 0.072], [E.DRIVETRAIN.b0X * 0.001, E.DRIVETRAIN.b0Y * 0.001 + 0.014, (E.DRIVETRAIN.chainlineMm + 12) * 0.001], 0.0065, 0.0085, 8), MATS.alloyDark);
+  const rdBBody = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.020, 0.028), MATS.alloyDark);
+  const rdLink1 = new THREE.Mesh(new THREE.BoxGeometry(1, 0.0085, 0.0065), MATS.alloyLight);
+  const rdLink2 = new THREE.Mesh(new THREE.BoxGeometry(1, 0.0085, 0.0065), MATS.swissRed);
+  const rdPins = [0, 1, 2, 3].map(() => new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.016, 8), MATS.steelBright));
+  const rdPKnuckle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.020, 12), MATS.alloyDark);
+  rdPKnuckle.rotation.x = Math.PI / 2;
+  const rdCageGroup = new THREE.Group();
+  const cagePlateOut = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.098, 0.0028), MATS.carbonMatte);
+  cagePlateOut.position.set(0, -0.043, 0.009);
+  const cagePlateIn = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.098, 0.0024), MATS.alloyDark);
+  cagePlateIn.position.set(0, -0.043, -0.009);
+  const guidePulley = new THREE.Mesh(SHARED_GEO.pulley, MATS.alloyDark);
+  const tensPulley = new THREE.Mesh(SHARED_GEO.pulley, MATS.alloyDark);
+  tensPulley.position.set(0, -E.DRIVETRAIN.cageLenMm / 1000, 0);
+  const gBolt = new THREE.Mesh(SHARED_GEO.bolt, MATS.swissRed); gBolt.position.z = 0.010;
+  const tBolt = new THREE.Mesh(SHARED_GEO.bolt, MATS.swissRed); tBolt.position.set(0, -E.DRIVETRAIN.cageLenMm / 1000, 0.010);
+  rdCageGroup.add(cagePlateOut, cagePlateIn, guidePulley, tensPulley, gBolt, tBolt);
+  rdGroup.add(rdHangerArm, rdBBody, rdLink1, rdLink2, ...rdPins, rdPKnuckle, rdCageGroup);
+
+  // Articulated roller chain (InstancedMesh: nLinks outer/inner plates + nLinks steel rollers)
+  const nLinks = spec.nLinks;
+  const chainOuterL = new THREE.InstancedMesh(SHARED_GEO.chainPlate, MATS.chainOuter, nLinks);
+  const chainOuterR = new THREE.InstancedMesh(SHARED_GEO.chainPlate, MATS.chainOuter, nLinks);
+  const chainRollers = new THREE.InstancedMesh(SHARED_GEO.chainRoller, MATS.chainRoller, nLinks);
+  for (const im of [chainOuterL, chainOuterR, chainRollers]) im.frustumCulled = false;
+  driveGroup.add(chainOuterL, chainOuterR, chainRollers);
+
+  // Swiss technical 3D geometry overlay (crisp 3D steer-axis rod, axle plumb rod, prominent front-offset red trail bracket)
+  const overlayGroup = new THREE.Group();
+  const steerRay = new THREE.Mesh(new THREE.CylinderGeometry(0.0032, 0.0032, 1, 8), MATS.redSolid);
+  const plumbLine = new THREE.Mesh(new THREE.CylinderGeometry(0.0020, 0.0020, 1, 8), MATS.inkSolid);
+  const trailBar = new THREE.Mesh(new THREE.BoxGeometry(1, 0.009, 0.022), MATS.redSolid);
+  const trailLeadQ = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.11), MATS.inkSolid);
+  const trailLeadG = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.11), MATS.redSolid);
+  const steerRing = new THREE.Mesh(new THREE.RingGeometry(0.014, 0.023, 24), MATS.redSolid);
+  steerRing.rotation.x = -Math.PI / 2; steerRing.position.y = 0.003;
+  const contactDot = new THREE.Mesh(new THREE.CircleGeometry(0.012, 16), MATS.inkSolid);
+  contactDot.rotation.x = -Math.PI / 2; contactDot.position.y = 0.003;
+  overlayGroup.add(steerRay, plumbLine, trailBar, trailLeadQ, trailLeadG, steerRing, contactDot);
+  rollGroup.add(overlayGroup);
+
+  // Whipple Center-of-Mass markers (shown in X-Ray mode)
+  const comGroup = new THREE.Group();
+  const comBMesh = new THREE.Mesh(new THREE.SphereGeometry(0.032, 16, 12), MATS.comRear);
+  const comHMesh = new THREE.Mesh(new THREE.SphereGeometry(0.022, 16, 12), MATS.comFront);
+  const uALineGeo = new THREE.BufferGeometry();
+  uALineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const uALine = new THREE.Line(uALineGeo, MATS.lineRed);
+  comGroup.add(comBMesh, comHMesh, uALine);
+  comGroup.visible = false;
+  rollGroup.add(comGroup);
+
+  // State references for geometry rebuilds & probes
+  const rec = {
+    spec, scene, paintMat, accentMat, rollGroup,
+    rearWheel, frontWheel, frameGroup, xrayInternalGroup, seatGroup, saddleMesh,
+    steerAxisPivot, steerGroup, forkGroup, cockpitGroup,
+    driveGroup, crankPivot, crankRightGroup, crankLeftGroup, ring50Mesh, ring34Mesh, bbSpindle, fdCage,
+    rdGroup, rdBBody, rdLink1, rdLink2, rdPins, rdPKnuckle, rdCageGroup, guidePulley, tensPulley,
+    chainOuterL, chainOuterR, chainRollers,
+    overlayGroup, steerRay, plumbLine, trailBar, steerRing, contactDot,
+    comGroup, comBMesh, comHMesh, uALine, shFront,
+    headsetUpper: null, headsetLower: null, steererTube: null,
+    geomDirty: true, driveDirty: true, partCount: 0,
+  };
+
+  function clearGroup(grp) {
+    while (grp.children.length) {
+      const ch = grp.children.pop();
+      if (ch.geometry && !Object.values(SHARED_GEO).includes(ch.geometry)) ch.geometry.dispose();
+    }
+  }
+
+  rec.rebuildGeometry = () => {
+    const g = S.geom[bikeIdx];
+    clearGroup(frameGroup);
+    clearGroup(xrayInternalGroup);
+    clearGroup(forkGroup);
+    clearGroup(cockpitGroup);
+
+    // Rear wheel position
+    rearWheel.root.position.set(0, g.r, 0);
+    shFront.position.set(g.wheelbase, 0.0008, 0);
+
+    // Main frame tubes
+    const addFrame = (mesh) => { frameGroup.add(mesh); return mesh; };
+    addFrame(new THREE.Mesh(makeTubeBetween([g.htBot[0], g.htBot[1], 0], [g.htTop[0], g.htTop[1], 0], 0.024, 0.022, 16), paintMat));
+    addFrame(new THREE.Mesh(makeTubeBetween([g.bb[0], g.bb[1], 0], [g.dtHead[0], g.dtHead[1], 0], 0.025, 0.021, 14), paintMat));
+    addFrame(new THREE.Mesh(makeTubeBetween([g.stTop[0], g.stTop[1], 0], [g.ttHead[0], g.ttHead[1], 0], 0.016, 0.019, 14), paintMat));
+    addFrame(new THREE.Mesh(makeTubeBetween([g.bb[0], g.bb[1], 0], [g.stTop[0], g.stTop[1], 0], 0.0185, 0.016, 14), paintMat));
+    // Swiss accent graphic band on down tube
+    const midDT0 = [g.bb[0] + (g.dtHead[0] - g.bb[0]) * 0.42, g.bb[1] + (g.dtHead[1] - g.bb[1]) * 0.42, 0];
+    const midDT1 = [g.bb[0] + (g.dtHead[0] - g.bb[0]) * 0.58, g.bb[1] + (g.dtHead[1] - g.bb[1]) * 0.58, 0];
+    addFrame(new THREE.Mesh(makeTubeBetween(midDT0, midDT1, 0.0242, 0.0232, 14), accentMat));
+
+    // BB shell
+    const bbShell = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.086, 16), MATS.alloyDark);
+    bbShell.rotation.x = Math.PI / 2; bbShell.position.set(g.bb[0], g.bb[1], 0);
+    addFrame(bbShell);
+
+    // Dropped aero seatstays + asymmetric chainstays + dropouts
+    for (const side of [-1, 1]) {
+      const ss = new THREE.Mesh(makeTubeBetween([0, g.r, side * 0.068], [g.ssSt[0], g.ssSt[1], side * 0.013], 0.0068, 0.0085, 8), paintMat);
+      const cs = new THREE.Mesh(makeTubeBetween([0, g.r, side * 0.068], [g.bb[0], g.bb[1], side * 0.034], 0.0082, 0.0145, 8), paintMat);
+      const drop = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.028, 0.007), MATS.alloyDark);
+      drop.position.set(0, g.r, side * 0.071);
+      addFrame(ss); addFrame(cs); addFrame(drop);
+    }
+    // Derailleur hanger + rear flat-mount disc caliper
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.036, 0.006), MATS.alloyLight);
+    hanger.position.set(-0.004, g.r - 0.018, 0.073);
+    const rCalip = new THREE.Mesh(new THREE.BoxGeometry(0.050, 0.026, 0.024), MATS.alloyDark);
+    rCalip.position.set(0.048, g.r + 0.048, -0.048);
+    addFrame(hanger); addFrame(rCalip);
+
+    // Seatpost clamp
+    const clamp = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.016, 14), MATS.swissRed);
+    clamp.position.set(g.stTop[0], g.stTop[1], 0);
+    clamp.rotation.z = -(Math.PI / 2 - spec.staDeg * Math.PI / 180);
+    addFrame(clamp);
+
+    // Seatpost tube + saddle position
+    clearGroup(seatGroup);
+    const post = new THREE.Mesh(makeTubeBetween([g.stTop[0], g.stTop[1], 0], [g.saddle[0], g.saddle[1] - 0.012, 0], 0.0135, 0.013, 12), MATS.carbonMatte);
+    seatGroup.add(post);
+    saddleMesh.position.set(g.saddle[0], g.saddle[1], 0);
+    seatGroup.add(saddleMesh);
+
+    // Internal X-ray / Exploded bearings & steerer markers
+    const htDir = new THREE.Vector3(Math.sin(g.lam), -Math.cos(g.lam), 0);
+    const bearGeo = new THREE.TorusGeometry(0.019, 0.0042, 10, 24);
+    bearGeo.rotateX(Math.PI / 2);
+    const bUp = new THREE.Mesh(bearGeo, MATS.swissRed);
+    bUp.position.set(g.htTop[0], g.htTop[1], 0); bUp.rotation.z = g.lam;
+    const bLo = new THREE.Mesh(bearGeo, MATS.swissRed);
+    bLo.position.set(g.htBot[0], g.htBot[1], 0); bLo.rotation.z = g.lam;
+    rec.headsetUpper = bUp; rec.headsetLower = bLo;
+    xrayInternalGroup.add(bUp, bLo);
+
+    // Steer axis pivot at fork crown, aligned so local +Y is UP along steer axis and +X is perpendicular forward (rake!)
+    steerAxisPivot.position.set(g.crown[0], g.crown[1], 0);
+    steerAxisPivot.rotation.set(0, 0, g.lam);
+
+    // Local coordinates inside steerGroup (origin = crown):
+    const sCrown = spec.htLenMm / 1000 + 0.014;
+    const sAxle = (g.htTop[1] - g.r + (g.rakeMm / 1000) * Math.sin(g.lam)) / Math.cos(g.lam);
+    const dyAxle = -(sAxle - sCrown); // negative Y along steer axis
+    const dRakeM = g.rakeMm / 1000;
+
+    // Steerer tube inside head tube (extends up into stem clamp)
+    const steerer = new THREE.Mesh(new THREE.CylinderGeometry(0.0143, 0.0143, sCrown + 0.052, 14), MATS.alloyLight);
+    steerer.position.set(0, (sCrown + 0.052) * 0.5 - 0.006, 0);
+    rec.steererTube = steerer;
+    forkGroup.add(steerer);
+
+    // Fork crown
+    const crownMesh = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.032, 0.058), spec.id === 'endurance' ? MATS.carbonMatte : accentMat);
+    forkGroup.add(crownMesh);
+
+    // Curved aero fork blades obeying exact fork rake dRakeM!
+    for (const side of [-1, 1]) {
+      const bladeCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, -0.005, side * 0.025),
+        new THREE.Vector3(dRakeM * 0.16, dyAxle * 0.34, side * 0.044),
+        new THREE.Vector3(dRakeM * 0.56, dyAxle * 0.72, side * 0.050),
+        new THREE.Vector3(dRakeM, dyAxle, side * 0.050),
+      ]);
+      const blade = new THREE.Mesh(new THREE.TubeGeometry(bladeCurve, 18, 0.0125, 10, false), spec.id === 'endurance' ? MATS.carbonMatte : paintMat);
+      blade.scale.set(1.25, 1, 0.58); // aero blade section!
+      const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.008, 12), MATS.alloyDark);
+      tip.rotation.x = Math.PI / 2; tip.position.set(dRakeM, dyAxle, side * 0.050);
+      forkGroup.add(blade, tip);
+    }
+    // Front disc caliper on left fork blade
+    const fCalip = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.048, 0.022), MATS.alloyDark);
+    fCalip.position.set(dRakeM - 0.030, dyAxle + 0.058, -0.038);
+    forkGroup.add(fCalip);
+
+    // Front wheel centered at exact (dRakeM, dyAxle, 0) in steerGroup local frame!
+    frontWheel.root.position.set(dRakeM, dyAxle, 0);
+
+    // Cockpit (spacers + stem + compact drop bar + STI levers) in steerGroup local frame
+    const spMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.0175, 0.0175, 0.026, 14), MATS.carbonMatte);
+    spMesh.position.set(0, sCrown + 0.013, 0);
+    cockpitGroup.add(spMesh);
+    // Transform world stemBase & bar into steerGroup local coords (inverse of crown + rotZ(lam))
+    const toLocal = (wx, wy) => {
+      const dx = wx - g.crown[0], dy = wy - g.crown[1];
+      const cl = Math.cos(g.lam), sl = Math.sin(g.lam);
+      return [dx * cl + dy * sl, -dx * sl + dy * cl];
+    };
+    const [sbLx, sbLy] = toLocal(g.stemBase[0], g.stemBase[1]);
+    const [barLx, barLy] = toLocal(g.bar[0], g.bar[1]);
+    cockpitGroup.add(makeDropBarGroup(barLx, barLy, sbLx, sbLy));
+
+    // Crank pivot at BB
+    crankPivot.position.set(g.bb[0], g.bb[1], 0);
+    // Rear derailleur anchored at rear axle (0, r, 0)
+    rdGroup.position.set(0, g.r, 0);
+
+    // Swiss 3D Geometry Overlays (crisp 3D steer-axis ray, plumb rod, prominent front-offset red trail bracket)
+    const placeCyl = (mesh, ax, ay, az, bx, by, bz) => {
+      const a = new THREE.Vector3(ax, ay, az), b = new THREE.Vector3(bx, by, bz);
+      const len = a.distanceTo(b);
+      mesh.position.copy(a).add(b).multiplyScalar(0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.sub(a).normalize());
+      mesh.scale.set(1, len, 1);
+    };
+    placeCyl(steerRay, g.stemBase[0], g.stemBase[1], 0.004, g.steerGround[0], 0.003, 0.004);
+    placeCyl(plumbLine, g.frontAxle[0], g.frontAxle[1], 0.004, g.frontAxle[0], 0.003, 0.004);
+
+    const trLen = Math.max(0.003, Math.abs(g.trail));
+    trailBar.scale.set(trLen, 1, 1);
+    trailBar.position.set(0.5 * (g.wheelbase + g.steerGround[0]), 0.006, 0.095);
+    trailBar.material = g.trail >= 0 ? MATS.redSolid : MATS.inkSolid;
+    trailLeadQ.position.set(g.wheelbase, 0.003, 0.052);
+    trailLeadG.position.set(g.steerGround[0], 0.003, 0.052);
+    steerRing.position.set(g.steerGround[0], 0.003, 0);
+    contactDot.position.set(g.wheelbase, 0.003, 0);
+
+    // Whipple CoM markers (X-Ray)
+    const wp = g.whipple;
+    comBMesh.position.set(wp.xB, -wp.zB, 0);
+    comHMesh.position.set(wp.xH, -wp.zH, 0);
+    // Foot of perpendicular from H onto steer axis
+    const uLine = uALine.geometry.attributes.position;
+    const ux = Math.cos(g.lam), uy = Math.sin(g.lam);
+    const footX = wp.xH - ((wp.xH - g.steerGround[0]) * ux + (-wp.zH) * uy) * ux;
+    const footY = -wp.zH - ((wp.xH - g.steerGround[0]) * ux + (-wp.zH) * uy) * uy;
+    uLine.setXYZ(0, wp.xH, -wp.zH, 0);
+    uLine.setXYZ(1, footX, footY, 0);
+    uLine.needsUpdate = true;
+
+    rec.geomDirty = false;
+    rec.driveDirty = true;
+  };
+
+  // Update rear derailleur 4-bar slant parallelogram + front derailleur + 112/114/116-link chain
+  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpV1 = new THREE.Vector3(), tmpV2 = new THREE.Vector3(), tmpDir = new THREE.Vector3();
+  const xAxis = new THREE.Vector3(1, 0, 0), zAxis = new THREE.Vector3(0, 0, 1);
+
+  rec.updateDrivetrain = () => {
+    const g = S.geom[bikeIdx];
+    const d = S.drive[bikeIdx];
+    const mm = 0.001;
+
+    // Front derailleur lateral alignment with selected chainring
+    fdCage.position.set(g.bb[0] - 0.038, g.bb[1] + 0.118, d.zRing * mm);
+
+    // B-knuckle body + exact 4-bar parallelogram links (B1->P1, B2->P2)
+    rdBBody.position.set(E.DRIVETRAIN.b0X * mm, E.DRIVETRAIN.b0Y * mm + 0.020, (E.DRIVETRAIN.chainlineMm + 12) * mm);
+    const placeBar = (mesh, A, B) => {
+      tmpV1.set(A[0] * mm, A[1] * mm, A[2] * mm);
+      tmpV2.set(B[0] * mm, B[1] * mm, B[2] * mm);
+      const len = tmpV1.distanceTo(tmpV2);
+      tmpDir.copy(tmpV2).sub(tmpV1).normalize();
+      tmpQ.setFromUnitVectors(xAxis, tmpDir);
+      mesh.position.copy(tmpV1).add(tmpV2).multiplyScalar(0.5);
+      mesh.quaternion.copy(tmpQ);
+      mesh.scale.set(len, 1, 1);
+    };
+    placeBar(rdLink1, d.B1, d.P1);
+    placeBar(rdLink2, d.B2, d.P2);
+    const pinPts = [d.B1, d.B2, d.P1, d.P2];
+    const beta = E.DRIVETRAIN.slantDeg * Math.PI / 180;
+    for (let k = 0; k < 4; k++) {
+      rdPins[k].position.set(pinPts[k][0] * mm, pinPts[k][1] * mm, pinPts[k][2] * mm);
+      rdPins[k].rotation.set(beta, 0, 0);
+    }
+    rdPKnuckle.position.set(d.P[0] * mm, d.P[1] * mm, d.P[2] * mm);
+    rdCageGroup.position.set(d.P[0] * mm, d.P[1] * mm, d.P[2] * mm);
+    // Cage angle psi measured from -Y toward +X => rotation.z = +psi!
+    // Check: local (0, -Lc, 0) rotated by +psi around Z => (Lc*sin(psi), -Lc*cos(psi), 0) == T - P!
+    rdCageGroup.rotation.set(0, 0, d.psi);
+
+    rec.driveDirty = false;
+  };
+
+  rec.updateChainInstances = () => {
+    const g = S.geom[bikeIdx];
+    const d = S.drive[bikeIdx];
+    const mm = 0.001;
+    const phase = S.chainPhase[bikeIdx];
+    const pitch = E.DRIVETRAIN.pitchMm;
+    const nL = spec.nLinks;
+    const scaleOne = new THREE.Vector3(1, 1, 1);
+
+    for (let i = 0; i < nL; i++) {
+      const s = i * pitch + phase;
+      const p = d.sampleChain(s);
+      const wx = p[0] * mm, wy = g.r + p[1] * mm, wz = p[2] * mm;
+      tmpDir.set(p[3], p[4], p[5]).normalize();
+      tmpQ.setFromUnitVectors(xAxis, tmpDir);
+      tmpV1.set(wx, wy, wz);
+      tmpM.compose(tmpV1, tmpQ, scaleOne);
+      chainRollers.setMatrixAt(i, tmpM);
+
+      const plateOff = (i & 1) ? 0.0029 : 0.0038;
+      tmpV1.set(wx, wy, wz + plateOff);
+      tmpM.compose(tmpV1, tmpQ, scaleOne);
+      chainOuterR.setMatrixAt(i, tmpM);
+      tmpV1.set(wx, wy, wz - plateOff);
+      tmpM.compose(tmpV1, tmpQ, scaleOne);
+      chainOuterL.setMatrixAt(i, tmpM);
+    }
+    chainRollers.instanceMatrix.needsUpdate = true;
+    chainOuterL.instanceMatrix.needsUpdate = true;
+    chainOuterR.instanceMatrix.needsUpdate = true;
+  };
+
+  rec.applyPoseAndMode = () => {
+    const g = S.geom[bikeIdx];
+    const ex = S.explodeT;
+    const xray = S.mode === 'xray';
+
+    // X-Ray transparency on main frame shell
+    paintMat.transparent = xray;
+    paintMat.opacity = xray ? 0.20 : 1.0;
+    paintMat.depthWrite = !xray;
+    accentMat.transparent = xray;
+    accentMat.opacity = xray ? 0.35 : 1.0;
+    comGroup.visible = xray;
+
+    // Exploded displacements along each sub-assembly's true mechanical axis
+    const isExploded = ex > 1e-4;
+    rearWheel.root.position.set(-0.24 * ex, g.r, 0);
+    rearWheel.axle.position.z = -0.14 * ex;
+    rearWheel.rotorGroup.position.z = rearWheel.baseRotorZ - 0.12 * ex;
+    for (let k = 0; k < rearWheel.cassetteMeshes.length; k++) {
+      const cm = rearWheel.cassetteMeshes[k];
+      cm.position.z = cm.userData.baseZ + (0.04 + k * 0.011) * ex;
+    }
+
+    const sCrown = spec.htLenMm / 1000 + 0.014;
+    const sAxle = (g.htTop[1] - g.r + (g.rakeMm / 1000) * Math.sin(g.lam)) / Math.cos(g.lam);
+    const dyAxle = -(sAxle - sCrown);
+    const dRakeM = g.rakeMm / 1000;
+    frontWheel.root.position.set(dRakeM + 0.14 * ex, dyAxle - 0.10 * ex, 0);
+    frontWheel.axle.position.z = 0.14 * ex;
+    frontWheel.rotorGroup.position.z = frontWheel.baseRotorZ - 0.12 * ex;
+    cockpitGroup.position.set(0, 0.18 * ex, 0);
+    forkGroup.position.set(0, -0.07 * ex, 0);
+
+    const sta = spec.staDeg * Math.PI / 180;
+    seatGroup.position.set(-0.16 * Math.cos(sta) * ex, 0.16 * Math.sin(sta) * ex, 0);
+
+    if (rec.headsetUpper && rec.headsetLower) {
+      rec.headsetUpper.position.set(g.htTop[0] - 0.055 * Math.sin(g.lam) * ex, g.htTop[1] + 0.055 * Math.cos(g.lam) * ex, 0);
+      rec.headsetLower.position.set(g.htBot[0] + 0.055 * Math.sin(g.lam) * ex, g.htBot[1] - 0.055 * Math.cos(g.lam) * ex, 0);
+    }
+
+    crankRightGroup.position.z = 0.11 * ex;
+    ring50Mesh.position.z = (E.DRIVETRAIN.chainlineMm + 0.5 * E.DRIVETRAIN.ringSpacingMm) / 1000 + 0.06 * ex;
+    ring34Mesh.position.z = (E.DRIVETRAIN.chainlineMm - 0.5 * E.DRIVETRAIN.ringSpacingMm) / 1000 + 0.02 * ex;
+    crankLeftGroup.position.z = -0.11 * ex;
+    rdGroup.position.set(-0.08 * ex, g.r - 0.04 * ex, 0.12 * ex);
+    chainOuterL.visible = chainOuterR.visible = chainRollers.visible = ex < 0.35;
+
+    // Live wheel/crank/pulley rotation
+    rearWheel.spin.rotation.z = S.wheelAng[bikeIdx];
+    frontWheel.spin.rotation.z = S.wheelAng[bikeIdx];
+    crankPivot.rotation.z = S.crankAng[bikeIdx];
+    const pAng = S.chainPhase[bikeIdx] / E.pitchRadius(E.DRIVETRAIN.pulleyT);
+    guidePulley.rotation.z = pAng;
+    tensPulley.rotation.z = -pAng;
+
+    // Whipple lean & steer pose (disabled during Exploded or Drivetrain close-up so mechanism stays centered)
+    const activeDyn = (S.mode === 'compare' || S.mode === 'xray') && !isExploded;
+    const phi = activeDyn ? Math.max(-0.52, Math.min(0.52, S.dyn[bikeIdx][0])) : 0;
+    const delta = activeDyn ? Math.max(-0.62, Math.min(0.62, S.dyn[bikeIdx][1])) : 0;
+    rollGroup.rotation.x = phi;
+    steerGroup.rotation.y = -delta;
+    overlayGroup.visible = S.mode !== 'drivetrain';
+  };
+
+  rec.rebuildGeometry();
+  rec.updateDrivetrain();
+  rec.updateChainInstances();
+  rec.applyPoseAndMode();
+  return rec;
+}
+
+const BIKES_3D = [0, 1, 2].map(i => buildBikeScene(i));
+const camera = new THREE.PerspectiveCamera(31, 1, 0.05, 30);
+
+// ---- Swiss Eigenvalue Chart Canvas (Band 4) ----
+const chartCanvas = document.getElementById('chart');
+const chartCtx = chartCanvas.getContext('2d');
+
+function drawCharts() {
+  const rect = chartCanvas.parentElement.getBoundingClientRect();
+  const w = Math.max(100, Math.round(rect.width));
+  const h = Math.max(60, Math.round(rect.height));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (chartCanvas.width !== Math.round(w * dpr) || chartCanvas.height !== Math.round(h * dpr)) {
+    chartCanvas.width = Math.round(w * dpr);
+    chartCanvas.height = Math.round(h * dpr);
+  }
+  const c = chartCtx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, w, h);
+
+  const isMobile = window.innerWidth <= 760;
+  const cols = (S.mode === 'compare' && !isMobile) ? [0, 1, 2] : [S.focusBike];
+  const colW = w / cols.length;
+
+  const vMax = 14.0, yMin = -6.0, yMax = 5.0;
+  for (let idx = 0; idx < cols.length; idx++) {
+    const bi = cols[idx];
+    const x0 = idx * colW;
+    if (idx > 0) {
+      c.strokeStyle = '#111214'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0, h); c.stroke();
+    }
+    const padL = 36, padR = 14, padT = 22, padB = 18;
+    const pw = Math.max(40, colW - padL - padR), ph = Math.max(24, h - padT - padB);
+    const vx = v => x0 + padL + (v / vMax) * pw;
+    const ry = r => padT + ((yMax - Math.max(yMin, Math.min(yMax, r))) / (yMax - yMin)) * ph;
+
+    // Self-stable speed band shading
+    const cr = S.crit[bi];
+    if (cr.hasStableBand) {
+      const sx0 = vx(Math.min(vMax, cr.vw));
+      const sx1 = vx(Math.min(vMax, cr.vc));
+      c.fillStyle = 'rgba(17,18,20,0.075)';
+      c.fillRect(sx0, padT, Math.max(0, sx1 - sx0), ph);
+      c.fillStyle = '#111214';
+      c.fillRect(sx0, padT, Math.max(0, sx1 - sx0), 2.5);
+    }
+
+    // Zero line (stability threshold Re(lambda) = 0)
+    const y0 = ry(0);
+    c.strokeStyle = '#111214'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(x0 + padL, y0); c.lineTo(x0 + padL + pw, y0); c.stroke();
+
+    // Subtle speed grid ticks (0, 5, 10 m/s)
+    c.strokeStyle = '#e5e2d8'; c.lineWidth = 1;
+    c.font = '700 9px "Space Mono", monospace';
+    c.fillStyle = '#5a5d64';
+    for (const vt of [0, 5, 10]) {
+      const tx = vx(vt);
+      c.beginPath(); c.moveTo(tx, padT); c.lineTo(tx, padT + ph); c.stroke();
+      c.fillText(`${vt}`, tx - (vt === 10 ? 6 : 3), h - 6);
+    }
+    c.fillText('m/s', x0 + padL + pw - 16, h - 6);
+    c.fillText('0', x0 + 22, y0 + 3);
+    c.fillText('Re λ', x0 + 6, padT + 7);
+
+    // Optional Meijaard 2007 published benchmark overlay (dotted black)
+    if (S.showBench) {
+      c.save();
+      c.strokeStyle = 'rgba(17,18,20,0.55)'; c.lineWidth = 1.25; c.setLineDash([2, 3]);
+      c.beginPath();
+      S.benchCurve.forEach((pt, k) => {
+        const px = vx(pt.v), py = ry(pt.weaveRe ?? 0);
+        if (k === 0) c.moveTo(px, py); else c.lineTo(px, py);
+      });
+      c.stroke();
+      c.beginPath();
+      S.benchCurve.forEach((pt, k) => {
+        if (pt.capsize === null) return;
+        const px = vx(pt.v), py = ry(pt.capsize);
+        if (k === 0) c.moveTo(px, py); else c.lineTo(px, py);
+      });
+      c.stroke();
+      // Mark exact Meijaard vw=4.292 and vc=6.024
+      c.setLineDash([]);
+      c.fillStyle = '#111214';
+      c.beginPath(); c.arc(vx(S.benchCrit.vw), y0, 3, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(vx(S.benchCrit.vc), y0, 3, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+
+    // Plot Capsize real mode (dashed Swiss red)
+    const curve = S.curves[bi];
+    c.save();
+    c.strokeStyle = '#dc1c24'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
+    c.beginPath();
+    let started = false;
+    for (const pt of curve) {
+      if (pt.capsize === null) continue;
+      const px = vx(pt.v), py = ry(pt.capsize);
+      if (!started) { c.moveTo(px, py); started = true; } else c.lineTo(px, py);
+    }
+    c.stroke();
+    c.restore();
+
+    // Plot Weave real part (bold black)
+    c.strokeStyle = '#111214'; c.lineWidth = 2;
+    c.beginPath();
+    started = false;
+    for (const pt of curve) {
+      if (pt.weaveRe === null) continue;
+      const px = vx(pt.v), py = ry(pt.weaveRe);
+      if (!started) { c.moveTo(px, py); started = true; } else c.lineTo(px, py);
+    }
+    c.stroke();
+
+    // Current speed vertical Swiss red cursor + dot on dominant mode
+    const curX = vx(Math.min(vMax, S.speed));
+    c.strokeStyle = '#dc1c24'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(curX, padT); c.lineTo(curX, padT + ph); c.stroke();
+    const dom = S.modes[bi].maxRe;
+    c.fillStyle = S.modes[bi].stable ? '#111214' : '#dc1c24';
+    c.beginPath(); c.arc(curX, ry(dom), 4, 0, Math.PI * 2); c.fill();
+
+    // Top-right crisp label placed cleanly in header band above plot
+    c.font = '700 10px "Space Mono", monospace';
+    c.fillStyle = '#111214';
+    const lbl = S.showBench
+      ? `M'07 ${S.benchCrit.vw.toFixed(2)}–${S.benchCrit.vc.toFixed(2)}`
+      : (cr.hasStableBand ? `vw ${cr.vw.toFixed(2)} · vc ${cr.vc.toFixed(2)}` : 'NO SELF-STABLE BAND');
+    c.fillText(lbl, x0 + padL + pw - c.measureText(lbl).width, 13);
+  }
+}
+
+// ---- DOM Sync ----
+const $ = id => document.getElementById(id);
+const specCols = [...document.querySelectorAll('.spec-col')];
+const mobTabs = [...document.querySelectorAll('#mobTabs button')];
+const modeBtns = [...document.querySelectorAll('#modeSeg button')];
+
+function syncUI() {
+  const isMobile = window.innerWidth <= 760;
+  const specRow = $('specRow');
+  const bayRules = $('bayRules');
+  const singleDesktop = S.mode !== 'compare';
+  specRow.classList.toggle('single', singleDesktop && !isMobile);
+  bayRules.classList.toggle('hidden', singleDesktop || isMobile);
+
+  specCols.forEach((col, i) => {
+    const g = S.geom[i], cr = S.crit[i], m = S.modes[i];
+    col.style.display = (!isMobile && singleDesktop && i !== S.focusBike) ? 'none' : '';
+    col.classList.toggle('focus', i === S.focusBike);
+    col.classList.toggle('mob-on', i === S.focusBike);
+    $('hta' + i).textContent = `${g.htaDeg.toFixed(1)}°`;
+    $('tr' + i).textContent = `${(g.trail * 1000).toFixed(1)} mm`;
+    $('win' + i).textContent = cr.hasStableBand ? `${cr.vw.toFixed(2)}–${cr.vc.toFixed(2)} m/s` : 'None';
+    const pill = $('pill' + i);
+    pill.className = 'pill ' + m.regime;
+    pill.textContent = m.regime === 'stable' ? 'Self-stable' : (m.regime === 'weave' ? 'Weave' : 'Capsize');
+  });
+  mobTabs.forEach((b, i) => b.classList.toggle('on', i === S.focusBike));
+  modeBtns.forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode));
+  $('btnBench').classList.toggle('on', S.showBench);
+
+  $('valHta').textContent = `${S.dHta >= 0 ? '+' : ''}${S.dHta.toFixed(1)}°`;
+  $('valRake').textContent = `${S.dRake >= 0 ? '+' : ''}${S.dRake.toFixed(0)} mm`;
+  $('valSpeed').textContent = `${S.speed.toFixed(1)} m/s · ${(S.speed * 3.6).toFixed(1)} km/h`;
+  const d = S.drive[S.focusBike];
+  const vg = $('valGear');
+  vg.textContent = `${d.nf}×${d.nr}T · ${d.ratio.toFixed(2)} · ${d.chainlineDeg >= 0 ? '+' : ''}${d.chainlineDeg.toFixed(1)}°${d.crossChained ? ' !' : ''}`;
+  vg.classList.toggle('red', d.crossChained);
+  $('ring34').classList.toggle('on', S.ringIdx === 0);
+  $('ring50').classList.toggle('on', S.ringIdx === 1);
+  $('slHta').value = S.dHta;
+  $('slRake').value = S.dRake;
+  $('slSpeed').value = S.speed;
+  $('slCog').value = S.cogIdx;
+
+  // Single-idea concise caption
+  const say = $('say');
+  if (S.mode === 'drivetrain') {
+    say.innerHTML = `${E.BIKES[S.focusBike].name} <b>${d.nf}×${d.nr}T</b>: 47° parallelogram shifts ${d.phiPDeg.toFixed(1)}° and cage swings to <b>${d.psiDeg.toFixed(1)}°</b> to keep ${E.BIKES[S.focusBike].nLinks} links taut.`;
+  } else if (S.mode === 'exploded') {
+    say.innerHTML = `Exploded view of <b>${E.BIKES[S.focusBike].name}</b>: 11-cog cassette, 50/34T crankset, headset bearings, and disc hubs along assembly axes.`;
+  } else if (S.mode === 'xray') {
+    say.innerHTML = `X-Ray view shows the internal steerer, bearings, and Whipple front/rear center of mass (offset <b>${(S.mat[S.focusBike].uA * 1000).toFixed(0)} mm</b>).`;
+  } else if (S.showBench) {
+    say.innerHTML = `Meijaard (2007) benchmark overlaid in dotted ink: weave <b>${S.benchCrit.vw.toFixed(3)} m/s</b>, capsize <b>${S.benchCrit.vc.toFixed(3)} m/s</b>.`;
+  } else {
+    const stables = [0, 1, 2].filter(i => S.modes[i].stable).map(i => E.BIKES[i].name);
+    const g1 = S.geom[1];
+    if (g1.trail <= 0) {
+      say.innerHTML = `Negative trail on Endurance (<b>${(g1.trail * 1000).toFixed(1)} mm</b>): forward cockpit mass can still sustain a thin self-stable sliver.`;
+    } else if (stables.length === 3) {
+      say.innerHTML = `At <b>${S.speed.toFixed(1)} m/s</b>, all three frames sit inside their self-stable speed windows and damp back upright.`;
+    } else if (stables.length === 0) {
+      say.innerHTML = `At <b>${S.speed.toFixed(1)} m/s</b>, none of the three frames self-stabilize—click Nudge to watch the unstable mode grow.`;
+    } else {
+      say.innerHTML = `At <b>${S.speed.toFixed(1)} m/s</b>, <b>${stables.join(' & ')}</b> self-stabilize while the rest still weave or capsize.`;
+    }
+  }
+  drawCharts();
+}
+
+// ---- Nudge Impulse (Meijaard Fig. 4 style: dphi0 = 0.5 rad/s) ----
+function applyNudge(dphi0 = 0.45) {
+  for (let i = 0; i < 3; i++) {
+    S.dyn[i] = [0, 0, dphi0, 0];
+    S.dynRaw[i] = [0, 0, dphi0, 0];
+  }
+  S.nudgedAt = S.time;
+}
+
+// ---- Render Function (3-Bay Synchronized Scissor in Compare Mode, Full Viewport in Focus Modes) ----
+let viewW = 1440, viewH = 500;
+function resizeCanvas() {
+  const r = stageWrap.getBoundingClientRect();
+  viewW = Math.max(100, Math.round(r.width));
+  viewH = Math.max(100, Math.round(r.height));
+  const dpr = S.lite ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(viewW, viewH, false);
+  drawCharts();
+}
+
+function positionCameraForBay(bikeIdx, bayW, bayH) {
+  const g = S.geom[bikeIdx];
+  camera.aspect = bayW / Math.max(1, bayH);
+  camera.updateProjectionMatrix();
+
+  let tx, ty, tz, dist;
+  if (S.mode === 'drivetrain') {
+    tx = g.bb[0] * 0.46; ty = g.r - 0.08; tz = 0.04;
+    dist = 0.94 / S.zoom;
+  } else if (S.mode === 'exploded') {
+    tx = g.wheelbase * 0.50; ty = 0.54; tz = 0.0;
+    dist = 2.75 / S.zoom;
+  } else {
+    tx = g.wheelbase * 0.515; ty = 0.50; tz = 0.0;
+    const baseDist = S.mode === 'compare' && window.innerWidth > 760 ? 2.86 : 2.52;
+    // Adapt cleanly for narrow or wide bays so both front and rear tires have Swiss negative space
+    const aspectFit = camera.aspect < 1.30 ? 1.30 / Math.max(0.75, camera.aspect) : 1.0;
+    dist = (baseDist * aspectFit) / S.zoom;
+  }
+  const cp = Math.cos(S.pitch), sp = Math.sin(S.pitch);
+  camera.position.set(tx + dist * cp * Math.sin(S.yaw), ty + dist * sp, tz + dist * cp * Math.cos(S.yaw));
+  camera.lookAt(tx, ty, tz);
+  camera.updateMatrixWorld();
+}
+
+function renderFrame() {
+  for (let i = 0; i < 3; i++) {
+    const b = BIKES_3D[i];
+    if (b.geomDirty) b.rebuildGeometry();
+    if (b.driveDirty) b.updateDrivetrain();
+    b.updateChainInstances();
+    b.applyPoseAndMode();
+  }
+
+  const isMobile = window.innerWidth <= 760;
+  renderer.setScissorTest(true);
+  let totalTris = 0, totalCalls = 0;
+
+  if (S.mode === 'compare' && !isMobile) {
+    const bw = Math.floor(viewW / 3);
+    for (let i = 0; i < 3; i++) {
+      const x = i * bw;
+      const w = i === 2 ? viewW - 2 * bw : bw;
+      renderer.setViewport(x, 0, w, viewH);
+      renderer.setScissor(x, 0, w, viewH);
+      positionCameraForBay(i, w, viewH);
+      renderer.render(BIKES_3D[i].scene, camera);
+      totalTris += renderer.info.render.triangles;
+      totalCalls += renderer.info.render.calls;
+    }
+  } else {
+    renderer.setViewport(0, 0, viewW, viewH);
+    renderer.setScissor(0, 0, viewW, viewH);
+    positionCameraForBay(S.focusBike, viewW, viewH);
+    renderer.render(BIKES_3D[S.focusBike].scene, camera);
+    totalTris = renderer.info.render.triangles;
+    totalCalls = renderer.info.render.calls;
+  }
+  renderer.setScissorTest(false);
+  S.tris = totalTris;
+  S.calls = totalCalls;
+}
+
+// ---- Simulation Step ----
+function simStep(dt) {
+  S.time += dt;
+  S.frame++;
+  window.__frame = S.frame;
+
+  // Smooth explode interpolation
+  const exSpeed = 4.5;
+  S.explodeT += (S.explodeTarget - S.explodeT) * Math.min(1, dt * exSpeed);
+  if (Math.abs(S.explodeTarget - S.explodeT) < 0.001) S.explodeT = S.explodeTarget;
+
+  // Opening gentle nudge at 0.35 s so comparison motion is immediately vivid
+  if (!REDUCED && !S.autoNudged && S.time >= 0.35 && S.mode === 'compare') {
+    S.autoNudged = true;
+    applyNudge(0.42);
+  }
+
+  // Advance wheel, crank, chain, and RK4 Whipple response
+  const sub = 4, h = dt / sub;
+  for (let i = 0; i < 3; i++) {
+    const g = S.geom[i], d = S.drive[i];
+    if (S.speed > 0.001) {
+      const omegaW = S.speed / g.r;
+      S.wheelAng[i] -= omegaW * dt;
+      const omegaCrank = omegaW / d.ratio;
+      S.crankAng[i] -= omegaCrank * dt;
+      // Chain linear speed (mm/s) = omegaCrank * Rf(mm)
+      S.chainPhase[i] = (S.chainPhase[i] + omegaCrank * d.Rf * dt) % d.totalLenMm;
+    }
+    if (S.nudgedAt >= 0 && (S.mode === 'compare' || S.mode === 'xray')) {
+      let st = S.dyn[i], raw = S.dynRaw[i];
+      for (let k = 0; k < sub; k++) {
+        raw = E.whippleStepRK4(S.mat[i], E.G, S.speed, raw, h);
+        st = E.whippleStepRK4(S.mat[i], E.G, S.speed, st, h);
+        if (Math.abs(st[0]) > 0.50) {
+          // Soft elastic bounce at ±29° lean stop so unstable bike visibly weaves/capsizes without disappearing
+          st[0] = Math.sign(st[0]) * 0.50;
+          st[2] *= -0.45;
+        }
+        if (Math.abs(st[1]) > 0.65) {
+          st[1] = Math.sign(st[1]) * 0.65;
+          st[3] *= -0.45;
+        }
+      }
+      S.dyn[i] = st;
+      S.dynRaw[i] = raw;
+    }
+  }
+}
+
+// ---- Controls & Interactions ----
+function markDirtyAll() {
+  recomputeAll(true);
+  for (const b of BIKES_3D) { b.geomDirty = true; b.driveDirty = true; }
+  syncUI();
+  if (FIXED || REDUCED) renderFrame();
+}
+
+function setMode(m) {
+  S.mode = m;
+  S.explodeTarget = m === 'exploded' ? 1 : 0;
+  if (FIXED || REDUCED) S.explodeT = S.explodeTarget;
+  if (m === 'drivetrain') { S.yaw = 0.22; S.pitch = 0.08; S.zoom = 1.05; }
+  else if (m === 'exploded') { S.yaw = 0.56; S.pitch = 0.24; S.zoom = 1.0; }
+  else if (m === 'xray') { S.yaw = 0.28; S.pitch = 0.12; S.zoom = 1.0; }
+  else { S.yaw = 0.30; S.pitch = 0.12; S.zoom = 1.0; }
+  syncUI();
+  if (FIXED || REDUCED) renderFrame();
+}
+
+modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+specCols.forEach((col, i) => col.addEventListener('click', () => {
+  S.focusBike = i;
+  syncUI();
+  if (FIXED || REDUCED) renderFrame();
+}));
+mobTabs.forEach((b, i) => b.addEventListener('click', () => {
+  S.focusBike = i;
+  syncUI();
+  if (FIXED || REDUCED) renderFrame();
+}));
+$('btnBench').addEventListener('click', () => { S.showBench = !S.showBench; syncUI(); });
+$('btnWhat').addEventListener('click', () => $('modalWrap').classList.add('open'));
+$('btnCloseWhat').addEventListener('click', () => $('modalWrap').classList.remove('open'));
+$('modalWrap').addEventListener('click', e => { if (e.target === $('modalWrap')) $('modalWrap').classList.remove('open'); });
+
+$('slHta').addEventListener('input', e => { S.dHta = Number(e.target.value); markDirtyAll(); });
+$('slRake').addEventListener('input', e => { S.dRake = Number(e.target.value); markDirtyAll(); });
+$('slSpeed').addEventListener('input', e => { S.speed = Number(e.target.value); markDirtyAll(); });
+$('slCog').addEventListener('input', e => {
+  S.cogIdx = Number(e.target.value);
+  recomputeAll(true);
+  for (const b of BIKES_3D) b.driveDirty = true;
+  syncUI();
+  if (FIXED || REDUCED) renderFrame();
+});
+$('ring34').addEventListener('click', () => {
+  S.ringIdx = 0; recomputeAll(true);
+  for (const b of BIKES_3D) b.driveDirty = true;
+  syncUI(); if (FIXED || REDUCED) renderFrame();
+});
+$('ring50').addEventListener('click', () => {
+  S.ringIdx = 1; recomputeAll(true);
+  for (const b of BIKES_3D) b.driveDirty = true;
+  syncUI(); if (FIXED || REDUCED) renderFrame();
+});
+$('btnNudge').addEventListener('click', () => {
+  applyNudge(0.50);
+  if (S.mode === 'drivetrain' || S.mode === 'exploded') setMode('compare');
+  if (FIXED || REDUCED) { for (let k = 0; k < 25; k++) simStep(1 / 60); renderFrame(); }
+});
+$('btnReset').addEventListener('click', () => {
+  S.dHta = 0; S.dRake = 0; S.speed = 5.6; S.ringIdx = 1; S.cogIdx = 5;
+  S.showBench = false; S.dyn = [[0,0,0,0],[0,0,0,0],[0,0,0,0]]; S.dynRaw = [[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+  S.nudgedAt = -1;
+  setMode('compare');
+  markDirtyAll();
+});
+
+// Pointer orbit & wheel zoom (synchronized across all 3 bays)
+let drag = null;
+canvas.addEventListener('pointerdown', e => {
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.hypot(dx, dy) > 4) drag.moved = true;
+  S.yaw = drag.yaw - dx * 0.0075;
+  S.pitch = Math.max(0.02, Math.min(1.25, drag.pitch + dy * 0.006));
+  if (FIXED || REDUCED) renderFrame();
+});
+canvas.addEventListener('pointerup', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (!drag.moved && S.mode === 'compare' && window.innerWidth > 760) {
+    const r = canvas.getBoundingClientRect();
+    const bi = Math.min(2, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * 3)));
+    S.focusBike = bi;
+    syncUI();
+  }
+  drag = null;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  S.zoom = Math.max(0.65, Math.min(2.2, S.zoom * (e.deltaY > 0 ? 0.93 : 1.07)));
+  if (FIXED || REDUCED) renderFrame();
+}, { passive: false });
+
+new ResizeObserver(() => {
+  resizeCanvas();
+  syncUI();
+  renderFrame();
+}).observe(stageWrap);
+
+// ---- Initialization, Fixed Stepping & Main Loop ----
+resizeCanvas();
+syncUI();
+
+if (FIXED) {
+  if (OG) {
+    // Crisp deterministic pose showing 3 bikes with generous framing and visible trail bars
+    S.yaw = 0.22; S.pitch = 0.14; S.zoom = 1.03;
+    applyNudge(0.42);
+    for (let k = 0; k < 48; k++) simStep(1 / 60);
+  } else {
+    applyNudge(0.42);
+    for (let k = 0; k < 42; k++) simStep(1 / 60);
+  }
+  renderFrame();
+} else if (REDUCED) {
+  renderFrame();
+} else {
+  renderFrame();
+}
+
+window.__frame = S.frame;
+window.step = (n = 1) => {
+  const steps = Math.max(0, Math.floor(n));
+  for (let i = 0; i < steps; i++) simStep(1 / 60);
+  renderFrame();
+  syncUI();
+  return S.frame;
+};
+
+// Public read-only API + 3D world-space mechanical probe for automated verification
+window.roadBike = {
+  state() {
+    return {
+      ready: S.ready, mode: S.mode, focusBike: S.focusBike,
+      dHta: S.dHta, dRake: S.dRake, speed: S.speed,
+      ringIdx: S.ringIdx, cogIdx: S.cogIdx, showBench: S.showBench,
+      explodeT: S.explodeT, yaw: S.yaw, pitch: S.pitch, zoom: S.zoom,
+      frame: S.frame, tris: S.tris, calls: S.calls, lite: S.lite,
+      meijaard: {
+        vw: S.benchCrit.vw, vc: S.benchCrit.vc,
+        M: S.benchMat.M, C1: S.benchMat.C1, K0: S.benchMat.K0, K2: S.benchMat.K2,
+        modeAtV: S.benchMode,
+      },
+      bikes: [0, 1, 2].map(i => ({
+        id: E.BIKES[i].id,
+        htaDeg: S.geom[i].htaDeg, rakeMm: S.geom[i].rakeMm,
+        trail: S.geom[i].trail, mechTrail: S.geom[i].mechTrail, flop: S.geom[i].flop,
+        wheelbase: S.geom[i].wheelbase, steerGroundX: S.geom[i].steerGround[0],
+        vw: Number.isFinite(S.crit[i].vw) ? S.crit[i].vw : null,
+        vc: Number.isFinite(S.crit[i].vc) ? S.crit[i].vc : null,
+        hasStableBand: S.crit[i].hasStableBand,
+        modes: S.modes[i],
+        dyn: S.dyn[i].slice(),
+        dynRaw: S.dynRaw[i].slice(),
+        drive: {
+          nf: S.drive[i].nf, nr: S.drive[i].nr, ratio: S.drive[i].ratio,
+          devM: S.drive[i].devM, cadenceRpm: S.drive[i].cadenceRpm,
+          chainlineDeg: S.drive[i].chainlineDeg, phiPDeg: S.drive[i].phiPDeg,
+          psiDeg: S.drive[i].psiDeg, bGapMm: S.drive[i].bGapMm,
+          totalLenMm: S.drive[i].totalLenMm, targetLenMm: S.drive[i].targetLenMm,
+        },
+      })),
+      log: S.log.slice(),
+    };
+  },
+  probe(bikeIdx = S.focusBike) {
+    const b = BIKES_3D[bikeIdx];
+    b.scene.updateMatrixWorld(true);
+    const wp = obj => { const v = new THREE.Vector3(); obj.getWorldPosition(v); return [v.x, v.y, v.z]; };
+    return {
+      bikeIdx,
+      rearAxle: wp(b.rearWheel.root),
+      frontAxle: wp(b.frontWheel.root),
+      bb: wp(b.crankPivot),
+      crown: wp(b.steerAxisPivot),
+      steerRing: wp(b.steerRing),
+      contactDot: wp(b.contactDot),
+      rdPins: b.rdPins.map(wp),
+      rdLink1Len: b.rdLink1.scale.x,
+      rdLink2Len: b.rdLink2.scale.x,
+      guidePulley: wp(b.guidePulley),
+      tensPulley: wp(b.tensPulley),
+      cockpitY: b.cockpitGroup.position.y,
+      cassetteSpreadZ: b.rearWheel.cassetteMeshes[10].position.z - b.rearWheel.cassetteMeshes[0].position.z,
+      chainLinks: b.spec.nLinks,
+      tris: S.tris, calls: S.calls,
+    };
+  },
+  set(o = {}) {
+    if (o.mode !== undefined) setMode(o.mode);
+    if (o.focusBike !== undefined) S.focusBike = o.focusBike;
+    if (o.dHta !== undefined) S.dHta = o.dHta;
+    if (o.dRake !== undefined) S.dRake = o.dRake;
+    if (o.speed !== undefined) S.speed = o.speed;
+    if (o.ringIdx !== undefined) S.ringIdx = o.ringIdx;
+    if (o.cogIdx !== undefined) S.cogIdx = o.cogIdx;
+    if (o.showBench !== undefined) S.showBench = o.showBench;
+    if (o.yaw !== undefined) S.yaw = o.yaw;
+    if (o.pitch !== undefined) S.pitch = o.pitch;
+    if (o.zoom !== undefined) S.zoom = o.zoom;
+    markDirtyAll();
+    if (o.nudge) applyNudge(typeof o.nudge === 'number' ? o.nudge : 0.45);
+    renderFrame();
+  },
+};
+
+S.ready = true;
+document.fonts?.ready?.then(() => { drawCharts(); if (FIXED) renderFrame(); });
+
+// Live animation loop (never runs in ?fixed or prefers-reduced-motion)
+if (!FIXED && !REDUCED) {
+  let lastT = performance.now();
+  let slowCount = 0;
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const dtMs = now - lastT;
+    lastT = now;
+    if (!S.lite && dtMs > 46) {
+      slowCount++;
+      if (slowCount >= 24) { S.lite = true; resizeCanvas(); }
+    } else if (slowCount > 0) slowCount--;
+    const dt = Math.min(0.05, Math.max(0.001, dtMs / 1000));
+    simStep(dt);
+    renderFrame();
+  }
+  requestAnimationFrame(tick);
+}
+
+</script>
+</body>
+</html>
